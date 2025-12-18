@@ -125,37 +125,51 @@ const configuration = {
         return {
             get serverPath(): string {
                 return substituteVariablesInString(
-                    vscode.workspace
-                        .getConfiguration("swift.sourcekit-lsp")
-                        .get<string>("serverPath", "")
+                    validateStringSetting(
+                        vscode.workspace
+                            .getConfiguration("swift.sourcekit-lsp")
+                            .get<string>("serverPath", ""),
+                        "swift.sourcekit-lsp.serverPath"
+                    )
                 );
             },
             get serverArguments(): string[] {
-                return vscode.workspace
-                    .getConfiguration("swift.sourcekit-lsp")
-                    .get<string[]>("serverArguments", [])
-                    .map(substituteVariablesInString);
+                return validateStringArraySettings(
+                    vscode.workspace
+                        .getConfiguration("swift.sourcekit-lsp")
+                        .get<string[]>("serverArguments", []),
+                    "swift.sourcekit-lsp.serverArguments"
+                ).map(substituteVariablesInString);
             },
             get inlayHintsEnabled(): boolean {
-                return vscode.workspace
-                    .getConfiguration("sourcekit-lsp")
-                    .get<boolean>("inlayHints.enabled", true);
+                return validateBooleanSetting(
+                    vscode.workspace
+                        .getConfiguration("sourcekit-lsp")
+                        .get<boolean>("inlayHints.enabled", true),
+                    "swift.sourcekit-lsp.inlayHints.enabled"
+                );
             },
             get supportCFamily(): CFamilySupportOptions {
-                return vscode.workspace
-                    .getConfiguration("sourcekit-lsp")
-                    .get<CFamilySupportOptions>("support-c-cpp", "cpptools-inactive");
+                return validateStringSetting(
+                    vscode.workspace
+                        .getConfiguration("sourcekit-lsp")
+                        .get<CFamilySupportOptions>("support-c-cpp", "cpptools-inactive"),
+                    "swift.sourcekit-lsp.support-c-cpp"
+                );
             },
             get supportedLanguages() {
-                return vscode.workspace
-                    .getConfiguration("swift.sourcekit-lsp")
-                    .get("supported-languages", [
-                        "swift",
-                        "c",
-                        "cpp",
-                        "objective-c",
-                        "objective-cpp",
-                    ]);
+                return validateStringArraySettings(
+                    vscode.workspace
+                        .getConfiguration("swift.sourcekit-lsp")
+                        .get("supported-languages", [
+                            "swift",
+                            "c",
+                            "cpp",
+                            "objective-c",
+                            "objective-cpp",
+                        ]),
+                    "swift.sourcekit-lsp.supported-languages"
+                );
             },
             get disable(): boolean {
                 return vscode.workspace
@@ -294,9 +308,12 @@ const configuration = {
                 );
             },
             get disable(): boolean {
-                return vscode.workspace
-                    .getConfiguration("swift.debugger")
-                    .get<boolean>("disable", false);
+                return validateBooleanSetting(
+                    vscode.workspace
+                        .getConfiguration("swift.debugger")
+                        .get<boolean>("disable", false),
+                    "swift.debugger.disable"
+                );
             },
             get setupCodeLLDB(): SetupCodeLLDBOptions {
                 return vscode.workspace
@@ -324,26 +341,38 @@ const configuration = {
     },
     /** Files and directories to exclude from the Package Dependencies view. */
     get excludePathsFromPackageDependencies(): string[] {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<string[]>("excludePathsFromPackageDependencies", []);
+        return validateStringArraySettings(
+            vscode.workspace
+                .getConfiguration("swift")
+                .get<string[]>("excludePathsFromPackageDependencies", []),
+            "swift.excludePathsFromPackageDependencies"
+        );
     },
     /** Path to folder that include swift executable */
     get path(): string {
         return substituteVariablesInString(
-            vscode.workspace.getConfiguration("swift").get<string>("path", "")
+            validateStringSetting(
+                vscode.workspace.getConfiguration("swift").get<string>("path", ""),
+                "swift.path"
+            )
         );
     },
     /** Path to folder that include swift runtime */
     get runtimePath(): string {
         return substituteVariablesInString(
-            vscode.workspace.getConfiguration("swift").get<string>("runtimePath", "")
+            validateStringSetting(
+                vscode.workspace.getConfiguration("swift").get<string>("runtimePath", ""),
+                "swift.runtimePath"
+            )
         );
     },
     /** Path to custom --sdk */
     get sdk(): string {
         return substituteVariablesInString(
-            vscode.workspace.getConfiguration("swift").get<string>("SDK", "")
+            validateStringSetting(
+                vscode.workspace.getConfiguration("swift").get<string>("SDK", ""),
+                "swift.SDK"
+            )
         );
     },
     set sdk(value: string | undefined) {
@@ -356,7 +385,10 @@ const configuration = {
     },
     /** Path to custom --swift-sdk */
     get swiftSDK(): string {
-        return vscode.workspace.getConfiguration("swift").get<string>("swiftSDK", "");
+        return validateStringSetting(
+            vscode.workspace.getConfiguration("swift").get<string>("swiftSDK", ""),
+            "swift.swiftSDK"
+        );
     },
     set swiftSDK(value: string | undefined) {
         void vscode.workspace
@@ -368,15 +400,18 @@ const configuration = {
     },
     /** swift build arguments */
     get buildArguments(): string[] {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<string[]>("buildArguments", [])
-            .map(substituteVariablesInString);
+        return validateStringArraySettings(
+            vscode.workspace.getConfiguration("swift").get<string[]>("buildArguments", []),
+            "swift.buildArguments"
+        ).map(substituteVariablesInString);
     },
     scriptSwiftLanguageVersion(toolchain: SwiftToolchain): string {
-        const version = vscode.workspace
-            .getConfiguration("swift")
-            .get<string>("scriptSwiftLanguageVersion", toolchain.swiftVersion.major.toString());
+        const version = validateStringSetting(
+            vscode.workspace
+                .getConfiguration("swift")
+                .get<string>("scriptSwiftLanguageVersion", toolchain.swiftVersion.major.toString()),
+            "swift.scriptSwiftLanguageVersion"
+        );
         if (version.length === 0) {
             return toolchain.swiftVersion.major.toString();
         }
@@ -384,24 +419,33 @@ const configuration = {
     },
     /** swift package arguments */
     get packageArguments(): string[] {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<string[]>("packageArguments", [])
-            .map(substituteVariablesInString);
+        return validateStringArraySettings(
+            vscode.workspace.getConfiguration("swift").get<string[]>("packageArguments", []),
+            "swift.packageArguments"
+        ).map(substituteVariablesInString);
     },
     /** thread/address sanitizer */
     get sanitizer(): string {
-        return vscode.workspace.getConfiguration("swift").get<string>("sanitizer", "off");
+        return validateStringSetting(
+            vscode.workspace.getConfiguration("swift").get<string>("sanitizer", "off"),
+            "swift.sanitizer"
+        );
     },
     get buildPath(): string {
         return substituteVariablesInString(
-            vscode.workspace.getConfiguration("swift").get<string>("buildPath", "")
+            validateStringSetting(
+                vscode.workspace.getConfiguration("swift").get<string>("buildPath", ""),
+                "swift.buildPath"
+            )
         );
     },
     get disableSwiftPMIntegration(): boolean {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<boolean>("disableSwiftPackageManagerIntegration", false);
+        return validateBooleanSetting(
+            vscode.workspace
+                .getConfiguration("swift")
+                .get<boolean>("disableSwiftPackageManagerIntegration", false),
+            "swift.disableSwiftPackageManagerIntegration"
+        );
     },
     /** Environment variables to set when building */
     get swiftEnvironmentVariables(): { [key: string]: string } {
@@ -423,15 +467,21 @@ const configuration = {
     },
     /** where to show the build progress for the running task */
     get showBuildStatus(): ShowBuildStatusOptions {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<ShowBuildStatusOptions>("showBuildStatus", "swiftStatus");
+        return validateStringSetting(
+            vscode.workspace
+                .getConfiguration("swift")
+                .get<string>("showBuildStatus", "swiftStatus"),
+            "swift.showBuildStatus"
+        );
     },
     /** create build tasks for the library products of the package(s) */
     get createTasksForLibraryProducts(): boolean {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<boolean>("createTasksForLibraryProducts", false);
+        return validateBooleanSetting(
+            vscode.workspace
+                .getConfiguration("swift")
+                .get<boolean>("createTasksForLibraryProducts", false),
+            "swift.createTasksForLibraryProducts"
+        );
     },
     /** background compilation */
     get backgroundCompilation(): BackgroundCompilationConfiguration {
@@ -465,52 +515,79 @@ const configuration = {
     },
     /** focus on problems view whenever there is a build error */
     get actionAfterBuildError(): ActionAfterBuildError {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<ActionAfterBuildError>("actionAfterBuildError", "Focus Terminal");
+        return validateStringSetting(
+            vscode.workspace
+                .getConfiguration("swift")
+                .get<ActionAfterBuildError>("actionAfterBuildError", "Focus Terminal"),
+            "swift.actionAfterBuildError"
+        );
     },
     /** output additional diagnostics */
     get diagnostics(): boolean {
-        return vscode.workspace.getConfiguration("swift").get<boolean>("diagnostics", false);
+        return validateBooleanSetting(
+            vscode.workspace.getConfiguration("swift").get<boolean>("diagnostics", false),
+            "swift.diagnostics"
+        );
     },
     /**
      *  Test coverage settings
      */
     /** Should test coverage report be displayed after running test coverage */
     get displayCoverageReportAfterRun(): boolean {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<boolean>("coverage.displayReportAfterRun", true);
+        return validateBooleanSetting(
+            vscode.workspace
+                .getConfiguration("swift")
+                .get<boolean>("coverage.displayReportAfterRun", true),
+            "swift.coverage.displayReportAfterRun"
+        );
     },
     get alwaysShowCoverageStatusItem(): boolean {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<boolean>("coverage.alwaysShowStatusItem", true);
+        return validateBooleanSetting(
+            vscode.workspace
+                .getConfiguration("swift")
+                .get<boolean>("coverage.alwaysShowStatusItem", true),
+            "swift.coverage.alwaysShowStatusItem"
+        );
     },
     get coverageHitColorLightMode(): string {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<string>("coverage.colors.lightMode.hit", "#c0ffc0");
+        return validateStringSetting(
+            vscode.workspace
+                .getConfiguration("swift")
+                .get<string>("coverage.colors.lightMode.hit", "#c0ffc0"),
+            "swift.coverage.colors.lightMode.hit"
+        );
     },
     get coverageMissColorLightMode(): string {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<string>("coverage.colors.lightMode.miss", "#ffc0c0");
+        return validateStringSetting(
+            vscode.workspace
+                .getConfiguration("swift")
+                .get<string>("coverage.colors.lightMode.miss", "#ffc0c0"),
+            "swift.coverage.colors.lightMode.miss"
+        );
     },
     get coverageHitColorDarkMode(): string {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<string>("coverage.colors.darkMode.hit", "#003000");
+        return validateStringSetting(
+            vscode.workspace
+                .getConfiguration("swift")
+                .get<string>("coverage.colors.darkMode.hit", "#003000"),
+            "swift.coverage.colors.darkMode.hit"
+        );
     },
     get coverageMissColorDarkMode(): string {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<string>("coverage.colors.darkMode.miss", "#400000");
+        return validateStringSetting(
+            vscode.workspace
+                .getConfiguration("swift")
+                .get<string>("coverage.colors.darkMode.miss", "#400000"),
+            "swift.coverage.colors.darkMode.miss"
+        );
     },
     get openAfterCreateNewProject(): OpenAfterCreateNewProjectOptions {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<OpenAfterCreateNewProjectOptions>("openAfterCreateNewProject", "prompt");
+        return validateStringSetting(
+            vscode.workspace
+                .getConfiguration("swift")
+                .get<OpenAfterCreateNewProjectOptions>("openAfterCreateNewProject", "prompt"),
+            "swift.openAfterCreateNewProject"
+        );
     },
     /** Whether or not the extension should warn about being unable to create symlinks on Windows */
     get warnAboutSymlinkCreation(): boolean {
@@ -528,13 +605,19 @@ const configuration = {
     },
     /** Whether or not the extension will contribute Swift environment variables to the integrated terminal */
     get enableTerminalEnvironment(): boolean {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<boolean>("enableTerminalEnvironment", true);
+        return validateBooleanSetting(
+            vscode.workspace
+                .getConfiguration("swift")
+                .get<boolean>("enableTerminalEnvironment", true),
+            "swift.enableTerminalEnvironment"
+        );
     },
     /** Whether or not to disable SwiftPM sandboxing */
     get disableSandbox(): boolean {
-        return vscode.workspace.getConfiguration("swift").get<boolean>("disableSandbox", false);
+        return validateBooleanSetting(
+            vscode.workspace.getConfiguration("swift").get<boolean>("disableSandbox", false),
+            "swift.disableSandbox"
+        );
     },
     /** Workspace folder glob patterns to exclude */
     get excludePathsFromActivation(): Record<string, boolean> {
@@ -543,12 +626,18 @@ const configuration = {
             .get<Record<string, boolean>>("excludePathsFromActivation", {});
     },
     get lspConfigurationBranch(): string {
-        return vscode.workspace.getConfiguration("swift").get<string>("lspConfigurationBranch", "");
+        return validateStringSetting(
+            vscode.workspace.getConfiguration("swift").get<string>("lspConfigurationBranch", ""),
+            "swift.lspConfigurationBranch"
+        );
     },
     get checkLspConfigurationSchema(): boolean {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<boolean>("checkLspConfigurationSchema", true);
+        return validateBooleanSetting(
+            vscode.workspace
+                .getConfiguration("swift")
+                .get<boolean>("checkLspConfigurationSchema", true),
+            "swift.checkLspConfigurationSchema"
+        );
     },
     set checkLspConfigurationSchema(value: boolean) {
         void vscode.workspace
@@ -559,7 +648,10 @@ const configuration = {
             });
     },
     get outputChannelLogLevel(): string {
-        return vscode.workspace.getConfiguration("swift").get("outputChannelLogLevel", "info");
+        return validateStringSetting(
+            vscode.workspace.getConfiguration("swift").get("outputChannelLogLevel", "info"),
+            "swift.outputChannelLogLevel"
+        );
     },
     parameterHintsEnabled(documentUri: vscode.Uri): boolean {
         const enabled = vscode.workspace
@@ -579,6 +671,29 @@ export function substituteVariablesInString(val: string): string {
     return (val || "").replace(vsCodeVariableRegex, (substring: string, varName: string) =>
         typeof varName === "string" ? computeVscodeVar(varName) || substring : substring
     );
+}
+
+function validateBooleanSetting(val: boolean, settingName: string): boolean {
+    if (typeof val !== "boolean") {
+        throw new Error(`The setting ${settingName} must be a boolean`);
+    }
+    return val;
+}
+
+function validateStringSetting<T extends string = string>(val: string, settingName: string): T {
+    if (typeof val !== "string") {
+        throw new Error(`The setting ${settingName} must be a string`);
+    }
+    return val as T;
+}
+
+function validateStringArraySettings(arr: string[], settingName: string): string[] {
+    for (const v of arr) {
+        if (typeof v !== "string") {
+            throw new Error(`The setting ${settingName} must be an array of strings`);
+        }
+    }
+    return arr;
 }
 
 function computeVscodeVar(varName: string): string | null {
