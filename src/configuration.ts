@@ -366,6 +366,13 @@ const configuration = {
                 /* Put in worker queue */
             });
     },
+    // TODO Remove when swift-play is in the toolchain
+    /** Only for development purposes for testing a local build of SwiftPM with swift-play */
+    get swiftPlayPath(): string {
+        return substituteVariablesInString(
+            vscode.workspace.getConfiguration("swift").get<string>("swiftPlayPath", "")
+        );
+    },
     /** swift build arguments */
     get buildArguments(): string[] {
         return vscode.workspace
