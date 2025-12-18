@@ -2,6 +2,8 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+## 2.14.3 - 2025-12-15
+
 ### Fixed
 
 - Fix breakpoint filtering fallback in debugger logging ([#1989](https://github.com/swiftlang/vscode-swift/pull/1989))
