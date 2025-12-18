@@ -13,8 +13,8 @@
 ##
 ##===----------------------------------------------------------------------===##
 
-export NODE_VERSION=v20.19.0
-export NODE_PATH=/usr/local/nvm/versions/node/v20.19.0/bin
+export NODE_VERSION=v22.21.1
+export NODE_PATH=/usr/local/nvm/versions/node/${NODE_VERSION}/bin
 export NVM_DIR=/usr/local/nvm
 
 apt-get update && apt-get install -y rsync curl gpg libasound2 libgbm1 libgtk-3-0 libnss3 xvfb build-essential
