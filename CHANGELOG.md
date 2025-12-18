@@ -2,6 +2,8 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+## 2.14.3 - 2025-12-15
+
 ### Fixed
 
 - Fix extension failing to find `lldb-dap` when `swift.path` points at an Xcode toolchain ([#1998](https://github.com/swiftlang/vscode-swift/pull/1998))
