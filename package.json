@@ -1387,6 +1387,10 @@
         {
           "command": "swift.play",
           "when": "false"
+        },
+        {
+          "command": "swift.createDocumentationCatalog",
+          "when": "workspaceFolderCount > 0"
         }
       ],
       "editor/context": [
