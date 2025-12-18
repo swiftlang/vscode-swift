@@ -278,10 +278,16 @@ async function getQuickPickItems(
     );
 
     if (activeToolchain) {
-        const currentSwiftlyVersion =
-            activeToolchain.manager === "swiftly"
-                ? await Swiftly.inUseVersion("swiftly", cwd)
-                : undefined;
+        let currentSwiftlyVersion: string | undefined = undefined;
+        if (activeToolchain.manager === "swiftly") {
+            currentSwiftlyVersion = await Swiftly.inUseVersion("swiftly", cwd);
+            if (currentSwiftlyVersion === undefined) {
+                // swiftly <1.1.0 does not support JSON output and will report no active
+                // toolchain version. Fall back to using the active toolchain version as a
+                // last resort.
+                currentSwiftlyVersion = activeToolchain.swiftVersion.toString();
+            }
+        }
         const toolchainInUse = [...xcodes, ...publicToolchains, ...swiftlyToolchains].find(
             toolchain => {
                 if (currentSwiftlyVersion) {
