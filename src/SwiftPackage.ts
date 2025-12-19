@@ -180,10 +180,16 @@ export interface PackagePlugin {
 type SwiftPackageState = PackageContents | Error | undefined;
 
 function isPackage(state: SwiftPackageState): state is PackageContents {
+    if (state === undefined) {
+        return false;
+    }
     return (state as PackageContents).products !== undefined;
 }
 
 function isError(state: SwiftPackageState): state is Error {
+    if (state === undefined) {
+        return false;
+    }
     return state instanceof Error;
 }
 
@@ -262,14 +268,9 @@ export class SwiftPackage {
         toolchain: SwiftToolchain,
         disableSwiftPMIntegration: boolean = false
     ): Promise<SwiftPackageState> {
-        // When SwiftPM integration is disabled, return empty package structure
+        // When SwiftPM integration is disabled, return undefined to disable all features
         if (disableSwiftPMIntegration) {
-            return {
-                name: path.basename(folder.fsPath),
-                products: [],
-                dependencies: [],
-                targets: [],
-            };
+            return undefined;
         }
 
         try {
