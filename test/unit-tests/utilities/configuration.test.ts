@@ -20,7 +20,7 @@ import configuration from "@src/configuration";
 
 import { instance, mockFn, mockGlobalObject, mockObject } from "../../MockUtils";
 
-suite.only("Configuration/Settings Test Suite", () => {
+suite("Configuration/Settings Test Suite", () => {
     const mockWorkspace = mockGlobalObject(vscode, "workspace");
 
     afterEach(() => {
