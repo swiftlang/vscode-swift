@@ -193,6 +193,12 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 get: mockFn(s => {
                     s.withArgs("library").returns("/path/to/liblldb.dyLib");
                     s.withArgs("launch.expressions").returns("native");
+                    // Add defaults for swift configuration properties
+                    s.withArgs("path").returns("");
+                    s.withArgs("runtimePath").returns("");
+                    s.withArgs("swiftEnvironmentVariables").returns({});
+                    // Default fallback
+                    s.returns(undefined);
                 }),
                 update: mockFn(),
             });
