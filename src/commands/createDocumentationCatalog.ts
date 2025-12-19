@@ -17,6 +17,8 @@ import * as path from "path";
 import { promisify } from "util";
 import * as vscode from "vscode";
 
+import { folderExists } from "../utilities/filesystem";
+
 const execFileAsync = promisify(execFile);
 
 type DoccLocationPickItem = vscode.QuickPickItem & {
@@ -75,27 +77,21 @@ export async function createDocumentationCatalog(): Promise<void> {
 
     for (const name of targets) {
         const srcPath = path.join(rootPath, "Sources", name);
-        try {
-            await fs.access(srcPath);
+        if (await folderExists(srcPath)) {
             items.push({
                 label: `Target: ${name}`,
                 description: `Sources/${name}`,
                 basePath: srcPath,
             });
-        } catch {
-            //skip
         }
 
         const testPath = path.join(rootPath, "Tests", name);
-        try {
-            await fs.access(testPath);
+        if (await folderExists(testPath)) {
             items.push({
                 label: `Target: ${name}`,
                 description: `Tests/${name}`,
                 basePath: testPath,
             });
-        } catch {
-            //skip
         }
     }
 
@@ -124,13 +120,11 @@ export async function createDocumentationCatalog(): Promise<void> {
             }
 
             const doccDir = path.join(basePath, `${value}.docc`);
-            try {
-                await fs.access(doccDir);
+            if (await folderExists(doccDir)) {
                 return `Documentation catalog "${value}.docc" already exists`;
-            } catch {
-                // does not exist → OK
-                return undefined;
             }
+
+            return undefined;
         },
     });
 
