@@ -25,6 +25,7 @@ import { registerSourceKitSchemaWatcher } from "./commands/generateSourcekitConf
 import configuration, {
     ConfigurationValidationError,
     handleConfigurationChangeEvent,
+    openSettingsJsonForSetting,
 } from "./configuration";
 import { ContextKeys, createContextKeys } from "./contextKeys";
 import { registerDebugger } from "./debugger/debugAdapterFactory";
@@ -197,10 +198,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         if (error instanceof ConfigurationValidationError) {
             void vscode.window.showErrorMessage(error.message, "Open Settings").then(selection => {
                 if (selection === "Open Settings") {
-                    void vscode.commands.executeCommand(
-                        "workbench.action.openSettings",
-                        error.settingName
-                    );
+                    void openSettingsJsonForSetting(error.settingName);
                 }
             });
         } else {

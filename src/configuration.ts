@@ -865,4 +865,51 @@ export function handleConfigurationChangeEvent(
     };
 }
 
+/**
+ * Opens the appropriate settings JSON file based on where the setting is configured
+ */
+export async function openSettingsJsonForSetting(settingName: string): Promise<void> {
+    try {
+        const config = vscode.workspace.getConfiguration();
+        const inspection = config.inspect(settingName);
+
+        if (!inspection) {
+            // If we can't inspect the setting, fall back to global settings
+            await vscode.commands.executeCommand("workbench.action.openSettingsJson");
+            return;
+        }
+
+        // Determine the most specific scope where the setting is defined
+        if (inspection.workspaceFolderValue !== undefined) {
+            const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+            if (workspaceFolder) {
+                const settingsUri = vscode.Uri.joinPath(
+                    workspaceFolder.uri,
+                    ".vscode",
+                    "settings.json"
+                );
+                try {
+                    await vscode.window.showTextDocument(settingsUri);
+                    return;
+                } catch {
+                    // If the file doesn't exist, create it or fall back
+                    await vscode.commands.executeCommand(
+                        "workbench.action.openWorkspaceSettingsFile"
+                    );
+                    return;
+                }
+            }
+        }
+
+        if (inspection.workspaceValue !== undefined) {
+            await vscode.commands.executeCommand("workbench.action.openWorkspaceSettingsFile");
+            return;
+        }
+
+        await vscode.commands.executeCommand("workbench.action.openSettingsJson");
+    } catch (error) {
+        await vscode.commands.executeCommand("workbench.action.openSettingsJson");
+    }
+}
+
 export default configuration;
