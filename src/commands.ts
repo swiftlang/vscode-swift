@@ -353,7 +353,7 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand("swift.openDocumentation", () => openDocumentation()),
         vscode.commands.registerCommand(
             "swift.createDocumentationCatalog",
-            async () => await createDocumentationCatalog()
+            async () => await createDocumentationCatalog(ctx)
         ),
         vscode.commands.registerCommand(
             Commands.GENERATE_SOURCEKIT_CONFIG,

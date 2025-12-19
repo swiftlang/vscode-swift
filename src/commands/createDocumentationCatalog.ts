@@ -5,104 +5,85 @@
 // Copyright (c) 2025 the VS Code Swift project authors
 // Licensed under Apache License v2.0
 //
-// See LICENSE.txt for license information
-// See CONTRIBUTORS.txt for the list of VS Code Swift project authors
-//
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import { execFile } from "child_process";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { promisify } from "util";
 import * as vscode from "vscode";
 
+import { FolderContext } from "../FolderContext";
+import { WorkspaceContext } from "../WorkspaceContext";
+import { selectFolder } from "../ui/SelectFolderQuickPick";
 import { folderExists } from "../utilities/filesystem";
-
-const execFileAsync = promisify(execFile);
 
 type DoccLocationPickItem = vscode.QuickPickItem & {
     basePath: string;
 };
 
-export async function createDocumentationCatalog(): Promise<void> {
-    const folders = vscode.workspace.workspaceFolders;
-    if (!folders || folders.length === 0) {
-        void vscode.window.showErrorMessage(
-            "Creating a documentation catalog requires that a folder or workspace be opened."
-        );
-        return;
-    }
+export async function createDocumentationCatalog(
+    ctx: WorkspaceContext,
+    folderContext?: FolderContext
+): Promise<void> {
+    let folder = folderContext ?? ctx.currentFolder;
 
-    let folder: vscode.WorkspaceFolder | undefined;
-
-    if (folders.length === 1) {
-        folder = folders[0];
-    } else {
-        folder = await vscode.window.showWorkspaceFolderPick({
-            placeHolder: "Select a workspace folder to create the DocC catalog in",
-        });
-    }
-
+    // ---- workspace folder resolution (standard pattern) ----
     if (!folder) {
-        return;
-    }
+        if (ctx.folders.length === 0) {
+            void vscode.window.showErrorMessage(
+                "Creating a documentation catalog requires an open workspace folder."
+            );
+            return;
+        }
 
-    const rootPath = folder.uri.fsPath;
-
-    let hasPackageSwift = true;
-    try {
-        await fs.access(path.join(rootPath, "Package.swift"));
-    } catch {
-        hasPackageSwift = false;
-    }
-
-    let targets: string[] = [];
-
-    if (hasPackageSwift) {
-        try {
-            const { stdout } = await execFileAsync("swift", ["package", "dump-package"], {
-                cwd: rootPath,
-            });
-
-            const pkg = JSON.parse(stdout);
-            targets = pkg.targets.map((t: { name: string }) => t.name);
-        } catch {
-            // If SwiftPM fails, fall back to standalone
-            targets = [];
+        if (ctx.folders.length === 1) {
+            folder = ctx.folders[0];
+        } else {
+            const selected = await selectFolder(
+                ctx,
+                "Select a workspace folder to create the DocC catalog in",
+                { all: "" }
+            );
+            if (selected.length !== 1) {
+                return;
+            }
+            folder = selected[0];
         }
     }
 
-    const items: DoccLocationPickItem[] = [];
+    const rootPath = folder.folder.fsPath;
 
-    for (const name of targets) {
-        const srcPath = path.join(rootPath, "Sources", name);
-        if (await folderExists(srcPath)) {
-            items.push({
-                label: `Target: ${name}`,
-                description: `Sources/${name}`,
-                basePath: srcPath,
-            });
+    // ---- build QuickPick items from swiftPackage (PROMISE) ----
+    const itemsPromise = folder.swiftPackage.getTargets().then(async targets => {
+        const items: DoccLocationPickItem[] = [];
+
+        for (const target of targets) {
+            const base = path.join(rootPath, target.path);
+
+            if (await folderExists(base)) {
+                items.push({
+                    label: `Target: ${target.name}`,
+                    description: target.type,
+                    detail: target.path,
+                    basePath: base,
+                });
+            }
         }
 
-        const testPath = path.join(rootPath, "Tests", name);
-        if (await folderExists(testPath)) {
-            items.push({
-                label: `Target: ${name}`,
-                description: `Tests/${name}`,
-                basePath: testPath,
-            });
-        }
-    }
+        items.push({
+            label: "Standalone documentation catalog",
+            description: "Workspace root",
+            basePath: rootPath,
+        });
 
-    items.push({
-        label: "Standalone documentation catalog",
-        description: "Workspace root",
-        basePath: rootPath,
+        return items;
     });
 
-    const selection = await vscode.window.showQuickPick<DoccLocationPickItem>(items, {
+    // ---- show QuickPick (toolchain-style pattern) ----
+    const selection = await vscode.window.showQuickPick(itemsPromise, {
+        title: "Create DocC Documentation Catalog",
         placeHolder: "Select where to create the documentation catalog",
+        canPickMany: false,
     });
 
     if (!selection) {
@@ -111,6 +92,7 @@ export async function createDocumentationCatalog(): Promise<void> {
 
     const basePath = selection.basePath;
 
+    // ---- module name input ----
     const moduleName = await vscode.window.showInputBox({
         prompt: "Enter Swift module name",
         placeHolder: "MyModule",
@@ -129,7 +111,7 @@ export async function createDocumentationCatalog(): Promise<void> {
     });
 
     if (!moduleName) {
-        return; // user cancelled
+        return;
     }
 
     const doccDir = path.join(basePath, `${moduleName}.docc`);
