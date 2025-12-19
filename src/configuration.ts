@@ -185,9 +185,12 @@ const configuration = {
                 );
             },
             get disable(): boolean {
-                return vscode.workspace
-                    .getConfiguration("swift.sourcekit-lsp")
-                    .get<boolean>("disable", false);
+                return validateBooleanSetting(
+                    vscode.workspace
+                        .getConfiguration("swift.sourcekit-lsp")
+                        .get<boolean>("disable", false),
+                    "swift.sourcekit-lsp.disable"
+                );
             },
         };
     },
@@ -232,49 +235,68 @@ const configuration = {
         return {
             /** Environment variables to set when running tests */
             get testEnvironmentVariables(): { [key: string]: string } {
-                return vscode.workspace
-                    .getConfiguration("swift", workspaceFolder)
-                    .get<{ [key: string]: string }>("testEnvironmentVariables", {});
+                return validateObjectSetting(
+                    vscode.workspace
+                        .getConfiguration("swift", workspaceFolder)
+                        .get<{ [key: string]: string }>("testEnvironmentVariables", {}),
+                    "swift.testEnvironmentVariables"
+                );
             },
             /** Extra arguments to pass to swift test and swift build when running and debugging tests. */
             get additionalTestArguments(): string[] {
-                return vscode.workspace
-                    .getConfiguration("swift", workspaceFolder)
-                    .get<string[]>("additionalTestArguments", [])
-                    .map(substituteVariablesInString);
+                return validateStringArraySettings(
+                    vscode.workspace
+                        .getConfiguration("swift", workspaceFolder)
+                        .get<string[]>("additionalTestArguments", []),
+                    "swift.additionalTestArguments"
+                ).map(substituteVariablesInString);
             },
             /** auto-generate launch.json configurations */
             get autoGenerateLaunchConfigurations(): boolean {
-                return vscode.workspace
-                    .getConfiguration("swift", workspaceFolder)
-                    .get<boolean>("autoGenerateLaunchConfigurations", true);
+                return validateBooleanSetting(
+                    vscode.workspace
+                        .getConfiguration("swift", workspaceFolder)
+                        .get<boolean>("autoGenerateLaunchConfigurations", true),
+                    "swift.autoGenerateLaunchConfigurations"
+                );
             },
             /** disable automatic running of swift package resolve */
             get disableAutoResolve(): boolean {
-                return vscode.workspace
-                    .getConfiguration("swift", workspaceFolder)
-                    .get<boolean>("disableAutoResolve", false);
+                return validateBooleanSetting(
+                    vscode.workspace
+                        .getConfiguration("swift", workspaceFolder)
+                        .get<boolean>("disableAutoResolve", false),
+                    "swift.disableAutoResolve"
+                );
             },
             /** search sub-folder of workspace folder for Swift Packages */
             get searchSubfoldersForPackages(): boolean {
-                return vscode.workspace
-                    .getConfiguration("swift", workspaceFolder)
-                    .get<boolean>("searchSubfoldersForPackages", false);
+                return validateBooleanSetting(
+                    vscode.workspace
+                        .getConfiguration("swift", workspaceFolder)
+                        .get<boolean>("searchSubfoldersForPackages", false),
+                    "swift.searchSubfoldersForPackages"
+                );
             },
             /** Folders to ignore when searching for Swift Packages */
             get ignoreSearchingForPackagesInSubfolders(): string[] {
-                return vscode.workspace
-                    .getConfiguration("swift", workspaceFolder)
-                    .get<
-                        string[]
-                    >("ignoreSearchingForPackagesInSubfolders", [".", ".build", "Packages", "out", "bazel-out", "bazel-bin"])
-                    .map(substituteVariablesInString);
-            },
-            get attachmentsPath(): string {
-                return substituteVariablesInString(
+                return validateStringArraySettings(
                     vscode.workspace
                         .getConfiguration("swift", workspaceFolder)
-                        .get<string>("attachmentsPath", "./.build/attachments")
+                        .get<
+                            string[]
+                        >("ignoreSearchingForPackagesInSubfolders", [".", ".build", "Packages", "out", "bazel-out", "bazel-bin"]),
+                    "swift.ignoreSearchingForPackagesInSubfolders"
+                ).map(substituteVariablesInString);
+            },
+            get attachmentsPath(): string {
+                return validateStringSetting(
+                    substituteVariablesInString(
+                        vscode.workspace
+                            .getConfiguration("swift", workspaceFolder)
+                            .get<string>("attachmentsPath", "./.build/attachments")
+                    ),
+                    "swift.attachmentsPath"
                 );
             },
             pluginPermissions(pluginId?: string): PluginPermissionConfiguration {
@@ -297,14 +319,23 @@ const configuration = {
                 let useDebugAdapterFromToolchain =
                     inspectUseDebugAdapterFromToolchain?.workspaceValue ??
                     inspectUseDebugAdapterFromToolchain?.globalValue;
+
+                validateBooleanSetting(
+                    !!useDebugAdapterFromToolchain,
+                    "swift.debugger.useDebugAdapterFromToolchain"
+                );
+
                 // On Windows arm64 we enable swift.debugger.useDebugAdapterFromToolchain by default since CodeLLDB does
                 // not support this platform and gives an awful error message.
                 if (process.platform === "win32" && process.arch === "arm64") {
                     useDebugAdapterFromToolchain = useDebugAdapterFromToolchain ?? true;
                 }
-                const selectedAdapter = vscode.workspace
-                    .getConfiguration("swift.debugger")
-                    .get<DebugAdapters>("debugAdapter", "auto");
+                const selectedAdapter = validateStringSetting<DebugAdapters>(
+                    vscode.workspace
+                        .getConfiguration("swift.debugger")
+                        .get<DebugAdapters>("debugAdapter", "auto"),
+                    "swift.debugger.debugAdapter"
+                );
                 switch (selectedAdapter) {
                     case "auto":
                         if (useDebugAdapterFromToolchain !== undefined) {
@@ -316,8 +347,11 @@ const configuration = {
                 }
             },
             get customDebugAdapterPath(): string {
-                return substituteVariablesInString(
-                    vscode.workspace.getConfiguration("swift.debugger").get<string>("path", "")
+                return validateStringSetting(
+                    substituteVariablesInString(
+                        vscode.workspace.getConfiguration("swift.debugger").get<string>("path", "")
+                    ),
+                    "swift.debugger.path"
                 );
             },
             get disable(): boolean {
@@ -329,18 +363,21 @@ const configuration = {
                 );
             },
             get setupCodeLLDB(): SetupCodeLLDBOptions {
-                return vscode.workspace
-                    .getConfiguration("swift.debugger")
-                    .get<SetupCodeLLDBOptions>("setupCodeLLDB", "prompt");
+                return validateStringSetting(
+                    vscode.workspace
+                        .getConfiguration("swift.debugger")
+                        .get<SetupCodeLLDBOptions>("setupCodeLLDB", "prompt"),
+                    "swift.debugger.setupCodeLLDB"
+                );
             },
         };
     },
     /** Files and directories to exclude from the code coverage. */
     get excludeFromCodeCoverage(): string[] {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<string[]>("excludeFromCodeCoverage", [])
-            .map(substituteVariablesInString);
+        return validateStringArraySettings(
+            vscode.workspace.getConfiguration("swift").get<string[]>("excludeFromCodeCoverage", []),
+            "swift.excludeFromCodeCoverage"
+        ).map(substituteVariablesInString);
     },
     /** Whether to show inline code lenses for running and debugging tests. */
     get showTestCodeLenses(): boolean | ValidCodeLens[] {
@@ -350,7 +387,10 @@ const configuration = {
     },
     /** Whether to record the duration of tests in the Test Explorer. */
     get recordTestDuration(): boolean {
-        return vscode.workspace.getConfiguration("swift").get<boolean>("recordTestDuration", true);
+        return validateBooleanSetting(
+            vscode.workspace.getConfiguration("swift").get<boolean>("recordTestDuration", true),
+            "swift.recordTestDuration"
+        );
     },
     /** Files and directories to exclude from the Package Dependencies view. */
     get excludePathsFromPackageDependencies(): string[] {
@@ -462,21 +502,30 @@ const configuration = {
     },
     /** Environment variables to set when building */
     get swiftEnvironmentVariables(): { [key: string]: string } {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<{ [key: string]: string }>("swiftEnvironmentVariables", {});
+        return validateObjectSetting(
+            vscode.workspace
+                .getConfiguration("swift")
+                .get<{ [key: string]: string }>("swiftEnvironmentVariables", {}),
+            "swift.swiftEnvironmentVariables"
+        );
     },
     /** include build errors in problems view */
     get diagnosticsCollection(): DiagnosticCollectionOptions {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<DiagnosticCollectionOptions>("diagnosticsCollection", "keepSourceKit");
+        return validateStringSetting(
+            vscode.workspace
+                .getConfiguration("swift")
+                .get<DiagnosticCollectionOptions>("diagnosticsCollection", "keepSourceKit"),
+            "swift.diagnosticsCollection"
+        );
     },
     /** set the -diagnostic-style option when running `swift` tasks */
     get diagnosticsStyle(): DiagnosticStyle {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<DiagnosticStyle>("diagnosticsStyle", "default");
+        return validateStringSetting(
+            vscode.workspace
+                .getConfiguration("swift")
+                .get<DiagnosticStyle>("diagnosticsStyle", "default"),
+            "swift.diagnosticsStyle"
+        );
     },
     /** where to show the build progress for the running task */
     get showBuildStatus(): ShowBuildStatusOptions {
@@ -515,9 +564,12 @@ const configuration = {
     },
     /** background indexing */
     get backgroundIndexing(): "on" | "off" | "auto" {
-        const value = vscode.workspace
-            .getConfiguration("swift.sourcekit-lsp")
-            .get("backgroundIndexing", "auto");
+        const value = validateStringSetting<"on" | "off" | "auto">(
+            vscode.workspace
+                .getConfiguration("swift.sourcekit-lsp")
+                .get("backgroundIndexing", "auto"),
+            "swift.sourcekit-lsp.backgroundIndexing"
+        );
 
         // Legacy versions of this setting were a boolean, convert to the new string version.
         if (typeof value === "boolean") {
@@ -604,9 +656,12 @@ const configuration = {
     },
     /** Whether or not the extension should warn about being unable to create symlinks on Windows */
     get warnAboutSymlinkCreation(): boolean {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<boolean>("warnAboutSymlinkCreation", true);
+        return validateBooleanSetting(
+            vscode.workspace
+                .getConfiguration("swift")
+                .get<boolean>("warnAboutSymlinkCreation", true),
+            "swift.warnAboutSymlinkCreation"
+        );
     },
     set warnAboutSymlinkCreation(value: boolean) {
         void vscode.workspace
@@ -667,12 +722,15 @@ const configuration = {
         );
     },
     parameterHintsEnabled(documentUri: vscode.Uri): boolean {
-        const enabled = vscode.workspace
-            .getConfiguration("editor.parameterHints", {
-                uri: documentUri,
-                languageId: "swift",
-            })
-            .get<boolean>("enabled");
+        const enabled = validateBooleanSetting(
+            vscode.workspace
+                .getConfiguration("editor.parameterHints", {
+                    uri: documentUri,
+                    languageId: "swift",
+                })
+                .get<boolean>("enabled", false),
+            "editor.parameterHints.enabled"
+        );
 
         return enabled === true;
     },
@@ -716,6 +774,16 @@ function validateStringArraySettings(arr: string[], settingName: string): string
         }
     }
     return arr;
+}
+
+function validateObjectSetting<T extends object>(obj: T, settingName: string): T {
+    if (typeof obj !== "object" || obj === null) {
+        throw new ConfigurationValidationError(
+            settingName,
+            `The setting \`${settingName}\` must be an object`
+        );
+    }
+    return obj;
 }
 
 function computeVscodeVar(varName: string): string | null {
