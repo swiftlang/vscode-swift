@@ -571,7 +571,6 @@ suite("BuildFlags Test Suite", () => {
 
             // Mock execSwift to throw an error
             execSwiftSpy = sinon.spy(() => Promise.reject(new Error("Command failed")));
-            const utilities = await import("@src/utilities/utilities");
             sinon.replace(utilities, "execSwift", execSwiftSpy);
 
             const log = instance(logger);

@@ -20,6 +20,10 @@
       {
         "selector": "CallExpression[callee.object.object.callee.name='tag'][callee.property.name='only']",
         "message": "Unexpected exclusive mocha test with tag().suite.only() or tag().test.only()"
+      },
+      {
+        "selector": "ImportExpression",
+        "message": "Dynamic imports using 'import()' are not allowed. Use static imports at the top of the file instead."
       }
     ],
     "@typescript-eslint/no-floating-promises": ["warn", { "checkThenables": true }],
