@@ -242,15 +242,25 @@ export function mockGlobalObject<T, K extends MockableObjectsOf<T>>(
     property: K
 ): MockedObject<T[K]> {
     let realMock: MockedObject<T[K]>;
+    let originalDescriptor: PropertyDescriptor | undefined;
     const originalValue: T[K] = obj[property];
     // Create the mock at setup
     setup(() => {
+        originalDescriptor = Object.getOwnPropertyDescriptor(obj, property);
         realMock = mockObject(obj[property]);
-        Object.defineProperty(obj, property, { value: realMock });
+        Object.defineProperty(obj, property, {
+            value: realMock,
+            writable: true,
+            configurable: true,
+        });
     });
-    // Restore original value at teardown
+    // Restore original property descriptor at teardown
     teardown(() => {
-        Object.defineProperty(obj, property, { value: originalValue });
+        if (originalDescriptor) {
+            Object.defineProperty(obj, property, originalDescriptor);
+        } else {
+            delete (obj as any)[property];
+        }
     });
     // Return the proxy to the real mock
     return new Proxy<any>(originalValue, {
@@ -301,32 +311,46 @@ function shallowClone<T>(obj: T): T {
  */
 export function mockGlobalModule<T>(mod: T): MockedObject<T> {
     let realMock: MockedObject<T>;
+    const originalDescriptors = new Map<string | symbol, PropertyDescriptor>();
     const originalValue: T = shallowClone(mod);
     // Create the mock at setup
     setup(() => {
         realMock = mockObject(mod);
         for (const property of Object.getOwnPropertyNames(realMock)) {
             try {
+                const originalDescriptor = Object.getOwnPropertyDescriptor(mod, property);
+                if (originalDescriptor) {
+                    originalDescriptors.set(property, originalDescriptor);
+                }
                 Object.defineProperty(mod, property, {
                     value: (realMock as any)[property],
                     writable: true,
+                    configurable: true,
                 });
             } catch {
                 // Some properties of a module just can't be mocked and that's fine
             }
         }
     });
-    // Restore original value at teardown
+    // Restore original property descriptors at teardown
     teardown(() => {
         for (const property of Object.getOwnPropertyNames(originalValue)) {
             try {
-                Object.defineProperty(mod, property, {
-                    value: (originalValue as any)[property],
-                });
+                const originalDescriptor = originalDescriptors.get(property);
+                if (originalDescriptor) {
+                    Object.defineProperty(mod, property, originalDescriptor);
+                } else {
+                    Object.defineProperty(mod, property, {
+                        value: (originalValue as any)[property],
+                        writable: true,
+                        configurable: true,
+                    });
+                }
             } catch {
                 // Some properties of a module just can't be mocked and that's fine
             }
         }
+        originalDescriptors.clear();
     });
     // Return the proxy to the real mock
     return new Proxy<any>(originalValue, {
@@ -374,15 +398,19 @@ export interface MockedValue<T> {
  */
 export function mockGlobalValue<T, K extends keyof T>(obj: T, property: K): MockedValue<T[K]> {
     let setupComplete: boolean = false;
-    let originalValue: T[K];
-    // Grab the original value during setup
+    let originalDescriptor: PropertyDescriptor | undefined;
+    // Grab the original property descriptor during setup
     setup(() => {
-        originalValue = obj[property];
+        originalDescriptor = Object.getOwnPropertyDescriptor(obj, property);
         setupComplete = true;
     });
-    // Restore the original value on teardown
+    // Restore the original property descriptor on teardown
     teardown(() => {
-        Object.defineProperty(obj, property, { value: originalValue });
+        if (originalDescriptor) {
+            Object.defineProperty(obj, property, originalDescriptor);
+        } else {
+            delete (obj as any)[property];
+        }
         setupComplete = false;
     });
     // Return a ValueMock that allows for easy mocking of the value
@@ -391,7 +419,11 @@ export function mockGlobalValue<T, K extends keyof T>(obj: T, property: K): Mock
             if (!setupComplete) {
                 throw new Error("Mocks cannot be accessed outside of test functions");
             }
-            Object.defineProperty(obj, property, { value: value });
+            Object.defineProperty(obj, property, {
+                value: value,
+                writable: true,
+                configurable: true,
+            });
         },
     };
 }
@@ -441,15 +473,24 @@ export function mockGlobalEvent<T, K extends EventsOf<T>>(
     property: K
 ): AsyncEventEmitter<EventType<T[K]>> {
     let eventEmitter: vscode.EventEmitter<EventType<T[K]>>;
-    const originalValue: T[K] = obj[property];
+    let originalDescriptor: PropertyDescriptor | undefined;
     // Create the mock at setup
     setup(() => {
+        originalDescriptor = Object.getOwnPropertyDescriptor(obj, property);
         eventEmitter = new vscode.EventEmitter();
-        Object.defineProperty(obj, property, { value: eventEmitter.event });
+        Object.defineProperty(obj, property, {
+            value: eventEmitter.event,
+            writable: true,
+            configurable: true,
+        });
     });
-    // Restore original value at teardown
+    // Restore original property descriptor at teardown
     teardown(() => {
-        Object.defineProperty(obj, property, { value: originalValue });
+        if (originalDescriptor) {
+            Object.defineProperty(obj, property, originalDescriptor);
+        } else {
+            delete (obj as any)[property];
+        }
     });
     // Return the proxy to the EventEmitter
     return new Proxy(new AsyncEventEmitter(), {
