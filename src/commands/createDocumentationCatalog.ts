@@ -15,7 +15,7 @@ import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { selectFolder } from "../ui/SelectFolderQuickPick";
-import { folderExists } from "../utilities/filesystem";
+import { folderExists, pathExists } from "../utilities/filesystem";
 
 type DoccLocationPickItem = vscode.QuickPickItem & {
     basePath: string;
@@ -60,6 +60,7 @@ export async function createDocumentationCatalog(
         for (const target of targets) {
             const base = path.join(rootPath, target.path);
 
+            // target paths must be directories → folderExists is correct here
             if (await folderExists(base)) {
                 items.push({
                     label: `Target: ${target.name}`,
@@ -97,13 +98,16 @@ export async function createDocumentationCatalog(
         prompt: "Enter Swift module name",
         placeHolder: "MyModule",
         validateInput: async value => {
-            if (value.trim().length === 0) {
+            const name = value.trim();
+            if (name.length === 0) {
                 return "Module name cannot be empty";
             }
 
-            const doccDir = path.join(basePath, `${value}.docc`);
-            if (await folderExists(doccDir)) {
-                return `Documentation catalog "${value}.docc" already exists`;
+            const doccDir = path.join(basePath, `${name}.docc`);
+
+            // creation path → must be unused → pathExists
+            if (await pathExists(doccDir)) {
+                return `Documentation catalog "${name}.docc" already exists`;
             }
 
             return undefined;
@@ -117,7 +121,15 @@ export async function createDocumentationCatalog(
     const doccDir = path.join(basePath, `${moduleName}.docc`);
     const markdownFile = path.join(doccDir, `${moduleName}.md`);
 
-    await fs.mkdir(doccDir, { recursive: true });
+    // ---- execution-time guard (race-safe) ----
+    if (await pathExists(doccDir)) {
+        void vscode.window.showErrorMessage(
+            `Documentation catalog "${moduleName}.docc" already exists`
+        );
+        return;
+    }
+
+    await fs.mkdir(doccDir);
     await fs.writeFile(markdownFile, `# ${moduleName}\n`, "utf8");
 
     void vscode.window.showInformationMessage(
