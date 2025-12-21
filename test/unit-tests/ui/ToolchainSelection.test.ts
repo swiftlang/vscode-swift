@@ -69,7 +69,14 @@ suite("ToolchainSelection Unit Test Suite", () => {
         mockedConfiguration = mockObject<vscode.WorkspaceConfiguration>({
             update: mockFn(),
             inspect: mockFn(s => s.returns({})),
-            get: mockFn(),
+            get: mockFn(s => {
+                // Return appropriate defaults for configuration properties
+                s.withArgs("path", match.any).returns("");
+                s.withArgs("runtimePath", match.any).returns("");
+                s.withArgs("swiftEnvironmentVariables", match.any).returns({});
+                // Default fallback
+                s.returns(undefined);
+            }),
             has: mockFn(s => s.returns(false)),
         });
         mockedVSCodeWorkspace.getConfiguration.returns(instance(mockedConfiguration));
