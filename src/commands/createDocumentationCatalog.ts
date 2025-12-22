@@ -83,7 +83,7 @@ export async function createDocumentationCatalog(
     // ---- show QuickPick (toolchain-style pattern) ----
     const selection = await vscode.window.showQuickPick(itemsPromise, {
         title: "Create DocC Documentation Catalog",
-        placeHolder: "Select where to create the documentation catalog",
+        placeHolder: "Select where to create the documentation catalog.",
         canPickMany: false,
     });
 
