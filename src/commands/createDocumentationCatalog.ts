@@ -19,6 +19,7 @@ import { folderExists, pathExists } from "../utilities/filesystem";
 
 type DoccLocationPickItem = vscode.QuickPickItem & {
     basePath: string;
+    targetName?: string;
 };
 
 export async function createDocumentationCatalog(
@@ -54,20 +55,23 @@ export async function createDocumentationCatalog(
     const rootPath = folder.folder.fsPath;
 
     // ---- build QuickPick items from swiftPackage (PROMISE) ----
-    const itemsPromise = folder.swiftPackage.getTargets().then(async targets => {
+    const itemsPromise = (async () => {
         const items: DoccLocationPickItem[] = [];
 
-        for (const target of targets) {
-            const base = path.join(rootPath, target.path);
+        if (folder.swiftPackage) {
+            const targets = await folder.swiftPackage.getTargets();
 
-            // target paths must be directories → folderExists is correct here
-            if (await folderExists(base)) {
-                items.push({
-                    label: `Target: ${target.name}`,
-                    description: target.type,
-                    detail: target.path,
-                    basePath: base,
-                });
+            for (const target of targets) {
+                const base = path.join(rootPath, target.path);
+                if (await folderExists(base)) {
+                    items.push({
+                        label: `Target: ${target.name}`,
+                        description: target.type,
+                        detail: target.path,
+                        basePath: base,
+                        targetName: target.name,
+                    });
+                }
             }
         }
 
@@ -78,7 +82,7 @@ export async function createDocumentationCatalog(
         });
 
         return items;
-    });
+    })();
 
     // ---- show QuickPick (toolchain-style pattern) ----
     const selection = await vscode.window.showQuickPick(itemsPromise, {
@@ -94,28 +98,36 @@ export async function createDocumentationCatalog(
     const basePath = selection.basePath;
 
     // ---- module name input ----
-    const moduleName = await vscode.window.showInputBox({
-        prompt: "Enter Swift module name",
-        placeHolder: "MyModule",
-        validateInput: async value => {
-            const name = value.trim();
-            if (name.length === 0) {
-                return "Module name cannot be empty";
-            }
+    let moduleName: string;
 
-            const doccDir = path.join(basePath, `${name}.docc`);
+    if (selection.targetName) {
+        // Target-based DocC: module name must match target
+        moduleName = selection.targetName;
+    } else {
+        // Standalone DocC: ask user
+        const input = await vscode.window.showInputBox({
+            prompt: "Enter Swift module name",
+            placeHolder: "MyModule",
+            validateInput: async value => {
+                const name = value.trim();
+                if (name.length === 0) {
+                    return "Module name cannot be empty";
+                }
 
-            // creation path → must be unused → pathExists
-            if (await pathExists(doccDir)) {
-                return `Documentation catalog "${name}.docc" already exists`;
-            }
+                const doccDir = path.join(basePath, `${name}.docc`);
+                if (await pathExists(doccDir)) {
+                    return `Documentation catalog "${name}.docc" already exists`;
+                }
 
-            return undefined;
-        },
-    });
+                return undefined;
+            },
+        });
 
-    if (!moduleName) {
-        return;
+        if (!input) {
+            return;
+        }
+
+        moduleName = input.trim();
     }
 
     const doccDir = path.join(basePath, `${moduleName}.docc`);

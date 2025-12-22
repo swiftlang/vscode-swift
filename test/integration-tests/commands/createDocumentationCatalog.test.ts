@@ -40,23 +40,23 @@ tag("small").suite("Create Documentation Catalog Command", function () {
         const inputBoxStub = sinon.stub(vscode.window, "showInputBox");
 
         try {
-            inputBoxStub.resolves("MyModule");
             quickPickStub.callsFake(async itemsOrPromise => {
                 const items = await Promise.resolve(itemsOrPromise);
                 return items.find(item => item.label.startsWith("Target:"));
             });
 
             await vscode.commands.executeCommand("swift.createDocumentationCatalog");
-
+            expect(inputBoxStub.called).to.be.false;
             const basePath = folderContext.folder.fsPath;
-            const doccDir = path.join(basePath, "MyModule.docc");
-            const markdownFile = path.join(doccDir, "MyModule.md");
+            const moduleName = "defaultPackage";
+            const doccDir = path.join(basePath, `${moduleName}.docc`);
+            const markdownFile = path.join(doccDir, `${moduleName}.md`);
 
             expect(await fs.stat(doccDir)).to.exist;
             expect(await fs.stat(markdownFile)).to.exist;
 
             const contents = await fs.readFile(markdownFile, "utf8");
-            expect(contents).to.contain("# MyModule");
+            expect(contents).to.contain("# defaultPackage");
         } finally {
             quickPickStub.restore();
             inputBoxStub.restore();
