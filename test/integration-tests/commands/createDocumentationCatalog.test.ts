@@ -40,15 +40,19 @@ tag("small").suite("Create Documentation Catalog Command", function () {
         const inputBoxStub = sinon.stub(vscode.window, "showInputBox");
 
         try {
+            let selectedTargetLabel: string | undefined;
+
             quickPickStub.callsFake(async itemsOrPromise => {
                 const items = await Promise.resolve(itemsOrPromise);
-                return items.find(item => item.label.startsWith("Target:"));
+                const target = items.find(item => item.label.startsWith("Target:"));
+                selectedTargetLabel = target?.label;
+                return target;
             });
 
             await vscode.commands.executeCommand("swift.createDocumentationCatalog");
             expect(inputBoxStub.called).to.be.false;
             const basePath = folderContext.folder.fsPath;
-            const moduleName = "defaultPackage";
+            const moduleName = selectedTargetLabel!.replace("Target: ", "");
             const doccDir = path.join(basePath, `${moduleName}.docc`);
             const markdownFile = path.join(doccDir, `${moduleName}.md`);
 
