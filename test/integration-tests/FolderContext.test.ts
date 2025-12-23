@@ -14,6 +14,7 @@
 import * as assert from "assert";
 import { afterEach } from "mocha";
 import { restore, stub } from "sinon";
+import * as vscode from "vscode";
 
 import { FolderContext } from "@src/FolderContext";
 import { WorkspaceContext } from "@src/WorkspaceContext";
@@ -22,7 +23,7 @@ import * as toolchain from "@src/ui/ToolchainSelection";
 
 import { MockedFunction, mockGlobalValue } from "../MockUtils";
 import { testAssetUri } from "../fixtures";
-import { activateExtensionForSuite, getRootWorkspaceFolder } from "./utilities/testutilities";
+import { activateExtensionForSuite } from "./utilities/testutilities";
 
 suite("FolderContext Error Handling Test Suite", () => {
     let workspaceContext: WorkspaceContext;
@@ -35,7 +36,7 @@ suite("FolderContext Error Handling Test Suite", () => {
             workspaceContext = ctx;
             this.timeout(60000);
         },
-        testAssets: ["defaultPackage"],
+        testAssets: ["package2"],
     });
 
     afterEach(() => {
@@ -51,8 +52,11 @@ suite("FolderContext Error Handling Test Suite", () => {
         const showToolchainErrorStub = stub().resolves(false);
         showToolchainError.setValue(showToolchainErrorStub);
 
-        const workspaceFolder = getRootWorkspaceFolder();
         const testFolder = testAssetUri("package2");
+        const workspaceFolder = vscode.workspace.getWorkspaceFolder(testFolder);
+        if (!workspaceFolder) {
+            assert.fail(`Workspace folder not found for ${testFolder.fsPath}`);
+        }
 
         folderContext = await FolderContext.create(testFolder, workspaceFolder, workspaceContext);
 
@@ -86,8 +90,11 @@ suite("FolderContext Error Handling Test Suite", () => {
     });
 
     test("retries toolchain creation when user makes selection and succeeds", async () => {
-        const workspaceFolder = getRootWorkspaceFolder();
         const testFolder = testAssetUri("package2");
+        const workspaceFolder = vscode.workspace.getWorkspaceFolder(testFolder);
+        if (!workspaceFolder) {
+            assert.fail(`Workspace folder not found for ${testFolder.fsPath}`);
+        }
 
         // Arrange: Mock SwiftToolchain.create to fail first time, succeed second time
         swiftToolchainCreateStub = stub(SwiftToolchain, "create");
@@ -130,8 +137,11 @@ suite("FolderContext Error Handling Test Suite", () => {
     });
 
     test("retries toolchain creation when user makes selection but still fails", async () => {
-        const workspaceFolder = getRootWorkspaceFolder();
         const testFolder = testAssetUri("package2");
+        const workspaceFolder = vscode.workspace.getWorkspaceFolder(testFolder);
+        if (!workspaceFolder) {
+            assert.fail(`Workspace folder not found for ${testFolder.fsPath}`);
+        }
 
         const initialError = new Error("Initial toolchain failure");
         const retryError = new Error("Retry toolchain failure");

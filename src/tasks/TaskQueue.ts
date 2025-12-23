@@ -14,8 +14,10 @@
 import * as vscode from "vscode";
 
 import { FolderContext } from "../FolderContext";
-import { WorkspaceContext } from "../WorkspaceContext";
+import { SwiftLogger } from "../logging/SwiftLogger";
+import { StatusItem } from "../ui/StatusItem";
 import { execSwift, poll } from "../utilities/utilities";
+import { TaskManager } from "./TaskManager";
 
 export interface SwiftOperationOptions {
     // Should I show a status item
@@ -39,7 +41,8 @@ export interface SwiftOperation {
     isBuildOperation: boolean;
     // run operation
     run(
-        workspaceContext: WorkspaceContext,
+        taskManager: TaskManager,
+        logger: SwiftLogger,
         token: vscode.CancellationToken | undefined
     ): Promise<number | undefined>;
 }
@@ -82,14 +85,15 @@ export class TaskOperation implements SwiftOperation {
     }
 
     run(
-        workspaceContext: WorkspaceContext,
+        taskManager: TaskManager,
+        logger: SwiftLogger,
         token?: vscode.CancellationToken
     ): Promise<number | undefined> {
         if (token?.isCancellationRequested) {
             return Promise.resolve(undefined);
         }
-        workspaceContext.logger.info(`Exec Task: ${this.task.detail ?? this.task.name}`);
-        return workspaceContext.tasks.executeTaskAndWait(this.task, token);
+        logger.info(`Exec Task: ${this.task.detail ?? this.task.name}`);
+        return taskManager.executeTaskAndWait(this.task, token);
     }
 }
 
@@ -153,8 +157,8 @@ class QueuedOperation {
         public token?: vscode.CancellationToken
     ) {}
 
-    run(workspaceContext: WorkspaceContext): Promise<number | undefined> {
-        return this.operation.run(workspaceContext, this.token);
+    run(taskManager: TaskManager, logger: SwiftLogger): Promise<number | undefined> {
+        return this.operation.run(taskManager, logger, this.token);
     }
 }
 
@@ -164,17 +168,16 @@ class QueuedOperation {
  * Queue swift task operations to be executed serially
  */
 export class TaskQueue implements vscode.Disposable {
-    queue: QueuedOperation[];
+    queue: QueuedOperation[] = [];
     activeOperation?: QueuedOperation;
-    workspaceContext: WorkspaceContext;
-    disabled: boolean;
+    disabled: boolean = false;
 
-    constructor(private folderContext: FolderContext) {
-        this.queue = [];
-        this.workspaceContext = folderContext.workspaceContext;
-        this.activeOperation = undefined;
-        this.disabled = false;
-    }
+    constructor(
+        private taskManager: TaskManager,
+        private statusItem: StatusItem,
+        private logger: SwiftLogger,
+        private name: string
+    ) {}
 
     dispose() {
         this.queue = [];
@@ -244,34 +247,25 @@ export class TaskQueue implements vscode.Disposable {
                 this.activeOperation = operation;
                 // show active task status item
                 if (operation.showStatusItem === true) {
-                    this.workspaceContext.statusItem.start(operation.operation.statusItemId);
+                    this.statusItem.start(operation.operation.statusItemId);
                 }
                 // wait while queue is disabled before running task
                 await this.waitWhileDisabled();
                 // log start
                 if (operation.log) {
-                    this.workspaceContext.logger.info(
-                        `${operation.log}: starting ... `,
-                        this.folderContext.name
-                    );
+                    this.logger.info(`${operation.log}: starting ... `, this.name);
                 }
                 operation
-                    .run(this.workspaceContext)
+                    .run(this.taskManager, this.logger)
                     .then(result => {
                         // log result
                         if (operation.log && !operation.token?.isCancellationRequested) {
                             switch (result) {
                                 case 0:
-                                    this.workspaceContext.logger.info(
-                                        `${operation.log}: ... done.`,
-                                        this.folderContext.name
-                                    );
+                                    this.logger.info(`${operation.log}: ... done.`, this.name);
                                     break;
                                 default:
-                                    this.workspaceContext.logger.error(
-                                        `${operation.log}: ... failed.`,
-                                        this.folderContext.name
-                                    );
+                                    this.logger.error(`${operation.log}: ... failed.`, this.name);
                                     break;
                             }
                         }
@@ -280,10 +274,7 @@ export class TaskQueue implements vscode.Disposable {
                     .catch(error => {
                         // log error
                         if (operation.log) {
-                            this.workspaceContext.logger.error(
-                                `${operation.log}: ${error}`,
-                                this.folderContext.name
-                            );
+                            this.logger.error(`${operation.log}: ${error}`, this.name);
                         }
                         this.finishTask(operation, { fail: error });
                     });
@@ -294,7 +285,7 @@ export class TaskQueue implements vscode.Disposable {
     private finishTask(operation: QueuedOperation, result: TaskQueueResult) {
         operation.cb(result);
         if (operation.showStatusItem === true) {
-            this.workspaceContext.statusItem.end(operation.operation.statusItemId);
+            this.statusItem.end(operation.operation.statusItemId);
         }
         this.activeOperation = undefined;
         void this.processQueue();

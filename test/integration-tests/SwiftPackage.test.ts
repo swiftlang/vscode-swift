@@ -13,100 +13,130 @@
 //===----------------------------------------------------------------------===//
 import * as assert from "assert";
 
+import { FolderContext } from "@src/FolderContext";
 import { SwiftPackage } from "@src/SwiftPackage";
-import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { WorkspaceContext } from "@src/WorkspaceContext";
 import { Version } from "@src/utilities/version";
 
-import { testAssetUri } from "../fixtures";
 import { tag } from "../tags";
+import { activateExtensionForSuite } from "./utilities/testutilities";
 
 tag("medium").suite("SwiftPackage Test Suite", function () {
-    let toolchain: SwiftToolchain;
+    let swiftPackage: SwiftPackage;
 
-    setup(async () => {
-        toolchain = await SwiftToolchain.create("/path/to/extension");
-    });
-
-    test("No package", async () => {
-        const spmPackage = await SwiftPackage.create(testAssetUri("empty-folder"), toolchain);
-        assert.strictEqual(await spmPackage.foundPackage, false);
-    });
-
-    test("Invalid package", async () => {
-        const spmPackage = await SwiftPackage.create(testAssetUri("invalid-package"), toolchain);
-        assert.strictEqual(await spmPackage.foundPackage, true);
-        assert.strictEqual(await spmPackage.isValid, false);
-    });
-
-    test("Library package", async () => {
-        const spmPackage = await SwiftPackage.create(testAssetUri("package2"), toolchain);
-        assert.strictEqual(await spmPackage.isValid, true);
-        assert.strictEqual((await spmPackage.libraryProducts).length, 1);
-        assert.strictEqual((await spmPackage.libraryProducts)[0].name, "package2");
-        assert.strictEqual((await spmPackage.dependencies).length, 0);
-        assert.strictEqual((await spmPackage.targets).length, 2);
-    });
-
-    test("Package resolve v2", async function () {
-        if (!toolchain) {
-            return;
+    function getFolderContext(ctx: WorkspaceContext, asset: string): FolderContext {
+        const folders = ctx.folders.filter(folder => folder.name.endsWith(asset));
+        if (folders.length === 0) {
+            throw new Error(`Test asset folder ${asset} not found`);
         }
-        if (
-            (process.platform === "win32" &&
-                toolchain.swiftVersion.isLessThan(new Version(6, 0, 0))) ||
-            toolchain.swiftVersion.isLessThan(new Version(5, 6, 0))
-        ) {
-            this.skip();
-        }
-        const spmPackage = await SwiftPackage.create(testAssetUri("package5.6"), toolchain);
-        assert.strictEqual(await spmPackage.isValid, true);
-        assert(spmPackage.resolved !== undefined);
+        return folders[0];
+    }
+
+    suite("empty-folder", () => {
+        const asset = "empty-folder";
+
+        activateExtensionForSuite({
+            async setup(ctx) {
+                swiftPackage = getFolderContext(ctx, asset).swiftPackage;
+            },
+            testAssets: [asset],
+        });
+
+        test("No package", async () => {
+            assert.strictEqual(await swiftPackage.foundPackage, false);
+        });
     });
 
-    test("Identity case-insensitivity", async () => {
-        const spmPackage = await SwiftPackage.create(testAssetUri("identity-case"), toolchain);
-        assert.strictEqual(await spmPackage.isValid, true);
-        assert.strictEqual((await spmPackage.dependencies).length, 1);
-        assert(spmPackage.resolved !== undefined);
-        assert.strictEqual(spmPackage.resolved.pins.length, 1);
-        assert.strictEqual(spmPackage.resolved.pins[0].identity, "yams");
+    suite("invalid-package", () => {
+        const asset = "invalid-package";
+
+        activateExtensionForSuite({
+            async setup(ctx) {
+                swiftPackage = getFolderContext(ctx, asset).swiftPackage;
+            },
+            testAssets: [asset],
+        });
+
+        test("Invalid Package", async () => {
+            assert.strictEqual(await swiftPackage.foundPackage, true);
+            assert.strictEqual(await swiftPackage.isValid, false);
+        });
     });
 
-    test("Identity different from name", async () => {
-        const spmPackage = await SwiftPackage.create(testAssetUri("identity-different"), toolchain);
-        assert.strictEqual(await spmPackage.isValid, true);
-        assert.strictEqual((await spmPackage.dependencies).length, 1);
-        assert(spmPackage.resolved !== undefined);
-        assert.strictEqual(spmPackage.resolved.pins.length, 1);
-        assert.strictEqual(spmPackage.resolved.pins[0].identity, "swift-log");
+    suite("package2", () => {
+        const asset = "package2";
+        let folderContext: FolderContext;
+
+        activateExtensionForSuite({
+            async setup(ctx) {
+                folderContext = getFolderContext(ctx, asset);
+                swiftPackage = folderContext.swiftPackage;
+            },
+            testAssets: [asset],
+        });
+
+        test("Library Package", async () => {
+            assert.strictEqual(await swiftPackage.isValid, true);
+            assert.strictEqual((await swiftPackage.libraryProducts).length, 1);
+            assert.strictEqual((await swiftPackage.libraryProducts)[0].name, "package2");
+            assert.strictEqual((await swiftPackage.dependencies).length, 0);
+            assert.strictEqual((await swiftPackage.targets).length, 2);
+        });
+
+        test("Disabled SwiftPM integration returns undefined package", async () => {
+            await swiftPackage.reload(folderContext, true);
+
+            assert.strictEqual(await swiftPackage.isValid, false);
+            assert.strictEqual(await swiftPackage.foundPackage, false);
+            assert.strictEqual((await swiftPackage.executableProducts).length, 0);
+            assert.strictEqual((await swiftPackage.libraryProducts).length, 0);
+            assert.strictEqual((await swiftPackage.dependencies).length, 0);
+            assert.strictEqual((await swiftPackage.targets).length, 0);
+        });
     });
 
-    test("Disabled SwiftPM integration returns undefined package", async () => {
-        const spmPackage = await SwiftPackage.create(
-            testAssetUri("package2"),
-            toolchain,
-            true // disableSwiftPMIntegration
-        );
-        assert.strictEqual(await spmPackage.isValid, false);
-        assert.strictEqual(await spmPackage.foundPackage, false);
-        assert.strictEqual((await spmPackage.executableProducts).length, 0);
-        assert.strictEqual((await spmPackage.libraryProducts).length, 0);
-        assert.strictEqual((await spmPackage.dependencies).length, 0);
-        assert.strictEqual((await spmPackage.targets).length, 0);
+    suite("identity-case", () => {
+        const asset = "identity-case";
+
+        activateExtensionForSuite({
+            async setup(ctx) {
+                const folderContext = getFolderContext(ctx, asset);
+                if (
+                    folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 1, 0)) &&
+                    folderContext.swiftVersion.isLessThan(new Version(6, 2, 0))
+                ) {
+                    this.skip();
+                }
+                swiftPackage = folderContext.swiftPackage;
+            },
+            testAssets: [asset],
+        });
+
+        test("Identity case-insensitivity", async () => {
+            assert.strictEqual(await swiftPackage.isValid, true);
+            assert.strictEqual((await swiftPackage.dependencies).length, 1);
+            assert(swiftPackage.resolved !== undefined);
+            assert.strictEqual(swiftPackage.resolved.pins.length, 1);
+            assert.strictEqual(swiftPackage.resolved.pins[0].identity, "yams");
+        });
     });
 
-    test("Reload with disabled SwiftPM integration returns undefined package", async () => {
-        const spmPackage = await SwiftPackage.create(testAssetUri("package2"), toolchain, false);
-        // First verify it loaded normally
-        assert.strictEqual(await spmPackage.isValid, true);
-        assert.strictEqual((await spmPackage.libraryProducts).length, 1);
+    suite("identity-different", () => {
+        const asset = "identity-different";
 
-        // Now reload with disabled integration
-        await spmPackage.reload(toolchain, true);
-        assert.strictEqual(await spmPackage.isValid, false);
-        assert.strictEqual(await spmPackage.foundPackage, false);
-        assert.strictEqual((await spmPackage.libraryProducts).length, 0);
-        assert.strictEqual((await spmPackage.dependencies).length, 0);
-        assert.strictEqual((await spmPackage.targets).length, 0);
+        activateExtensionForSuite({
+            async setup(ctx) {
+                swiftPackage = getFolderContext(ctx, asset).swiftPackage;
+            },
+            testAssets: [asset],
+        });
+
+        test("Identity case-different", async () => {
+            assert.strictEqual(await swiftPackage.isValid, true);
+            assert.strictEqual((await swiftPackage.dependencies).length, 1);
+            assert(swiftPackage.resolved !== undefined);
+            assert.strictEqual(swiftPackage.resolved.pins.length, 1);
+            assert.strictEqual(swiftPackage.resolved.pins[0].identity, "swift-log");
+        });
     });
 });

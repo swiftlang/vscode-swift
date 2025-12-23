@@ -74,7 +74,7 @@ export function checkIfBuildComplete(line: string): boolean {
 export function packageName(folderContext: FolderContext): string | undefined {
     if (vscode.workspace.workspaceFile) {
         return folderContext.name;
-    } else if (folderContext.relativePath.length > 0) {
+    } else if (folderContext.relativePath && folderContext.relativePath.length > 0) {
         return folderContext.relativePath;
     }
 }
