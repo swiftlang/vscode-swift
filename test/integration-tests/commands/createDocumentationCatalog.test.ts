@@ -66,4 +66,33 @@ tag("small").suite("Create Documentation Catalog Command", function () {
             inputBoxStub.restore();
         }
     });
+
+    test("creates a standalone DocC catalog when no SwiftPM target is selected", async () => {
+        const quickPickStub = sinon.stub(vscode.window, "showQuickPick");
+        const inputBoxStub = sinon.stub(vscode.window, "showInputBox");
+
+        try {
+            // No target selected
+            quickPickStub.resolves(undefined);
+
+            // User provides a module name
+            inputBoxStub.resolves("StandaloneModule");
+
+            await vscode.commands.executeCommand("swift.createDocumentationCatalog");
+
+            const basePath = folderContext.folder.fsPath;
+            const moduleName = "StandaloneModule";
+            const doccDir = path.join(basePath, `${moduleName}.docc`);
+            const markdownFile = path.join(doccDir, `${moduleName}.md`);
+
+            expect(await fs.stat(doccDir)).to.exist;
+            expect(await fs.stat(markdownFile)).to.exist;
+
+            const contents = await fs.readFile(markdownFile, "utf8");
+            expect(contents).to.contain(`# ${moduleName}`);
+        } finally {
+            quickPickStub.restore();
+            inputBoxStub.restore();
+        }
+    });
 });
