@@ -655,11 +655,6 @@ export class TestingConfigurationFactory {
         return this.ctx.toolchain.getToolchainExecutable("swift");
     }
 
-    private get buildDirectory(): string {
-        const { folder } = getFolderAndNameSuffix(this.ctx, this.expandEnvVariables);
-        return BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
-    }
-
     private get artifactFolderForTestKind(): string {
         const mode = isRelease(this.testKind) ? "release" : "debug";
         const triple = this.ctx.toolchain.unversionedTriple;
@@ -683,7 +678,7 @@ export class TestingConfigurationFactory {
             this.ctx.workspaceContext.logger.warn(
                 `Failed to get build binary path for tests, falling back to legacy path construction: ${error}`
             );
-            return path.join(this.buildDirectory, this.artifactFolderForTestKind);
+            return path.join(this.artifactFolderForTestKind);
         }
     }
 
