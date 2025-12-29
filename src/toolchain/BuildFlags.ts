@@ -16,7 +16,6 @@ import * as path from "path";
 import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { execSwift } from "../utilities/utilities";
-import { Version } from "../utilities/version";
 import { DarwinCompatibleTarget, SwiftToolchain, getDarwinTargetTriple } from "./toolchain";
 
 /** Target info */
@@ -118,11 +117,7 @@ export class BuildFlags {
      */
     buildPathFlags(): string[] {
         if (configuration.buildPath && configuration.buildPath.length > 0) {
-            if (this.toolchain.swiftVersion.isLessThan(new Version(5, 8, 0))) {
-                return ["--build-path", configuration.buildPath];
-            } else {
-                return ["--scratch-path", configuration.buildPath];
-            }
+            return ["--scratch-path", configuration.buildPath];
         } else {
             return [];
         }
