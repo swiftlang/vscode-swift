@@ -2076,7 +2076,7 @@
     "**/*": "prettier --write --ignore-unknown"
   },
   "devDependencies": {
-    "@actions/core": "^1.11.1",
+    "@actions/core": "^2.0.1",
     "@trivago/prettier-plugin-sort-imports": "^6.0.0",
     "@twbs/fantasticon": "^3.1.0",
     "@types/archiver": "^7.0.0",
@@ -2101,7 +2101,7 @@
     "@types/ttf2woff": "^2.0.4",
     "@types/vscode": "^1.88.0",
     "@types/xml2js": "^0.4.14",
-    "@typescript-eslint/eslint-plugin": "^8.49.0",
+    "@typescript-eslint/eslint-plugin": "^8.50.1",
     "@typescript-eslint/parser": "^8.32.1",
     "@vscode/debugprotocol": "^1.68.0",
     "@vscode/test-cli": "^0.0.12",
@@ -2113,7 +2113,7 @@
     "decompress": "^4.2.1",
     "del-cli": "^7.0.0",
     "diff": "^8.0.2",
-    "esbuild": "^0.27.1",
+    "esbuild": "^0.27.2",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-mocha": "^10.5.0",
@@ -2129,7 +2129,7 @@
     "replace-in-file": "^8.4.0",
     "semver": "^7.7.3",
     "simple-git": "^3.30.0",
-    "sinon": "^21.0.0",
+    "sinon": "^21.0.1",
     "sinon-chai": "^3.7.0",
     "source-map-support": "^0.5.21",
     "strip-ansi": "^6.0.1",
@@ -2142,7 +2142,7 @@
     "winston-transport": "^4.9.0"
   },
   "dependencies": {
-    "@vscode/codicons": "^0.0.43",
+    "@vscode/codicons": "^0.0.44",
     "archiver": "^7.0.1",
     "fast-glob": "^3.3.3",
     "lcov-parse": "^1.0.0",
