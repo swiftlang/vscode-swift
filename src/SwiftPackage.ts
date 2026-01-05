@@ -267,9 +267,18 @@ export class SwiftPackage {
         folderContext: FolderContext,
         disableSwiftPMIntegration: boolean = false
     ): Promise<SwiftPackageState> {
+        const resolve = this.contentsResolve;
+        const result = await this.performLoadPackageState(folderContext, disableSwiftPMIntegration);
+        resolve(result);
+        return result;
+    }
+
+    private async performLoadPackageState(
+        folderContext: FolderContext,
+        disableSwiftPMIntegration: boolean = false
+    ): Promise<SwiftPackageState> {
         // When SwiftPM integration is disabled, return undefined to disable all features
         if (disableSwiftPMIntegration) {
-            this.contentsResolve(undefined);
             return undefined;
         }
 
@@ -284,7 +293,6 @@ export class SwiftPackage {
                 dependencies: dependencies,
             };
 
-            this.contentsResolve(packageState);
             return packageState;
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : String(error);
@@ -293,12 +301,10 @@ export class SwiftPackage {
                 errorMessage.startsWith("error: root manifest") ||
                 errorMessage.startsWith("error: Could not find Package.swift")
             ) {
-                this.contentsResolve(undefined);
                 return undefined;
             } else {
                 // otherwise it is an error loading the Package.swift so return `null` indicating
                 // we have a package but we failed to load it. Calling resolve instead of reject is intent
-                this.contentsResolve(Error(getErrorDescription(error)));
                 return Error(getErrorDescription(error));
             }
         }
@@ -379,12 +385,13 @@ export class SwiftPackage {
         this.contentsPromise = promise;
         this.contentsResolve = resolve;
 
-        const loadedContents = await this.loadPackageState(
+        const loadedContents = await this.performLoadPackageState(
             folderContext,
             disableSwiftPMIntegration
         );
 
         this._contents = loadedContents;
+        resolve(loadedContents);
     }
 
     /** Reload Package.resolved file */
