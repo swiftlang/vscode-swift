@@ -156,20 +156,18 @@ export class FolderContext implements vscode.Disposable {
             workspaceFolder,
             workspaceContext
         );
+        void swiftPackage.loadPackageState(folderContext);
 
-        // List the package's dependencies without blocking folder creation
-        void swiftPackage.loadPackageState(folderContext).then(async () => {
-            const error = await swiftPackage.error;
-            if (error) {
-                void vscode.window.showErrorMessage(
-                    `Failed to load ${folderContext.name}/Package.swift: ${error.message}`
-                );
-                workspaceContext.logger.info(
-                    `Failed to load Package.swift: ${error.message}`,
-                    folderContext.name
-                );
-            }
-        });
+        const error = await swiftPackage.error;
+        if (error) {
+            void vscode.window.showErrorMessage(
+                `Failed to load ${folderContext.name}/Package.swift: ${error.message}`
+            );
+            workspaceContext.logger.info(
+                `Failed to load Package.swift: ${error.message}`,
+                folderContext.name
+            );
+        }
 
         // Start watching for changes to Package.swift, Package.resolved and .swift-version
         await folderContext.packageWatcher.install();
