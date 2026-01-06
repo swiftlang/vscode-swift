@@ -7,6 +7,7 @@
 - Fix the wrong toolchain being shown as selected when using swiftly v1.0.1 ([#2014](https://github.com/swiftlang/vscode-swift/pull/2014))
 - Fix extension displaying SwiftPM's project view and automatic build tasks even when `disableSwiftPMIntegration` was true ([#2011](https://github.com/swiftlang/vscode-swift/pull/2011))
 - Validate extension settings and warn if they are invalid ([#2016](https://github.com/swiftlang/vscode-swift/pull/2016))
+- Show progress when describing/listing dependencies on package load ([#2028](https://github.com/swiftlang/vscode-swift/pull/2028))
 
 ## 2.14.3 - 2025-12-15
 
