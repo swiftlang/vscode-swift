@@ -655,24 +655,37 @@ export class TestingConfigurationFactory {
         return this.ctx.toolchain.getToolchainExecutable("swift");
     }
 
-    private get buildDirectory(): string {
-        const { folder } = getFolderAndNameSuffix(this.ctx, this.expandEnvVariables);
-        return BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
-    }
-
     private get artifactFolderForTestKind(): string {
         const mode = isRelease(this.testKind) ? "release" : "debug";
         const triple = this.ctx.toolchain.unversionedTriple;
         return triple ? path.join(triple, mode) : mode;
     }
 
+    private async getBuildBinaryPath(): Promise<string> {
+        const buildConfiguration: "debug" | "release" = isRelease(this.testKind)
+            ? "release"
+            : "debug";
+
+        try {
+            return await this.ctx.toolchain.buildFlags.getBuildBinaryPath(
+                this.ctx.folder.fsPath,
+                buildConfiguration,
+                this.ctx.workspaceContext.logger,
+                "tests",
+                configuration.folder(this.ctx.workspaceFolder).additionalTestArguments
+            );
+        } catch (error) {
+            this.ctx.workspaceContext.logger.warn(
+                `Failed to get build binary path for tests, falling back to legacy path construction: ${error}`
+            );
+            return path.join(this.artifactFolderForTestKind);
+        }
+    }
+
     private async xcTestOutputPath(): Promise<string> {
         const packageName = await this.ctx.swiftPackage.name;
-        return path.join(
-            this.buildDirectory,
-            this.artifactFolderForTestKind,
-            `${packageName}PackageTests.xctest`
-        );
+        const binPath = await this.getBuildBinaryPath();
+        return path.join(binPath, `${packageName}PackageTests.xctest`);
     }
 
     private async unifiedTestingOutputPath(): Promise<string> {
