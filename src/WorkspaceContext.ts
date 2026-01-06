@@ -515,7 +515,7 @@ export class WorkspaceContext implements vscode.Disposable {
     async removeWorkspaceFolder(workspaceFolder: vscode.WorkspaceFolder) {
         for (const folder of this.folders) {
             if (folder.workspaceFolder !== workspaceFolder) {
-                return;
+                continue;
             }
             // if current folder is this folder send unfocus event by setting
             // current folder to undefined
