@@ -57,7 +57,7 @@ if (process.env["VSCODE_SWIFT_VSIX"]) {
     installExtensions.push(vsixPath);
 }
 
-const vscodeVersion = process.env["VSCODE_VERSION"] ?? "1.105.1";
+const vscodeVersion = process.env["VSCODE_VERSION"] ?? "stable";
 log("Running tests against VS Code version " + vscodeVersion);
 
 const env = {
