@@ -15,6 +15,7 @@ import * as assert from "assert";
 import { expect } from "chai";
 import * as vscode from "vscode";
 
+import { getSwiftExtensionApi } from "@src/SwiftExtensionApi";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { SwiftExecution } from "@src/tasks/SwiftExecution";
 import { getBuildAllTask } from "@src/tasks/SwiftTaskProvider";
@@ -30,9 +31,15 @@ suite("Extension Test Suite", function () {
         },
     });
 
+    suite("Extension API", function () {
+        test("can use getSwiftExtensionApi() to retrieve the Swift extension's API", async () => {
+            const swiftExtensionApi = await getSwiftExtensionApi();
+            expect(swiftExtensionApi.workspaceContext).to.equal(workspaceContext);
+        });
+    });
+
     suite("Workspace", function () {
-        /** Verify tasks.json is being loaded */
-        test("Tasks.json", async () => {
+        test("tasks.json is loaded correctly", async () => {
             const folder = findWorkspaceFolder("defaultPackage", workspaceContext);
             assert.ok(folder);
             const buildAllTask = await getBuildAllTask(folder);
