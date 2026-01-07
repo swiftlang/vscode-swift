@@ -17,6 +17,7 @@ import * as vscode from "vscode";
 import { BackgroundCompilation } from "./BackgroundCompilation";
 import { LinuxMain } from "./LinuxMain";
 import { PackageWatcher } from "./PackageWatcher";
+import { FolderContext as ExternalFolderContext } from "./SwiftExtensionApi";
 import { SwiftPackage, Target, TargetType } from "./SwiftPackage";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { TestRunManager } from "./TestExplorer/TestRunManager";
@@ -30,7 +31,7 @@ import { SwiftToolchain } from "./toolchain/toolchain";
 import { showToolchainError } from "./ui/ToolchainSelection";
 import { isPathInsidePath } from "./utilities/filesystem";
 
-export class FolderContext implements vscode.Disposable {
+export class FolderContext implements ExternalFolderContext, vscode.Disposable {
     public backgroundCompilation: BackgroundCompilation;
     public hasResolveErrors = false;
     public taskQueue: TaskQueue;

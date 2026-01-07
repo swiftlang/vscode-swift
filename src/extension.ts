@@ -18,6 +18,7 @@ import * as vscode from "vscode";
 
 import { ContextKeyManager, ContextKeys } from "./ContextKeyManager";
 import { FolderContext } from "./FolderContext";
+import { SwiftExtensionApi } from "./SwiftExtensionApi";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { FolderEvent, FolderOperation, WorkspaceContext } from "./WorkspaceContext";
 import * as commands from "./commands";
@@ -44,21 +45,19 @@ import { checkAndWarnAboutWindowsSymlinks } from "./ui/win32";
 import { getErrorDescription } from "./utilities/utilities";
 import { Version } from "./utilities/version";
 
-/**
- * External API as exposed by the extension. Can be queried by other extensions
- * or by the integration test runner for VS Code extensions.
- */
-export interface Api {
+export interface InternalSwiftExtensionApi extends SwiftExtensionApi {
     workspaceContext?: WorkspaceContext;
     logger: SwiftLogger;
-    activate(): Promise<Api>;
+    activate(): Promise<InternalSwiftExtensionApi>;
     deactivate(): Promise<void>;
 }
 
 /**
  * Activate the extension. This is the main entry point.
  */
-export async function activate(context: vscode.ExtensionContext): Promise<Api> {
+export async function activate(
+    context: vscode.ExtensionContext
+): Promise<InternalSwiftExtensionApi> {
     const activationStartTime = Date.now();
     try {
         const logSetupStartTime = Date.now();
@@ -187,6 +186,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         return {
             workspaceContext,
             logger,
+            version: new Version(0, 1, 0),
             activate: () => activate(context),
             deactivate: async () => {
                 await workspaceContext.stop();
@@ -321,7 +321,8 @@ async function createActiveToolchain(
 }
 
 async function deactivate(context: vscode.ExtensionContext): Promise<void> {
-    const workspaceContext = (context.extension.exports as Api).workspaceContext;
+    const api: InternalSwiftExtensionApi = context.extension.exports;
+    const workspaceContext = api.workspaceContext;
     if (workspaceContext) {
         workspaceContext.contextKeys.isActivated = false;
     }
