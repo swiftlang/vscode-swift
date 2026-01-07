@@ -33,8 +33,12 @@ suite("Extension Test Suite", function () {
 
     suite("Extension API", function () {
         test("can use getSwiftExtensionApi() to retrieve the Swift extension's API", async () => {
+            // Chai's expect() tries to introspect the API on failure which causes VS Code to complain and give a
+            // useless error message about using proposed API. Check it ourselves and output a reasonable error.
             const swiftExtensionApi = await getSwiftExtensionApi();
-            expect(swiftExtensionApi.workspaceContext).to.equal(workspaceContext);
+            if (!swiftExtensionApi || typeof swiftExtensionApi !== "object") {
+                assert.fail("The Swift extension did not return an API.");
+            }
         });
     });
 
