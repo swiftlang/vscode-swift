@@ -14,6 +14,7 @@
 // Use source-map-support to get better stack traces
 import "source-map-support/register";
 
+import * as fs from "fs/promises";
 import * as vscode from "vscode";
 
 import { ContextKeyManager, ContextKeys } from "./ContextKeyManager";
@@ -174,6 +175,7 @@ export async function activate(
         const workspaceFoldersElapsed = Date.now() - workspaceFoldersStartTime;
 
         const finalStepsStartTime = Date.now();
+        const apiVersion = await getApiVersionNumber(context);
         // Mark the extension as activated.
         contextKeys.isActivated = true;
         const finalStepsElapsed = Date.now() - finalStepsStartTime;
@@ -186,7 +188,7 @@ export async function activate(
         return {
             workspaceContext,
             logger,
-            version: new Version(0, 1, 0),
+            version: apiVersion,
             activate: () => activate(context),
             deactivate: async () => {
                 await workspaceContext.stop();
@@ -231,6 +233,31 @@ function configureLogging(context: vscode.ExtensionContext) {
             logger.warn(`Failed to create log directory: ${error}`);
         });
     return logger;
+}
+
+async function getApiVersionNumber(context: vscode.ExtensionContext): Promise<Version> {
+    try {
+        const packageJsonPath = context.asAbsolutePath("package.json");
+        const packageJsonRaw = await fs.readFile(packageJsonPath, "utf-8");
+        const packageJson = JSON.parse(packageJsonRaw);
+        const apiVersionRaw = packageJson["api-version"];
+        if (!apiVersionRaw || typeof apiVersionRaw !== "string") {
+            throw Error(
+                `The "api-version" property in the package.json is missing or invalid: ${JSON.stringify(apiVersionRaw)}`
+            );
+        }
+        const apiVersion = Version.fromString(apiVersionRaw);
+        if (!apiVersion) {
+            throw Error(
+                `Unable to parse the "api-version" string from the package.json: "${apiVersionRaw}"`
+            );
+        }
+        return apiVersion;
+    } catch (error) {
+        throw Error("Failed to load the Swift extension API version number from the package.json", {
+            cause: error,
+        });
+    }
 }
 
 function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise<void> {
