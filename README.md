@@ -41,6 +41,8 @@ The Swift extension exports a comprehensive API that can be used by other Visual
 - **Swift Projects**: A list of all known Swift projects in the active workspace.
 - **SPM Packages**: Swift Package Manager targets, products, dependencies, and plugins.
 
+The API includes a version number that follows [semantic versioning](https://semver.org/) and is separate from the extension's version number. See [the contributing guide](CONTRIBUTING.md) for a more detailed explanation on when this version number is incremented.
+
 ### Using the API
 
 To use the API in your extension you can download the [`src/SwiftExtensionApi.ts`](src/SwiftExtensionApi.ts) file from this repository to get proper TypeScript type definitions. It is recommended that you download the version from a tagged release as main is not guaranteed to remain stable.
