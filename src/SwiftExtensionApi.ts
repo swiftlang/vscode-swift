@@ -174,6 +174,15 @@ export interface SwiftToolchain {
 
     /** The version number of this Swift toolchain. */
     readonly swiftVersion: Version;
+
+    /** The SDK currently in use by this toolchain. */
+    readonly sdk?: string;
+
+    /** The user-specified SDK as configured by the `swift.sdk` setting. */
+    readonly customSDK?: string;
+
+    /** The default SDK for this toolchain. */
+    readonly defaultSDK?: string;
 }
 
 /** Workspace Folder Operation types. */

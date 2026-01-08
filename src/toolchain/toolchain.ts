@@ -105,6 +105,10 @@ export function getDarwinTargetTriple(target: DarwinCompatibleTarget): string | 
 export class SwiftToolchain implements ExternalSwiftToolchain {
     public swiftVersionString: string;
 
+    public get sdk(): string | undefined {
+        return this.customSDK ?? this.defaultSDK;
+    }
+
     constructor(
         public manager: ToolchainManager,
         public swiftFolderPath: string, // folder swift executable in $PATH was found in
@@ -446,11 +450,10 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
     }
 
     private basePlatformDeveloperPath(): string | undefined {
-        const sdk = this.customSDK ?? this.defaultSDK;
-        if (!sdk) {
+        if (!this.sdk) {
             return undefined;
         }
-        return path.resolve(sdk, "../../");
+        return path.resolve(this.sdk, "../../");
     }
 
     /**
@@ -490,6 +493,9 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
         }
         if (this.targetInfo.target?.triple) {
             str += `\nDefault Target: ${this.targetInfo.target?.triple}`;
+        }
+        if (this.sdk) {
+            str += `\nSelected SDK: ${this.sdk}`;
         }
         if (this.defaultSDK) {
             str += `\nDefault SDK: ${this.defaultSDK}`;
