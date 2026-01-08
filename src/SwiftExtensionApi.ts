@@ -130,7 +130,7 @@ export interface Version extends VersionInterface {
     /** Whether or not this is a development version that has the suffix "-dev". */
     readonly dev: boolean;
 
-    /** Convert this version number to a string of the form "{major}.{minor}.{patch}" */
+    /** Convert this version number to a string of the form "{major}.{minor}.{patch}". */
     toString(): string;
 
     /** Whether or not this version is less than the provided version. */
@@ -243,9 +243,6 @@ export interface Product {
 
     /** The list of target names that make up this product. */
     readonly targets: string[];
-
-    /** The type of product - either executable or library with optional library type specifications. */
-    readonly type: { executable?: null; library?: string[] };
 }
 
 /** Swift Package Manager target information. */
