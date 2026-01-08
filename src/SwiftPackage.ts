@@ -19,11 +19,11 @@ import { FolderContext } from "./FolderContext";
 import {
     Dependency,
     PackageResolved as ExternalPackageResolved,
+    Product as ExternalProduct,
     SwiftPackage as ExternalSwiftPackage,
     PackagePlugin,
     PackageResolvedPin,
     PackageResolvedPinState,
-    Product,
     ResolvedDependency,
     Target,
     TargetType,
@@ -43,11 +43,15 @@ export {
     PackagePlugin,
     PackageResolvedPin,
     PackageResolvedPinState,
-    Product,
     ResolvedDependency,
     Target,
     TargetType,
 };
+
+// Need to re-export the Product interface with internal types
+export interface Product extends ExternalProduct {
+    readonly type: { executable?: null; library?: string[] };
+}
 
 /** Swift Package Manager contents */
 export interface PackageContents {
