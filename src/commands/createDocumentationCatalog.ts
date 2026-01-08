@@ -26,7 +26,32 @@ export async function createDocumentationCatalog(
     ctx: WorkspaceContext,
     folderContext?: FolderContext
 ): Promise<void> {
-    let folder = folderContext ?? ctx.currentFolder;
+    let folder: FolderContext | undefined = folderContext;
+
+    // Only auto-pick when there's exactly one workspace folder
+    if (!folder && ctx.folders.length === 1) {
+        folder = ctx.folders[0];
+    }
+
+    if (!folder) {
+        if (ctx.folders.length === 0) {
+            void vscode.window.showErrorMessage(
+                "Creating a documentation catalog requires an open workspace folder."
+            );
+            return;
+        }
+
+        const selected = await selectFolder(
+            ctx,
+            "Select a workspace folder to create the DocC catalog in"
+        );
+
+        if (selected.length !== 1) {
+            return;
+        }
+
+        folder = selected[0];
+    }
 
     // ---- workspace folder resolution (standard pattern) ----
     if (!folder) {
