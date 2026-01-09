@@ -16,6 +16,7 @@ import "source-map-support/register";
 
 import * as vscode from "vscode";
 
+import { ContextKeyManager, ContextKeys } from "./ContextKeyManager";
 import { FolderContext } from "./FolderContext";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { FolderEvent, FolderOperation, WorkspaceContext } from "./WorkspaceContext";
@@ -27,7 +28,6 @@ import configuration, {
     handleConfigurationChangeEvent,
     openSettingsJsonForSetting,
 } from "./configuration";
-import { ContextKeys, createContextKeys } from "./contextKeys";
 import { registerDebugger } from "./debugger/debugAdapterFactory";
 import * as debug from "./debugger/launch";
 import { SwiftLogger } from "./logging/SwiftLogger";
@@ -72,7 +72,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         const preToolchainStartTime = Date.now();
         checkAndWarnAboutWindowsSymlinks(logger);
 
-        const contextKeys = createContextKeys();
+        const contextKeys = new ContextKeyManager();
         const preToolchainElapsed = Date.now() - preToolchainStartTime;
         const toolchainStartTime = Date.now();
         const toolchain = await createActiveToolchain(context, contextKeys, logger);
@@ -257,7 +257,7 @@ function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise
                     `Loading Swift Plugins (${FolderContext.uriName(folder.workspaceFolder.uri)})`,
                     async () => {
                         await folder.loadSwiftPlugins(logger);
-                        workspace.updatePluginContextKey();
+                        workspace.contextKeys.updateForPlugins(workspace.folders);
                         await folder.fireEvent(FolderOperation.pluginsUpdated);
                     }
                 );

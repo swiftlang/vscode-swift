@@ -14,13 +14,12 @@
 import * as path from "path";
 import * as vscode from "vscode";
 
+import { ContextKeys } from "./ContextKeyManager";
 import { DiagnosticsManager } from "./DiagnosticsManager";
 import { FolderContext } from "./FolderContext";
-import { setSnippetContextKey } from "./SwiftSnippets";
 import { TestKind } from "./TestExplorer/TestKind";
 import { TestRunManager } from "./TestExplorer/TestRunManager";
 import configuration from "./configuration";
-import { ContextKeys } from "./contextKeys";
 import { LLDBDebugConfigurationProvider } from "./debugger/debugAdapterFactory";
 import { makeDebugConfigurations } from "./debugger/launch";
 import { DocumentationManager } from "./documentation/DocumentationManager";
@@ -28,7 +27,6 @@ import { CommentCompletionProviders } from "./editor/CommentCompletion";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { SwiftLoggerFactory } from "./logging/SwiftLoggerFactory";
 import { LanguageClientToolchainCoordinator } from "./sourcekit-lsp/LanguageClientToolchainCoordinator";
-import { DocCDocumentationRequest, ReIndexProjectRequest } from "./sourcekit-lsp/extensions";
 import { SwiftPluginTaskProvider } from "./tasks/SwiftPluginTaskProvider";
 import { SwiftTaskProvider } from "./tasks/SwiftTaskProvider";
 import { TaskManager } from "./tasks/TaskManager";
@@ -169,18 +167,22 @@ export class WorkspaceContext implements vscode.Disposable {
         const contextKeysUpdate = this.onDidChangeFolders(event => {
             switch (event.operation) {
                 case FolderOperation.remove:
-                    this.updatePluginContextKey();
+                    this.contextKeys.updateForPlugins(this.folders);
                     break;
                 case FolderOperation.focus:
-                    this.updateContextKeys(event.folder);
-                    void this.updateContextKeysForFile();
+                    this.contextKeys.updateForFolder(event.folder);
+                    void this.contextKeys.updateForFile(
+                        this.currentDocument,
+                        event.folder,
+                        this.languageClientManager
+                    );
                     break;
                 case FolderOperation.unfocus:
-                    this.updateContextKeys(event.folder);
+                    this.contextKeys.updateForFolder(event.folder);
                     break;
                 case FolderOperation.resolvedUpdated:
                     if (event.folder === this.currentFolder) {
-                        this.updateContextKeys(event.folder);
+                        this.contextKeys.updateForFolder(event.folder);
                     }
             }
         });
@@ -255,74 +257,6 @@ export class WorkspaceContext implements vscode.Disposable {
 
     get globalToolchainSwiftVersion() {
         return this.globalToolchain.swiftVersion;
-    }
-
-    /**
-     * Update context keys based on package contents
-     */
-    updateContextKeys(folderContext: FolderContext | null) {
-        if (!folderContext) {
-            this.contextKeys.hasPackage = false;
-            this.contextKeys.hasExecutableProduct = false;
-            this.contextKeys.packageHasDependencies = false;
-            return;
-        }
-
-        void Promise.all([
-            folderContext.swiftPackage.foundPackage,
-            folderContext.swiftPackage.executableProducts,
-            folderContext.swiftPackage.dependencies,
-        ]).then(([foundPackage, executableProducts, dependencies]) => {
-            this.contextKeys.hasPackage = foundPackage;
-            this.contextKeys.hasExecutableProduct = executableProducts.length > 0;
-            this.contextKeys.packageHasDependencies = dependencies.length > 0;
-        });
-    }
-
-    /**
-     * Update context keys based on package contents
-     */
-    async updateContextKeysForFile() {
-        if (this.currentDocument) {
-            const target = await this.currentFolder?.swiftPackage.getTarget(
-                this.currentDocument?.fsPath
-            );
-            this.contextKeys.currentTargetType = target?.type;
-        } else {
-            this.contextKeys.currentTargetType = undefined;
-        }
-
-        if (this.currentFolder) {
-            const languageClient = this.languageClientManager.get(this.currentFolder);
-            await languageClient.useLanguageClient(async client => {
-                const experimentalCaps = client.initializeResult?.capabilities.experimental;
-                if (!experimentalCaps) {
-                    this.contextKeys.supportsReindexing = false;
-                    this.contextKeys.supportsDocumentationLivePreview = false;
-                    return;
-                }
-                this.contextKeys.supportsReindexing =
-                    experimentalCaps[ReIndexProjectRequest.method] !== undefined;
-                this.contextKeys.supportsDocumentationLivePreview =
-                    experimentalCaps[DocCDocumentationRequest.method] !== undefined;
-            });
-        }
-
-        setSnippetContextKey(this);
-    }
-
-    /**
-     * Update hasPlugins context key
-     */
-    updatePluginContextKey() {
-        let hasPlugins = false;
-        for (const folder of this.folders) {
-            if (folder.swiftPackage.plugins.length > 0) {
-                hasPlugins = true;
-                break;
-            }
-        }
-        this.contextKeys.packageHasPlugins = hasPlugins;
     }
 
     /** Setup the vscode event listeners to catch folder changes and active window changes */
@@ -564,7 +498,11 @@ export class WorkspaceContext implements vscode.Disposable {
 
     async focusUri(uri?: vscode.Uri) {
         this.currentDocument = uri ?? null;
-        await this.updateContextKeysForFile();
+        await this.contextKeys.updateForFile(
+            this.currentDocument,
+            this.currentFolder ?? null,
+            this.languageClientManager
+        );
         if (
             this.currentDocument?.scheme === "file" ||
             this.currentDocument?.scheme === "sourcekit-lsp"
