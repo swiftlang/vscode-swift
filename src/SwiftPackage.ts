@@ -279,7 +279,7 @@ export class SwiftPackage implements vscode.Disposable {
             return undefined;
         }
 
-        // If there is an existing package load, cancel any running taks first before loading a new one.
+        // If there is an existing package load, cancel any running tasks first before loading a new one.
         this.tokenSource.cancel();
         this.tokenSource.dispose();
         this.tokenSource = new vscode.CancellationTokenSource();
