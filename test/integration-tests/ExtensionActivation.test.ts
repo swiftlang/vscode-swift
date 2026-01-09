@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 import * as assert from "assert";
+import { expect } from "chai";
 import { afterEach } from "mocha";
 import * as vscode from "vscode";
 
@@ -46,14 +47,9 @@ tag("medium").suite("Extension Activation/Deactivation Tests", () => {
 
         test("Duplicate Activation", async function () {
             await activate();
-            // eslint-disable-next-line @typescript-eslint/no-floating-promises
-            assert.rejects(activateExtension(), err => {
-                const msg = (err as unknown as any).message;
-                return (
-                    msg.includes("Extension is already activated") &&
-                    msg.includes((this.test as Mocha.Test)?.titlePath().join(" → "))
-                );
-            });
+            await expect(activateExtension())
+                .to.eventually.be.rejectedWith("The Swift extension has already been activated.")
+                .that.has.property("cause");
         });
     });
 
