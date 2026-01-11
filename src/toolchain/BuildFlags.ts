@@ -124,6 +124,27 @@ export class BuildFlags {
     }
 
     /**
+     * Extract scratch-path or build-path value from an array of arguments
+     * @param args Array of command-line arguments to search
+     * @returns The path value if found, otherwise undefined
+     */
+    private static extractScratchPath(args: string[]): string | undefined {
+        for (let i = 0; i < args.length; i++) {
+            const arg = args[i];
+            if ((arg === "--scratch-path" || arg === "--build-path") && i + 1 < args.length) {
+                return args[i + 1];
+            }
+            if (arg.startsWith("--scratch-path=")) {
+                return arg.substring("--scratch-path=".length);
+            }
+            if (arg.startsWith("--build-path=")) {
+                return arg.substring("--build-path=".length);
+            }
+        }
+        return undefined;
+    }
+
+    /**
      * Get build path from configuration if exists or return a fallback .build directory in given workspace
      * @param filesystem path to workspace that will be used as a fallback loacation with .build directory
      */
@@ -134,7 +155,20 @@ export class BuildFlags {
     ): string {
         const nodePath =
             platform === "posix" ? path.posix : platform === "win32" ? path.win32 : path;
-        const buildPath = configuration.buildPath.length > 0 ? configuration.buildPath : ".build";
+
+        // First check if user has --scratch-path or --build-path in their build arguments
+        let buildPath = BuildFlags.extractScratchPath(configuration.buildArguments);
+
+        // If not in buildArguments, check packageArguments
+        if (!buildPath) {
+            buildPath = BuildFlags.extractScratchPath(configuration.packageArguments);
+        }
+
+        // If not in either arguments list, check the buildPath configuration
+        if (!buildPath) {
+            buildPath = configuration.buildPath.length > 0 ? configuration.buildPath : ".build";
+        }
+
         if (!nodePath.isAbsolute(buildPath) && absolute) {
             return nodePath.join(workspacePath, buildPath);
         } else {
