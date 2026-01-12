@@ -908,6 +908,11 @@ export class TestRunner {
 
                 void this.swiftTestOutputParser.close();
             }
+
+            // If there is a compilation error the tests slated to be run are marked as 'skipped' and not 'failed'.
+            // If the user has the setting `testing.automaticallyOpenTestResults` set to `openOnTestFailure`,
+            // we should still open the test results view to show the user the compilation errors.
+            this.openTestResultsPanel();
         } finally {
             outputStream.end();
         }
@@ -1075,6 +1080,8 @@ export class TestRunner {
                 );
             } catch (buildExitCode) {
                 runState.recordOutput(undefined, buildOutput);
+                // Check if we should open test results panel on compiler error
+                this.openTestResultsPanel();
                 throw new Error(`Build failed with exit code ${buildExitCode}`);
             }
         }
@@ -1312,6 +1319,19 @@ export class TestRunner {
         return process.platform === "win32"
             ? `\\\\.\\pipe\\vscodemkfifo-${testRunDateNow}`
             : path.join(os.tmpdir(), `vscodemkfifo-${testRunDateNow}`);
+    }
+
+    /**
+     * Opens the test results panel if the "testing.automaticallyOpenTestResults" setting is set to "openOnTestFailure".
+     */
+    private openTestResultsPanel(): void {
+        const testingSetting = vscode.workspace
+            .getConfiguration("testing")
+            .get<string>("automaticallyOpenTestResults");
+
+        if (testingSetting === "openOnTestFailure") {
+            void vscode.commands.executeCommand("workbench.panel.testResults.view.focus");
+        }
     }
 }
 
