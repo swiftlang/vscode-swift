@@ -2,6 +2,10 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+### Added
+
+- Show progress when describing/listing dependencies on package load ([#2028](https://github.com/swiftlang/vscode-swift/pull/2028))
+
 ### Fixed
 
 - Fix the wrong toolchain being shown as selected when using swiftly v1.0.1 ([#2014](https://github.com/swiftlang/vscode-swift/pull/2014))

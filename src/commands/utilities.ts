@@ -32,7 +32,8 @@ export async function executeTaskWithUI(
     description: string,
     folderContext: FolderContext,
     showErrors = false,
-    checkAlreadyRunning: boolean = false
+    checkAlreadyRunning: boolean = false,
+    token?: vscode.CancellationToken
 ): Promise<boolean> {
     try {
         const exitCode = await folderContext.taskQueue.queueOperation(
@@ -40,7 +41,8 @@ export async function executeTaskWithUI(
                 showStatusItem: true,
                 checkAlreadyRunning,
                 log: description,
-            })
+            }),
+            token
         );
         if (exitCode === 0) {
             return true;
