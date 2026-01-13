@@ -2077,7 +2077,7 @@
   },
   "devDependencies": {
     "@actions/core": "^2.0.1",
-    "@trivago/prettier-plugin-sort-imports": "^6.0.0",
+    "@trivago/prettier-plugin-sort-imports": "^6.0.1",
     "@twbs/fantasticon": "^3.1.0",
     "@types/archiver": "^7.0.0",
     "@types/chai": "^4.3.19",
@@ -2101,7 +2101,7 @@
     "@types/ttf2woff": "^2.0.4",
     "@types/vscode": "^1.88.0",
     "@types/xml2js": "^0.4.14",
-    "@typescript-eslint/eslint-plugin": "^8.50.1",
+    "@typescript-eslint/eslint-plugin": "^8.52.0",
     "@typescript-eslint/parser": "^8.32.1",
     "@vscode/debugprotocol": "^1.68.0",
     "@vscode/test-cli": "^0.0.12",
