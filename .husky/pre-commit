@@ -7,6 +7,7 @@ npx lint-staged
 
 # Check if there are any changes in previously staged files
 UNSTAGED_CHANGES=0
+IFS=$'\n'
 for FILE in $STAGED_FILES; do
   if [ -f "$FILE" ] && git diff --quiet "$FILE"; then
     # No changes in this file
