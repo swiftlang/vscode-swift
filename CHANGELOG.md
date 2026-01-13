@@ -5,6 +5,7 @@
 ### Added
 
 - Show progress when describing/listing dependencies on package load ([#2028](https://github.com/swiftlang/vscode-swift/pull/2028))
+- An official public API for the Swift extension that can be used by other Visual Studio Code extensions ([#2030](https://github.com/swiftlang/vscode-swift/pull/2030))
 
 ### Fixed
 

@@ -15,6 +15,7 @@ import * as assert from "assert";
 import { expect } from "chai";
 import * as vscode from "vscode";
 
+import { getSwiftExtensionApi } from "@src/SwiftExtensionApi";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { SwiftExecution } from "@src/tasks/SwiftExecution";
 import { getBuildAllTask } from "@src/tasks/SwiftTaskProvider";
@@ -30,9 +31,19 @@ suite("Extension Test Suite", function () {
         },
     });
 
+    suite("Extension API", function () {
+        test("can use getSwiftExtensionApi() to retrieve the Swift extension's API", async () => {
+            // Chai's expect() tries to introspect the API on failure which causes VS Code to complain and give a
+            // useless error message about using proposed API. Check it ourselves and output a reasonable error.
+            const swiftExtensionApi = await getSwiftExtensionApi();
+            if (!swiftExtensionApi || typeof swiftExtensionApi !== "object") {
+                assert.fail("The Swift extension did not return an API.");
+            }
+        });
+    });
+
     suite("Workspace", function () {
-        /** Verify tasks.json is being loaded */
-        test("Tasks.json", async () => {
+        test("tasks.json is loaded correctly", async () => {
             const folder = findWorkspaceFolder("defaultPackage", workspaceContext);
             assert.ok(folder);
             const buildAllTask = await getBuildAllTask(folder);

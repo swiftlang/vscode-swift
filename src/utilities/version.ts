@@ -11,14 +11,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import { Version as ExternalVersion, VersionInterface } from "../SwiftExtensionApi";
 
-export interface VersionInterface {
-    major: number;
-    minor: number;
-    patch: number;
-}
-
-export class Version implements VersionInterface {
+export class Version implements ExternalVersion {
     constructor(
         readonly major: number,
         readonly minor: number,

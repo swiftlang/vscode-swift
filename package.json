@@ -3,6 +3,7 @@
   "displayName": "Swift",
   "description": "Swift Language Support for Visual Studio Code.",
   "version": "2.16.0-dev",
+  "api-version": "0.1.0",
   "publisher": "swiftlang",
   "icon": "icon.png",
   "repository": {

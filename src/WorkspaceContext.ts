@@ -17,6 +17,13 @@ import * as vscode from "vscode";
 import { ContextKeys } from "./ContextKeyManager";
 import { DiagnosticsManager } from "./DiagnosticsManager";
 import { FolderContext } from "./FolderContext";
+import {
+    FolderEvent as ExternalFolderEvent,
+    WorkspaceContext as ExternalWorkspaceContext,
+    FileOperation,
+    FolderOperation,
+    SwiftFileEvent,
+} from "./SwiftExtensionApi";
 import { TestKind } from "./TestExplorer/TestKind";
 import { TestRunManager } from "./TestExplorer/TestRunManager";
 import configuration from "./configuration";
@@ -39,11 +46,20 @@ import { isExcluded, isPathInsidePath } from "./utilities/filesystem";
 import { swiftLibraryPathKey } from "./utilities/utilities";
 import { isValidWorkspaceFolder, searchForPackages } from "./utilities/workspace";
 
+// Re-export some types from the external API for convenience.
+export { FolderOperation, SwiftFileEvent };
+
+// Need to re-export FolderEvent with internal typings.
+export interface FolderEvent extends ExternalFolderEvent {
+    workspace: WorkspaceContext;
+    folder: FolderContext | null;
+}
+
 /**
  * Context for whole workspace. Holds array of contexts for each workspace folder
  * and the ExtensionContext
  */
-export class WorkspaceContext implements vscode.Disposable {
+export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Disposable {
     public folders: FolderContext[] = [];
     public currentFolder: FolderContext | null | undefined;
     public currentDocument: vscode.Uri | null;
@@ -655,51 +671,4 @@ interface BuildEvent {
     targetName: string;
     launchConfig: vscode.DebugConfiguration;
     options: vscode.DebugSessionOptions;
-}
-
-/** Workspace Folder Operation types */
-export enum FolderOperation {
-    // Package folder has been added
-    add = "add",
-    // Package folder has been removed
-    remove = "remove",
-    // Workspace folder has gained focus via a file inside the folder becoming the actively edited file
-    focus = "focus",
-    // Workspace folder loses focus because another workspace folder gained it
-    unfocus = "unfocus",
-    // Package.swift has been updated
-    packageUpdated = "packageUpdated",
-    // Package.resolved has been updated
-    resolvedUpdated = "resolvedUpdated",
-    // .build/workspace-state.json has been updated
-    workspaceStateUpdated = "workspaceStateUpdated",
-    // .build/workspace-state.json has been updated
-    packageViewUpdated = "packageViewUpdated",
-    // Package plugins list has been updated
-    pluginsUpdated = "pluginsUpdated",
-    // The folder's swift toolchain version has been updated
-    swiftVersionUpdated = "swiftVersionUpdated",
-}
-
-/** Workspace Folder Event */
-export interface FolderEvent {
-    operation: FolderOperation;
-    workspace: WorkspaceContext;
-    folder: FolderContext | null;
-}
-
-/** File Operation types */
-export enum FileOperation {
-    // File has been created
-    created = "created",
-    // File has been changed
-    changed = "changed",
-    // File was deleted
-    deleted = "deleted",
-}
-
-/** Swift File Event */
-export interface SwiftFileEvent {
-    operation: FileOperation;
-    uri: vscode.Uri;
 }
