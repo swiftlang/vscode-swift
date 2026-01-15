@@ -40,7 +40,6 @@ import { SourceKitLogMessageNotification, SourceKitLogMessageParams } from "./ex
 import { DidChangeActiveDocumentNotification } from "./extensions/DidChangeActiveDocumentRequest";
 import { PollIndexRequest, WorkspaceSynchronizeRequest } from "./extensions/PollIndexRequest";
 import { activateGetReferenceDocument } from "./getReferenceDocument";
-import { activateLegacyInlayHints } from "./inlayHints";
 import { activatePeekDocuments } from "./peekDocuments";
 
 /**
@@ -170,21 +169,6 @@ export class LanguageClientManager implements vscode.Disposable {
         });
 
         this.subscriptions.push(onChangeConfig);
-
-        // Swift versions prior to 5.6 don't support file changes, so need to restart
-        // lSP server when a file is either created or deleted
-        if (this.swiftVersion.isLessThan(new Version(5, 6, 0))) {
-            folderContext.workspaceContext.logger.debug("LSP: Adding new/delete file handlers");
-            // restart LSP server on creation of a new file
-            const onDidCreateFileDisposable = vscode.workspace.onDidCreateFiles(() => {
-                void this.restart();
-            });
-            // restart LSP server on deletion of a file
-            const onDidDeleteFileDisposable = vscode.workspace.onDidDeleteFiles(() => {
-                void this.restart();
-            });
-            this.subscriptions.push(onDidCreateFileDisposable, onDidDeleteFileDisposable);
-        }
 
         this.waitingOnRestartCount = 0;
         this.documentSymbolWatcher = undefined;
@@ -545,10 +529,6 @@ export class LanguageClientManager implements vscode.Disposable {
                 // Now that we've started up correctly, start the error handler to auto-restart
                 // if sourcekit-lsp crashes during normal operation.
                 errorHandler.enable();
-
-                if (this.swiftVersion.isLessThan(new Version(5, 7, 0))) {
-                    this.legacyInlayHints = activateLegacyInlayHints(client);
-                }
 
                 this.peekDocuments = activatePeekDocuments(client);
                 this.getReferenceDocument = activateGetReferenceDocument(client);

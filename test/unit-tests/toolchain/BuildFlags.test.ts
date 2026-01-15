@@ -191,11 +191,11 @@ suite("BuildFlags Test Suite", () => {
             ]);
         });
 
-        test("configuration provided, before swift 5.8", () => {
-            mockedToolchain.swiftVersion = new Version(5, 7, 0);
+        test("configuration provided", () => {
+            mockedToolchain.swiftVersion = new Version(5, 9, 0);
             buildPathConfig.setValue("/some/other/full/test/path");
             expect(buildFlags.buildPathFlags()).to.deep.equal([
-                "--build-path",
+                "--scratch-path",
                 "/some/other/full/test/path",
             ]);
         });

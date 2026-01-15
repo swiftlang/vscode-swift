@@ -5,6 +5,7 @@
 ### Added
 
 - Show progress when describing/listing dependencies on package load ([#2028](https://github.com/swiftlang/vscode-swift/pull/2028))
+- Drop support for Swift 5.8 ([#1853](https://github.com/swiftlang/vscode-swift/pull/1853))
 
 ### Fixed
 
