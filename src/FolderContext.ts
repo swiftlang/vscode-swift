@@ -155,7 +155,7 @@ export class FolderContext implements vscode.Disposable {
 
         // List the package's dependencies without blocking folder creation
         void swiftPackage
-            .loadPackageState(folderContext)
+            .loadPackageState(folderContext, configuration.disableSwiftPMIntegration)
             .then(async () => await swiftPackage.error)
             .catch(error => error)
             .then(async error => {
@@ -203,7 +203,7 @@ export class FolderContext implements vscode.Disposable {
 
     /** reload swift package for this folder */
     async reload() {
-        await this.swiftPackage.reload(this);
+        await this.swiftPackage.reload(this, configuration.disableSwiftPMIntegration);
     }
 
     /** reload Package.resolved for this folder */
