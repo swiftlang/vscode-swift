@@ -38,7 +38,7 @@ import { SwiftLoggerFactory } from "./logging/SwiftLoggerFactory";
 import { PlaygroundProvider } from "./playgrounds/PlaygroundProvider";
 import { SwiftEnvironmentVariablesManager, SwiftTerminalProfileProvider } from "./terminal";
 import { SelectedXcodeWatcher } from "./toolchain/SelectedXcodeWatcher";
-import { checkForSwiftlyInstallation } from "./toolchain/swiftly";
+import { Swiftly, checkForSwiftlyInstallation } from "./toolchain/swiftly";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { LanguageStatusItems } from "./ui/LanguageStatusItems";
 import { getReadOnlyDocumentProvider } from "./ui/ReadOnlyDocumentProvider";
@@ -361,7 +361,6 @@ async function createActiveToolchain(
 ): Promise<SwiftToolchain | undefined> {
     // Check if there's a .swift-version file in the workspace and Swiftly is not installed
     if (await hasSwiftVersionFile()) {
-        const { Swiftly } = await import("./toolchain/swiftly");
         const swiftlyInstalled = await Swiftly.isInstalled();
 
         if (!swiftlyInstalled) {

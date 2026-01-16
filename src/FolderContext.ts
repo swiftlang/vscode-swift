@@ -23,10 +23,12 @@ import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { TestRunManager } from "./TestExplorer/TestRunManager";
 import { TestRunProxy } from "./TestExplorer/TestRunner";
 import { FolderOperation, WorkspaceContext } from "./WorkspaceContext";
+import { handleMissingSwiftly } from "./commands/installSwiftly";
 import configuration from "./configuration";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { PlaygroundProvider } from "./playgrounds/PlaygroundProvider";
 import { TaskQueue } from "./tasks/TaskQueue";
+import { Swiftly } from "./toolchain/swiftly";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { showToolchainError } from "./ui/ToolchainSelection";
 import { isPathInsidePath } from "./utilities/filesystem";
@@ -96,6 +98,23 @@ export class FolderContext implements ExternalFolderContext, vscode.Disposable {
     ): Promise<FolderContext> {
         const statusItemText = `Loading Package (${FolderContext.uriName(folder)})`;
         workspaceContext.statusItem.start(statusItemText);
+
+        // Check if this folder has a .swift-version file and Swiftly is not installed
+        try {
+            const swiftVersionPath = vscode.Uri.joinPath(folder, ".swift-version");
+            await vscode.workspace.fs.stat(swiftVersionPath);
+
+            // File exists, check if Swiftly is installed
+            const swiftlyInstalled = await Swiftly.isInstalled();
+            if (!swiftlyInstalled) {
+                workspaceContext.logger.info(
+                    `Detected .swift-version file in ${FolderContext.uriName(folder)} without Swiftly, prompting for installation`
+                );
+                await handleMissingSwiftly(workspaceContext.logger);
+            }
+        } catch {
+            // .swift-version file doesn't exist, continue normally
+        }
 
         let toolchain: SwiftToolchain;
         try {

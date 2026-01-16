@@ -33,33 +33,41 @@ export async function promptForSwiftlyInstallation(
 ): Promise<SwiftlyInstallOptions | null> {
     const installMessage = `A .swift-version file was detected. Install Swiftly to automatically manage Swift toolchain versions for this project.`;
 
-    const selection = await vscode.window.showInformationMessage(
+    const selection = await vscode.window.showWarningMessage(
         installMessage,
         { modal: false },
         "Install Swiftly",
-        "Customize Directories",
-        "Don't Show Again",
-        "Cancel"
+        "Don't Show Again"
     );
 
     switch (selection) {
-        case "Install Swiftly":
-            return {}; // Use defaults
+        case "Install Swiftly": {
+            // Ask if user wants to customize directories
+            const customizeSelection = await vscode.window.showInformationMessage(
+                "Do you want to customize the installation directories?",
+                { modal: false },
+                "Use Defaults",
+                "Customize Directories"
+            );
 
-        case "Customize Directories":
-            return await promptForDirectoryCustomization(logger);
+            if (customizeSelection === "Customize Directories") {
+                return await promptForDirectoryCustomization(logger);
+            } else if (customizeSelection === "Use Defaults") {
+                return {}; // Use defaults
+            }
+            return null; // User closed the prompt
+        }
 
         case "Don't Show Again":
             // Set a workspace setting to suppress this prompt
             await vscode.workspace
                 .getConfiguration("swift")
-                .update("suppressSwiftlyInstallPrompt", true, vscode.ConfigurationTarget.Global);
+                .update("disableSwiftlyInstallPrompt", true, vscode.ConfigurationTarget.Global);
             logger?.info("Swiftly installation prompt suppressed by user");
             return null;
 
-        case "Cancel":
         default:
-            return null;
+            return null; // User closed the prompt
     }
 }
 
@@ -163,7 +171,7 @@ export async function installSwiftlyWithProgress(
  * @returns true if suppressed, false otherwise
  */
 export function isSwiftlyPromptSuppressed(): boolean {
-    return vscode.workspace.getConfiguration("swift").get("suppressSwiftlyInstallPrompt", false);
+    return vscode.workspace.getConfiguration("swift").get("disableSwiftlyInstallPrompt", false);
 }
 
 /**

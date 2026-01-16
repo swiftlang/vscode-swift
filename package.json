@@ -1129,10 +1129,10 @@
             "order": 4,
             "scope": "machine-overridable"
           },
-          "swift.suppressSwiftlyInstallPrompt": {
+          "swift.disableSwiftlyInstallPrompt": {
             "type": "boolean",
             "default": false,
-            "markdownDescription": "Suppress the automatic Swiftly installation prompt when no Swift toolchain is found.",
+            "markdownDescription": "Disable the automatic Swiftly installation prompt when no Swift toolchain is found.",
             "order": 98,
             "scope": "application"
           },
