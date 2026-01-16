@@ -17,8 +17,10 @@ import * as vscode from "vscode";
 
 import { FolderContext } from "./FolderContext";
 import { FolderOperation } from "./WorkspaceContext";
+import { handleMissingSwiftly } from "./commands/installSwiftly";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { BuildFlags } from "./toolchain/BuildFlags";
+import { handleMissingSwiftlyToolchain } from "./toolchain/swiftly";
 import { showReloadExtensionNotification } from "./ui/ReloadExtension";
 import { fileExists } from "./utilities/filesystem";
 import { Version } from "./utilities/version";
@@ -138,6 +140,31 @@ export class PackageWatcher {
     async handleSwiftVersionFileChange() {
         const version = await this.readSwiftVersionFile();
         if (version?.toString() !== this.currentVersion?.toString()) {
+            if (version) {
+                const swiftlyInstalled = await handleMissingSwiftly(this.logger);
+                if (swiftlyInstalled) {
+                    const toolchainInstalled = await handleMissingSwiftlyToolchain(
+                        version.toString(),
+                        this.folderContext.workspaceContext.extensionContext.extensionPath,
+                        this.logger,
+                        this.folderContext.folder
+                    );
+                    if (toolchainInstalled) {
+                        // Build dynamic message based on installation results
+                        const message =
+                            "Swiftly and Swift toolchain have been installed. Please reload the extension to use the new toolchain.";
+                        await showReloadExtensionNotification(message);
+                        return;
+                    } else {
+                        // Only Swiftly was installed
+                        const message =
+                            "Swiftly has been installed. Please reload the extension to continue.";
+                        await showReloadExtensionNotification(message);
+                        return;
+                    }
+                }
+            }
+
             await this.folderContext.fireEvent(FolderOperation.swiftVersionUpdated);
             await showReloadExtensionNotification(
                 "Changing the swift toolchain version requires the extension to be reloaded"
