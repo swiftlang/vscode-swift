@@ -15,10 +15,16 @@ import { expect } from "chai";
 import * as fs from "fs/promises";
 import * as mockFS from "mock-fs";
 import * as os from "os";
-import { match } from "sinon";
+import { SinonStub, match, stub } from "sinon";
+import * as tar from "tar";
 import * as vscode from "vscode";
 
 import * as askpass from "@src/askpass/askpass-server";
+import {
+    handleMissingSwiftly,
+    isSwiftlyPromptSuppressed,
+    promptForSwiftlyInstallation,
+} from "@src/commands/installSwiftly";
 import { installSwiftlyToolchainWithProgress } from "@src/commands/installSwiftlyToolchain";
 import * as SwiftOutputChannelModule from "@src/logging/SwiftOutputChannel";
 import {
@@ -37,6 +43,8 @@ suite("Swiftly Unit Tests", () => {
     const mockedEnv = mockGlobalValue(process, "env");
     const mockSwiftOutputChannelModule = mockGlobalModule(SwiftOutputChannelModule);
     const mockOS = mockGlobalModule(os);
+    const mockTar = mockGlobalModule(tar);
+    const mockedFetch = mockGlobalValue(globalThis, "fetch");
 
     setup(() => {
         mockAskpass.withAskpassServer.callsFake(task => task("nonce", 8080));
@@ -44,6 +52,8 @@ suite("Swiftly Unit Tests", () => {
         mockUtilities.execFileStreamOutput.reset();
         mockSwiftOutputChannelModule.SwiftOutputChannel.reset();
         mockOS.tmpdir.reset();
+        mockTar.extract.reset();
+        mockedFetch.setValue(async () => ({}) as Response);
 
         // Mock os.tmpdir() to return a valid temp directory path for Windows compatibility
         mockOS.tmpdir.returns(process.platform === "win32" ? "C:\\temp" : "/tmp");
@@ -1492,6 +1502,262 @@ apt-get -y install libncurses5-dev
 
         test("cancellationMessage should be properly defined", () => {
             expect(Swiftly.cancellationMessage).to.equal("Installation cancelled by user");
+        });
+    });
+
+    suite("installSwiftly()", () => {
+        const mockProgress = {
+            report: () => {},
+        } as vscode.Progress<{ message?: string; increment?: number }>;
+
+        let showInformationMessageStub: SinonStub;
+        let showInputBoxStub: SinonStub;
+        let getConfigurationStub: SinonStub;
+        let configUpdateStub: SinonStub;
+        let configGetStub: SinonStub;
+        let isInstalledStub: SinonStub;
+
+        setup(() => {
+            // Mock os.homedir() to return a valid home directory
+            mockOS.homedir.returns("/home/testuser");
+
+            // Stub vscode.window methods
+            showInformationMessageStub = stub(vscode.window, "showInformationMessage");
+            showInputBoxStub = stub(vscode.window, "showInputBox");
+
+            // Stub configuration methods
+            configUpdateStub = stub();
+            configGetStub = stub();
+            getConfigurationStub = stub(vscode.workspace, "getConfiguration").returns({
+                get: configGetStub,
+                update: configUpdateStub,
+            } as any);
+
+            // Stub Swiftly.isInstalled
+            isInstalledStub = stub(Swiftly, "isInstalled");
+        });
+
+        teardown(() => {
+            // Restore all stubs
+            showInformationMessageStub.restore();
+            showInputBoxStub.restore();
+            getConfigurationStub.restore();
+            isInstalledStub.restore();
+            // Reset mockOS.homedir
+            mockOS.homedir.reset();
+        });
+
+        test("should handle download failures", async () => {
+            mockedPlatform.setValue("darwin");
+
+            // Mock fetch to return an error response
+            const mockResponse = {
+                ok: false,
+                status: 404,
+            } as Response;
+            mockedFetch.setValue(async () => mockResponse);
+
+            await expect(Swiftly.installSwiftly(mockProgress)).to.eventually.be.rejectedWith(
+                "Failed to download installer: HTTP 404"
+            );
+        });
+
+        test("should handle unsupported platforms", async () => {
+            mockedPlatform.setValue("win32");
+
+            await expect(Swiftly.installSwiftly(mockProgress)).to.eventually.be.rejectedWith(
+                "Swiftly is not supported on this platform"
+            );
+        });
+
+        suite("promptForSwiftlyInstallation()", () => {
+            test('should return empty options object when user selects "Install Swiftly" and "Use Defaults"', async () => {
+                showInformationMessageStub.onFirstCall().resolves("Install Swiftly");
+                showInformationMessageStub.onSecondCall().resolves("Use Defaults");
+
+                const result = await promptForSwiftlyInstallation();
+
+                expect(result).to.deep.equal({});
+                expect(showInformationMessageStub).to.have.been.calledTwice;
+            });
+
+            test('should prompt for directories when user selects "Install Swiftly" and "Customize Directories"', async () => {
+                showInformationMessageStub.onFirstCall().resolves("Install Swiftly");
+                showInformationMessageStub.onSecondCall().resolves("Customize Directories");
+                showInputBoxStub.onFirstCall().resolves("/custom/home");
+                showInputBoxStub.onSecondCall().resolves("/custom/bin");
+
+                const result = await promptForSwiftlyInstallation();
+
+                expect(result).to.deep.equal({
+                    swiftlyHomeDir: "/custom/home",
+                    swiftlyBinDir: "/custom/bin",
+                });
+                expect(showInputBoxStub).to.have.been.calledTwice;
+            });
+
+            test("should return null when user cancels directory customization", async () => {
+                showInformationMessageStub.onFirstCall().resolves("Install Swiftly");
+                showInformationMessageStub.onSecondCall().resolves("Customize Directories");
+                showInputBoxStub.onFirstCall().resolves(undefined); // User cancels
+
+                const result = await promptForSwiftlyInstallation();
+
+                expect(result).to.be.null;
+            });
+
+            test('should set configuration and return null when user selects "Don\'t Show Again"', async () => {
+                showInformationMessageStub.resolves("Don't Show Again");
+
+                const result = await promptForSwiftlyInstallation();
+
+                expect(result).to.be.null;
+                expect(configUpdateStub).to.have.been.calledWith(
+                    "disableSwiftlyInstallPrompt",
+                    true,
+                    vscode.ConfigurationTarget.Global
+                );
+            });
+
+            test("should return null when user dismisses first prompt", async () => {
+                showInformationMessageStub.onFirstCall().resolves(undefined);
+
+                const result = await promptForSwiftlyInstallation();
+
+                expect(result).to.be.null;
+            });
+
+            test('should return null when user dismisses second prompt after selecting "Install Swiftly"', async () => {
+                showInformationMessageStub.onFirstCall().resolves("Install Swiftly");
+                showInformationMessageStub.onSecondCall().resolves(undefined); // User dismisses
+
+                const result = await promptForSwiftlyInstallation();
+
+                expect(result).to.be.null;
+            });
+
+            test("should validate directory paths during customization", async () => {
+                showInformationMessageStub.onFirstCall().resolves("Install Swiftly");
+                showInformationMessageStub.onSecondCall().resolves("Customize Directories");
+
+                // Mock both showInputBox calls with validation testing on first call
+                let validationTested = false;
+                showInputBoxStub.callsFake((options: any) => {
+                    if (!validationTested) {
+                        // Test the validation function on first call
+                        const emptyValidation = options.validateInput?.("");
+                        expect(emptyValidation).to.equal("Directory path cannot be empty");
+
+                        const relativeValidation = options.validateInput?.("relative/path");
+                        expect(relativeValidation).to.equal("Please provide an absolute path");
+
+                        const validValidation = options.validateInput?.("/valid/path");
+                        expect(validValidation).to.be.null;
+
+                        validationTested = true;
+                        return Promise.resolve("/custom/home");
+                    } else {
+                        return Promise.resolve("/custom/bin");
+                    }
+                });
+
+                const result = await promptForSwiftlyInstallation();
+
+                expect(result).to.deep.equal({
+                    swiftlyHomeDir: "/custom/home",
+                    swiftlyBinDir: "/custom/bin",
+                });
+            });
+        });
+
+        suite("isSwiftlyPromptSuppressed()", () => {
+            test("should return false when setting is false", () => {
+                configGetStub.returns(false);
+
+                const result = isSwiftlyPromptSuppressed();
+
+                expect(result).to.be.false;
+                expect(configGetStub).to.have.been.calledWith("disableSwiftlyInstallPrompt", false);
+            });
+
+            test("should return true when setting is true", () => {
+                configGetStub.returns(true);
+
+                const result = isSwiftlyPromptSuppressed();
+
+                expect(result).to.be.true;
+                expect(configGetStub).to.have.been.calledWith("disableSwiftlyInstallPrompt", false);
+            });
+
+            test("should return false by default when setting is not set", () => {
+                // When the setting is not set, the stub should use the default value
+                configGetStub.callsFake((_key: string, defaultValue: any) => defaultValue);
+
+                const result = isSwiftlyPromptSuppressed();
+
+                expect(result).to.be.false;
+            });
+        });
+
+        suite("handleMissingSwiftly()", () => {
+            test("should return true immediately when Swiftly is already installed", async () => {
+                isInstalledStub.resolves(true);
+
+                const result = await handleMissingSwiftly();
+
+                expect(result).to.be.true;
+                expect(showInformationMessageStub).to.not.have.been.called;
+            });
+
+            test("should return false when prompt is suppressed", async () => {
+                isInstalledStub.resolves(false);
+                configGetStub.returns(true); // Prompt suppressed
+
+                const result = await handleMissingSwiftly();
+
+                expect(result).to.be.false;
+                expect(showInformationMessageStub).to.not.have.been.called;
+            });
+
+            test("should return false when user cancels", async () => {
+                isInstalledStub.resolves(false);
+                configGetStub.returns(false); // Prompt not suppressed
+                showInformationMessageStub.resolves(undefined); // User cancels
+
+                const result = await handleMissingSwiftly();
+
+                expect(result).to.be.false;
+            });
+
+            test('should attempt installation when user selects "Install Swiftly"', async () => {
+                isInstalledStub.resolves(false);
+                configGetStub.returns(false); // Prompt not suppressed
+                // Need to stub both prompts in the new two-step flow
+                showInformationMessageStub.onFirstCall().resolves("Install Swiftly");
+                showInformationMessageStub.onSecondCall().resolves("Use Defaults");
+
+                // Stub installSwiftly to avoid actual installation
+                const installStub = stub(Swiftly, "installSwiftly").resolves();
+
+                try {
+                    const withProgressStub = stub(vscode.window, "withProgress").callsFake(
+                        async (_options, task) => {
+                            await task({ report: () => {} } as any, {} as any);
+                        }
+                    );
+
+                    const result = await handleMissingSwiftly();
+
+                    // Result depends on whether installation succeeds
+                    // In this test, we mocked it to succeed
+                    expect(result).to.be.true;
+                    expect(installStub).to.have.been.called;
+
+                    withProgressStub.restore();
+                } finally {
+                    installStub.restore();
+                }
+            });
         });
     });
 });
