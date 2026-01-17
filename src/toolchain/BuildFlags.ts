@@ -132,13 +132,30 @@ export class BuildFlags {
         for (let i = 0; i < args.length; i++) {
             const arg = args[i];
             if ((arg === "--scratch-path" || arg === "--build-path") && i + 1 < args.length) {
-                return args[i + 1];
+                const path = args[i + 1];
+                if (path === "") {
+                    throw new Error(`Invalid ${arg}: path cannot be empty`);
+                }
+                if (path.startsWith("--")) {
+                    throw new Error(
+                        `Invalid ${arg}: expected a path but got another flag '${path}'`
+                    );
+                }
+                return path;
             }
             if (arg.startsWith("--scratch-path=")) {
-                return arg.substring("--scratch-path=".length);
+                const path = arg.substring("--scratch-path=".length);
+                if (path === "") {
+                    throw new Error("Invalid --scratch-path: path cannot be empty");
+                }
+                return path;
             }
             if (arg.startsWith("--build-path=")) {
-                return arg.substring("--build-path=".length);
+                const path = arg.substring("--build-path=".length);
+                if (path === "") {
+                    throw new Error("Invalid --build-path: path cannot be empty");
+                }
+                return path;
             }
         }
         return undefined;
@@ -156,18 +173,10 @@ export class BuildFlags {
         const nodePath =
             platform === "posix" ? path.posix : platform === "win32" ? path.win32 : path;
 
-        // First check if user has --scratch-path or --build-path in their build arguments
-        let buildPath = BuildFlags.extractScratchPath(configuration.buildArguments);
-
-        // If not in buildArguments, check packageArguments
-        if (!buildPath) {
-            buildPath = BuildFlags.extractScratchPath(configuration.packageArguments);
-        }
-
-        // If not in either arguments list, check the buildPath configuration
-        if (!buildPath) {
-            buildPath = configuration.buildPath.length > 0 ? configuration.buildPath : ".build";
-        }
+        const buildPath =
+            BuildFlags.extractScratchPath(configuration.buildArguments) ??
+            BuildFlags.extractScratchPath(configuration.packageArguments) ??
+            (configuration.buildPath.length > 0 ? configuration.buildPath : ".build");
 
         if (!nodePath.isAbsolute(buildPath) && absolute) {
             return nodePath.join(workspacePath, buildPath);
