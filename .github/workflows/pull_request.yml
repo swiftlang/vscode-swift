@@ -48,7 +48,7 @@ jobs:
   tests:
     name: ${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && 'Full Test Run' || 'Test'}}
     needs: package
-    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.2
+    uses: plemarquand/github-workflows/.github/workflows/swift_package_test.yml@install-python-59-on-older-toolchains
     with:
       needs_token: true
       # Linux
