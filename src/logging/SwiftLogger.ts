@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
 import * as winston from "winston";
+import type * as Transport from "winston-transport";
 
 import configuration from "../configuration";
 import { IS_RUNNING_UNDER_TEST } from "../utilities/utilities";
@@ -28,12 +29,13 @@ type LoggerMeta = any;
 type LogMessageOptions = { append: boolean };
 
 export class SwiftLogger implements vscode.Disposable {
-    private disposables: vscode.Disposable[] = [];
+    private subscriptions: vscode.Disposable[] = [];
     private logger: winston.Logger;
     protected rollingLog: RollingLog;
     protected outputChannel: vscode.OutputChannel;
     private fileTransport: FileTransport;
     private cachedOutputChannelLevel: string | undefined;
+    private isDisposed: boolean = false;
 
     constructor(
         public readonly name: string,
@@ -44,19 +46,18 @@ export class SwiftLogger implements vscode.Disposable {
         this.outputChannel = vscode.window.createOutputChannel(name);
         const ouptutChannelTransport = new OutputChannelTransport(this.outputChannel);
         ouptutChannelTransport.level = this.outputChannelLevel;
-        const rollingLogTransport = new RollingLogTransport(this.rollingLog);
 
         // Create file transport
         this.fileTransport = new FileTransport(this.logFilePath);
         this.fileTransport.level = "debug"; // File logging at the 'debug' level always
 
         // Create logger with all transports
-        const transports = [
-            ouptutChannelTransport,
-            this.fileTransport,
-            // Only want to capture the rolling log in memory when testing
-            ...(IS_RUNNING_UNDER_TEST ? [rollingLogTransport] : []),
-        ];
+        const transports: Transport[] = [ouptutChannelTransport, this.fileTransport];
+        if (IS_RUNNING_UNDER_TEST) {
+            // We only want to capture the rolling log in memory when testing
+            const rollingLogTransport = new RollingLogTransport(this.rollingLog);
+            transports.push(rollingLogTransport);
+        }
 
         this.logger = winston.createLogger({
             transports: transports,
@@ -69,19 +70,7 @@ export class SwiftLogger implements vscode.Disposable {
                 winston.format.colorize()
             ),
         });
-        this.disposables.push(
-            {
-                dispose: () => {
-                    this.logger.close();
-                    if (ouptutChannelTransport.close) {
-                        ouptutChannelTransport.close();
-                    }
-                    if (rollingLogTransport.close) {
-                        rollingLogTransport.close();
-                    }
-                    this.fileTransport.close();
-                },
-            },
+        this.subscriptions.push(
             vscode.workspace.onDidChangeConfiguration(e => {
                 if (
                     e.affectsConfiguration("swift.outputChannelLogLevel") ||
@@ -120,6 +109,10 @@ export class SwiftLogger implements vscode.Disposable {
     }
 
     private logWithBuffer(level: string, message: string | Error, meta?: LoggerMeta) {
+        if (this.isDisposed) {
+            return;
+        }
+
         // Log to all transports (output channel, file, console, etc.)
         if (message instanceof Error) {
             this.logger.log(level, message);
@@ -174,6 +167,9 @@ export class SwiftLogger implements vscode.Disposable {
     }
 
     dispose() {
-        this.disposables.forEach(d => d.dispose());
+        this.isDisposed = true;
+        this.logger.close();
+        this.rollingLog.clear();
+        this.subscriptions.forEach(d => d.dispose());
     }
 }
