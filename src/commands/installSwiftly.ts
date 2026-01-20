@@ -41,22 +41,8 @@ export async function promptForSwiftlyInstallation(
     );
 
     switch (selection) {
-        case "Install Swiftly": {
-            // Ask if user wants to customize directories
-            const customizeSelection = await vscode.window.showInformationMessage(
-                "Do you want to customize the installation directories?",
-                { modal: false },
-                "Use Defaults",
-                "Customize Directories"
-            );
-
-            if (customizeSelection === "Customize Directories") {
-                return await promptForDirectoryCustomization(logger);
-            } else if (customizeSelection === "Use Defaults") {
-                return {}; // Use defaults
-            }
-            return null; // User closed the prompt
-        }
+        case "Install Swiftly":
+            return await promptForDirectoryCustomization();
 
         case "Don't Show Again":
             // Set a workspace setting to suppress this prompt
@@ -79,13 +65,38 @@ export async function promptForSwiftlyInstallation(
 async function promptForDirectoryCustomization(
     logger?: SwiftLogger
 ): Promise<SwiftlyInstallOptions | null> {
+    // Ask if user wants to customize directories
+    const customizeSelection = await vscode.window.showInformationMessage(
+        "Do you want to customize swiftly environment variables?",
+        {
+            modal: true,
+            detail: `Swiftly uses environment variables to configure its behavior:
+
+- SWIFTLY_HOME_DIR: Configures where configuration files are stored.
+- SWIFTLY_BIN_DIR: Configures where shims are stored.
+
+You can choose to modify these environment variables before installation or leave them at their default values.`,
+        },
+        "Use Defaults",
+        "Customize"
+    );
+
+    if (customizeSelection === null) {
+        // The user cancelled the modal
+        return null;
+    }
+
+    if (customizeSelection === "Use Defaults") {
+        return {};
+    }
+
+    // The user opted to customize swiftly environment variables
     const homeDir = os.homedir();
     const defaultSwiftlyHome = path.join(homeDir, ".swiftly");
-    const defaultSwiftlyBin = path.join(homeDir, ".local", "bin");
 
     const customHomeDir = await vscode.window.showInputBox({
-        title: "Customize Swiftly Home Directory",
-        prompt: "Enter the directory where Swiftly will store its data and toolchains",
+        title: "Customize $SWIFTLY_HOME_DIR",
+        prompt: "Enter the directory where Swiftly will store configuration files.",
         value: defaultSwiftlyHome,
         placeHolder: defaultSwiftlyHome,
         validateInput: value => {
@@ -103,9 +114,10 @@ async function promptForDirectoryCustomization(
         return null; // User cancelled
     }
 
+    const defaultSwiftlyBin = path.join(customHomeDir, "bin");
     const customBinDir = await vscode.window.showInputBox({
-        title: "Customize Swiftly Binary Directory",
-        prompt: "Enter the directory where Swiftly binaries will be installed",
+        title: "Customize $SWIFTLY_BIN_DIR",
+        prompt: "Enter the directory where Swiftly will store its binaries.",
         value: defaultSwiftlyBin,
         placeHolder: defaultSwiftlyBin,
         validateInput: value => {

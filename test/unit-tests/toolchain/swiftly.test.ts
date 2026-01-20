@@ -15,7 +15,7 @@ import { expect } from "chai";
 import * as fs from "fs/promises";
 import * as mockFS from "mock-fs";
 import * as os from "os";
-import { SinonStub, match, stub } from "sinon";
+import { match } from "sinon";
 import * as tar from "tar";
 import * as vscode from "vscode";
 
@@ -34,7 +34,16 @@ import {
 } from "@src/toolchain/swiftly";
 import * as utilities from "@src/utilities/utilities";
 
-import { instance, mockGlobalModule, mockGlobalObject, mockGlobalValue } from "../../MockUtils";
+import {
+    MockedObject,
+    instance,
+    mockFn,
+    mockGlobalFunction,
+    mockGlobalModule,
+    mockGlobalObject,
+    mockGlobalValue,
+    mockObject,
+} from "../../MockUtils";
 
 suite("Swiftly Unit Tests", () => {
     const mockAskpass = mockGlobalModule(askpass);
@@ -1510,41 +1519,20 @@ apt-get -y install libncurses5-dev
             report: () => {},
         } as vscode.Progress<{ message?: string; increment?: number }>;
 
-        let showInformationMessageStub: SinonStub;
-        let showInputBoxStub: SinonStub;
-        let getConfigurationStub: SinonStub;
-        let configUpdateStub: SinonStub;
-        let configGetStub: SinonStub;
-        let isInstalledStub: SinonStub;
+        const mockWindow = mockGlobalObject(vscode, "window");
+        const mockWorkspace = mockGlobalObject(vscode, "workspace");
+        let mockConfiguration: MockedObject<vscode.WorkspaceConfiguration>;
 
         setup(() => {
             // Mock os.homedir() to return a valid home directory
             mockOS.homedir.returns("/home/testuser");
 
-            // Stub vscode.window methods
-            showInformationMessageStub = stub(vscode.window, "showInformationMessage");
-            showInputBoxStub = stub(vscode.window, "showInputBox");
-
             // Stub configuration methods
-            configUpdateStub = stub();
-            configGetStub = stub();
-            getConfigurationStub = stub(vscode.workspace, "getConfiguration").returns({
-                get: configGetStub,
-                update: configUpdateStub,
-            } as any);
-
-            // Stub Swiftly.isInstalled
-            isInstalledStub = stub(Swiftly, "isInstalled");
-        });
-
-        teardown(() => {
-            // Restore all stubs
-            showInformationMessageStub.restore();
-            showInputBoxStub.restore();
-            getConfigurationStub.restore();
-            isInstalledStub.restore();
-            // Reset mockOS.homedir
-            mockOS.homedir.reset();
+            mockConfiguration = mockObject<vscode.WorkspaceConfiguration>({
+                get: mockFn(),
+                update: mockFn(),
+            });
+            mockWorkspace.getConfiguration.returns(instance(mockConfiguration));
         });
 
         test("should handle download failures", async () => {
@@ -1572,20 +1560,19 @@ apt-get -y install libncurses5-dev
 
         suite("promptForSwiftlyInstallation()", () => {
             test('should return empty options object when user selects "Install Swiftly" and "Use Defaults"', async () => {
-                showInformationMessageStub.onFirstCall().resolves("Install Swiftly");
-                showInformationMessageStub.onSecondCall().resolves("Use Defaults");
+                mockWindow.showWarningMessage.resolves("Install Swiftly" as any);
+                mockWindow.showInformationMessage.resolves("Use Defaults" as any);
 
                 const result = await promptForSwiftlyInstallation();
 
                 expect(result).to.deep.equal({});
-                expect(showInformationMessageStub).to.have.been.calledTwice;
             });
 
             test('should prompt for directories when user selects "Install Swiftly" and "Customize Directories"', async () => {
-                showInformationMessageStub.onFirstCall().resolves("Install Swiftly");
-                showInformationMessageStub.onSecondCall().resolves("Customize Directories");
-                showInputBoxStub.onFirstCall().resolves("/custom/home");
-                showInputBoxStub.onSecondCall().resolves("/custom/bin");
+                mockWindow.showWarningMessage.resolves("Install Swiftly" as any);
+                mockWindow.showInformationMessage.resolves("Customize" as any);
+                mockWindow.showInputBox.onFirstCall().resolves("/custom/home");
+                mockWindow.showInputBox.onSecondCall().resolves("/custom/bin");
 
                 const result = await promptForSwiftlyInstallation();
 
@@ -1593,13 +1580,12 @@ apt-get -y install libncurses5-dev
                     swiftlyHomeDir: "/custom/home",
                     swiftlyBinDir: "/custom/bin",
                 });
-                expect(showInputBoxStub).to.have.been.calledTwice;
             });
 
             test("should return null when user cancels directory customization", async () => {
-                showInformationMessageStub.onFirstCall().resolves("Install Swiftly");
-                showInformationMessageStub.onSecondCall().resolves("Customize Directories");
-                showInputBoxStub.onFirstCall().resolves(undefined); // User cancels
+                mockWindow.showWarningMessage.resolves("Install Swiftly" as any);
+                mockWindow.showInformationMessage.resolves("Customize" as any);
+                mockWindow.showInputBox.onFirstCall().resolves(undefined); // User cancels
 
                 const result = await promptForSwiftlyInstallation();
 
@@ -1607,12 +1593,12 @@ apt-get -y install libncurses5-dev
             });
 
             test('should set configuration and return null when user selects "Don\'t Show Again"', async () => {
-                showInformationMessageStub.resolves("Don't Show Again");
+                mockWindow.showWarningMessage.resolves("Don't Show Again" as any);
 
                 const result = await promptForSwiftlyInstallation();
 
                 expect(result).to.be.null;
-                expect(configUpdateStub).to.have.been.calledWith(
+                expect(mockConfiguration.update).to.have.been.calledWith(
                     "disableSwiftlyInstallPrompt",
                     true,
                     vscode.ConfigurationTarget.Global
@@ -1620,7 +1606,7 @@ apt-get -y install libncurses5-dev
             });
 
             test("should return null when user dismisses first prompt", async () => {
-                showInformationMessageStub.onFirstCall().resolves(undefined);
+                mockWindow.showWarningMessage.resolves(undefined);
 
                 const result = await promptForSwiftlyInstallation();
 
@@ -1628,8 +1614,8 @@ apt-get -y install libncurses5-dev
             });
 
             test('should return null when user dismisses second prompt after selecting "Install Swiftly"', async () => {
-                showInformationMessageStub.onFirstCall().resolves("Install Swiftly");
-                showInformationMessageStub.onSecondCall().resolves(undefined); // User dismisses
+                mockWindow.showWarningMessage.resolves("Install Swiftly" as any);
+                mockWindow.showInformationMessage.resolves(undefined); // User dismisses
 
                 const result = await promptForSwiftlyInstallation();
 
@@ -1637,12 +1623,12 @@ apt-get -y install libncurses5-dev
             });
 
             test("should validate directory paths during customization", async () => {
-                showInformationMessageStub.onFirstCall().resolves("Install Swiftly");
-                showInformationMessageStub.onSecondCall().resolves("Customize Directories");
+                mockWindow.showWarningMessage.resolves("Install Swiftly" as any);
+                mockWindow.showInformationMessage.resolves("Customize" as any);
 
                 // Mock both showInputBox calls with validation testing on first call
                 let validationTested = false;
-                showInputBoxStub.callsFake((options: any) => {
+                mockWindow.showInputBox.callsFake((options: any) => {
                     if (!validationTested) {
                         // Test the validation function on first call
                         const emptyValidation = options.validateInput?.("");
@@ -1672,26 +1658,24 @@ apt-get -y install libncurses5-dev
 
         suite("isSwiftlyPromptSuppressed()", () => {
             test("should return false when setting is false", () => {
-                configGetStub.returns(false);
+                mockConfiguration.get.withArgs("disableSwiftlyInstallPrompt").returns(false);
 
                 const result = isSwiftlyPromptSuppressed();
 
                 expect(result).to.be.false;
-                expect(configGetStub).to.have.been.calledWith("disableSwiftlyInstallPrompt", false);
             });
 
             test("should return true when setting is true", () => {
-                configGetStub.returns(true);
+                mockConfiguration.get.withArgs("disableSwiftlyInstallPrompt").returns(true);
 
                 const result = isSwiftlyPromptSuppressed();
 
                 expect(result).to.be.true;
-                expect(configGetStub).to.have.been.calledWith("disableSwiftlyInstallPrompt", false);
             });
 
             test("should return false by default when setting is not set", () => {
                 // When the setting is not set, the stub should use the default value
-                configGetStub.callsFake((_key: string, defaultValue: any) => defaultValue);
+                mockConfiguration.get.callsFake((_key: string, defaultValue: any) => defaultValue);
 
                 const result = isSwiftlyPromptSuppressed();
 
@@ -1700,29 +1684,32 @@ apt-get -y install libncurses5-dev
         });
 
         suite("handleMissingSwiftly()", () => {
+            const isInstalledStub = mockGlobalFunction(Swiftly, "isInstalled");
+            const installSwiftlyStub = mockGlobalFunction(Swiftly, "installSwiftly");
+
             test("should return true immediately when Swiftly is already installed", async () => {
                 isInstalledStub.resolves(true);
 
                 const result = await handleMissingSwiftly();
 
                 expect(result).to.be.true;
-                expect(showInformationMessageStub).to.not.have.been.called;
+                expect(mockWindow.showWarningMessage).to.not.have.been.called;
             });
 
             test("should return false when prompt is suppressed", async () => {
                 isInstalledStub.resolves(false);
-                configGetStub.returns(true); // Prompt suppressed
+                mockConfiguration.get.withArgs("disableSwiftlyInstallPrompt").returns(true); // Prompt suppressed
 
                 const result = await handleMissingSwiftly();
 
                 expect(result).to.be.false;
-                expect(showInformationMessageStub).to.not.have.been.called;
+                expect(mockWindow.showWarningMessage).to.not.have.been.called;
             });
 
             test("should return false when user cancels", async () => {
                 isInstalledStub.resolves(false);
-                configGetStub.returns(false); // Prompt not suppressed
-                showInformationMessageStub.resolves(undefined); // User cancels
+                mockConfiguration.get.withArgs("disableSwiftlyInstallPrompt").returns(false); // Prompt not suppressed
+                mockWindow.showWarningMessage.resolves(undefined); // User cancels
 
                 const result = await handleMissingSwiftly();
 
@@ -1731,32 +1718,20 @@ apt-get -y install libncurses5-dev
 
             test('should attempt installation when user selects "Install Swiftly"', async () => {
                 isInstalledStub.resolves(false);
-                configGetStub.returns(false); // Prompt not suppressed
+                mockConfiguration.get.withArgs("disableSwiftlyInstallPrompt").returns(false); // Prompt not suppressed
                 // Need to stub both prompts in the new two-step flow
-                showInformationMessageStub.onFirstCall().resolves("Install Swiftly");
-                showInformationMessageStub.onSecondCall().resolves("Use Defaults");
+                mockWindow.showWarningMessage.resolves("Install Swiftly" as any);
+                mockWindow.showInformationMessage.resolves("Use Defaults" as any);
+                mockWindow.withProgress.callsFake(async (_options, task) => {
+                    await task({ report: () => {} } as any, {} as any);
+                });
 
-                // Stub installSwiftly to avoid actual installation
-                const installStub = stub(Swiftly, "installSwiftly").resolves();
+                const result = await handleMissingSwiftly();
 
-                try {
-                    const withProgressStub = stub(vscode.window, "withProgress").callsFake(
-                        async (_options, task) => {
-                            await task({ report: () => {} } as any, {} as any);
-                        }
-                    );
-
-                    const result = await handleMissingSwiftly();
-
-                    // Result depends on whether installation succeeds
-                    // In this test, we mocked it to succeed
-                    expect(result).to.be.true;
-                    expect(installStub).to.have.been.called;
-
-                    withProgressStub.restore();
-                } finally {
-                    installStub.restore();
-                }
+                // Result depends on whether installation succeeds
+                // In this test, we mocked it to succeed
+                expect(result).to.be.true;
+                expect(installSwiftlyStub).to.have.been.called;
             });
         });
     });
