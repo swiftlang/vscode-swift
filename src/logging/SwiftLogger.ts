@@ -15,7 +15,7 @@ import * as vscode from "vscode";
 import * as winston from "winston";
 
 import configuration from "../configuration";
-import { IS_RUNNING_IN_DEVELOPMENT_MODE, IS_RUNNING_UNDER_TEST } from "../utilities/utilities";
+import { IS_RUNNING_UNDER_TEST } from "../utilities/utilities";
 import { FileTransport } from "./FileTransport";
 import { OutputChannelTransport } from "./OutputChannelTransport";
 import { RollingLog } from "./RollingLog";
@@ -56,9 +56,6 @@ export class SwiftLogger implements vscode.Disposable {
             this.fileTransport,
             // Only want to capture the rolling log in memory when testing
             ...(IS_RUNNING_UNDER_TEST ? [rollingLogTransport] : []),
-            ...(IS_RUNNING_IN_DEVELOPMENT_MODE
-                ? [new winston.transports.Console({ level: "debug" })]
-                : []),
         ];
 
         this.logger = winston.createLogger({
