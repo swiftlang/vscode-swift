@@ -50,12 +50,6 @@ export const IS_RUNNING_UNDER_DOCKER = IS_RUNNING_UNDER_ACT || IS_RUNNING_UNDER_
  */
 export const IS_RUNNING_UNDER_TEST = process.env.RUNNING_UNDER_VSCODE_TEST_CLI === "1";
 
-/**
- * Determined by the presence of the `VSCODE_DEBUG` environment variable, set by the
- * launch.json when starting the extension in development.
- */
-export const IS_RUNNING_IN_DEVELOPMENT_MODE = process.env["VSCODE_DEBUG"] === "1";
-
 /** Determines whether the provided object has any properties set to non-null values. */
 export function isEmptyObject(obj: { [key: string]: unknown }): boolean {
     const properties = Object.getOwnPropertyNames(obj).filter(
