@@ -345,6 +345,8 @@ class TargetNode {
                     return LOADING_ICON;
                 }
                 return "notebook";
+            case "macro":
+                return "target";
         }
     }
 
