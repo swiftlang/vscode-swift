@@ -11,26 +11,17 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import * as os from "os";
-import * as path from "path";
 import * as vscode from "vscode";
 
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { Swiftly } from "../toolchain/swiftly";
-
-interface SwiftlyInstallOptions {
-    swiftlyHomeDir?: string;
-    swiftlyBinDir?: string;
-}
 
 /**
  * Prompts user for Swiftly installation with directory customization options
  * @param logger Optional logger
  * @returns Promise<SwiftlyInstallOptions | null> Installation options if user wants to install, null otherwise
  */
-export async function promptForSwiftlyInstallation(
-    logger?: SwiftLogger
-): Promise<SwiftlyInstallOptions | null> {
+export async function promptForSwiftlyInstallation(logger?: SwiftLogger): Promise<boolean> {
     const installMessage = `A .swift-version file was detected. Install Swiftly to automatically manage Swift toolchain versions for this project.`;
 
     const selection = await vscode.window.showWarningMessage(
@@ -40,107 +31,42 @@ export async function promptForSwiftlyInstallation(
         "Don't Show Again"
     );
 
-    switch (selection) {
-        case "Install Swiftly":
-            return await promptForDirectoryCustomization();
+    if (selection === "Install Swiftly") {
+        const confirmation = await vscode.window.showInformationMessage(
+            "Install Swiftly - The Swift Toolchain Version Manager",
+            {
+                modal: true,
+                detail: `The Swift extension is going to install the swiftly toolchain manager on your behalf.
 
-        case "Don't Show Again":
-            // Set a workspace setting to suppress this prompt
-            await vscode.workspace
-                .getConfiguration("swift")
-                .update("disableSwiftlyInstallPrompt", true, vscode.ConfigurationTarget.Global);
-            logger?.info("Swiftly installation prompt suppressed by user");
-            return null;
+This process involves updating your shell profile in order to add swiftly to your PATH. Alternatively, you can also install swiftly yourself using the instructions at swift.org to customize the installation options.`,
+            },
+            "Continue",
+            "Open Swiftly Documentation"
+        );
 
-        default:
-            return null; // User closed the prompt
-    }
-}
+        if (confirmation === "Continue") {
+            return true;
+        }
 
-/**
- * Prompts user to customize Swiftly installation directories
- * @param logger Optional logger
- * @returns Promise<SwiftlyInstallOptions | null>
- */
-async function promptForDirectoryCustomization(
-    logger?: SwiftLogger
-): Promise<SwiftlyInstallOptions | null> {
-    // Ask if user wants to customize directories
-    const customizeSelection = await vscode.window.showInformationMessage(
-        "Do you want to customize swiftly environment variables?",
-        {
-            modal: true,
-            detail: `Swiftly uses environment variables to configure its behavior:
+        if (confirmation === "Open Swiftly Documentation") {
+            void vscode.env.openExternal(
+                vscode.Uri.parse(
+                    "https://www.swift.org/swiftly/documentation/swiftly/getting-started"
+                )
+            );
+        }
 
-- SWIFTLY_HOME_DIR: Configures where configuration files are stored.
-- SWIFTLY_BIN_DIR: Configures where shims are stored.
-
-You can choose to modify these environment variables before installation or leave them at their default values.`,
-        },
-        "Use Defaults",
-        "Customize"
-    );
-
-    if (customizeSelection === null) {
-        // The user cancelled the modal
-        return null;
+        return false;
     }
 
-    if (customizeSelection === "Use Defaults") {
-        return {};
+    if (selection === "Don't Show Again") {
+        await vscode.workspace
+            .getConfiguration("swift")
+            .update("disableSwiftlyInstallPrompt", true, vscode.ConfigurationTarget.Global);
+        logger?.info("Swiftly installation prompt suppressed by user");
     }
 
-    // The user opted to customize swiftly environment variables
-    const homeDir = os.homedir();
-    const defaultSwiftlyHome = path.join(homeDir, ".swiftly");
-
-    const customHomeDir = await vscode.window.showInputBox({
-        title: "Customize $SWIFTLY_HOME_DIR",
-        prompt: "Enter the directory where Swiftly will store configuration files.",
-        value: defaultSwiftlyHome,
-        placeHolder: defaultSwiftlyHome,
-        validateInput: value => {
-            if (!value || value.trim().length === 0) {
-                return "Directory path cannot be empty";
-            }
-            if (!path.isAbsolute(value)) {
-                return "Please provide an absolute path";
-            }
-            return null;
-        },
-    });
-
-    if (customHomeDir === undefined) {
-        return null; // User cancelled
-    }
-
-    const defaultSwiftlyBin = path.join(customHomeDir, "bin");
-    const customBinDir = await vscode.window.showInputBox({
-        title: "Customize $SWIFTLY_BIN_DIR",
-        prompt: "Enter the directory where Swiftly will store its binaries.",
-        value: defaultSwiftlyBin,
-        placeHolder: defaultSwiftlyBin,
-        validateInput: value => {
-            if (!value || value.trim().length === 0) {
-                return "Directory path cannot be empty";
-            }
-            if (!path.isAbsolute(value)) {
-                return "Please provide an absolute path";
-            }
-            return null;
-        },
-    });
-
-    if (customBinDir === undefined) {
-        return null; // User cancelled
-    }
-
-    logger?.info(`User customized Swiftly directories: home=${customHomeDir}, bin=${customBinDir}`);
-
-    return {
-        swiftlyHomeDir: customHomeDir.trim(),
-        swiftlyBinDir: customBinDir.trim(),
-    };
+    return false;
 }
 
 /**
@@ -149,10 +75,7 @@ You can choose to modify these environment variables before installation or leav
  * @param logger Optional logger
  * @returns Promise<boolean> true if installation succeeded
  */
-export async function installSwiftlyWithProgress(
-    options: SwiftlyInstallOptions,
-    logger?: SwiftLogger
-): Promise<boolean> {
+export async function installSwiftlyWithProgress(logger?: SwiftLogger): Promise<boolean> {
     try {
         await vscode.window.withProgress(
             {
@@ -161,12 +84,7 @@ export async function installSwiftlyWithProgress(
                 cancellable: false,
             },
             async progress => {
-                await Swiftly.installSwiftly(
-                    progress,
-                    logger,
-                    options.swiftlyHomeDir,
-                    options.swiftlyBinDir
-                );
+                await Swiftly.installSwiftly(progress, logger);
             }
         );
         return true;
@@ -179,38 +97,26 @@ export async function installSwiftlyWithProgress(
 }
 
 /**
- * Checks if the Swiftly installation prompt should be suppressed
- * @returns true if suppressed, false otherwise
- */
-export function isSwiftlyPromptSuppressed(): boolean {
-    return vscode.workspace.getConfiguration("swift").get("disableSwiftlyInstallPrompt", false);
-}
-
-/**
  * Main function to handle missing Swiftly detection and installation
  * @param logger Optional logger
  * @returns Promise<boolean> true if Swiftly was installed or already exists
  */
 export async function handleMissingSwiftly(logger?: SwiftLogger): Promise<boolean> {
-    // Check if Swiftly is missing
     if (await Swiftly.isInstalled()) {
-        return true; // Swiftly is already installed
+        return true;
     }
 
-    // Check if prompt is suppressed
-    if (isSwiftlyPromptSuppressed()) {
+    // Check if the user wants to disable the prompt
+    if (vscode.workspace.getConfiguration("swift").get("disableSwiftlyInstallPrompt", false)) {
         logger?.debug("Swiftly installation prompt is suppressed");
         return false;
     }
 
     // Prompt user for installation
-    const options = await promptForSwiftlyInstallation(logger);
-    if (!options) {
-        return false; // User cancelled or suppressed
+    if (!(await promptForSwiftlyInstallation(logger))) {
+        return false;
     }
 
     // Install Swiftly
-    const installSuccess = await installSwiftlyWithProgress(options, logger);
-
-    return installSuccess;
+    return await installSwiftlyWithProgress(logger);
 }

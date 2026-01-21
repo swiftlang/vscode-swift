@@ -177,7 +177,13 @@ export async function handleMissingSwiftlyToolchain(
 
     // Use the existing installation function without showing reload notification
     // (since we want to continue the current operation)
-    return await installSwiftlyToolchainWithProgress(version, extensionRoot, logger);
+    if (!(await installSwiftlyToolchainWithProgress(version, extensionRoot, logger))) {
+        return false;
+    }
+
+    // Prompt the user that they need to restart VS Code for the changes to take effect
+
+    return true;
 }
 
 export class Swiftly {
@@ -188,9 +194,7 @@ export class Swiftly {
      */
     public static async installSwiftly(
         progress: vscode.Progress<{ message?: string; increment?: number }>,
-        logger?: SwiftLogger,
-        swiftlyHomeDir?: string,
-        swiftlyBinDir?: string
+        logger?: SwiftLogger
     ): Promise<void> {
         if (!this.isSupported()) {
             throw new Error("Swiftly is not supported on this platform");
@@ -198,10 +202,10 @@ export class Swiftly {
 
         switch (process.platform) {
             case "darwin":
-                await this.installSwiftlyDarwin(progress, logger, swiftlyHomeDir, swiftlyBinDir);
+                await this.installSwiftlyDarwin(progress, logger);
                 break;
             case "linux":
-                await this.installSwiftlyLinux(progress, logger, swiftlyHomeDir, swiftlyBinDir);
+                await this.installSwiftlyLinux(progress, logger);
                 break;
             default:
                 throw new Error(`Swiftly installation is not supported on ${process.platform}`);
@@ -210,9 +214,7 @@ export class Swiftly {
 
     private static async installSwiftlyDarwin(
         progress: vscode.Progress<{ message?: string; increment?: number }>,
-        logger?: SwiftLogger,
-        swiftlyHomeDir?: string,
-        swiftlyBinDir?: string
+        logger?: SwiftLogger
     ): Promise<void> {
         const url = "https://download.swift.org/swiftly/darwin/swiftly.pkg";
         const downloadedPkgPath = await this.downloadSwiftlyInstaller(url, progress, logger);
@@ -227,20 +229,13 @@ export class Swiftly {
                 "CurrentUserHomeDirectory",
             ]);
 
-            progress.report({ message: "Initializing Swiftly..." });
-
-            const env = { ...process.env };
-            if (swiftlyHomeDir) {
-                env["SWIFTLY_HOME_DIR"] = swiftlyHomeDir;
-            }
-            if (swiftlyBinDir) {
-                env["SWIFTLY_BIN_DIR"] = swiftlyBinDir;
-            }
-
-            const actualSwiftlyHomeDir = swiftlyHomeDir || path.join(os.homedir(), ".swiftly");
-            const swiftlyPath = path.join(actualSwiftlyHomeDir, "bin", "swiftly");
-
-            await execFile(swiftlyPath, ["init", "--quiet-shell-followup"], { env });
+            progress.report({ message: "Initializing Swiftly...", increment: -100 });
+            await execFile(path.join(os.homedir(), ".swiftly", "bin", "swiftly"), [
+                "init",
+                "--assume-yes",
+                "--quiet-shell-followup",
+                "--skip-install",
+            ]);
 
             progress.report({ message: "Swiftly installation completed", increment: 100 });
             logger?.info("Swiftly installation and initialization completed successfully");
@@ -259,18 +254,8 @@ export class Swiftly {
 
     private static async installSwiftlyLinux(
         progress: vscode.Progress<{ message?: string; increment?: number }>,
-        logger?: SwiftLogger,
-        swiftlyHomeDir?: string,
-        swiftlyBinDir?: string
+        logger?: SwiftLogger
     ): Promise<void> {
-        const env = { ...process.env };
-        if (swiftlyHomeDir) {
-            env["SWIFTLY_HOME_DIR"] = swiftlyHomeDir;
-        }
-        if (swiftlyBinDir) {
-            env["SWIFTLY_BIN_DIR"] = swiftlyBinDir;
-        }
-
         let tmpDir: string | undefined;
 
         try {
@@ -294,11 +279,11 @@ export class Swiftly {
             });
 
             progress.report({ message: "Initializing Swiftly..." });
-
-            await execFile("./swiftly", ["init", "--quiet-shell-followup"], {
-                cwd: tmpDir,
-                env,
-            });
+            await execFile(
+                "./swiftly",
+                ["init", "--assume-yes", "--quiet-shell-followup", "--skip-install"],
+                { cwd: tmpDir }
+            );
 
             progress.report({ message: "Swiftly installation completed", increment: 100 });
             logger?.info("Swiftly installation completed successfully on Linux");
