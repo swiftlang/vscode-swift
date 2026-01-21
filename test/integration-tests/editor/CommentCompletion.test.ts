@@ -25,8 +25,16 @@ suite("CommentCompletion Test Suite", () => {
     });
 
     teardown(async () => {
+        const teardownStartTime = Date.now();
         provider.dispose();
+        const disposeElapsedTime = Date.now() - teardownStartTime;
+        console.log(`CommentCompletionProvider disposed in ${disposeElapsedTime}ms`);
+        const closeEditorsStartTime = Date.now();
         await vscode.commands.executeCommand(Workbench.ACTION_CLOSEALLEDITORS);
+        const closeEditorsElapsedTime = Date.now() - closeEditorsStartTime;
+        console.log(`Close all editors completed in ${closeEditorsElapsedTime}ms`);
+        const teardownElapsedTime = Date.now() - teardownStartTime;
+        console.log(`Teardown completed in ${teardownElapsedTime}ms`);
     });
 
     suite("Function Comment Completion", () => {
