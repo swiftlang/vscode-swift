@@ -16,6 +16,18 @@ import * as path from "path";
 import * as vscode from "vscode";
 
 import { FolderContext } from "./FolderContext";
+import {
+    Dependency,
+    PackageResolved as ExternalPackageResolved,
+    Product as ExternalProduct,
+    SwiftPackage as ExternalSwiftPackage,
+    PackagePlugin,
+    PackageResolvedPin,
+    PackageResolvedPinState,
+    ResolvedDependency,
+    Target,
+    TargetType,
+} from "./SwiftExtensionApi";
 import { describePackage } from "./commands/dependencies/describe";
 import { showPackageDependencies } from "./commands/dependencies/show";
 import { SwiftLogger } from "./logging/SwiftLogger";
@@ -25,6 +37,22 @@ import { isPathInsidePath } from "./utilities/filesystem";
 import { lineBreakRegex } from "./utilities/tasks";
 import { execSwift, getErrorDescription, hashString, unwrapPromise } from "./utilities/utilities";
 
+// Re-export some types from the external API for convenience.
+export {
+    Dependency,
+    PackagePlugin,
+    PackageResolvedPin,
+    PackageResolvedPinState,
+    ResolvedDependency,
+    Target,
+    TargetType,
+};
+
+// Need to re-export the Product interface with internal types
+export interface Product extends ExternalProduct {
+    readonly type: { executable?: null; library?: string[] };
+}
+
 /** Swift Package Manager contents */
 export interface PackageContents {
     name: string;
@@ -33,54 +61,12 @@ export interface PackageContents {
     targets: Target[];
 }
 
-/** Swift Package Manager product */
-export interface Product {
-    name: string;
-    targets: string[];
-    type: { executable?: null; library?: string[] };
-}
-
 export function isAutomatic(product: Product): boolean {
     return (product.type.library || []).includes("automatic");
 }
 
-/** Swift Package Manager target */
-export interface Target {
-    name: string;
-    c99name: string;
-    path: string;
-    sources: string[];
-    type:
-        | "executable"
-        | "test"
-        | "library"
-        | "snippet"
-        | "plugin"
-        | "binary"
-        | "system-target"
-        | "macro";
-}
-
-/** Swift Package Manager dependency */
-export interface Dependency {
-    identity: string;
-    type?: string;
-    requirement?: object;
-    url?: string;
-    path?: string;
-    dependencies: Dependency[];
-}
-
-export interface ResolvedDependency extends Dependency {
-    version: string;
-    type: string;
-    path: string;
-    location: string;
-    revision?: string;
-}
-
 /** Swift Package.resolved file */
-export class PackageResolved {
+export class PackageResolved implements ExternalPackageResolved {
     readonly fileHash: number;
     readonly pins: PackageResolvedPin[];
     readonly version: number;
@@ -92,19 +78,18 @@ export class PackageResolved {
 
         if (this.version === 1) {
             const v1Json = json as PackageResolvedFileV1;
-            this.pins = v1Json.object.pins.map(
-                pin =>
-                    new PackageResolvedPin(
-                        this.identity(pin.repositoryURL),
-                        pin.repositoryURL,
-                        pin.state
-                    )
-            );
+            this.pins = v1Json.object.pins.map(pin => ({
+                identity: this.identity(pin.repositoryURL),
+                location: pin.repositoryURL,
+                state: pin.state,
+            }));
         } else if (this.version === 2 || this.version === 3) {
             const v2Json = json as PackageResolvedFileV2;
-            this.pins = v2Json.pins.map(
-                pin => new PackageResolvedPin(pin.identity, pin.location, pin.state)
-            );
+            this.pins = v2Json.pins.map(pin => ({
+                identity: pin.identity,
+                location: pin.location,
+                state: pin.state,
+            }));
         } else {
             throw Error("Unsupported Package.resolved version");
         }
@@ -112,26 +97,10 @@ export class PackageResolved {
 
     // Copied from `PackageIdentityParser.computeDefaultName` in
     // https://github.com/apple/swift-package-manager/blob/main/Sources/PackageModel/PackageIdentity.swift
-    identity(url: string): string {
+    private identity(url: string): string {
         const file = path.basename(url, ".git");
         return file.toLowerCase();
     }
-}
-
-/** Swift Package.resolved file */
-export class PackageResolvedPin {
-    constructor(
-        readonly identity: string,
-        readonly location: string,
-        readonly state: PackageResolvedPinState
-    ) {}
-}
-
-/** Swift Package.resolved file */
-export interface PackageResolvedPinState {
-    branch: string | null;
-    revision: string;
-    version: string | null;
 }
 
 interface PackageResolvedFileV1 {
@@ -177,12 +146,6 @@ export interface WorkspaceStateDependency {
     subpath: string;
 }
 
-export interface PackagePlugin {
-    command: string;
-    name: string;
-    package: string;
-}
-
 /** Swift Package State
  *
  * Can be package contents, error found when loading package or undefined meaning
@@ -207,7 +170,7 @@ function isError(state: SwiftPackageState): state is Error {
 /**
  * Class holding Swift Package Manager Package
  */
-export class SwiftPackage implements vscode.Disposable {
+export class SwiftPackage implements ExternalSwiftPackage, vscode.Disposable {
     public plugins: PackagePlugin[] = [];
     private _contents: SwiftPackageState | undefined;
     private contentsPromise: Promise<SwiftPackageState>;
@@ -560,20 +523,10 @@ export class SwiftPackage implements vscode.Disposable {
         );
     }
 
-    /**
-     * Array of targets in Swift Package. The targets may not be loaded yet.
-     * It is preferable to use the `targets` property that returns a promise that
-     * returns the targets when they're guarenteed to be resolved.
-     **/
     get currentTargets(): Target[] {
         return (this._contents as unknown as { targets: Target[] })?.targets ?? [];
     }
 
-    /**
-     * Return array of targets of a certain type
-     * @param type Type of target
-     * @returns Array of targets
-     */
     async getTargets(type?: TargetType): Promise<Target[]> {
         if (type === undefined) {
             return this.targets;
@@ -582,9 +535,6 @@ export class SwiftPackage implements vscode.Disposable {
         }
     }
 
-    /**
-     * Get target for file
-     */
     async getTarget(file: string): Promise<Target | undefined> {
         const filePath = path.relative(this.folder.fsPath, file);
         return this.targets.then(targets =>
@@ -605,10 +555,4 @@ export class SwiftPackage implements vscode.Disposable {
         this.tokenSource.cancel();
         this.tokenSource.dispose();
     }
-}
-
-export enum TargetType {
-    executable = "executable",
-    library = "library",
-    test = "test",
 }

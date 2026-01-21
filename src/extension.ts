@@ -14,10 +14,12 @@
 // Use source-map-support to get better stack traces
 import "source-map-support/register";
 
+import * as fs from "fs/promises";
 import * as vscode from "vscode";
 
 import { ContextKeyManager, ContextKeys } from "./ContextKeyManager";
 import { FolderContext } from "./FolderContext";
+import { SwiftExtensionApi } from "./SwiftExtensionApi";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { FolderEvent, FolderOperation, WorkspaceContext } from "./WorkspaceContext";
 import * as commands from "./commands";
@@ -44,21 +46,19 @@ import { checkAndWarnAboutWindowsSymlinks } from "./ui/win32";
 import { getErrorDescription } from "./utilities/utilities";
 import { Version } from "./utilities/version";
 
-/**
- * External API as exposed by the extension. Can be queried by other extensions
- * or by the integration test runner for VS Code extensions.
- */
-export interface Api {
+export interface InternalSwiftExtensionApi extends SwiftExtensionApi {
     workspaceContext?: WorkspaceContext;
     logger: SwiftLogger;
-    activate(): Promise<Api>;
+    activate(): Promise<InternalSwiftExtensionApi>;
     deactivate(): Promise<void>;
 }
 
 /**
  * Activate the extension. This is the main entry point.
  */
-export async function activate(context: vscode.ExtensionContext): Promise<Api> {
+export async function activate(
+    context: vscode.ExtensionContext
+): Promise<InternalSwiftExtensionApi> {
     const activationStartTime = Date.now();
     try {
         const logSetupStartTime = Date.now();
@@ -175,6 +175,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         const workspaceFoldersElapsed = Date.now() - workspaceFoldersStartTime;
 
         const finalStepsStartTime = Date.now();
+        const apiVersion = await getApiVersionNumber(context);
         // Mark the extension as activated.
         contextKeys.isActivated = true;
         const finalStepsElapsed = Date.now() - finalStepsStartTime;
@@ -187,6 +188,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<Api> {
         return {
             workspaceContext,
             logger,
+            version: apiVersion,
             activate: () => activate(context),
             deactivate: async () => {
                 await workspaceContext.stop();
@@ -231,6 +233,31 @@ function configureLogging(context: vscode.ExtensionContext) {
             logger.warn(`Failed to create log directory: ${error}`);
         });
     return logger;
+}
+
+async function getApiVersionNumber(context: vscode.ExtensionContext): Promise<Version> {
+    try {
+        const packageJsonPath = context.asAbsolutePath("package.json");
+        const packageJsonRaw = await fs.readFile(packageJsonPath, "utf-8");
+        const packageJson = JSON.parse(packageJsonRaw);
+        const apiVersionRaw = packageJson["api-version"];
+        if (!apiVersionRaw || typeof apiVersionRaw !== "string") {
+            throw Error(
+                `The "api-version" property in the package.json is missing or invalid: ${JSON.stringify(apiVersionRaw)}`
+            );
+        }
+        const apiVersion = Version.fromString(apiVersionRaw);
+        if (!apiVersion) {
+            throw Error(
+                `Unable to parse the "api-version" string from the package.json: "${apiVersionRaw}"`
+            );
+        }
+        return apiVersion;
+    } catch (error) {
+        throw Error("Failed to load the Swift extension API version number from the package.json", {
+            cause: error,
+        });
+    }
 }
 
 function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise<void> {
@@ -321,7 +348,8 @@ async function createActiveToolchain(
 }
 
 async function deactivate(context: vscode.ExtensionContext): Promise<void> {
-    const workspaceContext = (context.extension.exports as Api).workspaceContext;
+    const api: InternalSwiftExtensionApi = context.extension.exports;
+    const workspaceContext = api.workspaceContext;
     if (workspaceContext) {
         workspaceContext.contextKeys.isActivated = false;
     }

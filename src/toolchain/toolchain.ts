@@ -17,6 +17,7 @@ import * as path from "path";
 import * as plist from "plist";
 import * as vscode from "vscode";
 
+import { SwiftToolchain as ExternalSwiftToolchain, ToolchainManager } from "../SwiftExtensionApi";
 import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { expandFilePathTilde, fileExists, pathExists } from "../utilities/filesystem";
@@ -101,17 +102,12 @@ export function getDarwinTargetTriple(target: DarwinCompatibleTarget): string | 
     }
 }
 
-/**
- * Different entities which are used to manage toolchain installations. Possible values are:
- *  - `xcrun`: An Xcode/CommandLineTools toolchain controlled via the `xcrun` and `xcode-select` utilities on macOS.
- *  - `swiftly`: A toolchain managed by `swiftly`.
- *  - `swiftenv`: A toolchain managed by `swiftenv`.
- *  - `unknown`: This toolchain was installed via a method unknown to the extension.
- */
-export type ToolchainManager = "xcrun" | "swiftly" | "swiftenv" | "unknown";
-
-export class SwiftToolchain {
+export class SwiftToolchain implements ExternalSwiftToolchain {
     public swiftVersionString: string;
+
+    public get sdk(): string | undefined {
+        return this.customSDK ?? this.defaultSDK;
+    }
 
     constructor(
         public manager: ToolchainManager,
@@ -454,11 +450,10 @@ export class SwiftToolchain {
     }
 
     private basePlatformDeveloperPath(): string | undefined {
-        const sdk = this.customSDK ?? this.defaultSDK;
-        if (!sdk) {
+        if (!this.sdk) {
             return undefined;
         }
-        return path.resolve(sdk, "../../");
+        return path.resolve(this.sdk, "../../");
     }
 
     /**
@@ -498,6 +493,9 @@ export class SwiftToolchain {
         }
         if (this.targetInfo.target?.triple) {
             str += `\nDefault Target: ${this.targetInfo.target?.triple}`;
+        }
+        if (this.sdk) {
+            str += `\nSelected SDK: ${this.sdk}`;
         }
         if (this.defaultSDK) {
             str += `\nDefault SDK: ${this.defaultSDK}`;
