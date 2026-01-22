@@ -1615,7 +1615,7 @@ apt-get -y install libncurses5-dev
             test("should return true immediately when Swiftly is already installed", async () => {
                 isInstalledStub.resolves(true);
 
-                const result = await handleMissingSwiftly();
+                const result = await handleMissingSwiftly([], "");
 
                 expect(result).to.be.true;
                 expect(mockWindow.showWarningMessage).to.not.have.been.called;
@@ -1625,7 +1625,7 @@ apt-get -y install libncurses5-dev
                 isInstalledStub.resolves(false);
                 mockConfiguration.get.withArgs("disableSwiftlyInstallPrompt").returns(true); // Prompt suppressed
 
-                const result = await handleMissingSwiftly();
+                const result = await handleMissingSwiftly([], "");
 
                 expect(result).to.be.false;
                 expect(mockWindow.showWarningMessage).to.not.have.been.called;
@@ -1636,7 +1636,7 @@ apt-get -y install libncurses5-dev
                 mockConfiguration.get.withArgs("disableSwiftlyInstallPrompt").returns(false); // Prompt not suppressed
                 mockWindow.showWarningMessage.resolves(undefined); // User cancels
 
-                const result = await handleMissingSwiftly();
+                const result = await handleMissingSwiftly([], "");
 
                 expect(result).to.be.false;
             });
@@ -1651,7 +1651,7 @@ apt-get -y install libncurses5-dev
                     await task({ report: () => {} } as any, {} as any);
                 });
 
-                const result = await handleMissingSwiftly();
+                const result = await handleMissingSwiftly([], "");
 
                 // Result depends on whether installation succeeds
                 // In this test, we mocked it to succeed

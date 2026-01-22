@@ -679,13 +679,14 @@ export class Swiftly {
         extensionRoot: string,
         progressCallback?: (progressData: SwiftlyProgressData) => void,
         logger?: SwiftLogger,
-        token?: vscode.CancellationToken
+        token?: vscode.CancellationToken,
+        swiftlyPath?: string
     ): Promise<void> {
         if (!this.isSupported()) {
             throw new Error("Swiftly is not supported on this platform");
         }
 
-        logger?.info(`Installing toolchain ${version} via swiftly`);
+        logger?.info(`Installing toolchain ${version} via ${swiftlyPath ?? "swiftly"}`);
 
         const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vscode-swift-"));
         const postInstallFilePath = path.join(tmpDir, `post-install-${version}.sh`);
@@ -757,7 +758,7 @@ export class Swiftly {
 
             // Use execFileStreamOutput with cancellation token
             const installPromise = execFileStreamOutput(
-                "swiftly",
+                swiftlyPath ?? "swiftly",
                 installArgs,
                 stdoutStream,
                 stderrStream,

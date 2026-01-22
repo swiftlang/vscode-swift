@@ -11,11 +11,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import * as os from "os";
+import * as path from "path";
 import * as vscode from "vscode";
 
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { Swiftly } from "../toolchain/swiftly";
 import { Workbench } from "../utilities/commands";
+import { installSwiftlyToolchainWithProgress } from "./installSwiftlyToolchain";
 
 /**
  * Prompts user for Swiftly installation with directory customization options
@@ -113,10 +116,15 @@ async function promptToRestartVSCode(): Promise<void> {
 
 /**
  * Main function to handle missing Swiftly detection and installation
+ * @param swiftVersionFiles A list of swift version files that will need to be installed
  * @param logger Optional logger
  * @returns Promise<boolean> true if Swiftly was installed or already exists
  */
-export async function handleMissingSwiftly(logger?: SwiftLogger): Promise<boolean> {
+export async function handleMissingSwiftly(
+    swiftVersions: string[],
+    extensionRoot: string,
+    logger?: SwiftLogger
+): Promise<boolean> {
     if (await Swiftly.isInstalled()) {
         return true;
     }
@@ -135,6 +143,12 @@ export async function handleMissingSwiftly(logger?: SwiftLogger): Promise<boolea
     // Install Swiftly
     if (!(await installSwiftlyWithProgress(logger))) {
         return false;
+    }
+
+    // Install toolchains
+    const swiftlyPath = path.join(os.homedir(), ".swiftly", "bin", "swiftly");
+    for (const version of swiftVersions) {
+        await installSwiftlyToolchainWithProgress(version, extensionRoot, logger, swiftlyPath);
     }
 
     // VS Code needs to be restarted after installing swiftly

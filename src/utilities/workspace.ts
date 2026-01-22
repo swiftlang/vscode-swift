@@ -39,7 +39,7 @@ export async function searchForPackages(
             return;
         }
 
-        await globDirectory(folder, { onlyDirectories: true }).then(async entries => {
+        await globDirectory(folder, "*", { onlyDirectories: true }).then(async entries => {
             const skip = new Set<string>(skipFolders);
             for (const entry of entries) {
                 const base = basename(entry);

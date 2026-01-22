@@ -22,19 +22,19 @@ import {
     setToolchainPath,
     showDeveloperDirQuickPick,
 } from "../ui/ToolchainSelection";
-import { handleMissingSwiftly } from "./installSwiftly";
 
 /**
  * Installs a Swiftly toolchain and shows a progress notification to the user.
  *
  * @param version The toolchain version to install
  * @param logger Optional logger for error reporting
- * @returns Promise<boolean> true if installation succeeded, false otherwise
+ * @returns A promise that resolves to true if installation succeeded, false otherwise
  */
 export async function installSwiftlyToolchainWithProgress(
     version: string,
     extensionRoot: string,
-    logger?: SwiftLogger
+    logger?: SwiftLogger,
+    swiftlyPath?: string
 ): Promise<boolean> {
     try {
         await vscode.window.withProgress(
@@ -75,7 +75,8 @@ export async function installSwiftlyToolchainWithProgress(
                         lastProgress = progressData.step.percent;
                     },
                     logger,
-                    token
+                    token,
+                    swiftlyPath
                 );
             }
         );
@@ -110,14 +111,6 @@ export async function promptToInstallSwiftlyToolchain(
             "Swiftly is not supported on this platform. Only macOS and Linux are supported."
         );
         return;
-    }
-
-    if (!(await Swiftly.isInstalled())) {
-        ctx.logger?.warn("Swiftly is not installed.");
-        const swiftlyInstalled = await handleMissingSwiftly(ctx.logger);
-        if (!swiftlyInstalled) {
-            return;
-        }
     }
 
     let branch: string | undefined = undefined;
