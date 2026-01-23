@@ -23,6 +23,7 @@ import {
     AsyncEventEmitter,
     mockFn,
     mockGlobalEvent,
+    mockGlobalFunction,
     mockGlobalModule,
     mockGlobalObject,
     mockGlobalValue,
@@ -191,6 +192,17 @@ suite("MockUtils Test Suite", () => {
                     "compiler error"
                 );
             });
+        });
+    });
+
+    suite("mockGlobalFunction()", () => {
+        const asRelativePathStub = mockGlobalFunction(vscode.workspace, "asRelativePath");
+
+        test("can mock asRelativePath() in the workspace object from the VSCode API", async () => {
+            asRelativePathStub.returns("relative");
+
+            expect(vscode.workspace.asRelativePath("absolute")).to.equal("relative");
+            expect(asRelativePathStub).to.have.been.calledOnceWithExactly("absolute");
         });
     });
 

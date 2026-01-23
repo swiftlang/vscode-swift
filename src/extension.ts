@@ -25,6 +25,7 @@ import { FolderEvent, FolderOperation, WorkspaceContext } from "./WorkspaceConte
 import * as commands from "./commands";
 import { resolveFolderDependencies } from "./commands/dependencies/resolve";
 import { registerSourceKitSchemaWatcher } from "./commands/generateSourcekitConfiguration";
+import { handleMissingSwiftly } from "./commands/installSwiftly";
 import configuration, {
     ConfigurationValidationError,
     handleConfigurationChangeEvent,
@@ -37,12 +38,13 @@ import { SwiftLoggerFactory } from "./logging/SwiftLoggerFactory";
 import { PlaygroundProvider } from "./playgrounds/PlaygroundProvider";
 import { SwiftEnvironmentVariablesManager, SwiftTerminalProfileProvider } from "./terminal";
 import { SelectedXcodeWatcher } from "./toolchain/SelectedXcodeWatcher";
-import { checkForSwiftlyInstallation } from "./toolchain/swiftly";
+import { Swiftly, checkForSwiftlyInstallation } from "./toolchain/swiftly";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { LanguageStatusItems } from "./ui/LanguageStatusItems";
 import { getReadOnlyDocumentProvider } from "./ui/ReadOnlyDocumentProvider";
 import { showToolchainError } from "./ui/ToolchainSelection";
 import { checkAndWarnAboutWindowsSymlinks } from "./ui/win32";
+import { globDirectory } from "./utilities/filesystem";
 import { getErrorDescription } from "./utilities/utilities";
 import { Version } from "./utilities/version";
 
@@ -74,13 +76,24 @@ export async function activate(
 
         const contextKeys = new ContextKeyManager();
         const preToolchainElapsed = Date.now() - preToolchainStartTime;
-        const toolchainStartTime = Date.now();
-        const toolchain = await createActiveToolchain(context, contextKeys, logger);
-        const toolchainElapsed = Date.now() - toolchainStartTime;
 
         const swiftlyCheckStartTime = Date.now();
         checkForSwiftlyInstallation(contextKeys, logger);
+        const swiftVersionFiles = await findSwiftVersionFilesInWorkspace();
+        const allSwiftVersions = await Promise.all(
+            swiftVersionFiles.map(async file => (await fs.readFile(file, "utf-8")).trim())
+        );
+        const uniqueSwiftVersions = [...new Set(allSwiftVersions)];
+        logger.info(`Detected swift version file(s): ${uniqueSwiftVersions.join(", ")}`);
+        if (uniqueSwiftVersions.length > 0 && !(await Swiftly.isInstalled())) {
+            logger.info("Unable to find swiftly in PATH. Prompting to install.");
+            await handleMissingSwiftly(uniqueSwiftVersions, context.extensionPath, logger);
+        }
         const swiftlyCheckElapsed = Date.now() - swiftlyCheckStartTime;
+
+        const toolchainStartTime = Date.now();
+        const toolchain = await createActiveToolchain(context, contextKeys, logger);
+        const toolchainElapsed = Date.now() - toolchainStartTime;
 
         // If we don't have a toolchain, show an error and stop initializing the extension.
         // This can happen if the user has not installed Swift or if the toolchain is not
@@ -329,6 +342,20 @@ function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise
                 }
         }
     };
+}
+
+/**
+ * Checks if any workspace folder contains a .swift-version file
+ */
+function findSwiftVersionFilesInWorkspace(): Promise<string[]> {
+    return Promise.all(
+        (vscode.workspace.workspaceFolders ?? []).map(folder => {
+            return globDirectory(folder.uri, "**/.swift-version", {
+                absolute: true,
+                onlyFiles: true,
+            });
+        })
+    ).then(results => results.reduceRight((prev, curr) => prev.concat(curr)));
 }
 
 async function createActiveToolchain(

@@ -17,4 +17,5 @@ export enum Workbench {
     ACTION_CLOSEALLEDITORS = "workbench.action.closeAllEditors",
     ACTION_RELOADWINDOW = "workbench.action.reloadWindow",
     ACTION_PREVIOUSEDITORINGROUP = "workbench.action.previousEditorInGroup",
+    ACTION_QUIT = "workbench.action.quit",
 }

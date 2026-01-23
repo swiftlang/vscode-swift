@@ -16,9 +16,11 @@ import * as fs from "fs/promises";
 import * as mockFS from "mock-fs";
 import * as os from "os";
 import { match } from "sinon";
+import * as tar from "tar";
 import * as vscode from "vscode";
 
 import * as askpass from "@src/askpass/askpass-server";
+import { handleMissingSwiftly, promptForSwiftlyInstallation } from "@src/commands/installSwiftly";
 import { installSwiftlyToolchainWithProgress } from "@src/commands/installSwiftlyToolchain";
 import * as SwiftOutputChannelModule from "@src/logging/SwiftOutputChannel";
 import {
@@ -28,7 +30,16 @@ import {
 } from "@src/toolchain/swiftly";
 import * as utilities from "@src/utilities/utilities";
 
-import { instance, mockGlobalModule, mockGlobalObject, mockGlobalValue } from "../../MockUtils";
+import {
+    MockedObject,
+    instance,
+    mockFn,
+    mockGlobalFunction,
+    mockGlobalModule,
+    mockGlobalObject,
+    mockGlobalValue,
+    mockObject,
+} from "../../MockUtils";
 
 suite("Swiftly Unit Tests", () => {
     const mockAskpass = mockGlobalModule(askpass);
@@ -37,6 +48,8 @@ suite("Swiftly Unit Tests", () => {
     const mockedEnv = mockGlobalValue(process, "env");
     const mockSwiftOutputChannelModule = mockGlobalModule(SwiftOutputChannelModule);
     const mockOS = mockGlobalModule(os);
+    const mockTar = mockGlobalModule(tar);
+    const mockedFetch = mockGlobalValue(globalThis, "fetch");
 
     setup(() => {
         mockAskpass.withAskpassServer.callsFake(task => task("nonce", 8080));
@@ -44,6 +57,8 @@ suite("Swiftly Unit Tests", () => {
         mockUtilities.execFileStreamOutput.reset();
         mockSwiftOutputChannelModule.SwiftOutputChannel.reset();
         mockOS.tmpdir.reset();
+        mockTar.extract.reset();
+        mockedFetch.setValue(async () => ({}) as Response);
 
         // Mock os.tmpdir() to return a valid temp directory path for Windows compatibility
         mockOS.tmpdir.returns(process.platform === "win32" ? "C:\\temp" : "/tmp");
@@ -1492,6 +1507,157 @@ apt-get -y install libncurses5-dev
 
         test("cancellationMessage should be properly defined", () => {
             expect(Swiftly.cancellationMessage).to.equal("Installation cancelled by user");
+        });
+    });
+
+    suite("installSwiftly()", () => {
+        const mockProgress = {
+            report: () => {},
+        } as vscode.Progress<{ message?: string; increment?: number }>;
+
+        const mockWindow = mockGlobalObject(vscode, "window");
+        const mockWorkspace = mockGlobalObject(vscode, "workspace");
+        const mockEnv = mockGlobalObject(vscode, "env");
+        let mockConfiguration: MockedObject<vscode.WorkspaceConfiguration>;
+
+        setup(() => {
+            // Mock os.homedir() to return a valid home directory
+            mockOS.homedir.returns("/home/testuser");
+
+            // Stub configuration methods
+            mockConfiguration = mockObject<vscode.WorkspaceConfiguration>({
+                get: mockFn(),
+                update: mockFn(),
+            });
+            mockWorkspace.getConfiguration.returns(instance(mockConfiguration));
+        });
+
+        test("should handle download failures", async () => {
+            mockedPlatform.setValue("darwin");
+
+            // Mock fetch to return an error response
+            const mockResponse = {
+                ok: false,
+                status: 404,
+            } as Response;
+            mockedFetch.setValue(async () => mockResponse);
+
+            await expect(Swiftly.installSwiftly(mockProgress)).to.eventually.be.rejectedWith(
+                "Failed to download installer: HTTP 404"
+            );
+        });
+
+        test("should handle unsupported platforms", async () => {
+            mockedPlatform.setValue("win32");
+
+            await expect(Swiftly.installSwiftly(mockProgress)).to.eventually.be.rejectedWith(
+                "Swiftly is not supported on this platform"
+            );
+        });
+
+        suite("promptForSwiftlyInstallation()", () => {
+            test('should return true when user selects "Install Swiftly" and "Continue"', async () => {
+                mockWindow.showWarningMessage.resolves("Install Swiftly" as any);
+                mockWindow.showInformationMessage.resolves("Continue" as any);
+
+                const result = await promptForSwiftlyInstallation();
+
+                expect(result).to.be.true;
+            });
+
+            test('should open the swiftly docs and return false when user selects "Install Swiftly" and "Open Swiftly Documentation"', async () => {
+                mockWindow.showWarningMessage.resolves("Install Swiftly" as any);
+                mockWindow.showInformationMessage.resolves("Open Swiftly Documentation" as any);
+
+                const result = await promptForSwiftlyInstallation();
+
+                expect(result).to.be.false;
+                expect(mockEnv.openExternal).to.have.been.calledOnceWith(
+                    match.has("authority", "www.swift.org")
+                );
+            });
+
+            test('should return false when user selects "Install Swiftly" and "Cancel"', async () => {
+                mockWindow.showWarningMessage.resolves("Install Swiftly" as any);
+                mockWindow.showInformationMessage.resolves(undefined);
+
+                const result = await promptForSwiftlyInstallation();
+
+                expect(result).to.be.false;
+            });
+
+            test('should set configuration and return false when user selects "Don\'t Show Again"', async () => {
+                mockWindow.showWarningMessage.resolves("Don't Show Again" as any);
+
+                const result = await promptForSwiftlyInstallation();
+
+                expect(result).to.be.false;
+                expect(mockConfiguration.update).to.have.been.calledWith(
+                    "disableSwiftlyInstallPrompt",
+                    true,
+                    vscode.ConfigurationTarget.Global
+                );
+            });
+
+            test("should return false when user dismisses first prompt", async () => {
+                mockWindow.showWarningMessage.resolves(undefined);
+
+                const result = await promptForSwiftlyInstallation();
+
+                expect(result).to.be.false;
+            });
+        });
+
+        suite("handleMissingSwiftly()", () => {
+            const isInstalledStub = mockGlobalFunction(Swiftly, "isInstalled");
+            const installSwiftlyStub = mockGlobalFunction(Swiftly, "installSwiftly");
+
+            test("should return true immediately when Swiftly is already installed", async () => {
+                isInstalledStub.resolves(true);
+
+                const result = await handleMissingSwiftly([], "");
+
+                expect(result).to.be.true;
+                expect(mockWindow.showWarningMessage).to.not.have.been.called;
+            });
+
+            test("should return false when prompt is suppressed", async () => {
+                isInstalledStub.resolves(false);
+                mockConfiguration.get.withArgs("disableSwiftlyInstallPrompt").returns(true); // Prompt suppressed
+
+                const result = await handleMissingSwiftly([], "");
+
+                expect(result).to.be.false;
+                expect(mockWindow.showWarningMessage).to.not.have.been.called;
+            });
+
+            test("should return false when user cancels", async () => {
+                isInstalledStub.resolves(false);
+                mockConfiguration.get.withArgs("disableSwiftlyInstallPrompt").returns(false); // Prompt not suppressed
+                mockWindow.showWarningMessage.resolves(undefined); // User cancels
+
+                const result = await handleMissingSwiftly([], "");
+
+                expect(result).to.be.false;
+            });
+
+            test('should attempt installation when user selects "Install Swiftly"', async () => {
+                isInstalledStub.resolves(false);
+                mockConfiguration.get.withArgs("disableSwiftlyInstallPrompt").returns(false); // Prompt not suppressed
+                // Need to stub both prompts in the new two-step flow
+                mockWindow.showWarningMessage.resolves("Install Swiftly" as any);
+                mockWindow.showInformationMessage.resolves("Continue" as any);
+                mockWindow.withProgress.callsFake(async (_options, task) => {
+                    await task({ report: () => {} } as any, {} as any);
+                });
+
+                const result = await handleMissingSwiftly([], "");
+
+                // Result depends on whether installation succeeds
+                // In this test, we mocked it to succeed
+                expect(result).to.be.true;
+                expect(installSwiftlyStub).to.have.been.called;
+            });
         });
     });
 });

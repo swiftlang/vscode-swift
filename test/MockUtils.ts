@@ -32,32 +32,18 @@ export async function waitForReturnedPromises(
 /**
  * Convenience type used to convert a function into a SinonStub
  */
-export type MockedFunction<T extends (...args: any[]) => any> = SinonStub<
-    Parameters<T>,
-    ReturnType<T>
->;
-
-/**
- * Retrieves the parameter types from a class constructor
- */
-export type ConstructorParameters<T> = T extends abstract new (...args: infer Arguments) => any
-    ? Arguments
-    : never;
-
-/**
- * Retrieves the return type from a class constructor
- */
-export type ConstructorReturnType<T> = T extends abstract new (...args: any[]) => infer ReturnType
-    ? ReturnType
+export type MockedFunction<T extends (...args: any[]) => any> = T extends (
+    ...args: infer Arguments
+) => infer ReturnType
+    ? SinonStub<Arguments, ReturnType>
     : never;
 
 /**
  * Convenience type used to convert a class constructor into a SinonStub
  */
-export type MockedClass<T extends abstract new (...args: any[]) => any> = SinonStub<
-    ConstructorParameters<T>,
-    ConstructorReturnType<T>
->;
+export type MockedClass<T> = T extends abstract new (...args: infer Arguments) => infer ReturnType
+    ? SinonStub<Arguments, ReturnType>
+    : never;
 
 /**
  * An object that has its functions replaced with SinonStubs.
@@ -185,12 +171,12 @@ export function mockObject<T>(overrides: Partial<T>): MockedObject<T> {
  */
 export function mockFn<T extends (...args: any[]) => any>(
     stubFunction?: (_: MockedFunction<T>) => void
-): T {
-    const result: MockedFunction<T> = stub();
+): MockedFunction<T> {
+    const result: MockedFunction<T> = stub() as any;
     if (stubFunction) {
         stubFunction(result);
     }
-    return result as any;
+    return result;
 }
 
 /**
@@ -524,4 +510,73 @@ export class AsyncEventEmitter<T> {
             await listener(event);
         }
     }
+}
+
+/** Extracts all properties within the provided type that are functions. */
+type FunctionsOf<T> = {
+    [K in keyof T]: T[K] extends (...args: any[]) => any ? T[K] : never;
+};
+
+/**
+ * Create a new mock for each test that gets cleaned up automatically afterwards. This function makes use of the fact that
+ * Mocha's setup() and teardown() methods can be called from anywhere. The resulting function is a proxy to the real
+ * mock since it won't be created until the test actually begins.
+ *
+ * The proxy lets us avoid boilerplate by creating a mock in one line:
+ *
+ *     import { expect } from "chai";
+ *     import * as vscode from "vscode";
+ *
+ *     suite("Test Suite", () => {
+ *         const showErrorMessageStub = mockGlobalFunction(vscode.window, "showErrorMessage");
+ *
+ *         test('test case', () => {
+ *             vscode.window.showErrorMessage("Some error message");
+ *             expect(showErrorMessageStub).to.have.been.calledWith("Some error message");
+ *         });
+ *     });
+ *
+ * **Note:** This **MUST** be called at the suite level or it will not work.
+ *
+ * @param obj The object to create the stub inside
+ * @param property The property inside the object to be stubbed
+ */
+export function mockGlobalFunction<T extends object, K extends keyof FunctionsOf<T>>(
+    obj: T,
+    property: K
+): MockedFunction<FunctionsOf<T>[K]> {
+    let realMock: MockedFunction<FunctionsOf<T>[K]>;
+    let originalDescriptor: PropertyDescriptor | undefined;
+    const originalValue: T[K] = obj[property];
+    // Create the mock at setup
+    setup(() => {
+        originalDescriptor = Object.getOwnPropertyDescriptor(obj, property);
+        realMock = stub(obj, property) as any;
+        Object.defineProperty(obj, property, {
+            value: realMock,
+            writable: true,
+            configurable: true,
+        });
+    });
+    // Restore original property descriptor at teardown
+    teardown(() => {
+        if (originalDescriptor) {
+            Object.defineProperty(obj, property, originalDescriptor);
+        } else {
+            delete (obj as any)[property];
+        }
+    });
+    // Return the proxy to the real mock
+    return new Proxy<any>(originalValue, {
+        get(_target, property) {
+            if (!realMock) {
+                throw Error("Mock proxy accessed before setup()");
+            }
+            return (realMock as any)[property];
+        },
+        set(_target, property, value) {
+            (realMock as any)[property] = value;
+            return true;
+        },
+    });
 }

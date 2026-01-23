@@ -163,9 +163,13 @@ export function isExcluded(
     return !isIncluded(uri, excludeList);
 }
 
-export async function globDirectory(uri: vscode.Uri, options?: Options): Promise<string[]> {
+export async function globDirectory(
+    uri: vscode.Uri,
+    pattern: string,
+    options?: Options
+): Promise<string[]> {
     const { include, exclude } = getGlobPattern(getDefaultExcludeList());
-    const matches: string[] = await fastGlob(`${convertPathToPattern(uri.fsPath)}/*`, {
+    const matches: string[] = await fastGlob(`${convertPathToPattern(uri.fsPath)}/${pattern}`, {
         ignore: exclude,
         absolute: true,
         ...options,

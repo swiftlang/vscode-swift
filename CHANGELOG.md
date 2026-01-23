@@ -7,6 +7,7 @@
 - Show progress when describing/listing dependencies on package load ([#2028](https://github.com/swiftlang/vscode-swift/pull/2028))
 - Drop support for Swift 5.8 ([#1853](https://github.com/swiftlang/vscode-swift/pull/1853))
 - An official public API for the Swift extension that can be used by other Visual Studio Code extensions ([#2030](https://github.com/swiftlang/vscode-swift/pull/2030))
+- Add support for installing the swiftly toolchain manager ([1881](https://github.com/swiftlang/vscode-swift/pull/1881))
 
 ### Fixed
 
