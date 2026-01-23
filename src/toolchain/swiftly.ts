@@ -177,13 +177,7 @@ export async function handleMissingSwiftlyToolchain(
 
     // Use the existing installation function without showing reload notification
     // (since we want to continue the current operation)
-    if (!(await installSwiftlyToolchainWithProgress(version, extensionRoot, logger))) {
-        return false;
-    }
-
-    // Prompt the user that they need to restart VS Code for the changes to take effect
-
-    return true;
+    return await installSwiftlyToolchainWithProgress(version, extensionRoot, logger);
 }
 
 export class Swiftly {
