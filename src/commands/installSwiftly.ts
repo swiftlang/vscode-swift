@@ -23,7 +23,7 @@ import { installSwiftlyToolchainWithProgress } from "./installSwiftlyToolchain";
 /**
  * Prompts user for Swiftly installation with directory customization options
  * @param logger Optional logger
- * @returns Promise<SwiftlyInstallOptions | null> Installation options if user wants to install, null otherwise
+ * @returns A promise that resolves to true if the user has opted to install swiftly, false otherwise
  */
 export async function promptForSwiftlyInstallation(logger?: SwiftLogger): Promise<boolean> {
     const installMessage = `A .swift-version file was detected. Install Swiftly to automatically manage Swift toolchain versions for this project.`;
