@@ -50,6 +50,7 @@ import { runTest } from "./commands/runTest";
 import { switchPlatform } from "./commands/switchPlatform";
 import { extractTestItemsAndCount, runTestMultipleTimes } from "./commands/testMultipleTimes";
 import { SwiftLogger } from "./logging/SwiftLogger";
+import { Swiftly } from "./toolchain/swiftly";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { PackageNode, PlaygroundNode } from "./ui/ProjectPanelProvider";
 import { showToolchainSelectionQuickPick } from "./ui/ToolchainSelection";
@@ -67,6 +68,7 @@ export type WorkspaceContextWithToolchain = WorkspaceContext & { toolchain: Swif
 
 export function registerToolchainCommands(
     ctx: WorkspaceContext | undefined,
+    swiftly: Swiftly | undefined,
     logger: SwiftLogger
 ): vscode.Disposable[] {
     return [
@@ -76,6 +78,7 @@ export function registerToolchainCommands(
         vscode.commands.registerCommand("swift.selectToolchain", () =>
             showToolchainSelectionQuickPick(
                 ctx?.currentFolder?.toolchain ?? ctx?.globalToolchain,
+                swiftly,
                 logger,
                 ctx?.currentFolder?.folder
             )
