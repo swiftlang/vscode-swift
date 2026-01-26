@@ -15,16 +15,17 @@ import * as path from "path";
 import * as vscode from "vscode";
 
 import { SwiftLogger } from "../logging/SwiftLogger";
-import { Swiftly } from "../toolchain/swiftly";
+import { Swiftly, SwiftlyFactory } from "../toolchain/swiftly";
 import { Workbench } from "../utilities/commands";
 import { installSwiftlyToolchainWithProgress } from "./installSwiftlyToolchain";
 
 /**
- * Prompts user for Swiftly installation with directory customization options
- * @param logger Optional logger
- * @returns A promise that resolves to true if the user has opted to install swiftly, false otherwise
+ * Prompts user for Swiftly installation with directory customization options.
+ *
+ * @param logger The logger to use for logging messages.
+ * @returns A promise that resolves to `true` if the user has opted to install swiftly, `false` otherwise.
  */
-export async function promptForSwiftlyInstallation(logger?: SwiftLogger): Promise<boolean> {
+export async function promptForSwiftlyInstallation(logger: SwiftLogger): Promise<boolean> {
     const installMessage = `A .swift-version file was detected. Install Swiftly to automatically manage Swift toolchain versions for this project.`;
 
     const selection = await vscode.window.showWarningMessage(
@@ -66,19 +67,19 @@ This process involves updating your shell profile in order to add swiftly to you
         await vscode.workspace
             .getConfiguration("swift")
             .update("disableSwiftlyInstallPrompt", true, vscode.ConfigurationTarget.Global);
-        logger?.info("Swiftly installation prompt suppressed by user");
+        logger.info("Swiftly installation prompt suppressed by user");
     }
 
     return false;
 }
 
 /**
- * Installs Swiftly with progress tracking and user feedback
- * @param options Installation options
- * @param logger Optional logger
- * @returns Promise<boolean> true if installation succeeded
+ * Installs Swiftly with progress tracking and user feedback.
+ *
+ * @param logger The logger to use for logging messages.
+ * @returns A promise that resolves to `true` if installation succeeded, `false` otherwise.
  */
-export async function installSwiftlyWithProgress(logger?: SwiftLogger): Promise<boolean> {
+export async function installSwiftlyWithProgress(logger: SwiftLogger): Promise<boolean> {
     try {
         await vscode.window.withProgress(
             {
@@ -92,14 +93,14 @@ export async function installSwiftlyWithProgress(logger?: SwiftLogger): Promise<
         );
         return true;
     } catch (error) {
-        logger?.error(`Failed to install Swiftly: ${error}`);
+        logger.error(`Failed to install Swiftly: ${error}`);
         const message = error instanceof Error ? error.message : String(error);
         void vscode.window.showErrorMessage(`Failed to install Swiftly: ${message}`);
         return false;
     }
 }
 
-async function promptToRestartVSCode(): Promise<void> {
+async function promptToRestartVSCode(): Promise<boolean> {
     const selection = await vscode.window.showInformationMessage(
         "Restart VS Code",
         {
@@ -110,23 +111,30 @@ async function promptToRestartVSCode(): Promise<void> {
     );
     if (selection === "Quit Visual Studio Code") {
         await vscode.commands.executeCommand(Workbench.ACTION_QUIT);
+        return true;
     }
+    return false;
 }
 
 /**
- * Main function to handle missing Swiftly detection and installation
- * @param swiftVersionFiles A list of swift version files that will need to be installed
- * @param logger Optional logger
- * @returns Promise<boolean> true if Swiftly was installed or already exists
+ * Main function to handle missing Swiftly detection and installation.
+ *
+ * Asks the user whether or not they want to install Swiftly to manage their Swift toolchains. It will
+ * also install the provided Swift toolchain versions after installing Swiftly.
+ *
+ * @param swiftlyFactory Factory used to create a Swiftly instance after installation.
+ * @param swiftVersions An array of Swift toolchain versions to install.
+ * @param logger The logger to use for logging messages.
+ * @returns A promise that resolves to `true` if Swiftly was installed or already exists, `false` otherwise.
  */
 export async function handleMissingSwiftly(
+    swiftlyFactory: SwiftlyFactory,
     swiftVersions: string[],
-    extensionRoot: string,
-    logger?: SwiftLogger
+    logger: SwiftLogger
 ): Promise<boolean> {
     // Check if the user wants to disable the prompt
     if (vscode.workspace.getConfiguration("swift").get("disableSwiftlyInstallPrompt", false)) {
-        logger?.debug("Swiftly installation prompt is suppressed");
+        logger.debug("Swiftly installation prompt is suppressed");
         return false;
     }
 
@@ -141,12 +149,11 @@ export async function handleMissingSwiftly(
     }
 
     // Install toolchains
-    const swiftlyPath = path.join(Swiftly.defaultHomeDir(), "bin/swiftly");
+    const swiftly = swiftlyFactory.create(path.join(Swiftly.defaultHomeDir(), "bin/swiftly"));
     for (const version of swiftVersions) {
-        await installSwiftlyToolchainWithProgress(version, extensionRoot, logger, swiftlyPath);
+        await installSwiftlyToolchainWithProgress(swiftly, version);
     }
 
     // VS Code needs to be restarted after installing swiftly
-    await promptToRestartVSCode();
-    return true;
+    return await promptToRestartVSCode();
 }

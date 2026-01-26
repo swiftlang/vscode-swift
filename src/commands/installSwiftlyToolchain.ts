@@ -14,7 +14,6 @@
 import * as vscode from "vscode";
 
 import { WorkspaceContext } from "../WorkspaceContext";
-import { SwiftLogger } from "../logging/SwiftLogger";
 import { Swiftly, SwiftlyProgressData } from "../toolchain/swiftly";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import {
@@ -31,10 +30,8 @@ import {
  * @returns A promise that resolves to true if installation succeeded, false otherwise
  */
 export async function installSwiftlyToolchainWithProgress(
-    version: string,
-    extensionRoot: string,
-    logger?: SwiftLogger,
-    swiftlyPath?: string
+    swiftly: Swiftly,
+    version: string
 ): Promise<boolean> {
     try {
         await vscode.window.withProgress(
@@ -48,9 +45,8 @@ export async function installSwiftlyToolchainWithProgress(
 
                 let lastProgress = 0;
 
-                await Swiftly.installToolchain(
+                await swiftly.installToolchain(
                     version,
-                    extensionRoot,
                     (progressData: SwiftlyProgressData) => {
                         if (progressData.complete) {
                             // Swiftly will also verify the signature and extract the toolchain after the
@@ -74,9 +70,7 @@ export async function installSwiftlyToolchainWithProgress(
                         });
                         lastProgress = progressData.step.percent;
                     },
-                    logger,
-                    token,
-                    swiftlyPath
+                    token
                 );
             }
         );
@@ -87,12 +81,12 @@ export async function installSwiftlyToolchainWithProgress(
     } catch (error) {
         const errorMessage = (error as Error).message;
         if (errorMessage.includes(Swiftly.cancellationMessage)) {
-            logger?.info(`Installation of Swift ${version} was cancelled by user`);
+            swiftly.logger.info(`Installation of Swift ${version} was cancelled by user`);
             // Don't show error message for user-initiated cancellation
             return false;
         }
 
-        logger?.error(new Error(`Failed to install Swift ${version}`, { cause: error }));
+        swiftly.logger.error(new Error(`Failed to install Swift ${version}`, { cause: error }));
         void vscode.window.showErrorMessage(`Failed to install Swift ${version}: ${error}`);
         return false;
     }
@@ -106,10 +100,17 @@ export async function promptToInstallSwiftlyToolchain(
     type: "stable" | "snapshot"
 ): Promise<void> {
     if (!Swiftly.isSupported()) {
-        ctx.logger?.warn("Swiftly is not supported on this platform.");
+        ctx.logger.error("Swiftly is not supported on this platform.");
         void vscode.window.showErrorMessage(
             "Swiftly is not supported on this platform. Only macOS and Linux are supported."
         );
+        return;
+    }
+
+    const swiftly = ctx.swiftly;
+    if (!swiftly) {
+        ctx.logger.error("Swiftly is not installed.");
+        void vscode.window.showErrorMessage("Swiftly is not installed on this machine.");
         return;
     }
 
@@ -127,7 +128,7 @@ export async function promptToInstallSwiftlyToolchain(
         }
     }
 
-    const availableToolchains = await Swiftly.listAvailable(branch, ctx.logger);
+    const availableToolchains = await swiftly.listAvailable(branch);
 
     if (availableToolchains.length === 0) {
         ctx.logger?.debug("No toolchains available for installation via Swiftly.");
@@ -180,9 +181,8 @@ export async function promptToInstallSwiftlyToolchain(
     // Install the toolchain via Swiftly
     if (
         !(await installSwiftlyToolchainWithProgress(
-            selectedToolchain.toolchain.version.name,
-            ctx.extensionContext.extensionPath,
-            ctx.logger
+            swiftly,
+            selectedToolchain.toolchain.version.name
         ))
     ) {
         return;
@@ -196,12 +196,12 @@ export async function promptToInstallSwiftlyToolchain(
                 if (target === vscode.ConfigurationTarget.Workspace) {
                     await Promise.all(
                         vscode.workspace.workspaceFolders?.map(folder =>
-                            Swiftly.use(selectedToolchain.toolchain.version.name, folder.uri.fsPath)
+                            swiftly.use(selectedToolchain.toolchain.version.name, folder.uri.fsPath)
                         ) ?? []
                     );
                     return;
                 }
-                await Swiftly.use(selectedToolchain.toolchain.version.name);
+                await swiftly.use(selectedToolchain.toolchain.version.name);
             },
         },
         selectedDeveloperDir.developerDir,

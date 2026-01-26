@@ -19,15 +19,18 @@ import { match } from "sinon";
 import * as tar from "tar";
 import * as vscode from "vscode";
 
-import * as askpass from "@src/askpass/askpass-server";
 import { handleMissingSwiftly, promptForSwiftlyInstallation } from "@src/commands/installSwiftly";
 import { installSwiftlyToolchainWithProgress } from "@src/commands/installSwiftlyToolchain";
+import { SwiftLogger } from "@src/logging/SwiftLogger";
 import * as SwiftOutputChannelModule from "@src/logging/SwiftOutputChannel";
 import {
     Swiftly,
+    SwiftlyFactory,
     handleMissingSwiftlyToolchain,
     parseSwiftlyMissingToolchainError,
 } from "@src/toolchain/swiftly";
+import { SudoService } from "@src/utilities/SudoService";
+import { Workbench } from "@src/utilities/commands";
 import * as utilities from "@src/utilities/utilities";
 
 import {
@@ -42,7 +45,6 @@ import {
 } from "../../MockUtils";
 
 suite("Swiftly Unit Tests", () => {
-    const mockAskpass = mockGlobalModule(askpass);
     const mockUtilities = mockGlobalModule(utilities);
     const mockedPlatform = mockGlobalValue(process, "platform");
     const mockedEnv = mockGlobalValue(process, "env");
@@ -50,11 +52,19 @@ suite("Swiftly Unit Tests", () => {
     const mockOS = mockGlobalModule(os);
     const mockTar = mockGlobalModule(tar);
     const mockedFetch = mockGlobalValue(globalThis, "fetch");
+    let mockSudo: MockedObject<SudoService>;
+    let mockLogger: MockedObject<SwiftLogger>;
 
     setup(() => {
-        mockAskpass.withAskpassServer.callsFake(task => task("nonce", 8080));
+        mockSudo = mockObject<SudoService>({ execFileStreamOutput: mockFn() });
+        mockLogger = mockObject<SwiftLogger>({
+            info: mockFn(),
+            warn: mockFn(),
+            error: mockFn(),
+            debug: mockFn(),
+        });
         mockUtilities.execFile.reset();
-        mockUtilities.execFileStreamOutput.reset();
+        mockSudo.execFileStreamOutput.reset();
         mockSwiftOutputChannelModule.SwiftOutputChannel.reset();
         mockOS.tmpdir.reset();
         mockTar.extract.reset();
@@ -82,6 +92,13 @@ suite("Swiftly Unit Tests", () => {
         mockFS.restore();
     });
 
+    test("instantiating the Swift class on Windows should throw an error", () => {
+        mockedPlatform.setValue("win32");
+        expect(() => new Swiftly(undefined, instance(mockSudo), instance(mockLogger))).to.throw(
+            "Swiftly is not supported on this platform"
+        );
+    });
+
     suite("use()", () => {
         test("sets the global toolchain if no cwd is provided", async () => {
             // Mock version check to return 1.0.1
@@ -92,7 +109,8 @@ suite("Swiftly Unit Tests", () => {
             // "swiftly use" succeeds
             mockUtilities.execFile.withArgs("swiftly", match.array.startsWith(["use"])).resolves();
 
-            await Swiftly.use("6.1.0");
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            await swiftly.use("6.1.0");
 
             expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", [
                 "use",
@@ -113,7 +131,8 @@ suite("Swiftly Unit Tests", () => {
             // "swiftly use" succeeds
             mockUtilities.execFile.withArgs("swiftly", match.array.startsWith(["use"])).resolves();
 
-            await Swiftly.use("6.1.0", "/home/user/project");
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            await swiftly.use("6.1.0", "/home/user/project");
 
             expect(mockUtilities.execFile).to.have.been.calledWith(
                 "swiftly",
@@ -218,7 +237,8 @@ suite("Swiftly Unit Tests", () => {
                 stderr: "",
             });
 
-            const result = await Swiftly.list();
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            const result = await swiftly.list();
 
             // Toolchains should be sorted newest to oldest with system toolchains appearing first, followed by
             // stable toolchains, and finally snapshot toolchains.
@@ -313,7 +333,8 @@ suite("Swiftly Unit Tests", () => {
                 stderr: "",
             });
 
-            const result = await Swiftly.list();
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            const result = await swiftly.list();
 
             expect(result).to.deep.equal([
                 "xcode",
@@ -344,36 +365,23 @@ suite("Swiftly Unit Tests", () => {
                 }),
             });
 
-            const result = await Swiftly.list();
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            const result = await swiftly.list();
 
             // Toolchains should be sorted by name in descending order
             expect(result).to.deep.equal(["swift-6.0.0", "swift-5.9.0"]);
         });
 
-        test("should return empty array when platform is not supported", async () => {
-            mockedPlatform.setValue("win32");
-
-            const result = await Swiftly.list();
-
-            expect(result).to.deep.equal([]);
-            expect(mockUtilities.execFile).not.have.been.called;
-        });
-
         test("should warn and return empty array when version is null", async () => {
             mockedPlatform.setValue("darwin");
-            const mockLogger = {
-                info: () => {},
-                error: () => {},
-                warn: () => {},
-                debug: () => {},
-            };
 
             // Mock version to return undefined (not installed)
             mockUtilities.execFile
                 .withArgs("swiftly", ["--version"])
                 .rejects(new Error("Command not found"));
 
-            const result = await Swiftly.list(mockLogger as any);
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            const result = await swiftly.list();
 
             expect(result).to.deep.equal([]);
             expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", ["--version"]);
@@ -381,23 +389,21 @@ suite("Swiftly Unit Tests", () => {
 
         test("list should handle errors and return empty array", async () => {
             mockedPlatform.setValue("darwin");
-            const mockLogger = {
-                info: () => {},
-                error: () => {},
-                warn: () => {},
-                debug: () => {},
-            };
 
             mockUtilities.execFile.withArgs("swiftly", ["--version"]).rejects(new Error("error"));
 
-            const result = await Swiftly.list(instance(mockLogger));
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            const result = await swiftly.list();
 
             expect(result).to.deep.equal([]);
         });
 
-        test("getToolchainInstallLegacy should return empty array when installedToolchains is not an array", async () => {
+        test("list should return empty array when installedToolchains is not an array on swiftly 1.0.0", async () => {
             mockedPlatform.setValue("darwin");
             mockedEnv.setValue({ SWIFTLY_HOME_DIR: "/test/swiftly" });
+            mockUtilities.execFile
+                .withArgs(match.any, ["--version"])
+                .resolves({ stdout: "1.0.0", stderr: "" });
 
             // Mock getConfig to return invalid installedToolchains
             const mockConfig = {
@@ -409,82 +415,30 @@ suite("Swiftly Unit Tests", () => {
                 "/test/swiftly/config.json": JSON.stringify(mockConfig),
             });
 
-            const result = await (Swiftly as any).listFromSwiftlyConfig();
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            const result = await swiftly.list();
 
             expect(result).to.deep.equal([]);
         });
     });
 
     suite("version", () => {
-        test("should return undefined on unsupported platform", async () => {
-            mockedPlatform.setValue("win32");
-
-            const result = await Swiftly.version();
-
-            expect(result).to.be.undefined;
-            expect(mockUtilities.execFile).to.not.have.been.called;
-        });
-
         test("should handle execFile errors", async () => {
             mockedPlatform.setValue("darwin");
-            const mockLogger = {
-                info: () => {},
-                error: () => {},
-                warn: () => {},
-                debug: () => {},
-            };
 
             mockUtilities.execFile
                 .withArgs("swiftly", ["--version"])
                 .rejects(new Error("Command not found"));
 
-            const result = await Swiftly.version(mockLogger as any);
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            const result = await swiftly.version();
 
             expect(result).to.be.undefined;
             expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", ["--version"]);
         });
     });
 
-    suite("supportsJsonOutput", () => {
-        test("should return false on unsupported platform", async () => {
-            mockedPlatform.setValue("win32");
-
-            const result = await (Swiftly as any).supportsJsonOutput();
-
-            expect(result).to.be.false;
-            expect(mockUtilities.execFile).to.not.have.been.called;
-        });
-
-        test("should handle execFile errors and log them", async () => {
-            mockedPlatform.setValue("darwin");
-            const mockLogger = {
-                info: () => {},
-                error: () => {},
-                warn: () => {},
-                debug: () => {},
-            };
-
-            mockUtilities.execFile
-                .withArgs("swiftly", ["--version"])
-                .rejects(new Error("Command failed"));
-
-            const result = await (Swiftly as any).supportsJsonOutput(mockLogger);
-
-            expect(result).to.be.false;
-            expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", ["--version"]);
-        });
-    });
-
     suite("installToolchain", () => {
-        test("should throw error on unsupported platform", async () => {
-            mockedPlatform.setValue("win32");
-
-            await expect(
-                Swiftly.installToolchain("6.0.0", "/path/to/extension", undefined)
-            ).to.eventually.be.rejectedWith("Swiftly is not supported on this platform");
-            expect(mockUtilities.execFile).to.not.have.been.called;
-        });
-
         test("should install toolchain successfully on macOS without progress callback", async () => {
             mockedPlatform.setValue("darwin");
             mockUtilities.execFileStreamOutput.withArgs("swiftly").resolves();
@@ -494,7 +448,8 @@ suite("Swiftly Unit Tests", () => {
                 [tmpDir]: {},
             });
 
-            await Swiftly.installToolchain("6.0.0", "/path/to/extension", undefined);
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            await swiftly.installToolchain("6.0.0", undefined);
 
             expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
                 "swiftly",
@@ -511,14 +466,15 @@ suite("Swiftly Unit Tests", () => {
             const progressCallback = () => {};
 
             mockUtilities.execFile.withArgs("mkfifo").resolves({ stdout: "", stderr: "" });
-            mockUtilities.execFileStreamOutput.withArgs("swiftly", match.array).resolves();
+            mockSudo.execFileStreamOutput.withArgs("swiftly", match.array).resolves();
             os.tmpdir();
             mockFS({});
 
             // This test verifies the method starts the installation process
             // The actual file stream handling is complex to mock properly
             try {
-                await Swiftly.installToolchain("6.0.0", "/path/to/extension", progressCallback);
+                const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+                await swiftly.installToolchain("6.0.0", progressCallback);
             } catch (error) {
                 // Expected due to mock-fs limitations with named pipes
                 expect((error as Error).message).to.include("ENOENT");
@@ -537,28 +493,22 @@ suite("Swiftly Unit Tests", () => {
                 [tmpDir]: {},
             });
 
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
             await expect(
-                Swiftly.installToolchain("6.0.0", "/path/to/extension", undefined)
+                swiftly.installToolchain("6.0.0", undefined)
             ).to.eventually.be.rejectedWith("Installation failed");
         });
     });
 
     suite("listAvailable()", () => {
-        test("should return empty array on unsupported platform", async () => {
-            mockedPlatform.setValue("win32");
-
-            const result = await Swiftly.listAvailable();
-
-            expect(result).to.deep.equal([]);
-        });
-
         test("should return empty array when Swiftly is not installed", async () => {
             mockedPlatform.setValue("darwin");
             mockUtilities.execFile
                 .withArgs("swiftly", ["--version"])
                 .rejects(new Error("Command not found"));
 
-            const result = await Swiftly.listAvailable();
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            const result = await swiftly.listAvailable();
 
             expect(result).to.deep.equal([]);
         });
@@ -570,7 +520,8 @@ suite("Swiftly Unit Tests", () => {
                 stderr: "",
             });
 
-            const result = await Swiftly.listAvailable();
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            const result = await swiftly.listAvailable();
 
             expect(result).to.deep.equal([]);
         });
@@ -686,7 +637,8 @@ suite("Swiftly Unit Tests", () => {
                     stderr: "",
                 });
 
-            const result = await Swiftly.listAvailable();
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            const result = await swiftly.listAvailable();
 
             // Toolchains should be sorted newest to oldest with system toolchains appearing first, followed by
             // stable toolchains, and finally snapshot toolchains.
@@ -757,7 +709,8 @@ suite("Swiftly Unit Tests", () => {
                     stderr: "",
                 });
 
-            const result = await Swiftly.listAvailable();
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            const result = await swiftly.listAvailable();
             expect(result).to.deep.equal([
                 {
                     inUse: false,
@@ -796,7 +749,8 @@ suite("Swiftly Unit Tests", () => {
             mockUtilities.execFile
                 .withArgs("swiftly", ["list-available", "--format=json"])
                 .rejects(new Error("Network error"));
-            const result = await Swiftly.listAvailable();
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            const result = await swiftly.listAvailable();
             expect(result).to.deep.equal([]);
         });
 
@@ -842,7 +796,8 @@ suite("Swiftly Unit Tests", () => {
                     stderr: "",
                 });
 
-            const result = await Swiftly.listAvailable("main-snapshot");
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            const result = await swiftly.listAvailable("main-snapshot");
             expect(result).to.deep.equal([
                 {
                     inUse: false,
@@ -879,7 +834,8 @@ suite("Swiftly Unit Tests", () => {
             mockUtilities.execFileStreamOutput.withArgs("swiftly").resolves();
             mockUtilities.execFile.withArgs("mkfifo").resolves({ stdout: "", stderr: "" });
 
-            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            await swiftly.installToolchain("6.0.0");
 
             // Verify swiftly install was called with post-install file argument
             expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
@@ -897,9 +853,10 @@ suite("Swiftly Unit Tests", () => {
             mockUtilities.execFileStreamOutput.withArgs("swiftly").rejects(installError);
             mockUtilities.execFile.withArgs("mkfifo").resolves({ stdout: "", stderr: "" });
 
-            await expect(
-                Swiftly.installToolchain("6.0.0", "/path/to/extension")
-            ).to.eventually.be.rejectedWith("Swiftly installation failed");
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            await expect(swiftly.installToolchain("6.0.0")).to.eventually.be.rejectedWith(
+                "Swiftly installation failed"
+            );
         });
 
         test("should handle mkfifo creation errors", async () => {
@@ -908,15 +865,17 @@ suite("Swiftly Unit Tests", () => {
 
             const progressCallback = () => {};
 
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
             await expect(
-                Swiftly.installToolchain("6.0.0", "/path/to/extension", progressCallback)
+                swiftly.installToolchain("6.0.0", progressCallback)
             ).to.eventually.be.rejectedWith("Cannot create named pipe");
         });
 
         test("should install without progress callback successfully", async () => {
             mockUtilities.execFileStreamOutput.withArgs("swiftly").resolves();
 
-            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            await swiftly.installToolchain("6.0.0");
 
             expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
                 "swiftly",
@@ -937,7 +896,8 @@ suite("Swiftly Unit Tests", () => {
             const progressCallback = () => {};
 
             try {
-                await Swiftly.installToolchain("6.0.0", "/path/to/extension", progressCallback);
+                const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+                await swiftly.installToolchain("6.0.0", progressCallback);
             } catch (error) {
                 // Expected due to mock-fs limitations with named pipes in this test environment
             }
@@ -959,22 +919,13 @@ suite("Swiftly Unit Tests", () => {
 
         setup(() => {
             mockedPlatform.setValue("linux");
-            mockVscodeWindow.showWarningMessage.reset();
-            mockVscodeWindow.showInformationMessage.reset();
-            mockVscodeWindow.showErrorMessage.reset();
-            mockVscodeWindow.createOutputChannel.reset();
 
             // Mock createOutputChannel to return a basic output channel mock
-            mockVscodeWindow.createOutputChannel.returns({
-                show: () => {},
-                appendLine: () => {},
-                append: () => {},
-                hide: () => {},
-                dispose: () => {},
-                name: "test-channel",
-                replace: () => {},
-                clear: () => {},
-            } as any);
+            const mockOutputChannel = mockObject<vscode.LogOutputChannel>({
+                show: mockFn(),
+                appendLine: mockFn(),
+            });
+            mockVscodeWindow.createOutputChannel.returns(instance(mockOutputChannel));
         });
 
         test("should execute post-install script when user confirms and script is valid", async () => {
@@ -1000,12 +951,13 @@ apt-get -y install libncurses5-dev`;
                 .resolves({ stdout: "", stderr: "" });
 
             // Mock execFileStreamOutput for sudo
-            mockUtilities.execFileStreamOutput.withArgs("sudo").resolves();
+            mockSudo.execFileStreamOutput.resolves();
 
             // @ts-expect-error mocking vscode window methods makes type checking difficult
             mockVscodeWindow.showWarningMessage.resolves("Execute Script");
 
-            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            await swiftly.installToolchain("6.0.0");
 
             expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
                 "swiftly",
@@ -1021,14 +973,7 @@ apt-get -y install libncurses5-dev`;
                 )
             );
             expect(mockUtilities.execFile).to.have.been.calledWith("chmod", match.array);
-            expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
-                "sudo",
-                match.array,
-                match.any,
-                match.any,
-                null,
-                match.object
-            );
+            expect(mockSudo.execFileStreamOutput).to.have.been.called;
             expect(mockVscodeWindow.showInformationMessage).to.have.been.calledWith(
                 match("Swift 6.0.0 post-install script executed successfully")
             );
@@ -1055,7 +1000,8 @@ apt-get -y install build-essential`;
             // @ts-expect-error mocking vscode window methods makes type checking difficult
             mockVscodeWindow.showWarningMessage.resolves("Cancel");
 
-            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            await swiftly.installToolchain("6.0.0");
 
             expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
                 "swiftly",
@@ -1096,7 +1042,8 @@ apt-get -y install build-essential`;
                     return;
                 });
 
-            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            await swiftly.installToolchain("6.0.0");
 
             expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
                 "swiftly",
@@ -1112,10 +1059,7 @@ apt-get -y install build-essential`;
                 )
             );
             expect(mockVscodeWindow.showWarningMessage).to.not.have.been.called;
-            expect(mockUtilities.execFileStreamOutput).to.not.have.been.calledWith(
-                "sudo",
-                match.array
-            );
+            expect(mockSudo.execFileStreamOutput).to.not.have.been.called;
         });
 
         test("should handle post-install script execution errors", async () => {
@@ -1140,15 +1084,14 @@ apt-get -y install build-essential`;
                 .resolves({ stdout: "", stderr: "" });
 
             // Mock execFileStreamOutput for sudo to throw error
-            mockUtilities.execFileStreamOutput
-                .withArgs("sudo")
-                .rejects(new Error("Permission denied"));
+            mockSudo.execFileStreamOutput.rejects(new Error("Permission denied"));
 
             // @ts-expect-error mocking vscode window methods makes type checking difficult
             mockVscodeWindow.showWarningMessage.resolves("Execute Script");
             mockVscodeWindow.showErrorMessage.resolves(undefined);
 
-            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            await swiftly.installToolchain("6.0.0");
 
             expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
                 "swiftly",
@@ -1172,7 +1115,8 @@ apt-get -y install build-essential`;
         test("should complete installation successfully when no post-install file exists", async () => {
             mockUtilities.execFileStreamOutput.withArgs("swiftly").resolves();
 
-            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            await swiftly.installToolchain("6.0.0");
 
             expect(mockVscodeWindow.showWarningMessage).to.not.have.been.called;
             expect(mockVscodeWindow.showErrorMessage).to.not.have.been.called;
@@ -1209,26 +1153,20 @@ yum install ncurses-devel`;
                 .resolves({ stdout: "", stderr: "" });
 
             // Mock execFileStreamOutput for sudo
-            mockUtilities.execFileStreamOutput.withArgs("sudo").resolves();
+            mockSudo.execFileStreamOutput.resolves();
 
             // @ts-expect-error mocking vscode window methods makes type checking difficult
             mockVscodeWindow.showWarningMessage.resolves("Execute Script");
 
-            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            await swiftly.installToolchain("6.0.0");
 
             expect(mockVscodeWindow.showWarningMessage).to.have.been.calledWith(
                 match(
                     "Swift 6.0.0 installation requires additional system packages to be installed"
                 )
             );
-            expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
-                "sudo",
-                match.array,
-                match.any,
-                match.any,
-                null,
-                match.object
-            );
+            expect(mockSudo.execFileStreamOutput).to.have.been.called;
         });
 
         test("should handle malformed package manager commands in post-install script", async () => {
@@ -1250,7 +1188,8 @@ yum remove important-system-package`;
                     return;
                 });
 
-            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            await swiftly.installToolchain("6.0.0");
 
             expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
                 "swiftly",
@@ -1294,39 +1233,31 @@ apt-get -y install libncurses5-dev
                 .resolves({ stdout: "", stderr: "" });
 
             // Mock execFileStreamOutput for sudo
-            mockUtilities.execFileStreamOutput.withArgs("sudo").resolves();
+            mockSudo.execFileStreamOutput.resolves();
 
             // @ts-expect-error mocking vscode window methods makes type checking difficult
             mockVscodeWindow.showWarningMessage.resolves("Execute Script");
 
-            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            await swiftly.installToolchain("6.0.0");
 
             expect(mockVscodeWindow.showWarningMessage).to.have.been.calledWith(
                 match(
                     "Swift 6.0.0 installation requires additional system packages to be installed"
                 )
             );
-            expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
-                "sudo",
-                match.array,
-                match.any,
-                match.any,
-                null,
-                match.object
-            );
+            expect(mockSudo.execFileStreamOutput).to.have.been.called;
         });
 
         test("should skip post-install handling on macOS", async () => {
             mockedPlatform.setValue("darwin");
             mockUtilities.execFileStreamOutput.withArgs("swiftly").resolves();
 
-            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            await swiftly.installToolchain("6.0.0");
 
             expect(mockVscodeWindow.showWarningMessage).to.not.have.been.called;
-            expect(mockUtilities.execFileStreamOutput).to.not.have.been.calledWith(
-                "sudo",
-                match.array
-            );
+            expect(mockSudo.execFileStreamOutput).to.not.have.been.calledWith("sudo", match.array);
         });
     });
 
@@ -1363,11 +1294,18 @@ apt-get -y install libncurses5-dev
     suite("handleMissingSwiftlyToolchain", () => {
         const mockWindow = mockGlobalObject(vscode, "window");
         const mockedUtilities = mockGlobalModule(utilities);
-        const mockSwiftlyInstallToolchain = mockGlobalValue(Swiftly, "installToolchain");
+        let mockSwiftly: MockedObject<Swiftly>;
+
+        setup(() => {
+            mockSwiftly = mockObject<Swiftly>({
+                logger: instance(mockLogger),
+                installToolchain: mockFn(),
+            });
+        });
 
         test("handleMissingSwiftlyToolchain returns false when user declines installation", async () => {
             mockWindow.showWarningMessage.resolves(undefined); // User cancels/declines
-            const result = await handleMissingSwiftlyToolchain("6.1.2", "/path/to/extension");
+            const result = await handleMissingSwiftlyToolchain(instance(mockSwiftly), "6.1.2");
             expect(result).to.be.false;
         });
 
@@ -1385,15 +1323,14 @@ apt-get -y install libncurses5-dev
                 await task(mockProgress, mockToken);
                 return true;
             });
-
-            mockSwiftlyInstallToolchain.setValue(() => Promise.resolve(void 0));
+            mockSwiftly.installToolchain.resolves();
 
             // Mock the installSwiftlyToolchainVersion to succeed
             mockedUtilities.execFile
                 .withArgs("swiftly", match.any)
                 .resolves({ stdout: "", stderr: "" });
 
-            const result = await handleMissingSwiftlyToolchain("6.1.2", "/path/to/extension");
+            const result = await handleMissingSwiftlyToolchain(instance(mockSwiftly), "6.1.2");
             expect(result).to.be.true;
         });
     });
@@ -1414,20 +1351,15 @@ apt-get -y install libncurses5-dev
             mockUtilities.execFile.withArgs("mkfifo").resolves({ stdout: "", stderr: "" });
 
             // Mock swiftly install to throw cancellation error
-            mockUtilities.execFileStreamOutput
+            mockSudo.execFileStreamOutput
                 .withArgs("swiftly")
                 .rejects(new Error(Swiftly.cancellationMessage));
 
             const progressCallback = () => {};
 
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
             await expect(
-                Swiftly.installToolchain(
-                    "6.0.0",
-                    "/path/to/extension",
-                    progressCallback,
-                    undefined,
-                    mockToken as any
-                )
+                swiftly.installToolchain("6.0.0", progressCallback, mockToken)
             ).to.eventually.be.rejectedWith(Swiftly.cancellationMessage);
         });
 
@@ -1441,12 +1373,13 @@ apt-get -y install libncurses5-dev
             };
 
             // Mock swiftly install to throw cancellation error
-            mockUtilities.execFileStreamOutput
+            mockSudo.execFileStreamOutput
                 .withArgs("swiftly")
                 .rejects(new Error(Swiftly.cancellationMessage));
 
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
             await expect(
-                Swiftly.installToolchain("6.0.0", "", undefined, undefined, mockToken)
+                swiftly.installToolchain("6.0.0", undefined, mockToken)
             ).to.eventually.be.rejectedWith(Swiftly.cancellationMessage);
         });
 
@@ -1470,11 +1403,12 @@ apt-get -y install libncurses5-dev
             });
 
             // Mock Swiftly.installToolchain to throw cancellation error
-            mockUtilities.execFileStreamOutput
+            mockSudo.execFileStreamOutput
                 .withArgs("swiftly")
                 .rejects(new Error(Swiftly.cancellationMessage));
 
-            const result = await installSwiftlyToolchainWithProgress("6.0.0", "/path/to/extension");
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            const result = await installSwiftlyToolchainWithProgress(swiftly, "6.0.0");
 
             expect(result).to.be.false;
             expect(mockWindow.showErrorMessage).to.not.have.been.called;
@@ -1493,11 +1427,10 @@ apt-get -y install libncurses5-dev
             });
 
             // Mock Swiftly.installToolchain to throw a regular error
-            mockUtilities.execFileStreamOutput
-                .withArgs("swiftly")
-                .rejects(new Error("Network error"));
+            mockSudo.execFileStreamOutput.withArgs("swiftly").rejects(new Error("Network error"));
 
-            const result = await installSwiftlyToolchainWithProgress("6.0.0", "/path/to/extension");
+            const swiftly = new Swiftly(undefined, instance(mockSudo), instance(mockLogger));
+            const result = await installSwiftlyToolchainWithProgress(swiftly, "6.0.0");
 
             expect(result).to.be.false;
             expect(mockWindow.showErrorMessage).to.have.been.calledWith(
@@ -1516,6 +1449,7 @@ apt-get -y install libncurses5-dev
         } as vscode.Progress<{ message?: string; increment?: number }>;
 
         const mockWindow = mockGlobalObject(vscode, "window");
+        const mockCommands = mockGlobalObject(vscode, "commands");
         const mockWorkspace = mockGlobalObject(vscode, "workspace");
         const mockEnv = mockGlobalObject(vscode, "env");
         let mockConfiguration: MockedObject<vscode.WorkspaceConfiguration>;
@@ -1560,7 +1494,7 @@ apt-get -y install libncurses5-dev
                 mockWindow.showWarningMessage.resolves("Install Swiftly" as any);
                 mockWindow.showInformationMessage.resolves("Continue" as any);
 
-                const result = await promptForSwiftlyInstallation();
+                const result = await promptForSwiftlyInstallation(instance(mockLogger));
 
                 expect(result).to.be.true;
             });
@@ -1569,7 +1503,7 @@ apt-get -y install libncurses5-dev
                 mockWindow.showWarningMessage.resolves("Install Swiftly" as any);
                 mockWindow.showInformationMessage.resolves("Open Swiftly Documentation" as any);
 
-                const result = await promptForSwiftlyInstallation();
+                const result = await promptForSwiftlyInstallation(instance(mockLogger));
 
                 expect(result).to.be.false;
                 expect(mockEnv.openExternal).to.have.been.calledOnceWith(
@@ -1581,7 +1515,7 @@ apt-get -y install libncurses5-dev
                 mockWindow.showWarningMessage.resolves("Install Swiftly" as any);
                 mockWindow.showInformationMessage.resolves(undefined);
 
-                const result = await promptForSwiftlyInstallation();
+                const result = await promptForSwiftlyInstallation(instance(mockLogger));
 
                 expect(result).to.be.false;
             });
@@ -1589,7 +1523,7 @@ apt-get -y install libncurses5-dev
             test('should set configuration and return false when user selects "Don\'t Show Again"', async () => {
                 mockWindow.showWarningMessage.resolves("Don't Show Again" as any);
 
-                const result = await promptForSwiftlyInstallation();
+                const result = await promptForSwiftlyInstallation(instance(mockLogger));
 
                 expect(result).to.be.false;
                 expect(mockConfiguration.update).to.have.been.calledWith(
@@ -1602,7 +1536,7 @@ apt-get -y install libncurses5-dev
             test("should return false when user dismisses first prompt", async () => {
                 mockWindow.showWarningMessage.resolves(undefined);
 
-                const result = await promptForSwiftlyInstallation();
+                const result = await promptForSwiftlyInstallation(instance(mockLogger));
 
                 expect(result).to.be.false;
             });
@@ -1611,12 +1545,25 @@ apt-get -y install libncurses5-dev
         suite("handleMissingSwiftly()", () => {
             const isInstalledStub = mockGlobalFunction(Swiftly, "isInstalled");
             const installSwiftlyStub = mockGlobalFunction(Swiftly, "installSwiftly");
+            let mockSwiftlyFactory: MockedObject<SwiftlyFactory>;
+            let mockSwiftly: MockedObject<Swiftly>;
+
+            setup(() => {
+                mockSwiftly = mockObject<Swiftly>({});
+                mockSwiftlyFactory = mockObject<SwiftlyFactory>({
+                    create: mockFn(s => s.returns(mockSwiftly)),
+                });
+            });
 
             test("should return false when prompt is suppressed", async () => {
                 isInstalledStub.resolves(false);
                 mockConfiguration.get.withArgs("disableSwiftlyInstallPrompt").returns(true); // Prompt suppressed
 
-                const result = await handleMissingSwiftly([], "");
+                const result = await handleMissingSwiftly(
+                    instance(mockSwiftlyFactory),
+                    [],
+                    instance(mockLogger)
+                );
 
                 expect(result).to.be.false;
                 expect(mockWindow.showWarningMessage).to.not.have.been.called;
@@ -1627,7 +1574,11 @@ apt-get -y install libncurses5-dev
                 mockConfiguration.get.withArgs("disableSwiftlyInstallPrompt").returns(false); // Prompt not suppressed
                 mockWindow.showWarningMessage.resolves(undefined); // User cancels
 
-                const result = await handleMissingSwiftly([], "");
+                const result = await handleMissingSwiftly(
+                    instance(mockSwiftlyFactory),
+                    [],
+                    instance(mockLogger)
+                );
 
                 expect(result).to.be.false;
             });
@@ -1637,17 +1588,26 @@ apt-get -y install libncurses5-dev
                 mockConfiguration.get.withArgs("disableSwiftlyInstallPrompt").returns(false); // Prompt not suppressed
                 // Need to stub both prompts in the new two-step flow
                 mockWindow.showWarningMessage.resolves("Install Swiftly" as any);
-                mockWindow.showInformationMessage.resolves("Continue" as any);
+                mockWindow.showInformationMessage.onFirstCall().resolves("Continue" as any);
+                mockWindow.showInformationMessage
+                    .onSecondCall()
+                    .resolves("Quit Visual Studio Code" as any);
                 mockWindow.withProgress.callsFake(async (_options, task) => {
                     await task({ report: () => {} } as any, {} as any);
                 });
 
-                const result = await handleMissingSwiftly([], "");
+                const result = await handleMissingSwiftly(
+                    instance(mockSwiftlyFactory),
+                    [],
+                    instance(mockLogger)
+                );
 
                 // Result depends on whether installation succeeds
                 // In this test, we mocked it to succeed
                 expect(result).to.be.true;
                 expect(installSwiftlyStub).to.have.been.called;
+                // The user clicked the "Quit Visual Studio Code" button which should quit VS Code
+                expect(mockCommands.executeCommand).to.have.been.calledWith(Workbench.ACTION_QUIT);
             });
         });
     });

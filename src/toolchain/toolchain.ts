@@ -126,14 +126,14 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
     }
 
     static async create(
-        extensionRoot: string,
+        swiftly: Swiftly | undefined,
         folder?: vscode.Uri,
         logger?: SwiftLogger
     ): Promise<SwiftToolchain> {
         const swiftBinaryPath = await this.findSwiftBinaryInPath();
         const { toolchainPath, toolchainManager } = await this.getToolchainPath(
             swiftBinaryPath,
-            extensionRoot,
+            swiftly,
             folder,
             logger
         );
@@ -549,7 +549,7 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
      */
     private static async getToolchainPath(
         swiftBinaryPath: string,
-        extensionRoot: string,
+        swiftly: Swiftly | undefined,
         cwd?: vscode.Uri,
         logger?: SwiftLogger
     ): Promise<{
@@ -573,8 +573,8 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
                 };
             }
             // Check if the swift binary is managed by swiftly
-            if (await Swiftly.isManagedBySwiftly(swiftBinaryPath)) {
-                const swiftlyToolchainPath = await Swiftly.getActiveToolchain(extensionRoot, cwd);
+            if (swiftly && (await swiftly.isManagedBySwiftly(swiftBinaryPath))) {
+                const swiftlyToolchainPath = await swiftly.getActiveToolchain(cwd);
                 return {
                     toolchainPath: path.resolve(swiftlyToolchainPath, "usr"),
                     toolchainManager: "swiftly",
