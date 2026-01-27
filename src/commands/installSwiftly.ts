@@ -11,7 +11,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import * as os from "os";
 import * as path from "path";
 import * as vscode from "vscode";
 
@@ -146,7 +145,7 @@ export async function handleMissingSwiftly(
     }
 
     // Install toolchains
-    const swiftlyPath = path.join(os.homedir(), ".swiftly", "bin", "swiftly");
+    const swiftlyPath = path.join(Swiftly.defaultHomeDir(), "bin/swiftly");
     for (const version of swiftVersions) {
         await installSwiftlyToolchainWithProgress(version, extensionRoot, logger, swiftlyPath);
     }
