@@ -36,7 +36,7 @@ jobs:
           git rev-parse HEAD > vscode-swift-sha.txt
       - name: Archive production artifacts
         id: archive
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: ${{ env.ACT != 'true' }}
         with:
           if-no-files-found: error
