@@ -183,6 +183,19 @@ export async function handleMissingSwiftlyToolchain(
 export class Swiftly {
     public static cancellationMessage = "Installation cancelled by user";
 
+    public static defaultHomeDir(): string {
+        switch (process.platform) {
+            case "linux": {
+                if (process.env["XDG_DATA_HOME"]) {
+                    return path.join(process.env["XDG_DATA_HOME"], "swiftly");
+                }
+                return path.join(os.homedir(), ".local/share/swiftly");
+            }
+            default:
+                return path.join(os.homedir(), ".swiftly");
+        }
+    }
+
     /**
      * Downloads and installs Swiftly for the current platform
      */
