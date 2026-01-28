@@ -83,6 +83,7 @@ export interface TestRunState {
 
 export class TestRunProxy {
     private testRun?: vscode.TestRun;
+    private addedTestItems: { testClass: TestClass; parentIndex: number }[] = [];
     private runStarted: boolean = false;
     private queuedOutput: string[] = [];
     private _testItems: vscode.TestItem[];
@@ -145,23 +146,14 @@ export class TestRunProxy {
         this.resetTags(this.controller);
         this.runStarted = true;
 
-        this.testRun = this.controller.createTestRun(this.testRunRequest);
-        this.token.add(this.testRun.token);
+        // When a test run starts we need to do several things:
+        // - Create new TestItems for each paramterized test that was added
+        //   and attach them to their parent TestItem.
+        // - Create a new test run from the TestRunArguments + newly created TestItems.
+        // - Mark all of these test items as enqueued on the test run.
 
-        // Forward any output captured before the testRun was created.
-        for (const outputLine of this.queuedOutput) {
-            this.performAppendOutput(this.testRun, outputLine);
-        }
-        this.queuedOutput = [];
-
-        for (const test of this.testItems) {
-            this.enqueued(test);
-        }
-    };
-
-    public addParameterizedTestCases = (testClasses: TestClass[], parentIndex: number) => {
-        const addedTestItems = testClasses
-            .map(testClass => {
+        const addedTestItems = this.addedTestItems
+            .map(({ testClass, parentIndex }) => {
                 const parent = this.args.testItems[parentIndex];
                 // clear out the children before we add the new ones.
                 parent.children.replace([]);
@@ -197,17 +189,34 @@ export class TestRunProxy {
 
                 return added;
             });
+
+        this.testRun = this.controller.createTestRun(this.testRunRequest);
+        this.token.add(this.testRun.token);
+
+        const existingTestItemCount = this.testItems.length;
         this._testItems = [...this.testItems, ...addedTestItems];
 
-        for (const test of addedTestItems) {
-            this.enqueued(test);
+        if (this._testItems.length !== existingTestItemCount) {
+            // Recreate a test item finder with the added test items
+            this.testItemFinder =
+                process.platform === "darwin"
+                    ? new DarwinTestItemFinder(this.testItems)
+                    : new NonDarwinTestItemFinder(this.testItems, this.folderContext);
         }
 
-        // Recreate a test item finder with the added test items
-        this.testItemFinder =
-            process.platform === "darwin"
-                ? new DarwinTestItemFinder(this.testItems)
-                : new NonDarwinTestItemFinder(this.testItems, this.folderContext);
+        // Forward any output captured before the testRun was created.
+        for (const outputLine of this.queuedOutput) {
+            this.performAppendOutput(this.testRun, outputLine);
+        }
+        this.queuedOutput = [];
+
+        for (const test of this.testItems) {
+            this.enqueued(test);
+        }
+    };
+
+    public addParameterizedTestCase = (testClass: TestClass, parentIndex: number) => {
+        this.addedTestItems.push({ testClass, parentIndex });
     };
 
     public addAttachment = (testIndex: number, attachment: string) => {
@@ -477,7 +486,8 @@ export class TestRunner {
                   )
                 : new XCTestOutputParser();
         this.swiftTestOutputParser = new SwiftTestingOutputParser(
-            this.testRun.addParameterizedTestCases,
+            this.testRun.testRunStarted,
+            this.testRun.addParameterizedTestCase,
             this.testRun.addAttachment
         );
         this.onDebugSessionTerminated = this.debugSessionTerminatedEmitter.event;
@@ -491,7 +501,8 @@ export class TestRunner {
     public setIteration(iteration: number) {
         // The SwiftTestingOutputParser holds state and needs to be reset between iterations.
         this.swiftTestOutputParser = new SwiftTestingOutputParser(
-            this.testRun.addParameterizedTestCases,
+            this.testRun.testRunStarted,
+            this.testRun.addParameterizedTestCase,
             this.testRun.addAttachment
         );
         this.testRun.setIteration(iteration);
@@ -819,8 +830,6 @@ export class TestRunner {
                 // The await simply waits for the watching to be configured.
                 await this.swiftTestOutputParser.watch(fifoPipePath, runState);
 
-                this.testRun.testRunStarted();
-
                 await this.launchTests(
                     runState,
                     this.testKind === TestKind.parallel ? TestKind.standard : this.testKind,
@@ -849,6 +858,7 @@ export class TestRunner {
                 return this.testRun.runState;
             }
 
+            // XCTestRuns are started immediately
             this.testRun.testRunStarted();
 
             await this.launchTests(
