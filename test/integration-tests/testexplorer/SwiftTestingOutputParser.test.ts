@@ -47,6 +47,7 @@ suite("SwiftTestingOutputParser Suite", () => {
     beforeEach(() => {
         outputParser = new SwiftTestingOutputParser(
             () => {},
+            () => {},
             () => {}
         );
         testRunState = new TestRunState(true);
@@ -233,14 +234,13 @@ suite("SwiftTestingOutputParser Suite", () => {
         ]);
 
         const outputParser = new SwiftTestingOutputParser(
-            testClasses => {
-                testClasses.forEach(testClass =>
-                    testRunState.testItemFinder.tests.push({
-                        name: testClass.id,
-                        status: TestStatus.enqueued,
-                        output: [],
-                    })
-                );
+            () => {},
+            testClass => {
+                testRunState.testItemFinder.tests.push({
+                    name: testClass.id,
+                    status: TestStatus.enqueued,
+                    output: [],
+                });
             },
             () => {}
         );

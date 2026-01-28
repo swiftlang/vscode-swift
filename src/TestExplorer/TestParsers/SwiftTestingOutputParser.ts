@@ -191,7 +191,8 @@ export class SwiftTestingOutputParser {
     private path?: string;
 
     constructor(
-        public addParameterizedTestCases: (testClasses: TestClass[], parentIndex: number) => void,
+        public testRunStarted: () => void,
+        public addParameterizedTestCase: (testClass: TestClass, parentIndex: number) => void,
         public onAttachment: (testIndex: number, path: string) => void
     ) {}
 
@@ -279,6 +280,7 @@ export class SwiftTestingOutputParser {
     private handleEventRecord(payload: EventRecordPayload, runState: ITestRunState) {
         switch (payload.kind) {
             case "runStarted":
+                this.handleRunStarted();
                 break;
             case "testStarted":
                 this.handleTestStarted(payload, runState);
@@ -320,8 +322,9 @@ export class SwiftTestingOutputParser {
 
         const testIndex = this.testItemIndexFromTestID(item.payload.id, runState);
         // If a test has test cases it is paramterized and we need to notify
-        // the caller that the TestClass should be added to the vscode.TestRun.
-        const parameterizedTestCases = item.payload._testCases
+        // the caller that the TestClass should be added to the vscode.TestRun
+        // before it starts.
+        item.payload._testCases
             .map((testCase, index) =>
                 this.parameterizedFunctionTestCaseToTestClass(
                     item.payload.id,
@@ -334,9 +337,14 @@ export class SwiftTestingOutputParser {
                     index
                 )
             )
-            .flatMap(testClass => (testClass ? [testClass] : []));
+            .flatMap(testClass => (testClass ? [testClass] : []))
+            .forEach(testClass => this.addParameterizedTestCase(testClass, testIndex));
+    }
 
-        this.addParameterizedTestCases(parameterizedTestCases, testIndex);
+    private handleRunStarted() {
+        // Notify the runner that we've received all the test cases and
+        // are going to start running tests now.
+        this.testRunStarted();
     }
 
     private handleTestStarted(payload: TestStarted, runState: ITestRunState) {

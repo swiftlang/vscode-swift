@@ -15,7 +15,6 @@
 - Fix extension displaying SwiftPM's project view and automatic build tasks even when `disableSwiftPMIntegration` was true ([#2011](https://github.com/swiftlang/vscode-swift/pull/2011))
 - Validate extension settings and warn if they are invalid ([#2016](https://github.com/swiftlang/vscode-swift/pull/2016))
 - Show the Test Results panel when tests fail to compile and the user has `testing.automaticallyOpenTestResults` set to `openOnTestFailure` ([#2035](https://github.com/swiftlang/vscode-swift/pull/2035))
-- Swift-testing test runs are marked as 'started' in the UI immediately, not after compilation finishes ([#2039](https://github.com/swiftlang/vscode-swift/pull/2039))
 - Added missing icon for `macro` targets in the Project Panel ([#2043](https://github.com/swiftlang/vscode-swift/pull/2043))
 
 ## 2.14.3 - 2025-12-15
