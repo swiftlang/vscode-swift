@@ -99,10 +99,7 @@ export class FolderContext implements ExternalFolderContext, vscode.Disposable {
 
         let toolchain: SwiftToolchain;
         try {
-            toolchain = await SwiftToolchain.create(
-                workspaceContext.extensionContext.extensionPath,
-                folder
-            );
+            toolchain = await SwiftToolchain.create(workspaceContext.swiftly, folder);
         } catch (error) {
             // This error case is quite hard for the user to get in to, but possible.
             // Typically on startup the toolchain creation failure is going to happen in
@@ -116,10 +113,7 @@ export class FolderContext implements ExternalFolderContext, vscode.Disposable {
             if (userMadeSelection) {
                 // User updated toolchain settings, retry once
                 try {
-                    toolchain = await SwiftToolchain.create(
-                        workspaceContext.extensionContext.extensionPath,
-                        folder
-                    );
+                    toolchain = await SwiftToolchain.create(workspaceContext.swiftly, folder);
                     workspaceContext.logger.info(
                         `Successfully created toolchain for ${FolderContext.uriName(folder)} after user selection`,
                         FolderContext.uriName(folder)

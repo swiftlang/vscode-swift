@@ -38,6 +38,7 @@ import { SwiftPluginTaskProvider } from "./tasks/SwiftPluginTaskProvider";
 import { SwiftTaskProvider } from "./tasks/SwiftTaskProvider";
 import { TaskManager } from "./tasks/TaskManager";
 import { BuildFlags } from "./toolchain/BuildFlags";
+import { Swiftly } from "./toolchain/swiftly";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { ProjectPanelProvider } from "./ui/ProjectPanelProvider";
 import { StatusItem } from "./ui/StatusItem";
@@ -96,6 +97,7 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
     public loggerFactory: SwiftLoggerFactory;
 
     constructor(
+        public swiftly: Swiftly | undefined,
         public extensionContext: vscode.ExtensionContext,
         public contextKeys: ContextKeys,
         public logger: SwiftLogger,
