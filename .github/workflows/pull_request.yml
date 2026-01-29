@@ -15,16 +15,25 @@ jobs:
       image: swift:6.0-jammy
     outputs:
       artifact-id: ${{ steps.archive.outputs.artifact-id }}
+      node-version: ${{ steps.read-node-version.outputs.version }}
+      node-path: ${{ steps.read-node-version.outputs.path }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Read Node version
+        id: read-node-version
+        run: |
+          NODE_VERSION=$(cat .nvmrc)
+          NODE_VERSION_NUMBER=${NODE_VERSION#v}
+          echo "version=v${NODE_VERSION_NUMBER}" >> $GITHUB_OUTPUT
+          echo "path=/usr/local/nvm/versions/node/v${NODE_VERSION_NUMBER}/bin" >> $GITHUB_OUTPUT
       - name: Build Extension
         run: |
-          export NODE_VERSION=v22.17.0
-          export NODE_PATH=/usr/local/nvm/versions/node/v22.17.0/bin
           export NVM_DIR=/usr/local/nvm
           . .github/workflows/scripts/setup-linux.sh
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          nvm install
+          nvm use
           npm ci
           npm run dev-package
           for file in *.vsix; do
@@ -54,8 +63,8 @@ jobs:
       # Linux
       linux_exclude_swift_versions: "${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && '[{\"swift_version\": \"nightly-6.1\"}]' || '[{\"swift_version\": \"nightly-6.1\"},{\"swift_version\": \"nightly-6.2\"},{\"swift_version\": \"nightly-6.3\"},{\"swift_version\": \"nightly-main\"}]' }}"
       linux_env_vars: |
-        NODE_VERSION=v22.17.0
-        NODE_PATH=/usr/local/nvm/versions/node/v22.17.0/bin
+        NODE_VERSION=${{ needs.package.outputs.node-version }}
+        NODE_PATH=${{ needs.package.outputs.node-path }}
         NVM_DIR=/usr/local/nvm
         CI=1
         FAST_TEST_RUN=${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && '0' || '1'}}
