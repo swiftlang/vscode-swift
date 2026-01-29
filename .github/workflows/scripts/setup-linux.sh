@@ -35,6 +35,6 @@ fi
 
 echo "version=${NODE_VERSION}" >> "$GITHUB_OUTPUT"
 echo "path=/usr/local/nvm/versions/node/${NODE_VERSION}/bin" >> "$GITHUB_OUTPUT"
-npm install
-npm use
+nvm install
+nvm use
 npm ci
