@@ -348,11 +348,12 @@ export function checkForSwiftlyInstallation(
         return;
     }
 
-    // Don't block while updating Swiftly context keys.
+    // Don't block extension activation waiting for Swiftly checks
     Swiftly.isInstalled().then(
-        async isInstalled => {
-            if (!isInstalled) {
+        async isSwiftlyInstalled => {
+            if (!isSwiftlyInstalled) {
                 logger.debug("Swiftly is not installed on this system.");
+                await checkAndPromptToInstallSwiftly(context, logger);
                 return;
             }
             const version = await Swiftly.version(logger);
@@ -367,30 +368,28 @@ export function checkForSwiftlyInstallation(
                 patch: 0,
             });
         },
-        error => logger.error(Error("Failed to update Swiftly context keys.", { cause: error }))
+        error => logger.error(Error("Failed to verify Swiftly installation.", { cause: error }))
     );
+}
 
-    // Don't block while prompting for the user to install Swiftly.
-    Swiftly.isInstalled().then(
-        async isSwiftlyInstalled => {
-            if (isSwiftlyInstalled) {
-                return;
-            }
-            // Prompt the user to install Swiftly if it is not already installed
-            const swiftVersionFiles = await findSwiftVersionFilesInWorkspace();
-            const allSwiftVersions = await Promise.all(
-                swiftVersionFiles.map(async file => (await fs.readFile(file, "utf-8")).trim())
-            );
-            const uniqueSwiftVersions = [...new Set(allSwiftVersions)];
-            if (uniqueSwiftVersions.length === 0) {
-                return;
-            }
-            logger.debug(`Detected swift version file(s): ${uniqueSwiftVersions.join(", ")}`);
-            logger.debug("Prompting user to install Swiftly.");
-            await handleMissingSwiftly(uniqueSwiftVersions, context.extensionPath, logger);
-        },
-        error => logger.error(Error("Failed to verify Swiftly installation", { cause: error }))
+/**
+ * Checks for .swift-version file(s) in the workspace. If any are found then the user will be prompted to install Swiftly.
+ */
+async function checkAndPromptToInstallSwiftly(
+    context: vscode.ExtensionContext,
+    logger: SwiftLogger
+): Promise<void> {
+    const swiftVersionFiles = await findSwiftVersionFilesInWorkspace();
+    const allSwiftVersions = await Promise.all(
+        swiftVersionFiles.map(async file => (await fs.readFile(file, "utf-8")).trim())
     );
+    const uniqueSwiftVersions = [...new Set(allSwiftVersions)];
+    if (uniqueSwiftVersions.length === 0) {
+        return;
+    }
+    logger.debug(`Detected swift version file(s): ${uniqueSwiftVersions.join(", ")}`);
+    logger.debug("Prompting user to install Swiftly.");
+    await handleMissingSwiftly(uniqueSwiftVersions, context.extensionPath, logger);
 }
 
 /**
