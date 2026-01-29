@@ -24,6 +24,14 @@
       {
         "selector": "ImportExpression",
         "message": "Dynamic imports using 'import()' are not allowed. Use static imports at the top of the file instead."
+      },
+      {
+        "selector": "CallExpression[arguments.length=1] > MemberExpression.callee > Identifier.property[name='reduce']",
+        "message": "Provide initialValue to .reduce(). Otherwise an empty array will throw a 'reduce of empty array with no initial value' error."
+      },
+      {
+        "selector": "CallExpression[arguments.length=1] > MemberExpression.callee > Identifier.property[name='reduceRight']",
+        "message": "Provide initialValue to .reduceRight(). Otherwise an empty array will throw a 'reduce of empty array with no initial value' error."
       }
     ],
     "@typescript-eslint/no-floating-promises": ["warn", { "checkThenables": true }],

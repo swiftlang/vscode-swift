@@ -22,7 +22,6 @@ import { extract } from "tar";
 import * as vscode from "vscode";
 import { z } from "zod/v4/mini";
 
-import { ContextKeys } from "../ContextKeyManager";
 import { withAskpassServer } from "../askpass/askpass-server";
 import { installSwiftlyToolchainWithProgress } from "../commands/installSwiftlyToolchain";
 import { SwiftLogger } from "../logging/SwiftLogger";
@@ -1108,35 +1107,6 @@ export class Swiftly {
             return false;
         }
     }
-}
-
-/**
- * Checks whether or not Swiftly is installed and updates context keys appropriately.
- */
-export function checkForSwiftlyInstallation(contextKeys: ContextKeys, logger: SwiftLogger): void {
-    contextKeys.supportsSwiftlyInstall = false;
-    if (!Swiftly.isSupported()) {
-        logger.debug(`Swiftly is not available on ${process.platform}`);
-        return;
-    }
-    // Don't block while checking the Swiftly insallation.
-    void Swiftly.isInstalled().then(async isInstalled => {
-        if (!isInstalled) {
-            logger.debug("Swiftly is not installed on this system.");
-            return;
-        }
-        const version = await Swiftly.version(logger);
-        if (!version) {
-            logger.warn("Unable to determine Swiftly version.");
-            return;
-        }
-        logger.debug(`Detected Swiftly version ${version}.`);
-        contextKeys.supportsSwiftlyInstall = version.isGreaterThanOrEqual({
-            major: 1,
-            minor: 1,
-            patch: 0,
-        });
-    });
 }
 
 function compareSwiftlyToolchain(lhs: AvailableToolchain, rhs: AvailableToolchain): number {
