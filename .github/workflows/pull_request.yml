@@ -20,21 +20,11 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Read Node version
-        id: read-node-version
-        run: |
-          NODE_VERSION=$(cat .nvmrc)
-          NODE_VERSION_NUMBER=${NODE_VERSION#v}
-          echo "version=v${NODE_VERSION_NUMBER}" >> $GITHUB_OUTPUT
-          echo "path=/usr/local/nvm/versions/node/v${NODE_VERSION_NUMBER}/bin" >> $GITHUB_OUTPUT
       - name: Build Extension
         run: |
           export NVM_DIR=/usr/local/nvm
           . .github/workflows/scripts/setup-linux.sh
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-          nvm install
-          nvm use
-          npm ci
           npm run dev-package
           for file in *.vsix; do
             name="$(basename "$file" .vsix)-${{github.run_number}}.vsix"

@@ -13,7 +13,7 @@
 ##
 ##===----------------------------------------------------------------------===##
 
-export NODE_VERSION=v22.21.1
+export NODE_VERSION="v$(cat .nvmrc)"
 export NODE_PATH=/usr/local/nvm/versions/node/${NODE_VERSION}/bin
 export NVM_DIR=/usr/local/nvm
 
@@ -30,3 +30,9 @@ if [ -n "$VSCODE_SWIFT_VSIX_ID" ]; then
     npm ci --ignore-scripts
     npx tsx scripts/download_vsix.ts
 fi
+
+echo "version=${NODE_VERSION}" >> "$GITHUB_OUTPUT"
+echo "path=/usr/local/nvm/versions/node/${NODE_VERSION}/bin" >> $GITHUB_OUTPUT
+npm install
+npm use
+npm ci
