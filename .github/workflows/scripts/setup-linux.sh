@@ -13,7 +13,8 @@
 ##
 ##===----------------------------------------------------------------------===##
 
-export NODE_VERSION="v$(cat .nvmrc)"
+export NVMRC_VERSION=cat .nvmrc
+export NODE_VERSION="v${NVMRC_VERSION}"
 export NODE_PATH=/usr/local/nvm/versions/node/${NODE_VERSION}/bin
 export NVM_DIR=/usr/local/nvm
 
@@ -32,7 +33,7 @@ if [ -n "$VSCODE_SWIFT_VSIX_ID" ]; then
 fi
 
 echo "version=${NODE_VERSION}" >> "$GITHUB_OUTPUT"
-echo "path=/usr/local/nvm/versions/node/${NODE_VERSION}/bin" >> $GITHUB_OUTPUT
+echo "path=/usr/local/nvm/versions/node/${NODE_VERSION}/bin" >> "$GITHUB_OUTPUT"
 npm install
 npm use
 npm ci
