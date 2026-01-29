@@ -23,7 +23,7 @@ apt-get update && apt-get install -y rsync curl gpg libasound2 libgbm1 libgtk-3-
 mkdir -p $NVM_DIR
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
 # shellcheck disable=SC1091
-. $NVM_DIR/nvm.sh && nvm install $NODE_VERSION
+. $NVM_DIR/nvm.sh && nvm install "$NODE_VERSION"
 echo "$NODE_PATH" >> "$GITHUB_PATH"
 
 env | sort
