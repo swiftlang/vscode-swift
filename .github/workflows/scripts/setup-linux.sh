@@ -13,7 +13,8 @@
 ##
 ##===----------------------------------------------------------------------===##
 
-export NVMRC_VERSION=cat .nvmrc
+NVMRC_VERSION=$(cat .nvmrc)
+export NVMRC_VERSION
 export NODE_VERSION="v${NVMRC_VERSION}"
 export NODE_PATH=/usr/local/nvm/versions/node/${NODE_VERSION}/bin
 export NVM_DIR=/usr/local/nvm
