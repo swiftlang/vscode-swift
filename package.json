@@ -490,6 +490,11 @@
         "command": "swift.generateSourcekitConfiguration",
         "title": "Generate SourceKit-LSP Configuration",
         "category": "Swift"
+      },
+      {
+        "command": "swift.createDocumentationCatalog",
+        "title": "Create Documentation Catalog",
+        "category": "Swift"
       }
     ],
     "configuration": [
@@ -1390,6 +1395,10 @@
         {
           "command": "swift.play",
           "when": "false"
+        },
+        {
+          "command": "swift.createDocumentationCatalog",
+          "when": "workspaceFolderCount > 0"
         }
       ],
       "editor/context": [
