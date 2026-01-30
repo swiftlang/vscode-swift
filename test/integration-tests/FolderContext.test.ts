@@ -72,10 +72,7 @@ suite("FolderContext Error Handling Test Suite", () => {
         assert.ok(errorLogs.length > 0, "Should log error message with folder context");
 
         assert.ok(
-            swiftToolchainCreateStub.calledWith(
-                workspaceContext.extensionContext.extensionPath,
-                testFolder
-            ),
+            swiftToolchainCreateStub.calledWith(workspaceContext.swiftly, testFolder),
             "Should attempt to create toolchain for specific folder"
         );
         assert.strictEqual(
