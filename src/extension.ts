@@ -379,6 +379,11 @@ async function checkAndPromptToInstallSwiftly(
     context: vscode.ExtensionContext,
     logger: SwiftLogger
 ): Promise<void> {
+    // Bail early if the user has disabled the swiftly install prompt
+    if (vscode.workspace.getConfiguration("swift").get("disableSwiftlyInstallPrompt", false)) {
+        return;
+    }
+    // Check to see if there are any .swift-version files in the workspace
     const swiftVersionFiles = await findSwiftVersionFilesInWorkspace();
     const allSwiftVersions = await Promise.all(
         swiftVersionFiles.map(async file => (await fs.readFile(file, "utf-8")).trim())
