@@ -23,7 +23,7 @@ jobs:
       artifact-id: ${{ steps.archive.outputs.artifact-id }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Build Extension
         run: |
           export NODE_VERSION=v22.17.0
