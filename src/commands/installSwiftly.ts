@@ -124,10 +124,6 @@ export async function handleMissingSwiftly(
     extensionRoot: string,
     logger?: SwiftLogger
 ): Promise<boolean> {
-    if (await Swiftly.isInstalled()) {
-        return true;
-    }
-
     // Check if the user wants to disable the prompt
     if (vscode.workspace.getConfiguration("swift").get("disableSwiftlyInstallPrompt", false)) {
         logger?.debug("Swiftly installation prompt is suppressed");

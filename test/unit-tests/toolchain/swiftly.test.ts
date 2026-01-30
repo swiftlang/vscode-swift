@@ -1612,15 +1612,6 @@ apt-get -y install libncurses5-dev
             const isInstalledStub = mockGlobalFunction(Swiftly, "isInstalled");
             const installSwiftlyStub = mockGlobalFunction(Swiftly, "installSwiftly");
 
-            test("should return true immediately when Swiftly is already installed", async () => {
-                isInstalledStub.resolves(true);
-
-                const result = await handleMissingSwiftly([], "");
-
-                expect(result).to.be.true;
-                expect(mockWindow.showWarningMessage).to.not.have.been.called;
-            });
-
             test("should return false when prompt is suppressed", async () => {
                 isInstalledStub.resolves(false);
                 mockConfiguration.get.withArgs("disableSwiftlyInstallPrompt").returns(true); // Prompt suppressed

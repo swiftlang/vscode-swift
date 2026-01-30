@@ -2,6 +2,10 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+### Fixed
+
+- Fixed extension activation issues involving swiftly ([#2066](https://github.com/swiftlang/vscode-swift/pull/2066))
+
 ## 2.16.0 - 2026-01-28
 
 ### Added
