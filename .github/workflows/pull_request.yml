@@ -19,7 +19,7 @@ jobs:
       node-path: ${{ steps.read-node-version.outputs.path }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Build Extension
         run: |
           export NVM_DIR=/usr/local/nvm
