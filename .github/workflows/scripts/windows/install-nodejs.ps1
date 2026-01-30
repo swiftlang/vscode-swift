@@ -1,4 +1,7 @@
-$NODEJS='https://nodejs.org/dist/v22.21.1/node-v22.21.1-x64.msi'
+$NVMRC_PATH = Join-Path $PSScriptRoot "..\..\..\..\.nvmrc"
+$NODE_VERSION = (Get-Content $NVMRC_PATH -Raw).Trim()
+
+$NODEJS = "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-x64.msi"
 $NODEJS_SHA256='fd7a63fec3a54a665851e2d3d93e07cfead2ffb4521675ffdbceb1bb5ac009bb'
 Set-Variable ErrorActionPreference Stop
 Set-Variable ProgressPreference SilentlyContinue
