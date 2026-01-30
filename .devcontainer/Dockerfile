@@ -1,5 +1,7 @@
 FROM swiftlang/swift:nightly-jammy
 
+COPY ../nvmrc /tmp/.nvmrc
+
 #  python3-lldb-13 is only needed for swiftly and a great dep to remove to test post-install script ;)
 RUN export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
     && apt-get -q update \
@@ -17,9 +19,10 @@ RUN export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true \
 # Install nvm / Node.js
 RUN mkdir -p /usr/local/nvm
 ENV NVM_DIR /usr/local/nvm
-ENV NODE_VERSION v22.17.0
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
-RUN /bin/bash -c "source $NVM_DIR/nvm.sh && nvm install $NODE_VERSION"
+ARG NODE_VERSION
+RUN NODE_VERSION=$(cat /tmp/.nvmrc) && \
+    /bin/bash -c "source $NVM_DIR/nvm.sh && nvm install $NODE_VERSION"
 ENV NODE_PATH $NVM_DIR/versions/node/$NODE_VERSION/bin
 ENV PATH $NODE_PATH:$PATH
 RUN npm -v
