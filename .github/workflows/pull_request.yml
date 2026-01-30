@@ -75,7 +75,7 @@ jobs:
 
   soundness:
     name: Soundness
-    uses: swiftlang/github-workflows/.github/workflows/soundness.yml@0.0.2
+    uses: swiftlang/github-workflows/.github/workflows/soundness.yml@0.0.6
     with:
       # Pending https://github.com/swiftlang/vscode-swift/pull/1176
       license_header_check_enabled: false
