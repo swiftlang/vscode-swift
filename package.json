@@ -1134,7 +1134,7 @@
             "default": false,
             "markdownDescription": "Disable the automatic Swiftly installation prompt when no Swift toolchain is found.",
             "order": 98,
-            "scope": "application"
+            "scope": "machine-overridable"
           },
           "swift.diagnostics": {
             "type": "boolean",
