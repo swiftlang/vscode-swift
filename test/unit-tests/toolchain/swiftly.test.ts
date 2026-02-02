@@ -16,7 +16,6 @@ import * as fs from "fs/promises";
 import * as mockFS from "mock-fs";
 import * as os from "os";
 import { match } from "sinon";
-import * as tar from "tar";
 import * as vscode from "vscode";
 
 import * as askpass from "@src/askpass/askpass-server";
@@ -48,7 +47,6 @@ suite("Swiftly Unit Tests", () => {
     const mockedEnv = mockGlobalValue(process, "env");
     const mockSwiftOutputChannelModule = mockGlobalModule(SwiftOutputChannelModule);
     const mockOS = mockGlobalModule(os);
-    const mockTar = mockGlobalModule(tar);
     const mockedFetch = mockGlobalValue(globalThis, "fetch");
 
     setup(() => {
@@ -57,7 +55,6 @@ suite("Swiftly Unit Tests", () => {
         mockUtilities.execFileStreamOutput.reset();
         mockSwiftOutputChannelModule.SwiftOutputChannel.reset();
         mockOS.tmpdir.reset();
-        mockTar.extract.reset();
         mockedFetch.setValue(async () => ({}) as Response);
 
         // Mock os.tmpdir() to return a valid temp directory path for Windows compatibility
