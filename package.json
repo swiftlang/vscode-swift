@@ -1136,6 +1136,13 @@
             "order": 98,
             "scope": "machine-overridable"
           },
+          "swift.ignoreSwiftVersionFile": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Ignore `.swift-version` files and disable automatic toolchain switching based on them. When enabled, the extension will always use the global default toolchain instead of switching based on per-project `.swift-version` files.",
+            "order": 99,
+            "scope": "machine-overridable"
+          },
           "swift.diagnostics": {
             "type": "boolean",
             "default": false,

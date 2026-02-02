@@ -97,6 +97,10 @@ export interface FolderConfiguration {
     readonly autoGenerateLaunchConfigurations: boolean;
     /** disable automatic running of swift package resolve */
     readonly disableAutoResolve: boolean;
+    /** Whether to ignore .swift-version files and disable automatic toolchain switching */
+    readonly ignoreSwiftVersionFile: boolean;
+    /** Whether or not the user should be prompted to install swiftly */
+    readonly disableSwiftlyInstallPrompt: boolean;
     /** location to save swift-testing attachments */
     readonly attachmentsPath: string;
     /** look up saved permissions for the supplied plugin */
@@ -195,7 +199,7 @@ const configuration = {
         };
     },
 
-    folder(workspaceFolder: vscode.WorkspaceFolder): FolderConfiguration {
+    folder(workspaceFolder: vscode.WorkspaceFolder | undefined): FolderConfiguration {
         function pluginSetting<T>(
             setting: string,
             pluginId?: string,
@@ -297,6 +301,22 @@ const configuration = {
                             .get<string>("attachmentsPath", "./.build/attachments")
                     ),
                     "swift.attachmentsPath"
+                );
+            },
+            get disableSwiftlyInstallPrompt(): boolean {
+                return validateBooleanSetting(
+                    vscode.workspace
+                        .getConfiguration("swift")
+                        .get<boolean>("disableSwiftlyInstallPrompt", false),
+                    "swift.disableSwiftlyInstallPrompt"
+                );
+            },
+            get ignoreSwiftVersionFile(): boolean {
+                return validateBooleanSetting(
+                    vscode.workspace
+                        .getConfiguration("swift")
+                        .get<boolean>("ignoreSwiftVersionFile", false),
+                    "swift.ignoreSwiftVersionFile"
                 );
             },
             pluginPermissions(pluginId?: string): PluginPermissionConfiguration {

@@ -101,7 +101,7 @@ export class FolderContext implements ExternalFolderContext, vscode.Disposable {
         try {
             toolchain = await SwiftToolchain.create(
                 workspaceContext.extensionContext.extensionPath,
-                folder
+                configuration.folder(workspaceFolder).ignoreSwiftVersionFile ? undefined : folder
             );
         } catch (error) {
             // This error case is quite hard for the user to get in to, but possible.
@@ -118,7 +118,9 @@ export class FolderContext implements ExternalFolderContext, vscode.Disposable {
                 try {
                     toolchain = await SwiftToolchain.create(
                         workspaceContext.extensionContext.extensionPath,
-                        folder
+                        configuration.folder(workspaceFolder).ignoreSwiftVersionFile
+                            ? undefined
+                            : folder
                     );
                     workspaceContext.logger.info(
                         `Successfully created toolchain for ${FolderContext.uriName(folder)} after user selection`,
