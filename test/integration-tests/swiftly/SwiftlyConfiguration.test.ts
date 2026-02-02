@@ -12,13 +12,14 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
-import * as mockFS from "mock-fs";
+import * as fs from "fs/promises";
 import * as vscode from "vscode";
 
 import configuration from "@src/configuration";
 import { checkForSwiftlyInstallation } from "@src/extension";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { Swiftly } from "@src/toolchain/swiftly";
+import * as filesystem from "@src/utilities/filesystem";
 import * as utilities from "@src/utilities/utilities";
 
 import {
@@ -27,71 +28,40 @@ import {
     mockGlobalFunction,
     mockGlobalModule,
     mockGlobalObject,
-    mockGlobalValue,
     mockObject,
 } from "../../MockUtils";
 import { tag } from "../../tags";
-import { activateExtensionForSuite } from "../utilities/testutilities";
 
 tag("large").suite("Swiftly Configuration Tests", () => {
     const mockWindow = mockGlobalObject(vscode, "window");
-    const mockWorkspaceFolders = mockGlobalValue(vscode.workspace, "workspaceFolders");
-    const mockGetWorkspaceFolder = mockGlobalFunction(vscode.workspace, "getWorkspaceFolder");
-    const mockUtilities = mockGlobalModule(utilities);
     const mockSwiftlyIsSupported = mockGlobalFunction(Swiftly, "isSupported");
     const mockSwiftlyIsInstalled = mockGlobalFunction(Swiftly, "isInstalled");
-    const mockedPlatform = mockGlobalValue(process, "platform");
     const mockConfigurationFolder = mockGlobalFunction(configuration, "folder");
+    const mockGlobDirectory = mockGlobalFunction(filesystem, "globDirectory");
+    const mockUtilities = mockGlobalModule(utilities);
+    const mockFsReadFile = mockGlobalFunction(fs, "readFile");
 
     setup(() => {
-        // Reset all mocks
         mockWindow.showWarningMessage.reset();
         mockWindow.showInformationMessage.reset();
-        mockUtilities.execFile.reset();
         mockSwiftlyIsSupported.reset();
         mockSwiftlyIsInstalled.reset();
-        mockGetWorkspaceFolder.reset();
+        mockGlobDirectory.reset();
+        mockUtilities.execFile.reset();
+        mockFsReadFile.reset();
 
-        // Set up default mock behavior
-        mockedPlatform.setValue("darwin"); // Supported platform
         mockSwiftlyIsSupported.returns(true);
         mockSwiftlyIsInstalled.resolves(false); // Swiftly not installed by default
 
-        // Mock filesystem operations
-        mockFS({
-            "/workspace": {
-                ".swift-version": "6.0.0",
-            },
-        });
+        // Mock globDirectory to return the .swift-version file by default
+        mockGlobDirectory.resolves(["/workspace/.swift-version"]);
 
-        // Mock workspace folders
-        mockWorkspaceFolders.setValue([
-            {
-                uri: vscode.Uri.file("/workspace"),
-                name: "test-workspace",
-                index: 0,
-            },
-        ] as any);
-
-        // Mock getWorkspaceFolder
-        mockGetWorkspaceFolder.returns({
-            uri: vscode.Uri.file("/workspace"),
-            name: "test-workspace",
-            index: 0,
-        } as any);
-    });
-
-    activateExtensionForSuite({
-        testAssets: ["versioned"],
-    });
-
-    teardown(() => {
-        mockFS.restore();
+        // Mock fs.readFile to return the content of .swift-version file
+        mockFsReadFile.resolves("6.0.0");
     });
 
     suite("enabled prompt", () => {
         test("prompts to install swiftly when it is not installed and prompt is enabled", async function () {
-            // Set up configuration to enable the prompt
             mockConfigurationFolder.returns({
                 disableSwiftlyInstallPrompt: false,
                 ignoreSwiftVersionFile: false,
@@ -99,12 +69,11 @@ tag("large").suite("Swiftly Configuration Tests", () => {
 
             const mockLogger = mockObject<SwiftLogger>({
                 error: mockFn(),
+                debug: mockFn(),
             });
 
-            // Mock the warning message response
             mockWindow.showWarningMessage.resolves("Don't Show Again" as any);
 
-            // Call the function under test
             await checkForSwiftlyInstallation("extensionPath", {} as any, instance(mockLogger));
 
             // Verify that showWarningMessage was called with the expected message
@@ -120,7 +89,6 @@ tag("large").suite("Swiftly Configuration Tests", () => {
 
     suite("disabled prompt", () => {
         test("does not prompt to install swiftly when prompt is disabled", async () => {
-            // Set up configuration to disable the prompt
             mockConfigurationFolder.returns({
                 disableSwiftlyInstallPrompt: true,
                 ignoreSwiftVersionFile: false,
@@ -130,7 +98,6 @@ tag("large").suite("Swiftly Configuration Tests", () => {
                 debug: mockFn(),
             });
 
-            // Call the function under test
             await checkForSwiftlyInstallation("extensionPath", {} as any, instance(mockLogger));
 
             // Verify that showWarningMessage was NOT called
@@ -143,7 +110,6 @@ tag("large").suite("Swiftly Configuration Tests", () => {
         });
 
         test("does not prompt to install swiftly when ignoring swift version files", async () => {
-            // Set up configuration to ignore swift version files
             mockConfigurationFolder.returns({
                 disableSwiftlyInstallPrompt: false,
                 ignoreSwiftVersionFile: true,
@@ -153,7 +119,6 @@ tag("large").suite("Swiftly Configuration Tests", () => {
                 debug: mockFn(),
             });
 
-            // Call the function under test
             await checkForSwiftlyInstallation("extensionPath", {} as any, instance(mockLogger));
 
             // Verify that showWarningMessage was NOT called
@@ -172,10 +137,7 @@ tag("large").suite("Swiftly Configuration Tests", () => {
                 ignoreSwiftVersionFile: false,
             } as any);
 
-            // Mock Swiftly as already installed
             mockSwiftlyIsInstalled.resolves(true);
-
-            // Mock Swiftly version check
             mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
                 stdout: "1.1.0\n",
                 stderr: "",
@@ -185,7 +147,6 @@ tag("large").suite("Swiftly Configuration Tests", () => {
                 debug: mockFn(),
             });
 
-            // Call the function under test
             await checkForSwiftlyInstallation("extensionPath", {} as any, instance(mockLogger));
 
             // Verify that showWarningMessage was NOT called since Swiftly is already installed
@@ -196,20 +157,17 @@ tag("large").suite("Swiftly Configuration Tests", () => {
         });
 
         test("does not prompt on unsupported platform", async () => {
-            // Set up configuration to enable the prompt
             mockConfigurationFolder.returns({
                 disableSwiftlyInstallPrompt: false,
                 ignoreSwiftVersionFile: false,
             } as any);
 
-            // Mock unsupported platform
             mockSwiftlyIsSupported.returns(false);
 
             const mockLogger = mockObject<SwiftLogger>({
                 debug: mockFn(),
             });
 
-            // Call the function under test
             await checkForSwiftlyInstallation("extensionPath", {} as any, instance(mockLogger));
 
             // Verify that showWarningMessage was NOT called
@@ -217,6 +175,25 @@ tag("large").suite("Swiftly Configuration Tests", () => {
 
             // Verify that the logger was called with the platform message
             expect(mockLogger.debug).to.have.been.calledWith("Swiftly is not available on darwin");
+        });
+
+        test("does not prompt when no .swift-version files are found", async () => {
+            mockConfigurationFolder.returns({
+                disableSwiftlyInstallPrompt: false,
+                ignoreSwiftVersionFile: false,
+            } as any);
+
+            // Mock no .swift-version files found
+            mockGlobDirectory.resolves([]);
+
+            const mockLogger = mockObject<SwiftLogger>({
+                debug: mockFn(),
+            });
+
+            await checkForSwiftlyInstallation("extensionPath", {} as any, instance(mockLogger));
+
+            // Verify that showWarningMessage was NOT called since no .swift-version files were found
+            expect(mockWindow.showWarningMessage).to.not.have.been.called;
         });
     });
 });
