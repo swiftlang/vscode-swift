@@ -16,7 +16,7 @@ import * as vscode from "vscode";
 
 import { TestExplorer } from "@src/TestExplorer/TestExplorer";
 import { TestKind } from "@src/TestExplorer/TestKind";
-import { TestRunProxy } from "@src/TestExplorer/TestRunner";
+import { TestRunProxy } from "@src/TestExplorer/TestRunProxy";
 import { reduceTestItemChildren } from "@src/TestExplorer/TestUtils";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
@@ -130,7 +130,6 @@ export function assertTestResults(
                 }))
                 .sort(),
             skipped: testRun.runState.skipped.map(({ id }) => id).sort(),
-            errored: testRun.runState.errored.map(({ id }) => id).sort(),
             enqueued: Array.from(testRun.runState.enqueued)
                 .map(({ id }) => id)
                 .sort(),

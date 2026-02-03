@@ -21,7 +21,7 @@ import { FolderContext as ExternalFolderContext } from "./SwiftExtensionApi";
 import { SwiftPackage, Target, TargetType } from "./SwiftPackage";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { TestRunManager } from "./TestExplorer/TestRunManager";
-import { TestRunProxy } from "./TestExplorer/TestRunner";
+import { TestRunProxy } from "./TestExplorer/TestRunProxy";
 import { FolderOperation, WorkspaceContext } from "./WorkspaceContext";
 import configuration from "./configuration";
 import { SwiftLogger } from "./logging/SwiftLogger";
