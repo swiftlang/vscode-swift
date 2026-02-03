@@ -142,11 +142,26 @@ export async function handleMissingSwiftly(
 
     // Install toolchains
     const swiftlyPath = path.join(Swiftly.defaultHomeDir(), "bin/swiftly");
+    let installSuccess = true;
     for (const version of swiftVersions) {
-        await installSwiftlyToolchainWithProgress(version, extensionRoot, logger, swiftlyPath);
+        installSuccess =
+            installSuccess &&
+            (await installSwiftlyToolchainWithProgress(
+                version,
+                extensionRoot,
+                logger,
+                swiftlyPath
+            ));
     }
 
-    // VS Code needs to be restarted after installing swiftly
-    await promptToRestartVSCode();
-    return true;
+    if (installSuccess) {
+        await promptToRestartVSCode();
+        return true;
+    } else {
+        await vscode.window.showErrorMessage("Installation failed", {
+            modal: true,
+            detail: "Make sure the version in .swift-version is valid.",
+        });
+        return false;
+    }
 }
