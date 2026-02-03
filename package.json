@@ -61,13 +61,22 @@
             "when": "isMac && swiftInstalled"
           },
           {
-            "id": "installing-linux",
-            "title": "Installing Swift",
-            "description": "Swift is cross-platform! See the instructions to [install on Linux](https://www.swift.org/install).\n Swift is [open source](https://github.com/swiftlang) and community driven!\n Questions? Visit the [Swift forums](https://forums.swift.org/) or the [Swift extension GitHub page](https://github.com/swiftlang/vscode-swift) for help.",
+            "id": "installing-linux-not-installed",
+            "title": "Install Swift",
+            "description": "Swift is not currently installed on your system.\n\n[Install Swift](command:sswg.swift.installSwift)\n\nOr install manually from [swift.org](https://www.swift.org/install).",
             "media": {
-              "markdown": "./assets/walkthrough/welcome.md"
+              "markdown": "./assets/walkthrough/install-swift.md"
             },
-            "when": "isLinux"
+            "when": "isLinux && !swiftInstalled"
+          },
+          {
+            "id": "installing-linux-installed",
+            "title": "Swift is Ready ✅",
+            "description": "Swift is already installed on your system. You're ready to start developing!\n\n[Create New Swift Project](command:sswg.swift.createNewProject)",
+            "media": {
+              "markdown": "./assets/walkthrough/swift-ready.md"
+            },
+            "when": "isLinux && swiftInstalled"
           },
           {
             "id": "installing-windows",
