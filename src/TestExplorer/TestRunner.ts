@@ -83,20 +83,18 @@ export interface TestRunState {
 
 export class TestRunProxy {
     private testRun?: vscode.TestRun;
-    private addedTestItems: { testClass: TestClass; parentIndex: number }[] = [];
     private runStarted: boolean = false;
     private queuedOutput: string[] = [];
     private _testItems: vscode.TestItem[];
     private iteration: number | undefined;
     private attachments: { [key: string]: string[] } = {};
     private testItemFinder: TestItemFinder;
+    private testRunCompleteEmitter = new vscode.EventEmitter<void>();
+
     public coverage: TestCoverage;
     public token: CompositeCancellationToken;
 
-    public testRunCompleteEmitter = new vscode.EventEmitter<void>();
     public onTestRunComplete: vscode.Event<void>;
-
-    // Allows for introspection on the state of TestItems after a test run.
     public runState = TestRunProxy.initialTestRunState();
 
     public static initialTestRunState(): TestRunState {
@@ -112,6 +110,7 @@ export class TestRunProxy {
         };
     }
 
+    /** The list of test items for this test run */
     public get testItems(): vscode.TestItem[] {
         return this._testItems;
     }
@@ -143,17 +142,26 @@ export class TestRunProxy {
             return;
         }
 
-        this.resetTags(this.controller);
         this.runStarted = true;
+        this.resetTags(this.controller);
 
-        // When a test run starts we need to do several things:
-        // - Create new TestItems for each paramterized test that was added
-        //   and attach them to their parent TestItem.
-        // - Create a new test run from the TestRunArguments + newly created TestItems.
-        // - Mark all of these test items as enqueued on the test run.
+        this.testRun = this.controller.createTestRun(this.testRunRequest);
+        this.token.add(this.testRun.token);
 
-        const addedTestItems = this.addedTestItems
-            .map(({ testClass, parentIndex }) => {
+        // Forward any output captured before the testRun was created.
+        for (const outputLine of this.queuedOutput) {
+            this.performAppendOutput(outputLine);
+        }
+        this.queuedOutput = [];
+
+        for (const test of this.testItems) {
+            this.enqueued(test);
+        }
+    };
+
+    public addParameterizedTestCases = (testClasses: TestClass[], parentIndex: number) => {
+        const addedTestItems = testClasses
+            .map(testClass => {
                 const parent = this.args.testItems[parentIndex];
                 // clear out the children before we add the new ones.
                 parent.children.replace([]);
@@ -189,34 +197,17 @@ export class TestRunProxy {
 
                 return added;
             });
-
-        this.testRun = this.controller.createTestRun(this.testRunRequest);
-        this.token.add(this.testRun.token);
-
-        const existingTestItemCount = this.testItems.length;
         this._testItems = [...this.testItems, ...addedTestItems];
 
-        if (this._testItems.length !== existingTestItemCount) {
-            // Recreate a test item finder with the added test items
-            this.testItemFinder =
-                process.platform === "darwin"
-                    ? new DarwinTestItemFinder(this.testItems)
-                    : new NonDarwinTestItemFinder(this.testItems, this.folderContext);
-        }
-
-        // Forward any output captured before the testRun was created.
-        for (const outputLine of this.queuedOutput) {
-            this.performAppendOutput(this.testRun, outputLine);
-        }
-        this.queuedOutput = [];
-
-        for (const test of this.testItems) {
+        for (const test of addedTestItems) {
             this.enqueued(test);
         }
-    };
 
-    public addParameterizedTestCase = (testClass: TestClass, parentIndex: number) => {
-        this.addedTestItems.push({ testClass, parentIndex });
+        // Recreate a test item finder with the added test items
+        this.testItemFinder =
+            process.platform === "darwin"
+                ? new DarwinTestItemFinder(this.testItems)
+                : new NonDarwinTestItemFinder(this.testItems, this.folderContext);
     };
 
     public addAttachment = (testIndex: number, attachment: string) => {
@@ -359,26 +350,48 @@ export class TestRunProxy {
         this.runState = TestRunProxy.initialTestRunState();
         this.iteration = iteration;
         if (this.testRun) {
-            this.performAppendOutput(this.testRun, "\n\r");
+            this.performAppendOutput("\n\r");
         }
+    }
+
+    public async computeCoverage() {
+        if (!this.testRun) {
+            return;
+        }
+
+        // Compute final coverage numbers if any coverage info has been captured during the run.
+        await this.coverage.computeCoverage(this.testRun);
     }
 
     public appendOutput(output: string) {
+        this.performAppendOutput(output);
+    }
+
+    public appendOutputToTest(output: string, test: vscode.TestItem, location?: vscode.Location) {
+        this.performAppendOutput(output, test, location);
+    }
+
+    private performAppendOutput(
+        output: string,
+        test?: vscode.TestItem,
+        location?: vscode.Location
+    ) {
         const tranformedOutput = this.prependIterationToOutput(output);
         if (this.testRun) {
-            this.performAppendOutput(this.testRun, tranformedOutput);
+            this.testRun.appendOutput(output, location, test);
+            this.runState.output.push(stripAnsi(output));
         } else {
             this.queuedOutput.push(tranformedOutput);
         }
     }
 
-    public appendOutputToTest(output: string, test: vscode.TestItem, location?: vscode.Location) {
-        const tranformedOutput = this.prependIterationToOutput(output);
-        if (this.testRun) {
-            this.performAppendOutput(this.testRun, tranformedOutput, location, test);
-        } else {
-            this.queuedOutput.push(tranformedOutput);
+    private prependIterationToOutput(output: string): string {
+        if (this.iteration === undefined) {
+            return output;
         }
+        const itr = this.iteration + 1;
+        const lines = output.match(/[^\r\n]*[\r\n]*/g);
+        return lines?.map(line => (line ? `\x1b[34mRun ${itr}\x1b[0m ${line}` : "")).join("") ?? "";
     }
 
     private reportAttachments() {
@@ -398,34 +411,6 @@ export class TestRunProxy {
                 );
             }
         }
-    }
-
-    private performAppendOutput(
-        testRun: vscode.TestRun,
-        output: string,
-        location?: vscode.Location,
-        test?: vscode.TestItem
-    ) {
-        testRun.appendOutput(output, location, test);
-        this.runState.output.push(stripAnsi(output));
-    }
-
-    private prependIterationToOutput(output: string): string {
-        if (this.iteration === undefined) {
-            return output;
-        }
-        const itr = this.iteration + 1;
-        const lines = output.match(/[^\r\n]*[\r\n]*/g);
-        return lines?.map(line => (line ? `\x1b[34mRun ${itr}\x1b[0m ${line}` : "")).join("") ?? "";
-    }
-
-    public async computeCoverage() {
-        if (!this.testRun) {
-            return;
-        }
-
-        // Compute final coverage numbers if any coverage info has been captured during the run.
-        await this.coverage.computeCoverage(this.testRun);
     }
 
     static Tags = {
@@ -486,8 +471,7 @@ export class TestRunner {
                   )
                 : new XCTestOutputParser();
         this.swiftTestOutputParser = new SwiftTestingOutputParser(
-            this.testRun.testRunStarted,
-            this.testRun.addParameterizedTestCase,
+            this.testRun.addParameterizedTestCases,
             this.testRun.addAttachment
         );
         this.onDebugSessionTerminated = this.debugSessionTerminatedEmitter.event;
@@ -501,8 +485,7 @@ export class TestRunner {
     public setIteration(iteration: number) {
         // The SwiftTestingOutputParser holds state and needs to be reset between iterations.
         this.swiftTestOutputParser = new SwiftTestingOutputParser(
-            this.testRun.testRunStarted,
-            this.testRun.addParameterizedTestCase,
+            this.testRun.addParameterizedTestCases,
             this.testRun.addAttachment
         );
         this.testRun.setIteration(iteration);
@@ -830,6 +813,8 @@ export class TestRunner {
                 // The await simply waits for the watching to be configured.
                 await this.swiftTestOutputParser.watch(fifoPipePath, runState);
 
+                this.testRun.testRunStarted();
+
                 await this.launchTests(
                     runState,
                     this.testKind === TestKind.parallel ? TestKind.standard : this.testKind,
@@ -858,7 +843,6 @@ export class TestRunner {
                 return this.testRun.runState;
             }
 
-            // XCTestRuns are started immediately
             this.testRun.testRunStarted();
 
             await this.launchTests(
@@ -1238,9 +1222,8 @@ export class TestRunner {
                                                 fifoPipePath,
                                                 runState
                                             );
-                                        } else if (config.testType === TestLibrary.xctest) {
-                                            this.testRun.testRunStarted();
                                         }
+                                        this.testRun.testRunStarted();
 
                                         this.workspaceContext.logger.debug(
                                             "Start Test Debugging",
