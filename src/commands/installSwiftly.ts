@@ -99,7 +99,7 @@ export async function installSwiftlyWithProgress(logger?: SwiftLogger): Promise<
     }
 }
 
-async function promptToRestartVSCode(): Promise<void> {
+export async function promptToRestartVSCode(): Promise<void> {
     const selection = await vscode.window.showInformationMessage(
         "Restart VS Code",
         {

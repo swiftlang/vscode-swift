@@ -14,7 +14,9 @@
 // Use source-map-support to get better stack traces
 import "source-map-support/register";
 
+import * as child_process from "child_process";
 import * as fs from "fs/promises";
+import { promisify } from "util";
 import * as vscode from "vscode";
 
 import { ContextKeyManager, ContextKeys } from "./ContextKeyManager";
@@ -25,7 +27,13 @@ import { FolderEvent, FolderOperation, WorkspaceContext } from "./WorkspaceConte
 import * as commands from "./commands";
 import { resolveFolderDependencies } from "./commands/dependencies/resolve";
 import { registerSourceKitSchemaWatcher } from "./commands/generateSourcekitConfiguration";
-import { handleMissingSwiftly } from "./commands/installSwiftly";
+import {
+    handleMissingSwiftly,
+    installSwiftlyWithProgress,
+    promptForSwiftlyInstallation,
+    promptToRestartVSCode,
+} from "./commands/installSwiftly";
+import { promptToInstallSwiftlyToolchain } from "./commands/installSwiftlyToolchain";
 import configuration, {
     ConfigurationValidationError,
     handleConfigurationChangeEvent,
@@ -48,6 +56,7 @@ import { globDirectory } from "./utilities/filesystem";
 import { getErrorDescription } from "./utilities/utilities";
 import { Version } from "./utilities/version";
 
+const exec = promisify(child_process.exec);
 export interface InternalSwiftExtensionApi extends SwiftExtensionApi {
     workspaceContext?: WorkspaceContext;
     logger: SwiftLogger;
@@ -188,6 +197,48 @@ export async function activate(
             `Extension activation completed in ${totalActivationTime}ms (log-setup: ${logSetupElapsed}ms, pre-toolchain: ${preToolchainElapsed}ms, toolchain: ${toolchainElapsed}ms, swiftly-check: ${swiftlyCheckElapsed}ms, workspace-context: ${workspaceContextElapsed}ms, subscriptions: ${subscriptionsElapsed}ms, workspace-folders: ${workspaceFoldersElapsed}ms, final-steps: ${finalStepsElapsed}ms)`
         );
 
+        await checkAndSetSwiftContext();
+
+        const watcher = vscode.workspace.onDidChangeConfiguration(async e => {
+            if (e.affectsConfiguration("swift")) {
+                await checkAndSetSwiftContext();
+            }
+        });
+
+        // Register commands...
+        const installCommand = vscode.commands.registerCommand(
+            "sswg.swift.installSwift",
+            async () => {
+                if (!Swiftly.isSupported()) {
+                    void vscode.window.showErrorMessage(
+                        "Swiftly is not supported on this platform. Only macOS and Linux are supported."
+                    );
+                    await checkAndSetSwiftContext();
+                    return;
+                }
+                const isSwiftlyInstalled = await Swiftly.isInstalled();
+                if (!isSwiftlyInstalled) {
+                    if (!(await promptForSwiftlyInstallation(logger))) {
+                        await checkAndSetSwiftContext();
+                        return;
+                    }
+                    if (!(await installSwiftlyWithProgress(logger))) {
+                        await checkAndSetSwiftContext();
+                        return;
+                    }
+                    await promptToRestartVSCode();
+                    await checkAndSetSwiftContext();
+                    return;
+                }
+                await promptToInstallSwiftlyToolchain(workspaceContext, "stable");
+
+                // Recheck after installation
+                await checkAndSetSwiftContext();
+            }
+        );
+
+        context.subscriptions.push(watcher, installCommand);
+
         return {
             workspaceContext,
             logger,
@@ -215,6 +266,22 @@ export async function activate(
             );
         }
         throw error;
+    }
+}
+
+async function checkAndSetSwiftContext(): Promise<void> {
+    const isInstalled = await isSwiftInstalled();
+
+    // This is where you define/set the context
+    await vscode.commands.executeCommand("setContext", "swiftInstalled", isInstalled);
+}
+
+async function isSwiftInstalled(): Promise<boolean> {
+    try {
+        await exec("swift --version");
+        return true;
+    } catch (error) {
+        return false;
     }
 }
 

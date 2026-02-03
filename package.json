@@ -43,13 +43,22 @@
         "description": "Learn how to use the Swift extension for VS Code.",
         "steps": [
           {
-            "id": "installing-mac",
+            "id": "installing-mac-not-installed",
             "title": "Install Swift",
-            "description": "Swift is cross-platform! If you already have Xcode installed, you're ready to go. Otherwise, see the instructions to [install on macOS](https://www.swift.org/install).\n Swift is [open source](https://github.com/swiftlang) and community driven!\n Questions? Visit the [Swift forums](https://forums.swift.org/) or the [Swift extension GitHub page](https://github.com/swiftlang/vscode-swift) for help.",
+            "description": "Swift is not currently installed on your system.\n\n[Install Swift](command:sswg.swift.installSwift)\n\nOr install manually from [swift.org](https://www.swift.org/install).",
             "media": {
-              "markdown": "./assets/walkthrough/welcome.md"
+              "markdown": "./assets/walkthrough/install-swift.md"
             },
-            "when": "isMac"
+            "when": "isMac && !swiftInstalled"
+          },
+          {
+            "id": "installing-mac-installed",
+            "title": "Swift is Ready ✅",
+            "description": "Swift is already installed on your system. You're ready to start developing!\n\n[Create New Swift Project](command:sswg.swift.createNewProject)",
+            "media": {
+              "markdown": "./assets/walkthrough/swift-ready.md"
+            },
+            "when": "isMac && swiftInstalled"
           },
           {
             "id": "installing-linux",
@@ -218,6 +227,16 @@
       }
     ],
     "commands": [
+      {
+        "command": "sswg.swift.installSwift",
+        "title": "Install Swift",
+        "category": "Swift"
+      },
+      {
+        "command": "sswg.swift.checkInstallation",
+        "title": "Check Swift Installation",
+        "category": "Swift"
+      },
       {
         "command": "swift.showCommands",
         "title": "Show Commands",
