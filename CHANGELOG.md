@@ -2,6 +2,10 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+### Fixed
+
+- Swift-testing test runs are marked as 'started' in the UI immediately, not after compilation finishes ([#2079](https://github.com/swiftlang/vscode-swift/pull/2079))
+
 ## 2.16.1 - 2026-02-02
 
 ### Fixed
