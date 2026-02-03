@@ -1619,6 +1619,7 @@ apt-get -y install libncurses5-dev
                 const result = await handleMissingSwiftly([], "");
 
                 expect(result).to.be.false;
+                console.log(">>> PROMPT RETURN ARGS", mockWindow.showWarningMessage.args);
                 expect(mockWindow.showWarningMessage).to.not.have.been.called;
             });
 
