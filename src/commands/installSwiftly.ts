@@ -17,7 +17,7 @@ import * as vscode from "vscode";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { Swiftly } from "../toolchain/swiftly";
 import { Workbench } from "../utilities/commands";
-import { installSwiftlyToolchainWithProgress } from "./installSwiftlyToolchain";
+import { installSwiftlyToolchainWithProgressAndErrorMsgs } from "./installSwiftlyToolchain";
 
 /**
  * Prompts user for Swiftly installation with directory customization options
@@ -142,26 +142,25 @@ export async function handleMissingSwiftly(
 
     // Install toolchains
     const swiftlyPath = path.join(Swiftly.defaultHomeDir(), "bin/swiftly");
-    let installSuccess = true;
     for (const version of swiftVersions) {
-        installSuccess =
-            installSuccess &&
-            (await installSwiftlyToolchainWithProgress(
-                version,
-                extensionRoot,
-                logger,
-                swiftlyPath
-            ));
+        const result = await installSwiftlyToolchainWithProgressAndErrorMsgs(
+            version,
+            extensionRoot,
+            logger,
+            swiftlyPath
+        );
+
+        if (!result.success) {
+            if (result.errorMsg) {
+                await vscode.window.showErrorMessage("Installation failed", {
+                    modal: true,
+                    detail: result.errorMsg,
+                });
+            }
+            return false;
+        }
     }
 
-    if (installSuccess) {
-        await promptToRestartVSCode();
-        return true;
-    } else {
-        await vscode.window.showErrorMessage("Installation failed", {
-            modal: true,
-            detail: "Make sure the version in .swift-version is valid.",
-        });
-        return false;
-    }
+    await promptToRestartVSCode();
+    return true;
 }
