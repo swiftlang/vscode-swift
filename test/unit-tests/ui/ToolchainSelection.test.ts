@@ -41,7 +41,7 @@ suite("ToolchainSelection Unit Test Suite", () => {
     const mockedVSCodeEnv = mockGlobalObject(vscode, "env");
     const mockedVSCodeWorkspace = mockGlobalObject(vscode, "workspace");
     const mockedSwiftToolchain = mockGlobalModule(SwiftToolchain);
-    const mockedSwiftly = mockGlobalModule(Swiftly);
+    let mockedSwiftly: MockedObject<Swiftly>;
     let mockedConfiguration: MockedObject<vscode.WorkspaceConfiguration>;
     let mockedLogger: MockedObject<SwiftLogger>;
 
@@ -93,12 +93,14 @@ suite("ToolchainSelection Unit Test Suite", () => {
         mockedSwiftToolchain.getToolchainInstalls.resolves([]);
         mockedSwiftToolchain.getXcodeDeveloperDir.resolves("");
 
-        // Mock Swiftly static methods
-        mockedSwiftly.list.resolves([]);
-        mockedSwiftly.listAvailable.resolves([]);
-        mockedSwiftly.inUseVersion.resolves(undefined);
-        mockedSwiftly.use.resolves();
-        mockedSwiftly.installToolchain.resolves();
+        // Mock Swiftly
+        mockedSwiftly = mockObject<Swiftly>({
+            list: mockFn(s => s.resolves([])),
+            listAvailable: mockFn(s => s.resolves([])),
+            inUseVersion: mockFn(s => s.resolves(undefined)),
+            use: mockFn(s => s.resolves()),
+            installToolchain: mockFn(s => s.resolves()),
+        });
     });
 
     teardown(() => {
@@ -126,7 +128,11 @@ suite("ToolchainSelection Unit Test Suite", () => {
                     return undefined;
                 });
 
-            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
+            await showToolchainSelectionQuickPick(
+                undefined,
+                instance(mockedSwiftly),
+                instance(mockedLogger)
+            );
 
             expect(xcodeToolchains).to.deep.equal(["Xcode", "Xcode-beta"]);
         });
@@ -149,7 +155,11 @@ suite("ToolchainSelection Unit Test Suite", () => {
                     return (await items).find(item => item.label === "Workspace Configuration");
                 });
 
-            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
+            await showToolchainSelectionQuickPick(
+                undefined,
+                instance(mockedSwiftly),
+                instance(mockedLogger)
+            );
 
             expect(mockedConfiguration.update).to.have.been.calledWith(
                 "path",
@@ -178,7 +188,11 @@ suite("ToolchainSelection Unit Test Suite", () => {
                     return (await items).find(item => item.label === "Global Configuration");
                 });
 
-            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
+            await showToolchainSelectionQuickPick(
+                undefined,
+                instance(mockedSwiftly),
+                instance(mockedLogger)
+            );
 
             expect(mockedConfiguration.update).to.have.been.calledWith(
                 "path",
@@ -205,7 +219,11 @@ suite("ToolchainSelection Unit Test Suite", () => {
                     return undefined;
                 });
 
-            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
+            await showToolchainSelectionQuickPick(
+                undefined,
+                instance(mockedSwiftly),
+                instance(mockedLogger)
+            );
 
             expect(publicToolchains).to.deep.equal(["swift-main-DEVELOPMENT", "swift-6.2-RELEASE"]);
         });
@@ -223,7 +241,11 @@ suite("ToolchainSelection Unit Test Suite", () => {
                     return undefined;
                 });
 
-            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
+            await showToolchainSelectionQuickPick(
+                undefined,
+                instance(mockedSwiftly),
+                instance(mockedLogger)
+            );
 
             expect(swiftlyToolchains).to.deep.equal(["6.2.0", "6.0.0", "5.9.3"]);
         });
@@ -247,7 +269,11 @@ suite("ToolchainSelection Unit Test Suite", () => {
                     return (await items).find(item => item.label === "Workspace Configuration");
                 });
 
-            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
+            await showToolchainSelectionQuickPick(
+                undefined,
+                instance(mockedSwiftly),
+                instance(mockedLogger)
+            );
 
             expect(mockedSwiftly.use).to.have.been.calledWith(
                 "6.2.0",
@@ -286,7 +312,11 @@ suite("ToolchainSelection Unit Test Suite", () => {
                     return (await items).find(item => item.label === "Global Configuration");
                 });
 
-            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
+            await showToolchainSelectionQuickPick(
+                undefined,
+                instance(mockedSwiftly),
+                instance(mockedLogger)
+            );
 
             expect(mockedSwiftly.use).to.have.been.calledWith("6.2.0");
             expect(mockedConfiguration.update).to.have.been.calledWith(
@@ -315,7 +345,11 @@ suite("ToolchainSelection Unit Test Suite", () => {
                     return undefined;
                 });
 
-            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
+            await showToolchainSelectionQuickPick(
+                undefined,
+                instance(mockedSwiftly),
+                instance(mockedLogger)
+            );
 
             expect(swiftlyToolchains).to.deep.equal(["6.2.0", "6.0.0", "5.9.3"]);
         });
@@ -338,7 +372,11 @@ suite("ToolchainSelection Unit Test Suite", () => {
                     return (await items).find(item => item.label === "Workspace Configuration");
                 });
 
-            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
+            await showToolchainSelectionQuickPick(
+                undefined,
+                instance(mockedSwiftly),
+                instance(mockedLogger)
+            );
 
             expect(mockedSwiftly.use).to.have.been.calledWith(
                 "6.2.0",
@@ -376,7 +414,11 @@ suite("ToolchainSelection Unit Test Suite", () => {
                     return (await items).find(item => item.label === "Global Configuration");
                 });
 
-            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
+            await showToolchainSelectionQuickPick(
+                undefined,
+                instance(mockedSwiftly),
+                instance(mockedLogger)
+            );
 
             expect(mockedSwiftly.use).to.have.been.calledWith("6.2.0");
             expect(mockedConfiguration.update).to.have.been.calledWith(

@@ -29,9 +29,7 @@ suite("SwiftExecution Tests Suite", () => {
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;
-            toolchain = await SwiftToolchain.create(
-                workspaceContext.extensionContext.extensionPath
-            );
+            toolchain = await SwiftToolchain.create(workspaceContext.swiftly);
             assert.notEqual(workspaceContext.folders.length, 0);
             workspaceFolder = workspaceContext.folders[0].workspaceFolder;
         },
