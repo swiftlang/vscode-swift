@@ -53,12 +53,15 @@
           },
           {
             "id": "installing-mac-installed",
-            "title": "Swift is Ready ✅",
+            "title": "Swift is Ready",
             "description": "Swift is already installed on your system. You're ready to start developing!\n\n[Create New Swift Project](command:sswg.swift.createNewProject)",
             "media": {
               "markdown": "./assets/walkthrough/swift-ready.md"
             },
-            "when": "isMac && swiftInstalled"
+            "when": "isMac && swiftInstalled",
+            "completionEvents": [
+              "swiftInstalled"
+            ]
           },
           {
             "id": "installing-linux-not-installed",
@@ -71,12 +74,15 @@
           },
           {
             "id": "installing-linux-installed",
-            "title": "Swift is Ready ✅",
+            "title": "Swift is Ready",
             "description": "Swift is already installed on your system. You're ready to start developing!\n\n[Create New Swift Project](command:sswg.swift.createNewProject)",
             "media": {
               "markdown": "./assets/walkthrough/swift-ready.md"
             },
-            "when": "isLinux && swiftInstalled"
+            "when": "isLinux && swiftInstalled",
+            "completionEvents": [
+              "swiftInstalled"
+            ]
           },
           {
             "id": "installing-windows",
