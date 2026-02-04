@@ -60,7 +60,7 @@
             },
             "when": "isMac && swiftInstalled",
             "completionEvents": [
-              "swiftInstalled"
+              "onContext:swiftInstalled"
             ]
           },
           {
@@ -81,7 +81,7 @@
             },
             "when": "isLinux && swiftInstalled",
             "completionEvents": [
-              "swiftInstalled"
+              "onContext:swiftInstalled"
             ]
           },
           {
