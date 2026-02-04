@@ -14,6 +14,7 @@
 import * as path from "path";
 import * as vscode from "vscode";
 
+import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { Swiftly } from "../toolchain/swiftly";
 import { Workbench } from "../utilities/commands";
@@ -124,6 +125,11 @@ export async function handleMissingSwiftly(
     extensionRoot: string,
     logger?: SwiftLogger
 ): Promise<boolean> {
+    if (configuration.folder(undefined).disableSwiftlyInstallPrompt) {
+        logger?.debug("Swiftly installation prompt is suppressed");
+        return false;
+    }
+
     // Prompt user for installation
     if (!(await promptForSwiftlyInstallation(logger))) {
         return false;
