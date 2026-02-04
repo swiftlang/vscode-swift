@@ -205,7 +205,6 @@ export async function activate(
             }
         });
 
-        // Register commands...
         const installCommand = vscode.commands.registerCommand(
             "sswg.swift.installSwift",
             async () => {
@@ -232,7 +231,6 @@ export async function activate(
                 }
                 await promptToInstallSwiftlyToolchain(workspaceContext, "stable");
 
-                // Recheck after installation
                 await checkAndSetSwiftContext();
             }
         );
@@ -272,7 +270,6 @@ export async function activate(
 async function checkAndSetSwiftContext(): Promise<void> {
     const isInstalled = await isSwiftInstalled();
 
-    // This is where you define/set the context
     await vscode.commands.executeCommand("setContext", "swiftInstalled", isInstalled);
 }
 
