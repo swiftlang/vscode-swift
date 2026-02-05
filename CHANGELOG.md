@@ -11,6 +11,7 @@
 ### Fixed
 
 - Fixed extension activation issues involving swiftly ([#2066](https://github.com/swiftlang/vscode-swift/pull/2066))
+- Fixed not all settings notifying the user when malformed ([#2086](https://github.com/swiftlang/vscode-swift/pull/2086))
 
 ## 2.16.0 - 2026-01-28
 
