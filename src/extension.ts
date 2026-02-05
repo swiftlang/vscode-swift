@@ -29,7 +29,6 @@ import { handleMissingSwiftly } from "./commands/installSwiftly";
 import configuration, {
     ConfigurationValidationError,
     handleConfigurationChangeEvent,
-    openSettingsJsonForSetting,
 } from "./configuration";
 import { registerDebugger } from "./debugger/debugAdapterFactory";
 import * as debug from "./debugger/launch";
@@ -201,11 +200,7 @@ export async function activate(
     } catch (error) {
         // Handle configuration validation errors with UI that points the user to the poorly configured setting
         if (error instanceof ConfigurationValidationError) {
-            void vscode.window.showErrorMessage(error.message, "Open Settings").then(selection => {
-                if (selection === "Open Settings") {
-                    void openSettingsJsonForSetting(error.settingName);
-                }
-            });
+            throw error; // User is notified by code in configuration.ts
         } else {
             const errorMessage = getErrorDescription(error);
             // show this error message as the VS Code error message only shows when running
