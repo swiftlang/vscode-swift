@@ -291,7 +291,9 @@ export class LanguageClientManager implements vscode.Disposable {
             this.currentWorkspaceFolder = folder;
             this.restartedPromise = this.setupLanguageClient(folder).catch(reason => {
                 this.folderContext.workspaceContext.logger.error(
-                    Error("Error starting SourceKit-LSP in setLanguageClientFolder", {cause: reason})
+                    Error("Error starting SourceKit-LSP in setLanguageClientFolder", {
+                        cause: reason,
+                    })
                 );
             });
             return;
