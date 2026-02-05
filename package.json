@@ -2058,7 +2058,7 @@
     "build-swift-docc-render": "tsx ./scripts/build_swift_docc_render.ts",
     "compile-icons": "tsx ./scripts/compile_icons.ts",
     "format": "prettier --check .",
-    "postinstall": "npm run compile-icons && npm run build-swift-docc-render",
+    "postinstall": "npm run compile-icons && npm run compile-documentation-webview && npm run build-swift-docc-render",
     "pretest": "npm run compile-tests",
     "soundness": "scripts/soundness.sh",
     "check-package-json": "tsx ./scripts/check_package_json.ts",
