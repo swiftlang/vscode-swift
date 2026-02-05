@@ -799,7 +799,7 @@ function validateObjectSetting<T extends object>(obj: T, settingName: string): T
     return obj;
 }
 
-// To avoid spanning the user with multiple error messages for the same bad setting/value
+// To avoid spamming the user with multiple error messages for the same bad setting/value
 // we keep track of the bad settings we've already reported during this session.
 const badSettingLookup: { [key: string]: unknown } = {};
 
