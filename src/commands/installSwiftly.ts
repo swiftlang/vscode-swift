@@ -100,15 +100,16 @@ export async function installSwiftlyWithProgress(logger?: SwiftLogger): Promise<
 }
 
 async function promptToRestartVSCode(): Promise<void> {
+    const editorName = vscode.env.appName;
     const selection = await vscode.window.showInformationMessage(
-        "Restart VS Code",
+        `Restart ${editorName}`,
         {
             modal: true,
-            detail: "You must restart Visual Studio Code in order for the swiftly installation to take effect.",
+            detail: `You must restart ${editorName} in order for the Swiftly installation to take effect.`,
         },
-        "Quit Visual Studio Code"
+        `Quit ${editorName}`
     );
-    if (selection === "Quit Visual Studio Code") {
+    if (selection === `Quit ${editorName}`) {
         await vscode.commands.executeCommand(Workbench.ACTION_QUIT);
     }
 }
