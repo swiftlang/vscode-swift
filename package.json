@@ -2067,7 +2067,7 @@
     "integration-test": "npm run pretest && vscode-test --label integrationTests",
     "unit-test": "npm run pretest && vscode-test --label unitTests",
     "coverage": "npm run pretest && vscode-test --coverage",
-    "compile-tests": "del-cli ./assets/test/**/.build && del-cli ./assets/test/**/.spm-cache && npm run compile",
+    "compile-tests": "del-cli ./assets/test/**/.build && del-cli ./assets/test/**/.spm-cache && npm run compile && npm run compile-documentation-webview",
     "package": "tsx ./scripts/package.ts",
     "dev-package": "tsx ./scripts/dev_package.ts",
     "preview-package": "tsx ./scripts/preview_package.ts",
