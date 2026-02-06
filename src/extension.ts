@@ -14,9 +14,7 @@
 // Use source-map-support to get better stack traces
 import "source-map-support/register";
 
-import * as child_process from "child_process";
 import * as fs from "fs/promises";
-import { promisify } from "util";
 import * as vscode from "vscode";
 
 import { ContextKeyManager, ContextKeys } from "./ContextKeyManager";
@@ -27,13 +25,8 @@ import { FolderEvent, FolderOperation, WorkspaceContext } from "./WorkspaceConte
 import * as commands from "./commands";
 import { resolveFolderDependencies } from "./commands/dependencies/resolve";
 import { registerSourceKitSchemaWatcher } from "./commands/generateSourcekitConfiguration";
-import {
-    handleMissingSwiftly,
-    installSwiftlyWithProgress,
-    promptForSwiftlyInstallation,
-    promptToRestartVSCode,
-} from "./commands/installSwiftly";
-import { promptToInstallSwiftlyToolchain } from "./commands/installSwiftlyToolchain";
+import { handleMissingSwiftly } from "./commands/installSwiftly";
+import { swiftInstalled } from "./commands/swiftInstalled";
 import configuration, {
     ConfigurationValidationError,
     handleConfigurationChangeEvent,
@@ -56,7 +49,6 @@ import { globDirectory } from "./utilities/filesystem";
 import { getErrorDescription } from "./utilities/utilities";
 import { Version } from "./utilities/version";
 
-const exec = promisify(child_process.exec);
 export interface InternalSwiftExtensionApi extends SwiftExtensionApi {
     workspaceContext?: WorkspaceContext;
     logger: SwiftLogger;
@@ -89,6 +81,10 @@ export async function activate(
         const swiftlyCheckStartTime = Date.now();
         checkForSwiftlyInstallation(context, contextKeys, logger);
         const swiftlyCheckElapsed = Date.now() - swiftlyCheckStartTime;
+
+        const swiftLangCheckStartTime = Date.now();
+        await checkForSwiftLangInstallation();
+        const swiftLangCheckElapsed = Date.now() - swiftLangCheckStartTime;
 
         const toolchainStartTime = Date.now();
         const toolchain = await createActiveToolchain(context, contextKeys, logger);
@@ -194,48 +190,8 @@ export async function activate(
 
         const totalActivationTime = Date.now() - activationStartTime;
         logger.info(
-            `Extension activation completed in ${totalActivationTime}ms (log-setup: ${logSetupElapsed}ms, pre-toolchain: ${preToolchainElapsed}ms, toolchain: ${toolchainElapsed}ms, swiftly-check: ${swiftlyCheckElapsed}ms, workspace-context: ${workspaceContextElapsed}ms, subscriptions: ${subscriptionsElapsed}ms, workspace-folders: ${workspaceFoldersElapsed}ms, final-steps: ${finalStepsElapsed}ms)`
+            `Extension activation completed in ${totalActivationTime}ms (log-setup: ${logSetupElapsed}ms, pre-toolchain: ${preToolchainElapsed}ms, toolchain: ${toolchainElapsed}ms, swiftly-check: ${swiftlyCheckElapsed}ms, swift-lang-check: ${swiftLangCheckElapsed}, workspace-context: ${workspaceContextElapsed}ms, subscriptions: ${subscriptionsElapsed}ms, workspace-folders: ${workspaceFoldersElapsed}ms, final-steps: ${finalStepsElapsed}ms)`
         );
-
-        await checkAndSetSwiftContext();
-
-        const watcher = vscode.workspace.onDidChangeConfiguration(async e => {
-            if (e.affectsConfiguration("swift")) {
-                await checkAndSetSwiftContext();
-            }
-        });
-
-        const installCommand = vscode.commands.registerCommand(
-            "sswg.swift.installSwift",
-            async () => {
-                if (!Swiftly.isSupported()) {
-                    void vscode.window.showErrorMessage(
-                        "Swiftly is not supported on this platform. Only macOS and Linux are supported."
-                    );
-                    await checkAndSetSwiftContext();
-                    return;
-                }
-                const isSwiftlyInstalled = await Swiftly.isInstalled();
-                if (!isSwiftlyInstalled) {
-                    if (!(await promptForSwiftlyInstallation(logger))) {
-                        await checkAndSetSwiftContext();
-                        return;
-                    }
-                    if (!(await installSwiftlyWithProgress(logger))) {
-                        await checkAndSetSwiftContext();
-                        return;
-                    }
-                    await promptToRestartVSCode();
-                    await checkAndSetSwiftContext();
-                    return;
-                }
-                await promptToInstallSwiftlyToolchain(workspaceContext, "stable");
-
-                await checkAndSetSwiftContext();
-            }
-        );
-
-        context.subscriptions.push(watcher, installCommand);
 
         return {
             workspaceContext,
@@ -264,21 +220,6 @@ export async function activate(
             );
         }
         throw error;
-    }
-}
-
-async function checkAndSetSwiftContext(): Promise<void> {
-    const isInstalled = await isSwiftInstalled();
-
-    await vscode.commands.executeCommand("setContext", "swiftInstalled", isInstalled);
-}
-
-async function isSwiftInstalled(): Promise<boolean> {
-    try {
-        await exec("swift --version");
-        return true;
-    } catch (error) {
-        return false;
     }
 }
 
@@ -473,6 +414,15 @@ function findSwiftVersionFilesInWorkspace(): Promise<string[]> {
             });
         })
     ).then(results => results.reduceRight((prev, curr) => prev.concat(curr), []));
+}
+
+/**
+ * Checks if swift --version works, and updates the "swiftInstalled" context variable
+ */
+async function checkForSwiftLangInstallation() {
+    const isInstalled = await swiftInstalled();
+    // The welcome page checks the swiftInstalled context variable and renders a check mark if true
+    await vscode.commands.executeCommand("setContext", "swiftInstalled", isInstalled);
 }
 
 async function createActiveToolchain(
