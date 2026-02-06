@@ -68,11 +68,18 @@ export interface AvailableToolchain {
     version: ToolchainVersion;
 }
 
+export interface InstalledToolchain {
+    name: string;
+    location?: string;
+}
+
 const SwiftlyListResult = z.object({
     toolchains: z.array(
         z.object({
             inUse: z.boolean(),
             isDefault: z.boolean(),
+            // Older versions of swiftly do not have a `location` field.
+            location: z.optional(z.string()),
             version: z.union([
                 SystemVersion,
                 StableVersion,
@@ -448,9 +455,9 @@ export class Swiftly {
      *
      * Toolchains will be sorted by version number in descending order.
      *
-     * @returns an array of toolchain version names.
+     * @returns an array of installed toolchains with name and optional location.
      */
-    public static async list(logger?: SwiftLogger): Promise<string[]> {
+    public static async list(logger?: SwiftLogger): Promise<InstalledToolchain[]> {
         if (!this.isSupported()) {
             return [];
         }
@@ -461,22 +468,28 @@ export class Swiftly {
         }
 
         if (!(await Swiftly.supportsJsonOutput(logger))) {
-            return await Swiftly.listFromSwiftlyConfig(logger);
+            return (await Swiftly.listFromSwiftlyConfig(logger)).map(name => ({ name }));
         }
 
         return await Swiftly.listUsingJSONFormat(logger);
     }
 
-    private static async listUsingJSONFormat(logger?: SwiftLogger): Promise<string[]> {
+    private static async listUsingJSONFormat(logger?: SwiftLogger): Promise<InstalledToolchain[]> {
         try {
             const { stdout } = await execFile("swiftly", ["list", "--format=json"]);
-            return SwiftlyListResult.parse(JSON.parse(stdout))
-                .toolchains.map(toolchain => toolchain.version)
-                .filter((version): version is ToolchainVersion =>
-                    ["system", "stable", "snapshot"].includes(version.type)
-                )
-                .sort(compareSwiftlyToolchainVersion)
-                .map(version => version.name);
+            const parsed = SwiftlyListResult.parse(JSON.parse(stdout));
+            type ParsedToolchain = (typeof parsed.toolchains)[number];
+            const isKnownVersionType = (
+                toolchain: ParsedToolchain
+            ): toolchain is ParsedToolchain & { version: ToolchainVersion } =>
+                ["system", "stable", "snapshot"].includes(toolchain.version.type);
+            return parsed.toolchains
+                .filter(isKnownVersionType)
+                .sort((a, b) => compareSwiftlyToolchainVersion(a.version, b.version))
+                .map(toolchain => ({
+                    name: toolchain.version.name,
+                    location: toolchain.location,
+                }));
         } catch (error) {
             logger?.error(`Failed to retrieve Swiftly installations: ${error}`);
             return [];

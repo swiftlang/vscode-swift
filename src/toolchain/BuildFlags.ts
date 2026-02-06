@@ -124,6 +124,44 @@ export class BuildFlags {
     }
 
     /**
+     * Extract scratch-path or build-path value from an array of arguments
+     * @param args Array of command-line arguments to search
+     * @returns The path value if found, otherwise undefined
+     */
+    private static extractScratchPath(args: string[]): string | undefined {
+        for (let i = 0; i < args.length; i++) {
+            const arg = args[i];
+            if ((arg === "--scratch-path" || arg === "--build-path") && i + 1 < args.length) {
+                const path = args[i + 1];
+                if (path === "") {
+                    throw new Error(`Invalid ${arg}: path cannot be empty`);
+                }
+                if (path.startsWith("--")) {
+                    throw new Error(
+                        `Invalid ${arg}: expected a path but got another flag '${path}'`
+                    );
+                }
+                return path;
+            }
+            if (arg.startsWith("--scratch-path=")) {
+                const path = arg.substring("--scratch-path=".length);
+                if (path === "") {
+                    throw new Error("Invalid --scratch-path: path cannot be empty");
+                }
+                return path;
+            }
+            if (arg.startsWith("--build-path=")) {
+                const path = arg.substring("--build-path=".length);
+                if (path === "") {
+                    throw new Error("Invalid --build-path: path cannot be empty");
+                }
+                return path;
+            }
+        }
+        return undefined;
+    }
+
+    /**
      * Get build path from configuration if exists or return a fallback .build directory in given workspace
      * @param filesystem path to workspace that will be used as a fallback loacation with .build directory
      */
@@ -134,7 +172,12 @@ export class BuildFlags {
     ): string {
         const nodePath =
             platform === "posix" ? path.posix : platform === "win32" ? path.win32 : path;
-        const buildPath = configuration.buildPath.length > 0 ? configuration.buildPath : ".build";
+
+        const buildPath =
+            BuildFlags.extractScratchPath(configuration.buildArguments) ??
+            BuildFlags.extractScratchPath(configuration.packageArguments) ??
+            (configuration.buildPath.length > 0 ? configuration.buildPath : ".build");
+
         if (!nodePath.isAbsolute(buildPath) && absolute) {
             return nodePath.join(workspacePath, buildPath);
         } else {

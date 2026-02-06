@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
 
-import { TestRunProxy } from "./TestRunner";
+import { TestRunProxy } from "./TestRunProxy";
 import { reduceTestItemChildren } from "./TestUtils";
 
 type ProcessResult = {

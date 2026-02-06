@@ -289,7 +289,13 @@ export class LanguageClientManager implements vscode.Disposable {
         const uri = folder.folder;
         if (this.languageClient === undefined) {
             this.currentWorkspaceFolder = folder;
-            this.restartedPromise = this.setupLanguageClient(folder);
+            this.restartedPromise = this.setupLanguageClient(folder).catch(reason => {
+                this.folderContext.workspaceContext.logger.error(
+                    Error("Error starting SourceKit-LSP in setLanguageClientFolder", {
+                        cause: reason,
+                    })
+                );
+            });
             return;
         } else {
             // don't check for undefined uri's or if the current workspace is the same if we are
@@ -368,11 +374,20 @@ export class LanguageClientManager implements vscode.Disposable {
                     client.outputChannel.dispose();
                 })
                 .catch(async reason => {
+                    this.folderContext.workspaceContext.logger.error(
+                        `Error starting SourceKit-LSP in restartLanguageClient: ${reason}`
+                    );
                     // error message matches code here https://github.com/microsoft/vscode-languageserver-node/blob/2041784436fed53f4e77267a49396bca22a7aacf/client/src/common/client.ts#L1409C1-L1409C54
                     if (reason.message === "Stopping the server timed out") {
-                        await this.setupLanguageClient(workspaceFolder);
+                        try {
+                            await this.setupLanguageClient(workspaceFolder);
+                        } catch (reason) {
+                            this.folderContext.workspaceContext.logger.error(
+                                `Error starting SourceKit-LSP after server timeout in restartLanguageClient: ${reason}`
+                            );
+                        }
                     }
-                    this.folderContext.workspaceContext.logger.error(reason);
+                    this.folderContext.logger.error(reason);
                 });
             await this.restartedPromise;
         }
@@ -488,7 +503,10 @@ export class LanguageClientManager implements vscode.Disposable {
         };
     }
 
-    private async startClient(client: LanguageClient, errorHandler: SourceKitLSPErrorHandler) {
+    private startClient(
+        client: LanguageClient,
+        errorHandler: SourceKitLSPErrorHandler
+    ): Promise<void> {
         const runningPromise = new Promise<void>((res, rej) => {
             const disposable = client.onDidChangeState(e => {
                 // if state is now running add in any sub-folder workspaces that
@@ -506,13 +524,13 @@ export class LanguageClientManager implements vscode.Disposable {
             });
         });
         if (client.clientOptions.workspaceFolder) {
-            this.folderContext.workspaceContext.logger.info(
+            this.folderContext.logger.info(
                 `SourceKit-LSP setup for ${FolderContext.uriName(
                     client.clientOptions.workspaceFolder.uri
                 )}`
             );
         } else {
-            this.folderContext.workspaceContext.logger.info(`SourceKit-LSP setup`);
+            this.folderContext.logger.info(`SourceKit-LSP setup`);
         }
 
         client.onNotification(SourceKitLogMessageNotification.type, params => {
@@ -549,8 +567,8 @@ export class LanguageClientManager implements vscode.Disposable {
                     // do nothing, the experimental capability is not supported
                 }
             } catch (reason) {
-                this.folderContext.workspaceContext.logger.error(
-                    `Error starting SourceKit-LSP: ${reason}`
+                this.folderContext.logger.error(
+                    `Error starting SourceKit-LSP in startClient: ${reason}`
                 );
                 if (this.languageClient?.state === State.Running) {
                     await this.languageClient?.stop();
