@@ -203,6 +203,14 @@ suite("BuildFlags Test Suite", () => {
 
     suite("buildDirectoryFromWorkspacePath", () => {
         const buildPathConfig = mockGlobalValue(configuration, "buildPath");
+        const buildArgsConfig = mockGlobalValue(configuration, "buildArguments");
+        const packageArgsConfig = mockGlobalValue(configuration, "packageArguments");
+
+        beforeEach(() => {
+            buildPathConfig.setValue("");
+            buildArgsConfig.setValue([]);
+            packageArgsConfig.setValue([]);
+        });
 
         test("no configuration provided", () => {
             buildPathConfig.setValue("");
@@ -238,6 +246,107 @@ suite("BuildFlags Test Suite", () => {
             expect(
                 BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true)
             ).to.equalPath("/some/full/workspace/test/path/some/relative/test/path");
+        });
+
+        test("--scratch-path in buildArguments with separate value", () => {
+            buildArgsConfig.setValue(["--scratch-path", "/custom/scratch/path"]);
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
+            ).to.equalPath("/custom/scratch/path");
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true)
+            ).to.equalPath("/custom/scratch/path");
+        });
+
+        test("--scratch-path in buildArguments with equals format", () => {
+            buildArgsConfig.setValue(["--scratch-path=/custom/scratch/path"]);
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
+            ).to.equalPath("/custom/scratch/path");
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true)
+            ).to.equalPath("/custom/scratch/path");
+        });
+
+        test("--scratch-path with relative path in buildArguments", () => {
+            buildArgsConfig.setValue(["--scratch-path", "custom/build"]);
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
+            ).to.equalPath("custom/build");
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true)
+            ).to.equalPath("/some/full/workspace/test/path/custom/build");
+        });
+
+        test("--build-path in buildArguments (legacy support)", () => {
+            buildArgsConfig.setValue(["--build-path", "/legacy/build/path"]);
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
+            ).to.equalPath("/legacy/build/path");
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true)
+            ).to.equalPath("/legacy/build/path");
+        });
+
+        test("--scratch-path in packageArguments", () => {
+            packageArgsConfig.setValue(["--scratch-path", "/package/scratch/path"]);
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
+            ).to.equalPath("/package/scratch/path");
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true)
+            ).to.equalPath("/package/scratch/path");
+        });
+
+        test("buildArguments takes precedence over packageArguments", () => {
+            buildArgsConfig.setValue(["--scratch-path", "/build/args/path"]);
+            packageArgsConfig.setValue(["--scratch-path", "/package/args/path"]);
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
+            ).to.equalPath("/build/args/path");
+        });
+
+        test("buildArguments takes precedence over buildPath config", () => {
+            buildPathConfig.setValue("/config/path");
+            buildArgsConfig.setValue(["--scratch-path", "/build/args/path"]);
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
+            ).to.equalPath("/build/args/path");
+        });
+
+        test("packageArguments takes precedence over buildPath config", () => {
+            buildPathConfig.setValue("/config/path");
+            packageArgsConfig.setValue(["--scratch-path", "/package/args/path"]);
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
+            ).to.equalPath("/package/args/path");
+        });
+
+        test("--scratch-path among other arguments", () => {
+            buildArgsConfig.setValue([
+                "--verbose",
+                "--scratch-path",
+                "/custom/path",
+                "--configuration",
+                "release",
+            ]);
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
+            ).to.equalPath("/custom/path");
         });
     });
 
