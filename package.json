@@ -54,7 +54,7 @@
           {
             "id": "installing-mac-installed",
             "title": "Swift is Ready",
-            "description": "Swift is already installed on your system. You're ready to start developing!\n\n[Create New Swift Project](command:sswg.swift.createNewProject)",
+            "description": "Swift is already installed on your system. You're ready to start developing!\n\n[Create New Swift Project](command:swift.createNewProject)",
             "media": {
               "markdown": "./assets/walkthrough/welcome.md"
             },
@@ -75,7 +75,7 @@
           {
             "id": "installing-linux-installed",
             "title": "Swift is Ready",
-            "description": "Swift is already installed on your system. You're ready to start developing!\n\n[Create New Swift Project](command:sswg.swift.createNewProject)",
+            "description": "Swift is already installed on your system. You're ready to start developing!\n\n[Create New Swift Project](command:swift.createNewProject)",
             "media": {
               "markdown": "./assets/walkthrough/welcome.md"
             },
@@ -243,7 +243,7 @@
     ],
     "commands": [
       {
-        "command": "sswg.swift.checkInstallation",
+        "command": "swift.checkInstallation",
         "title": "Check Swift Installation",
         "category": "Swift"
       },
