@@ -123,7 +123,8 @@ async function promptToRestartVSCode(): Promise<void> {
 export async function handleMissingSwiftly(
     swiftVersions: string[],
     extensionRoot: string,
-    logger?: SwiftLogger
+    logger?: SwiftLogger,
+    skipPrompt: boolean = false
 ): Promise<boolean> {
     // Check if the user wants to disable the prompt
     if (vscode.workspace.getConfiguration("swift").get("disableSwiftlyInstallPrompt", false)) {
@@ -131,9 +132,11 @@ export async function handleMissingSwiftly(
         return false;
     }
 
-    // Prompt user for installation
-    if (!(await promptForSwiftlyInstallation(logger))) {
-        return false;
+    if (!skipPrompt) {
+        // Prompt user for installation
+        if (!(await promptForSwiftlyInstallation(logger))) {
+            return false;
+        }
     }
 
     // Install Swiftly

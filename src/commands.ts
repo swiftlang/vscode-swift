@@ -30,6 +30,7 @@ import { useLocalDependency } from "./commands/dependencies/useLocal";
 import { generateLaunchConfigurations } from "./commands/generateLaunchConfigurations";
 import { generateSourcekitConfiguration } from "./commands/generateSourcekitConfiguration";
 import { insertFunctionComment } from "./commands/insertFunctionComment";
+import { handleMissingSwiftly } from "./commands/installSwiftly";
 import { promptToInstallSwiftlyToolchain } from "./commands/installSwiftlyToolchain";
 import { newSwiftFile } from "./commands/newFile";
 import { openDocumentation } from "./commands/openDocumentation";
@@ -67,7 +68,8 @@ export type WorkspaceContextWithToolchain = WorkspaceContext & { toolchain: Swif
 
 export function registerToolchainCommands(
     ctx: WorkspaceContext | undefined,
-    logger: SwiftLogger
+    logger: SwiftLogger,
+    extensionPath: string
 ): vscode.Disposable[] {
     return [
         vscode.commands.registerCommand("swift.createNewProject", () =>
@@ -82,6 +84,9 @@ export function registerToolchainCommands(
         ),
         vscode.commands.registerCommand("swift.pickProcess", configuration =>
             pickProcess(configuration)
+        ),
+        vscode.commands.registerCommand("swift.installSwiftly", () =>
+            handleMissingSwiftly(["latest"], extensionPath, logger, true)
         ),
     ];
 }
@@ -117,6 +122,7 @@ export enum Commands {
     OPEN_MANIFEST = "swift.openManifest",
     RESTART_LSP = "swift.restartLSPServer",
     SELECT_TOOLCHAIN = "swift.selectToolchain",
+    INSTALL_SWIFTLY = "swift.installSwiftly",
     INSTALL_SWIFTLY_TOOLCHAIN = "swift.installSwiftlyToolchain",
     INSTALL_SWIFTLY_SNAPSHOT_TOOLCHAIN = "swift.installSwiftlySnapshotToolchain",
     GENERATE_SOURCEKIT_CONFIG = "swift.generateSourcekitConfiguration",
@@ -374,6 +380,16 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand(
             Commands.INSTALL_SWIFTLY_SNAPSHOT_TOOLCHAIN,
             async () => await promptToInstallSwiftlyToolchain(ctx, "snapshot")
+        ),
+        vscode.commands.registerCommand(
+            Commands.INSTALL_SWIFTLY,
+            async () =>
+                await handleMissingSwiftly(
+                    ["latest"],
+                    ctx.extensionContext.extensionPath,
+                    ctx.logger,
+                    true
+                )
         ),
     ];
 }

@@ -45,7 +45,7 @@
           {
             "id": "installing-mac-not-installed",
             "title": "Install Swift",
-            "description": "Swift is not currently installed on your system.\n\n[Install Swift](command:swift.installSwiftlyToolchain)\n\nOr install manually from [swift.org](https://www.swift.org/install).",
+            "description": "Swift is not currently installed on your system.\n\n[Install Swift](command:swift.installSwiftly)\n\nOr install manually from [swift.org](https://www.swift.org/install).",
             "media": {
               "markdown": "./assets/walkthrough/welcome.md"
             },
@@ -66,7 +66,7 @@
           {
             "id": "installing-linux-not-installed",
             "title": "Install Swift",
-            "description": "Swift is not currently installed on your system.\n\n[Install Swift](command:swift.installSwiftlyToolchain)\n\nOr install manually from [swift.org](https://www.swift.org/install).",
+            "description": "Swift is not currently installed on your system.\n\n[Install Swift](command:swift.installSwiftly)\n\nOr install manually from [swift.org](https://www.swift.org/install).",
             "media": {
               "markdown": "./assets/walkthrough/welcome.md"
             },

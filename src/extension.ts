@@ -94,23 +94,28 @@ export async function activate(
         // properly configured.
         if (!toolchain) {
             // In order to select a toolchain we need to register the command first.
-            const subscriptions = commands.registerToolchainCommands(undefined, logger);
-            const chosenRemediation = await showToolchainError();
-            subscriptions.forEach(sub => sub.dispose());
+            context.subscriptions.push(
+                ...commands.registerToolchainCommands(undefined, logger, context.extensionPath)
+            );
 
-            // If they tried to fix the improperly configured toolchain, re-initialize the extension.
-            if (chosenRemediation) {
-                return activate(context);
-            } else {
-                return {
-                    workspaceContext: undefined,
-                    logger,
-                    activate: () => activate(context),
-                    deactivate: async () => {
-                        await deactivate(context);
-                    },
-                };
-            }
+            // Show the error dialog asynchronously without blocking activation.
+            // This prevents a UI deadlock where the walkthrough buttons can't work
+            // because activation is blocked waiting for the user to dismiss the dialog.
+            void showToolchainError().then(chosenRemediation => {
+                // If they tried to fix the improperly configured toolchain, re-initialize the extension.
+                if (chosenRemediation) {
+                    void activate(context);
+                }
+            });
+
+            return {
+                workspaceContext: undefined,
+                logger,
+                activate: () => activate(context),
+                deactivate: async () => {
+                    await deactivate(context);
+                },
+            };
         }
 
         const workspaceContextStartTime = Date.now();
@@ -122,7 +127,11 @@ export async function activate(
         context.subscriptions.push(new SwiftEnvironmentVariablesManager(context));
         context.subscriptions.push(SwiftTerminalProfileProvider.register());
         context.subscriptions.push(
-            ...commands.registerToolchainCommands(workspaceContext, workspaceContext.logger)
+            ...commands.registerToolchainCommands(
+                workspaceContext,
+                workspaceContext.logger,
+                context.extensionPath
+            )
         );
 
         // Watch for configuration changes the trigger a reload of the extension if necessary.
