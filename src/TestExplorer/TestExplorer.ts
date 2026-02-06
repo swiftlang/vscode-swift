@@ -28,7 +28,8 @@ import { LSPTestDiscovery } from "./LSPTestDiscovery";
 import { parseTestsFromSwiftTestListOutput } from "./SPMTestDiscovery";
 import { TestCodeLensProvider } from "./TestCodeLensProvider";
 import * as TestDiscovery from "./TestDiscovery";
-import { TestRunProxy, TestRunner } from "./TestRunner";
+import { TestRunProxy } from "./TestRunProxy";
+import { TestRunner } from "./TestRunner";
 import { flattenTestItemCollection } from "./TestUtils";
 
 /** Build test explorer UI */

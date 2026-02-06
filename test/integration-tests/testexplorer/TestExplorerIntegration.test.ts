@@ -25,7 +25,7 @@ import {
     MessageRenderer,
     TestSymbol,
 } from "@src/TestExplorer/TestParsers/SwiftTestingOutputParser";
-import { TestRunProxy } from "@src/TestExplorer/TestRunner";
+import { TestRunProxy } from "@src/TestExplorer/TestRunProxy";
 import { flattenTestItemCollection, reduceTestItemChildren } from "@src/TestExplorer/TestUtils";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { Commands } from "@src/commands";
