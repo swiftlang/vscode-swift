@@ -19,7 +19,7 @@ import { execSwift } from "../utilities/utilities";
 import { DarwinCompatibleTarget, SwiftToolchain, getDarwinTargetTriple } from "./toolchain";
 
 /** Target info */
-export interface DarwinTargetInfo {
+interface DarwinTargetInfo {
     name: string;
     target: DarwinCompatibleTarget;
     version: string;

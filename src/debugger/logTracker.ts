@@ -19,7 +19,7 @@ import { LaunchConfigType } from "./debugAdapter";
 /**
  * Factory class for building LoggingDebugAdapterTracker
  */
-export class LoggingDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerFactory {
+class LoggingDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerFactory {
     createDebugAdapterTracker(
         session: vscode.DebugSession
     ): vscode.ProviderResult<vscode.DebugAdapterTracker> {

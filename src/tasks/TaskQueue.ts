@@ -17,7 +17,7 @@ import { FolderContext } from "../FolderContext";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { execSwift, poll } from "../utilities/utilities";
 
-export interface SwiftOperationOptions {
+interface SwiftOperationOptions {
     // Should I show a status item
     showStatusItem: boolean;
     // Should I check if an instance of this task is already running
@@ -26,7 +26,7 @@ export interface SwiftOperationOptions {
     log?: string;
 }
 /** Swift operation to add to TaskQueue */
-export interface SwiftOperation {
+interface SwiftOperation {
     // options
     options: SwiftOperationOptions;
     // identifier for statusitem

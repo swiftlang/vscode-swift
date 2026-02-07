@@ -389,8 +389,3 @@ export class FolderContext implements ExternalFolderContext, vscode.Disposable {
         }
     }
 }
-
-export interface EditedPackage {
-    name: string;
-    folder: string;
-}

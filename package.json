@@ -2061,7 +2061,7 @@
     "watch": "npm run compile -- --watch",
     "compile-documentation-webview": "del-cli ./assets/documentation-webview && esbuild ./src/documentation/webview/webview.ts --bundle --outfile=assets/documentation-webview/index.js --define:process.env.NODE_ENV=\\\"production\\\" --define:process.env.CI=\\\"\\\" --format=cjs --sourcemap",
     "watch-documentation-webview": "npm run compile-documentation-webview -- --watch",
-    "lint": "eslint ./ --ext ts && tsc --noEmit && tsc --noEmit -p scripts/tsconfig.json",
+    "lint": "eslint ./ --ext ts && tsc --noEmit && tsc --noEmit -p scripts/tsconfig.json && knip",
     "build-swift-docc-render": "tsx ./scripts/build_swift_docc_render.ts",
     "compile-icons": "tsx ./scripts/compile_icons.ts",
     "format": "prettier --check .",
@@ -2091,7 +2091,6 @@
     "**/*": "prettier --write --ignore-unknown"
   },
   "devDependencies": {
-    "@actions/core": "^3.0.0",
     "@trivago/prettier-plugin-sort-imports": "^6.0.2",
     "@twbs/fantasticon": "^3.1.0",
     "@types/archiver": "^7.0.0",
@@ -2113,7 +2112,6 @@
     "@types/source-map-support": "^0.5.10",
     "@types/svg2ttf": "^5.0.3",
     "@types/svgicons2svgfont": "^10.0.5",
-    "@types/tar": "^6.1.13",
     "@types/ttf2woff": "^2.0.4",
     "@types/vscode": "^1.88.0",
     "@types/xml2js": "^0.4.14",
@@ -2134,6 +2132,7 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-mocha": "^10.5.0",
     "husky": "^9.1.7",
+    "knip": "^5.83.1",
     "lint-staged": "^16.2.7",
     "lodash.debounce": "^4.0.8",
     "lodash.throttle": "^4.1.1",

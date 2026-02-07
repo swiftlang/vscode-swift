@@ -693,7 +693,7 @@ export class SourceKitLSPErrorHandler implements ErrorHandler {
 }
 
 /** Language client errors */
-export const enum LanguageClientError {
+const enum LanguageClientError {
     LanguageClientUnavailable = "Language Client Unavailable",
 }
 

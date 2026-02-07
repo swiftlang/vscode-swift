@@ -38,15 +38,7 @@ import { lineBreakRegex } from "./utilities/tasks";
 import { execSwift, getErrorDescription, hashString, unwrapPromise } from "./utilities/utilities";
 
 // Re-export some types from the external API for convenience.
-export {
-    Dependency,
-    PackagePlugin,
-    PackageResolvedPin,
-    PackageResolvedPinState,
-    ResolvedDependency,
-    Target,
-    TargetType,
-};
+export { Dependency, PackagePlugin, ResolvedDependency, Target, TargetType };
 
 // Need to re-export the Product interface with internal types
 export interface Product extends ExternalProduct {
@@ -66,7 +58,7 @@ export function isAutomatic(product: Product): boolean {
 }
 
 /** Swift Package.resolved file */
-export class PackageResolved implements ExternalPackageResolved {
+class PackageResolved implements ExternalPackageResolved {
     readonly fileHash: number;
     readonly pins: PackageResolvedPin[];
     readonly version: number;
@@ -126,7 +118,7 @@ interface PackageResolvedPinFileV2 {
 }
 
 /** workspace-state.json file */
-export interface WorkspaceState {
+interface WorkspaceState {
     object: { dependencies: WorkspaceStateDependency[] };
     version: number;
 }
@@ -134,13 +126,13 @@ export interface WorkspaceState {
 /** revision + (branch || version)
  * ref: https://github.com/apple/swift-package-manager/blob/e25a590dc455baa430f2ec97eacc30257c172be2/Sources/Workspace/CheckoutState.swift#L19:L23
  */
-export interface CheckoutState {
+interface CheckoutState {
     revision: string;
     branch: string | null;
     version: string | null;
 }
 
-export interface WorkspaceStateDependency {
+interface WorkspaceStateDependency {
     packageRef: { identity: string; kind: string; location: string; name: string };
     state: { name: string; path?: string; checkoutState?: CheckoutState; version?: string };
     subpath: string;

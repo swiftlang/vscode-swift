@@ -89,7 +89,7 @@ type ParameterizedTestRecord = TestRecord & {
     };
 };
 
-export interface TestCase {
+interface TestCase {
     id: string;
     displayName: string;
 }

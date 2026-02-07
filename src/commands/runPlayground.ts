@@ -12,24 +12,15 @@
 //
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
-import { Location, Range } from "vscode-languageclient";
 
 import { FolderContext } from "../FolderContext";
 import { createSwiftTask } from "../tasks/SwiftTaskProvider";
 import { TaskManager } from "../tasks/TaskManager";
 import { packageName } from "../utilities/tasks";
 
-export interface PlaygroundItem {
+interface PlaygroundItem {
     id: string;
     label?: string;
-}
-
-export interface DocumentPlaygroundItem extends PlaygroundItem {
-    range: Range;
-}
-
-export interface WorkspacePlaygroundItem extends PlaygroundItem {
-    location: Location;
 }
 
 /**

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "entry": [
+    "src/askpass/askpass-main.ts",
+    "src/coverage/**/*.ts",
+    "scripts/**/*.ts",
+    "test/**/*.ts"
+  ],
+  "project": ["src/**/*.ts", "scripts/**/*.ts", "test/**/*.ts"],
+  "ignore": ["dist/**", "out/**", "assets/**", "**/*.d.ts"],
+  "ignoreDependencies": [
+    "node-pty",
+    "@vscode/codicons",
+    "@vscode/test-electron",
+    "@types/svg2ttf",
+    "@types/svgicons2svgfont",
+    "@types/ttf2woff"
+  ],
+  "ignoreBinaries": ["scripts/soundness.sh"],
+  "rules": {
+    "types": "warn",
+    "enumMembers": "warn"
+  }
+}
