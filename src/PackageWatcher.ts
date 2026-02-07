@@ -17,6 +17,7 @@ import * as vscode from "vscode";
 
 import { FolderContext } from "./FolderContext";
 import { FolderOperation } from "./WorkspaceContext";
+import configuration from "./configuration";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { BuildFlags } from "./toolchain/BuildFlags";
 import { showReloadExtensionNotification } from "./ui/ReloadExtension";
@@ -137,7 +138,10 @@ export class PackageWatcher {
 
     async handleSwiftVersionFileChange() {
         const version = await this.readSwiftVersionFile();
-        if (version?.toString() !== this.currentVersion?.toString()) {
+        if (
+            version?.toString() !== this.currentVersion?.toString() &&
+            !configuration.folder(this.folderContext.workspaceFolder).ignoreSwiftVersionFile
+        ) {
             await this.folderContext.fireEvent(FolderOperation.swiftVersionUpdated);
             await showReloadExtensionNotification(
                 "Changing the swift toolchain version requires the extension to be reloaded"
