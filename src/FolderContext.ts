@@ -387,7 +387,7 @@ export class FolderContext implements ExternalFolderContext, vscode.Disposable {
             uri.scheme === "file" &&
             isPathInsidePath(uri.fsPath, this.folder.fsPath)
         ) {
-            void this.playgroundProvider.onDocumentCodeLens(document, codeLens);
+            this.playgroundProvider.onDocumentCodeLens(document, codeLens);
         }
     }
 }

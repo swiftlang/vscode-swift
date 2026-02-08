@@ -86,6 +86,7 @@ export class TestRunState implements ITestRunState {
     }
 
     constructor(darwin: boolean) {
+        // eslint-disable-next-line sonarjs/no-selector-parameter
         if (darwin) {
             this.testItemFinder = new DarwinTestItemFinder();
         } else {

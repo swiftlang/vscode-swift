@@ -56,9 +56,9 @@ const isSourceKit: DiagnosticPredicate = diagnostic =>
  * thier own diagnostics.
  */
 export class DiagnosticsManager implements vscode.Disposable {
-    private static swiftc: string = "swiftc";
-    static isSourcekit: SourcePredicate = source => this.swiftc !== source;
-    static isSwiftc: SourcePredicate = source => this.swiftc === source;
+    private static readonly swiftc: string = "swiftc";
+    static readonly isSourcekit: SourcePredicate = source => this.swiftc !== source;
+    static readonly isSwiftc: SourcePredicate = source => this.swiftc === source;
 
     private diagnosticCollection: vscode.DiagnosticCollection =
         vscode.languages.createDiagnosticCollection("swift");

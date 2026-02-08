@@ -48,11 +48,10 @@ export class BackgroundCompilation implements vscode.Disposable {
     private setupFileWatching() {
         const fileTypes = validFileTypes.join(",");
         const rootFolders = ["Sources", "Tests", "Snippets", "Plugins"].join(",");
-        this.disposables.push(
-            (this.workspaceFileWatcher = vscode.workspace.createFileSystemWatcher(
-                `**/{${rootFolders}}/**/*.{${fileTypes}}`
-            ))
+        this.workspaceFileWatcher = vscode.workspace.createFileSystemWatcher(
+            `**/{${rootFolders}}/**/*.{${fileTypes}}`
         );
+        this.disposables.push(this.workspaceFileWatcher);
 
         // Throttle events since many change events can be recieved in a short time if the user
         // does a "Save All" or a process writes several files in quick succession.

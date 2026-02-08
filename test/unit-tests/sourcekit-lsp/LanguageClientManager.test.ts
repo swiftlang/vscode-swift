@@ -491,7 +491,7 @@ suite("LanguageClientManager Suite", () => {
         languageClientMock.sendNotification.resetHistory();
 
         // Remove the first folder
-        mockedWorkspace.folders.slice(1);
+        mockedWorkspace.folders = mockedWorkspace.folders.slice(1);
         await didChangeFoldersEmitter.fire({
             operation: FolderOperation.remove,
             folder: instance(folder1),

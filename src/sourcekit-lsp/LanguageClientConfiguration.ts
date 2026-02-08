@@ -109,7 +109,7 @@ type SourceKitDocumentSelector = {
 }[];
 
 export class LanguagerClientDocumentSelectors {
-    static appleLangDocumentSelector: SourceKitDocumentSelector = [
+    static readonly appleLangDocumentSelector: SourceKitDocumentSelector = [
         { scheme: "sourcekit-lsp", language: "swift" },
         { scheme: "file", language: "swift" },
         { scheme: "untitled", language: "swift" },
@@ -119,22 +119,21 @@ export class LanguagerClientDocumentSelectors {
         { scheme: "untitled", language: "objective-cpp" },
     ];
 
-    static cFamilyDocumentSelector: SourceKitDocumentSelector = [
+    static readonly cFamilyDocumentSelector: SourceKitDocumentSelector = [
         { scheme: "file", language: "c" },
         { scheme: "untitled", language: "c" },
         { scheme: "file", language: "cpp" },
         { scheme: "untitled", language: "cpp" },
     ];
 
-    // document selector for swift-docc documentation
-    static documentationDocumentSelector: SourceKitDocumentSelector = [
+    static readonly documentationDocumentSelector: SourceKitDocumentSelector = [
         { scheme: "file", language: "markdown" },
         { scheme: "untitled", language: "markdown" },
         { scheme: "file", language: "tutorial" },
         { scheme: "untitiled", language: "tutorial" },
     ];
 
-    static miscelaneousDocumentSelector: SourceKitDocumentSelector = [
+    static readonly miscelaneousDocumentSelector: SourceKitDocumentSelector = [
         { scheme: "file", language: "plaintext", pattern: "**/.swift-version" },
     ];
 

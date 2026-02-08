@@ -38,7 +38,7 @@ export function registerDebugger(workspaceContext: WorkspaceContext): vscode.Dis
     // when the setting is changed to enable.
     const configurationEvent = vscode.workspace.onDidChangeConfiguration(event => {
         if (event.affectsConfiguration("swift.debugger.disable")) {
-            subscriptions.map(sub => sub.dispose());
+            subscriptions.forEach(sub => sub.dispose());
             subscriptions = [];
             if (!configuration.debugger.disable) {
                 register();

@@ -42,7 +42,7 @@ function getScopeWorkspaceFolder(task: vscode.Task): string | undefined {
         const scopeWorkspaceFolder = task.scope as vscode.WorkspaceFolder;
         return scopeWorkspaceFolder.uri.fsPath;
     }
-    return;
+    return undefined;
 }
 
 export function getPlatformConfig<T>(task: vscode.Task): T | undefined {

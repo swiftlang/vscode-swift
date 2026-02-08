@@ -135,7 +135,6 @@ export class SwiftBuildStatus implements vscode.Disposable {
                     return false;
                 }
                 if (this.checkIfFetching(line)) {
-                    // this.statusItem.update(task, `Fetching dependencies "${task.name}"`);
                     update(`${name}: Fetching Dependencies`);
                     started = true;
                     return false;

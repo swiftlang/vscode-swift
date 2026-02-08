@@ -153,7 +153,7 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
         if (!parser.match(/\b(?:func|init)\b(?=[^{]*\{)/)) {
             return null;
         }
-        const funcName = parser.match(/^([^(<]*)\s*(\(|<)/);
+        const funcName = parser.match(/^([^(<]*)\s*([(<])/);
         if (!funcName) {
             return null;
         }
@@ -171,6 +171,7 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
         if (!parser.match(/^\)/)) {
             // eslint-disable-next-line no-constant-condition
             while (true) {
+                // eslint-disable-next-line sonarjs/empty-string-repetition
                 const parameter = parser.match(/(\S*)(?:\s*)?:/);
                 if (!parameter) {
                     return null;

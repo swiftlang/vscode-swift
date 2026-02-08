@@ -22,12 +22,10 @@ main(async () => {
     // Decrement the minor version and set a patch
     const minor = version.minor - 2;
     let patch = 1;
-    let previewVersion = "";
-    while (
-        (previewVersion = `${version.major}.${minor}.${patch}`) &&
-        releases.includes(previewVersion)
-    ) {
+    let previewVersion = `${version.major}.${minor}.${patch}`;
+    while (releases.includes(previewVersion)) {
         patch += 1;
+        previewVersion = `${version.major}.${minor}.${patch}`;
     }
     // Make sure that the new minor version is odd
     if (minor % 2 !== 0) {

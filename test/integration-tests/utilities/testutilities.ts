@@ -44,7 +44,7 @@ interface Loggable {
 
 function printLogs(logger: Loggable, message: string) {
     console.error(`${message}, captured logs are:`);
-    logger.logs.map(log => console.log(log));
+    logger.logs.forEach(log => console.log(log));
     console.log("======== END OF LOGS ========\n");
 }
 

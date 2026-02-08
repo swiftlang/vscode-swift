@@ -221,6 +221,7 @@ async function showCapturedDiagnosticsResults(diagnosticsPath: string) {
         await vscode.env.clipboard.writeText(diagnosticsPath);
     } else if (result === showInFinderButton) {
         const dirToShow = path.dirname(diagnosticsPath);
+        // eslint-disable-next-line sonarjs/os-command
         exec(showDirectoryCommand(dirToShow), error => {
             // Opening the explorer on windows returns an exit code of 1 despite opening successfully.
             if (error && process.platform !== "win32") {
@@ -368,7 +369,7 @@ function progressUpdatingWritable(updateProgress: (str: string) => void): Writab
     return new Writable({
         write(chunk, _encoding, callback) {
             const str = (chunk as Buffer).toString("utf8").trim();
-            const percent = /^([0-9]+)%/.exec(str);
+            const percent = /^(\d+)%/.exec(str);
             if (percent && percent[1]) {
                 updateProgress(percent[1]);
             }

@@ -218,7 +218,8 @@ const configuration = {
 
                 if (resultIsArray && Array.isArray(args)) {
                     return args;
-                } else if (
+                }
+                if (
                     !resultIsArray &&
                     args !== null &&
                     typeof args === "object" &&
@@ -353,15 +354,13 @@ const configuration = {
                         .get<DebugAdapters>("debugAdapter", "auto"),
                     "swift.debugger.debugAdapter"
                 );
-                switch (selectedAdapter) {
-                    case "auto":
-                        if (useDebugAdapterFromToolchain !== undefined) {
-                            return useDebugAdapterFromToolchain ? "lldb-dap" : "CodeLLDB";
-                        }
-                        return "auto";
-                    default:
-                        return selectedAdapter;
+                if (selectedAdapter === "auto") {
+                    if (useDebugAdapterFromToolchain !== undefined) {
+                        return useDebugAdapterFromToolchain ? "lldb-dap" : "CodeLLDB";
+                    }
+                    return "auto";
                 }
+                return selectedAdapter;
             },
             get customDebugAdapterPath(): string {
                 return validateStringSetting(

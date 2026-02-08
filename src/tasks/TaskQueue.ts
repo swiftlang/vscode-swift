@@ -240,7 +240,6 @@ export class TaskQueue implements vscode.Disposable {
             const operation = this.queue.shift();
 
             if (operation) {
-                //const task = operation.task;
                 this.activeOperation = operation;
                 // show active task status item
                 if (operation.showStatusItem === true) {
@@ -260,19 +259,16 @@ export class TaskQueue implements vscode.Disposable {
                     .then(result => {
                         // log result
                         if (operation.log && !operation.token?.isCancellationRequested) {
-                            switch (result) {
-                                case 0:
-                                    this.workspaceContext.logger.info(
-                                        `${operation.log}: ... done.`,
-                                        this.folderContext.name
-                                    );
-                                    break;
-                                default:
-                                    this.workspaceContext.logger.error(
-                                        `${operation.log}: ... failed.`,
-                                        this.folderContext.name
-                                    );
-                                    break;
+                            if (result === 0) {
+                                this.workspaceContext.logger.info(
+                                    `${operation.log}: ... done.`,
+                                    this.folderContext.name
+                                );
+                            } else {
+                                this.workspaceContext.logger.error(
+                                    `${operation.log}: ... failed.`,
+                                    this.folderContext.name
+                                );
                             }
                         }
                         this.finishTask(operation, { success: result });
