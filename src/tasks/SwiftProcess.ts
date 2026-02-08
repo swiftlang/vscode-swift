@@ -222,6 +222,7 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
 
     private spawnedProcess: child_process.ChildProcessWithoutNullStreams | undefined;
 
+    // eslint-disable-next-line sonarjs/no-identical-functions
     constructor(
         public readonly command: string,
         public readonly args: string[],

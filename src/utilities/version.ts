@@ -22,7 +22,7 @@ export class Version implements ExternalVersion {
     ) {}
 
     static fromString(s: string): Version | undefined {
-        const numbers = s.match(/(\d+).(\d+)(?:.(\d+))?(-dev)?/);
+        const numbers = /(\d+).(\d+)(?:.(\d+))?(-dev)?/.exec(s);
         if (numbers) {
             const major = parseInt(numbers[1]);
             const minor = parseInt(numbers[2]);
@@ -84,6 +84,11 @@ export class Version implements ExternalVersion {
     }
 
     compare(rhs: VersionInterface): number {
-        return this.isGreaterThan(rhs) ? 1 : this.isLessThan(rhs) ? -1 : 0;
+        if (this.isGreaterThan(rhs)) {
+            return 1;
+        } else if (this.isLessThan(rhs)) {
+            return -1;
+        }
+        return 0;
     }
 }

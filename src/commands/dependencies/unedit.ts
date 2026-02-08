@@ -81,7 +81,7 @@ async function uneditFolderDependency(
     } catch (error) {
         const execError = error as { stderr: string };
         // if error contains "has uncommited changes" then ask if user wants to force the unedit
-        if (execError.stderr.match(/has uncommited changes/)) {
+        if (/has uncommited changes/.exec(execError.stderr)) {
             const result = await vscode.window.showWarningMessage(
                 `${identifier} has uncommitted changes. Are you sure you want to continue?`,
                 "Yes",

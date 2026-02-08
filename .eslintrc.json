@@ -6,7 +6,7 @@
     "sourceType": "module",
     "project": true
   },
-  "plugins": ["@typescript-eslint", "mocha"],
+  "plugins": ["@typescript-eslint", "mocha", "sonarjs"],
   "rules": {
     "curly": "error",
     "eqeqeq": "warn",
@@ -46,8 +46,33 @@
         "argsIgnorePattern": "^_",
         "caughtErrors": "none"
       }
-    ]
+    ],
+    "sonarjs/no-exclusive-tests": "off",
+    "sonarjs/use-type-alias": "off",
+    "sonarjs/function-return-type": "off",
+    "sonarjs/slow-regex": "off",
+    "sonarjs/publicly-writable-directories": "off",
+    "sonarjs/no-same-argument-assert": "off",
+    "sonarjs/different-types-comparison": "off",
+    "sonarjs/no-invariant-returns": "off",
+    "sonarjs/fixme-tag": "off",
+    "sonarjs/todo-tag": "off",
+
+    // These should be progressively enabled over time as we fix the underlying issues
+    "sonarjs/constructor-for-side-effects": "off",
+    "sonarjs/no-ignored-exceptions": "off",
+    "sonarjs/pseudo-random": "off",
+    "sonarjs/no-nested-functions": "off",
+    "sonarjs/no-async-constructor": "off",
+
+    // Ratchet this down over time to 15
+    "sonarjs/cognitive-complexity": ["error", 35]
   },
-  "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended", "prettier"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:sonarjs/recommended-legacy",
+    "prettier"
+  ],
   "ignorePatterns": ["assets", "out", "dist", "**/*.d.ts"]
 }

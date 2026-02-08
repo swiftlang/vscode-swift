@@ -64,7 +64,7 @@ export class ToolchainVersion {
         let match: RegExpMatchArray | null;
 
         // Try to match as stable release
-        match = string.match(this.stableRegex);
+        match = this.stableRegex.exec(string);
         if (match) {
             const major = parseInt(match[1], 10);
             const minor = parseInt(match[2], 10);
@@ -83,7 +83,7 @@ export class ToolchainVersion {
         }
 
         // Try to match as main snapshot
-        match = string.match(this.mainSnapshotRegex);
+        match = this.mainSnapshotRegex.exec(string);
         if (match) {
             return new ToolchainVersion({
                 type: "snapshot",
@@ -93,7 +93,7 @@ export class ToolchainVersion {
         }
 
         // Try to match as release snapshot
-        match = string.match(this.releaseSnapshotRegex);
+        match = this.releaseSnapshotRegex.exec(string);
         if (match) {
             const major = parseInt(match[1], 10);
             const minor = parseInt(match[2], 10);

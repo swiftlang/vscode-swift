@@ -354,7 +354,7 @@ export function getRepositoryName(url: string): string {
     // - at the end of the URL: $
     const pattern = /([^/]*)\/?$/;
     // The capture group in this pattern will match the last path component of the URL.
-    let lastPathComponent = url.match(pattern)![1];
+    let lastPathComponent = pattern.exec(url)![1];
     // Trim the optional .git extension.
     if (lastPathComponent.endsWith(".git")) {
         lastPathComponent = lastPathComponent.replace(/\.git$/, "");

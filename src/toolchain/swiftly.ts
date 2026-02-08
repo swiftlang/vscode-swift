@@ -148,7 +148,7 @@ export function parseSwiftlyMissingToolchainError(
     stderr: string
 ): MissingToolchainError | undefined {
     // Parse error message like: "uses toolchain version 6.1.2, but it doesn't match any of the installed toolchains"
-    const versionMatch = stderr.match(/uses toolchain version ([0-9.]+(?:-[a-zA-Z0-9-]+)*)/);
+    const versionMatch = /uses toolchain version ([0-9.]+(?:-[a-zA-Z0-9-]+)*)/.exec(stderr);
     if (versionMatch && stderr.includes("doesn't match any of the installed toolchains")) {
         return {
             version: versionMatch[1],
@@ -187,19 +187,16 @@ export async function handleMissingSwiftlyToolchain(
 }
 
 export class Swiftly {
-    public static cancellationMessage = "Installation cancelled by user";
+    public static readonly cancellationMessage = "Installation cancelled by user";
 
     public static defaultHomeDir(): string {
-        switch (process.platform) {
-            case "linux": {
-                if (process.env["XDG_DATA_HOME"]) {
-                    return path.join(process.env["XDG_DATA_HOME"], "swiftly");
-                }
-                return path.join(os.homedir(), ".local/share/swiftly");
+        if (process.platform === "linux") {
+            if (process.env["XDG_DATA_HOME"]) {
+                return path.join(process.env["XDG_DATA_HOME"], "swiftly");
             }
-            default:
-                return path.join(os.homedir(), ".swiftly");
+            return path.join(os.homedir(), ".local/share/swiftly");
         }
+        return path.join(os.homedir(), ".swiftly");
     }
 
     /**

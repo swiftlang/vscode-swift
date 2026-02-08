@@ -47,7 +47,9 @@ suite("Workspace Utilities Unit Test Suite", () => {
                 testSwiftVersion
             );
 
-            expect(folders.map(folder => folder.fsPath).sort()).deep.equal([
+            expect(
+                folders.map(folder => folder.fsPath).sort((a, b) => a.localeCompare(b))
+            ).deep.equal([
                 packageFolder.fsPath,
                 firstModuleFolder.fsPath,
                 secondModuleFolder.fsPath,
@@ -63,10 +65,9 @@ suite("Workspace Utilities Unit Test Suite", () => {
                 testSwiftVersion
             );
 
-            expect(folders.map(folder => folder.fsPath).sort()).deep.equal([
-                packageFolder.fsPath,
-                secondModuleFolder.fsPath,
-            ]);
+            expect(
+                folders.map(folder => folder.fsPath).sort((a, b) => a.localeCompare(b))
+            ).deep.equal([packageFolder.fsPath, secondModuleFolder.fsPath]);
         });
 
         test("skips specified folders when skipFolders contains Module2", async () => {
@@ -78,10 +79,9 @@ suite("Workspace Utilities Unit Test Suite", () => {
                 testSwiftVersion
             );
 
-            expect(folders.map(folder => folder.fsPath).sort()).deep.equal([
-                packageFolder.fsPath,
-                firstModuleFolder.fsPath,
-            ]);
+            expect(
+                folders.map(folder => folder.fsPath).sort((a, b) => a.localeCompare(b))
+            ).deep.equal([packageFolder.fsPath, firstModuleFolder.fsPath]);
         });
 
         test("skips multiple folders when skipFolders contains both modules", async () => {
@@ -117,7 +117,9 @@ suite("Workspace Utilities Unit Test Suite", () => {
                 testSwiftVersion
             );
 
-            expect(folders.map(folder => folder.fsPath).sort()).deep.equal([
+            expect(
+                folders.map(folder => folder.fsPath).sort((a, b) => a.localeCompare(b))
+            ).deep.equal([
                 packageFolder.fsPath,
                 firstModuleFolder.fsPath,
                 secondModuleFolder.fsPath,

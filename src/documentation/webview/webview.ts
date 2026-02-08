@@ -43,31 +43,28 @@ createCommunicationBridge().then(async bridge => {
 
     // Handle messages coming from swift-docc-render
     bridge.onDidReceiveMessage(message => {
-        switch (message.type) {
-            case "rendered":
-                if (contentToApplyOnRender) {
-                    setTimeout(() => {
-                        bridge.send({ type: "contentUpdate", data: contentToApplyOnRender });
-                        contentToApplyOnRender = undefined;
-                    }, 1);
-                    break;
-                }
+        if (message.type === "rendered") {
+            if (contentToApplyOnRender) {
+                setTimeout(() => {
+                    bridge.send({ type: "contentUpdate", data: contentToApplyOnRender });
+                    contentToApplyOnRender = undefined;
+                }, 1);
+            } else {
                 vscode.postMessage({ type: "rendered" });
-                break;
+            }
         }
     });
 
     // Handle messages coming from vscode-swift
+    // eslint-disable-next-line sonarjs/post-message
     window.addEventListener("message", event => {
         if (typeof event.data !== "object" || !("type" in event.data)) {
             return;
         }
 
         const message = event.data as WebviewMessage;
-        switch (message.type) {
-            case "update-content":
-                handleUpdateContentMessage(message.content);
-                break;
+        if (message.type === "update-content") {
+            handleUpdateContentMessage(message.content);
         }
     });
     function handleUpdateContentMessage(content: WebviewContent) {

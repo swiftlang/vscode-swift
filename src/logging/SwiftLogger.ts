@@ -22,10 +22,6 @@ import { OutputChannelTransport } from "./OutputChannelTransport";
 import { RollingLog } from "./RollingLog";
 import { RollingLogTransport } from "./RollingLogTransport";
 
-// Winston work off of "any" as meta data so creating this
-// type so we don't have to disable ESLint many times below
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type LoggerMeta = any;
 type LogMessageOptions = { append: boolean };
 
 export class SwiftLogger implements vscode.Disposable {
@@ -69,7 +65,8 @@ export class SwiftLogger implements vscode.Disposable {
                 winston.format.errors({ stack: true }),
                 winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss.SSS" }), // This is the format of `vscode.LogOutputChannel`
                 winston.format.printf(msg => {
-                    return `${msg.timestamp} [${msg.level}] ${msg.message}${msg.stack ? ` ${msg.stack}` : ""}`;
+                    const stackTrace = msg.stack ? ` ${msg.stack}` : "";
+                    return `${msg.timestamp} [${msg.level}] ${msg.message}${stackTrace}`;
                 }),
                 winston.format.colorize()
             ),
@@ -88,22 +85,26 @@ export class SwiftLogger implements vscode.Disposable {
         );
     }
 
-    debug(message: LoggerMeta, label?: string, options?: LogMessageOptions) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    debug(message: any, label?: string, options?: LogMessageOptions) {
         const normalizedMessage = this.normalizeMessage(message, label);
         this.logWithBuffer("debug", normalizedMessage, options);
     }
 
-    info(message: LoggerMeta, label?: string, options?: LogMessageOptions) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    info(message: any, label?: string, options?: LogMessageOptions) {
         const normalizedMessage = this.normalizeMessage(message, label);
         this.logWithBuffer("info", normalizedMessage, options);
     }
 
-    warn(message: LoggerMeta, label?: string, options?: LogMessageOptions) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    warn(message: any, label?: string, options?: LogMessageOptions) {
         const normalizedMessage = this.normalizeMessage(message, label);
         this.logWithBuffer("warn", normalizedMessage, options);
     }
 
-    error(message: LoggerMeta, label?: string, options?: LogMessageOptions) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    error(message: any, label?: string, options?: LogMessageOptions) {
         if (message instanceof Error) {
             this.logWithBuffer("error", message);
             return;
@@ -112,7 +113,8 @@ export class SwiftLogger implements vscode.Disposable {
         this.logWithBuffer("error", normalizedMessage, options);
     }
 
-    private logWithBuffer(level: string, message: string | Error, meta?: LoggerMeta) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private logWithBuffer(level: string, message: string | Error, meta?: any) {
         if (this.isDisposed) {
             return;
         }
@@ -134,7 +136,8 @@ export class SwiftLogger implements vscode.Disposable {
         this.rollingLog.clear();
     }
 
-    private normalizeMessage(message: LoggerMeta, label?: string) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private normalizeMessage(message: any, label?: string) {
         let fullMessage: string;
         if (typeof message === "string") {
             fullMessage = message;

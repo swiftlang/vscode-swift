@@ -438,7 +438,6 @@ export async function showToolchainSelectionQuickPick(
         }
         // Update the toolchain configuration
         await setToolchainPath(selectedToolchain, developerDir);
-        return;
     }
 }
 

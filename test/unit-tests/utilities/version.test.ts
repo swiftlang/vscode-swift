@@ -45,6 +45,7 @@ suite("Version Suite", () => {
         });
 
         test("ignores extra digits", () => {
+            // eslint-disable-next-line sonarjs/no-hardcoded-ip
             const version = Version.fromString("5.10.1.2");
 
             expect(version?.major).to.equal(5);
@@ -80,7 +81,7 @@ suite("Version Suite", () => {
     });
 
     test("toString", () => {
-        expect(new Version(5, 10, 1).toString(), "5.10.1");
+        expect(new Version(5, 10, 1).toString()).equal("5.10.1");
     });
 
     test("isLessThan", () => {

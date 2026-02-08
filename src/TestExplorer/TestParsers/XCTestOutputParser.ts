@@ -461,7 +461,7 @@ export class XCTestOutputParser implements IXCTestOutputParser {
 
     private extractDiff(message: string): TestIssueDiff | undefined {
         const regex = /\((.*)\) is not .* to \((.*)\)/ms;
-        const match = message.match(regex);
+        const match = regex.exec(message);
         if (match && match[1] !== match[2]) {
             return {
                 actual: match[1],

@@ -700,7 +700,11 @@ export function getFolderAndNameSuffix(
     expandEnvVariables = false,
     platform?: "posix" | "win32"
 ): { folder: string; nameSuffix: string } {
-    const nodePath = platform === "posix" ? path.posix : platform === "win32" ? path.win32 : path;
+    const platformPaths = {
+        posix: path.posix,
+        win32: path.win32,
+    };
+    const nodePath = platform ? platformPaths[platform] : path;
     const workspaceFolder = expandEnvVariables
         ? ctx.workspaceFolder.uri.fsPath
         : `\${workspaceFolder:${ctx.workspaceFolder.name}}`;
