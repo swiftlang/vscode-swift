@@ -16,6 +16,7 @@ import * as vscode from "vscode";
 
 import { FolderContext } from "../FolderContext";
 import { Commands } from "../commands";
+import { handleMissingSwiftly } from "../commands/installSwiftly";
 import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { Swiftly } from "../toolchain/swiftly";
@@ -78,8 +79,11 @@ async function selectToolchainFolder() {
  * Displays an error notification to the user that toolchain discovery failed.
  * @returns true if the user made a selection (and potentially updated toolchain settings), false if they dismissed the dialog
  */
-export async function showToolchainError(folder?: vscode.Uri): Promise<boolean> {
-    let selected: "Remove From Settings" | "Select Toolchain" | "Open Documentation" | undefined;
+export async function showToolchainError(
+    extensionPath: string,
+    folder?: vscode.Uri
+): Promise<boolean> {
+    let selected: "Remove From Settings" | "Select Toolchain" | "Install Swiftly" | undefined;
     const folderName = folder ? `${FolderContext.uriName(folder)}: ` : "";
     if (configuration.path) {
         selected = await vscode.window.showErrorMessage(
@@ -89,8 +93,8 @@ export async function showToolchainError(folder?: vscode.Uri): Promise<boolean> 
         );
     } else {
         selected = await vscode.window.showErrorMessage(
-            `${folderName}Unable to automatically discover your Swift toolchain. Either install a toolchain from Swift.org or provide the path to an existing toolchain.`,
-            "Open Documentation",
+            `${folderName}Unable to automatically discover your Swift toolchain. Install Swiftly to install the latest toolchain or provide the path to an existing toolchain.`,
+            "Install Swiftly",
             "Select Toolchain"
         );
     }
@@ -101,13 +105,9 @@ export async function showToolchainError(folder?: vscode.Uri): Promise<boolean> 
     } else if (selected === "Select Toolchain") {
         await selectToolchain();
         return true;
-    } else if (selected === "Open Documentation") {
-        void vscode.env.openExternal(
-            vscode.Uri.parse(
-                "https://docs.swift.org/vscode/documentation/userdocs/supported-toolchains"
-            )
-        );
-        return false;
+    } else if (selected === "Install Swiftly") {
+        await handleMissingSwiftly(["latest"], extensionPath);
+        return true;
     }
     return false;
 }

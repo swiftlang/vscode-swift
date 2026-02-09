@@ -89,8 +89,12 @@ export async function activate(
         // properly configured.
         if (!toolchain) {
             // In order to select a toolchain we need to register the command first.
-            const subscriptions = commands.registerToolchainCommands(undefined, logger);
-            const chosenRemediation = await showToolchainError();
+            const subscriptions = commands.registerToolchainCommands(
+                undefined,
+                context.extensionPath,
+                logger
+            );
+            const chosenRemediation = await showToolchainError(context.extensionPath);
             subscriptions.forEach(sub => sub.dispose());
 
             // If they tried to fix the improperly configured toolchain, re-initialize the extension.
@@ -117,7 +121,11 @@ export async function activate(
         context.subscriptions.push(new SwiftEnvironmentVariablesManager(context));
         context.subscriptions.push(SwiftTerminalProfileProvider.register());
         context.subscriptions.push(
-            ...commands.registerToolchainCommands(workspaceContext, workspaceContext.logger)
+            ...commands.registerToolchainCommands(
+                workspaceContext,
+                context.extensionPath,
+                workspaceContext.logger
+            )
         );
 
         // Watch for configuration changes the trigger a reload of the extension if necessary.

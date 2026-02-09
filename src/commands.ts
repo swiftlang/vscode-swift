@@ -67,11 +67,12 @@ export type WorkspaceContextWithToolchain = WorkspaceContext & { toolchain: Swif
 
 export function registerToolchainCommands(
     ctx: WorkspaceContext | undefined,
+    extensionPath: string,
     logger: SwiftLogger
 ): vscode.Disposable[] {
     return [
         vscode.commands.registerCommand("swift.createNewProject", () =>
-            createNewProject(ctx?.globalToolchain)
+            createNewProject(extensionPath, ctx?.globalToolchain)
         ),
         vscode.commands.registerCommand("swift.selectToolchain", () =>
             showToolchainSelectionQuickPick(
