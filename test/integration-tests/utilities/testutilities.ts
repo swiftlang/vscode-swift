@@ -359,6 +359,10 @@ const extensionBootstrapper = (() => {
                 throw new Error("Extension did not activate. Workspace context is not available.");
             }
 
+            // Because we want activation to happen without blocking the activate() method
+            // await on a promise that resolves when initialization is complete instead.
+            await workspaceContext.onInitializationComplete;
+
             // Add assets required for the suite/test to the workspace.
             const expectedAssets = testAssets ?? ["defaultPackage"];
             if (!vscode.workspace.workspaceFile) {

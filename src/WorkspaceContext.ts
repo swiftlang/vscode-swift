@@ -43,7 +43,7 @@ import { ProjectPanelProvider } from "./ui/ProjectPanelProvider";
 import { StatusItem } from "./ui/StatusItem";
 import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
 import { isExcluded, isPathInsidePath } from "./utilities/filesystem";
-import { swiftLibraryPathKey } from "./utilities/utilities";
+import { destructuredPromise, swiftLibraryPathKey } from "./utilities/utilities";
 import { isValidWorkspaceFolder, searchForPackages } from "./utilities/workspace";
 
 // Re-export some types from the external API for convenience.
@@ -87,8 +87,12 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
 
     private readonly buildStartEmitter = new vscode.EventEmitter<BuildEvent>();
     private readonly buildFinishEmitter = new vscode.EventEmitter<BuildEvent>();
-    public onDidStartBuild = this.buildStartEmitter.event;
-    public onDidFinishBuild = this.buildFinishEmitter.event;
+
+    public readonly onDidStartBuild = this.buildStartEmitter.event;
+    public readonly onDidFinishBuild = this.buildFinishEmitter.event;
+
+    private readonly onInitializationCompleteCallback: () => void;
+    public readonly onInitializationComplete: Promise<void>;
 
     private observers = new Set<(listener: FolderEvent) => unknown>();
     private swiftFileObservers = new Set<(listener: SwiftFileEvent) => unknown>();
@@ -122,6 +126,9 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
         this.currentDocument = null;
         this.commentCompletionProvider = new CommentCompletionProviders();
         this.projectPanel = new ProjectPanelProvider(this);
+        const { promise, resolve } = destructuredPromise<void>();
+        this.onInitializationComplete = promise;
+        this.onInitializationCompleteCallback = resolve;
 
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(async event => {
             // Clear build path cache when build-related configurations change
@@ -323,7 +330,7 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
             }
         }
 
-        await this.initialisationComplete();
+        await this.initializationComplete();
     }
 
     /**
@@ -560,12 +567,13 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
         }
     }
 
-    private async initialisationComplete() {
+    private async initializationComplete() {
         this.initialisationFinished = true;
         if (this.lastFocusUri) {
             await this.focusUri(this.lastFocusUri);
             this.lastFocusUri = undefined;
         }
+        this.onInitializationCompleteCallback();
     }
 
     /** return workspace folder from text editor */
