@@ -14,6 +14,7 @@
 import * as path from "path";
 import * as vscode from "vscode";
 
+import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { Swiftly } from "../toolchain/swiftly";
 import { Workbench } from "../utilities/commands";
@@ -126,8 +127,7 @@ export async function handleMissingSwiftly(
     logger?: SwiftLogger,
     skipPrompt: boolean = false
 ): Promise<boolean> {
-    // Check if the user wants to disable the prompt
-    if (vscode.workspace.getConfiguration("swift").get("disableSwiftlyInstallPrompt", false)) {
+    if (configuration.folder(undefined).disableSwiftlyInstallPrompt) {
         logger?.debug("Swiftly installation prompt is suppressed");
         return false;
     }

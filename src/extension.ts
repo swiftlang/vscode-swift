@@ -78,7 +78,7 @@ export async function activate(
         const preToolchainElapsed = Date.now() - preToolchainStartTime;
 
         const swiftlyCheckStartTime = Date.now();
-        checkForSwiftlyInstallation(context, contextKeys, logger);
+        void checkForSwiftlyInstallation(context.extensionPath, contextKeys, logger);
         const swiftlyCheckElapsed = Date.now() - swiftlyCheckStartTime;
 
         const swiftLangCheckStartTime = Date.now();
@@ -86,7 +86,7 @@ export async function activate(
         const swiftLangCheckElapsed = Date.now() - swiftLangCheckStartTime;
 
         const toolchainStartTime = Date.now();
-        const toolchain = await createActiveToolchain(context, contextKeys, logger);
+        const toolchain = await createActiveToolchain(context.extensionPath, contextKeys, logger);
         const toolchainElapsed = Date.now() - toolchainStartTime;
 
         // If we don't have a toolchain, show an error and stop initializing the extension.
@@ -346,56 +346,76 @@ function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise
 /**
  * Checks whether or not Swiftly is installed and updates context keys appropriately.
  */
-export function checkForSwiftlyInstallation(
-    context: vscode.ExtensionContext,
+export async function checkForSwiftlyInstallation(
+    extensionPath: string,
     contextKeys: ContextKeys,
     logger: SwiftLogger
-): void {
+): Promise<void> {
     contextKeys.supportsSwiftlyInstall = false;
     if (!Swiftly.isSupported()) {
         logger.debug(`Swiftly is not available on ${process.platform}`);
-        return;
+        return Promise.resolve();
     }
 
     // Don't block extension activation waiting for Swiftly checks
-    Swiftly.isInstalled().then(
-        async isSwiftlyInstalled => {
-            if (!isSwiftlyInstalled) {
-                logger.debug("Swiftly is not installed on this system.");
-                await checkAndPromptToInstallSwiftly(context, logger);
-                return;
-            }
-            const version = await Swiftly.version(logger);
-            if (!version) {
-                logger.warn("Unable to determine Swiftly version.");
-                return;
-            }
-            logger.debug(`Detected Swiftly version ${version}.`);
-            contextKeys.supportsSwiftlyInstall = version.isGreaterThanOrEqual({
-                major: 1,
-                minor: 1,
-                patch: 0,
-            });
-        },
-        error => logger.error(Error("Failed to verify Swiftly installation.", { cause: error }))
-    );
+    const isSwiftlyInstalled = await Swiftly.isInstalled();
+    try {
+        if (!isSwiftlyInstalled) {
+            logger.debug("Swiftly is not installed on this system.");
+            await checkAndPromptToInstallSwiftly(extensionPath, logger);
+            return;
+        }
+        const version = await Swiftly.version(logger);
+        if (!version) {
+            logger.warn("Unable to determine Swiftly version.");
+            return;
+        }
+        logger.debug(`Detected Swiftly version ${version}.`);
+        contextKeys.supportsSwiftlyInstall = version.isGreaterThanOrEqual({
+            major: 1,
+            minor: 1,
+            patch: 0,
+        });
+    } catch (error) {
+        logger.error(Error("Failed to verify Swiftly installation.", { cause: error }));
+    }
 }
 
 /**
  * Checks for .swift-version file(s) in the workspace. If any are found then the user will be prompted to install Swiftly.
  */
 async function checkAndPromptToInstallSwiftly(
-    context: vscode.ExtensionContext,
+    extensionRoot: string,
     logger: SwiftLogger
 ): Promise<void> {
-    // Bail early if the user has disabled the swiftly install prompt
-    if (vscode.workspace.getConfiguration("swift").get("disableSwiftlyInstallPrompt", false)) {
+    // Bail early if the user has disabled the swiftly install prompt, or is ignoring .swift-version files, globally
+    if (
+        configuration.folder(undefined).disableSwiftlyInstallPrompt ||
+        configuration.folder(undefined).ignoreSwiftVersionFile
+    ) {
+        logger?.debug("Swiftly installation prompt is suppressed");
         return;
     }
     // Check to see if there are any .swift-version files in the workspace
     const swiftVersionFiles = await findSwiftVersionFilesInWorkspace();
-    const allSwiftVersions = await Promise.all(
-        swiftVersionFiles.map(async file => (await fs.readFile(file, "utf-8")).trim())
+    const allSwiftVersionsWithUndefined = await Promise.all(
+        swiftVersionFiles.map(async file => {
+            // Validate that the configuration for the folder containing the
+            // .swift-version file does not disable the swiftly install prompt or ignore swiftly
+            const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(file));
+            if (
+                workspaceFolder &&
+                (configuration.folder(workspaceFolder).disableSwiftlyInstallPrompt ||
+                    configuration.folder(workspaceFolder).ignoreSwiftVersionFile)
+            ) {
+                logger?.debug("Swiftly installation prompt is suppressed");
+                return undefined;
+            }
+            return (await fs.readFile(file, "utf-8")).trim();
+        })
+    );
+    const allSwiftVersions: string[] = allSwiftVersionsWithUndefined.filter(
+        (v): v is string => v !== undefined && v.length > 0
     );
     const uniqueSwiftVersions = [...new Set(allSwiftVersions)];
     if (uniqueSwiftVersions.length === 0) {
@@ -403,7 +423,7 @@ async function checkAndPromptToInstallSwiftly(
     }
     logger.debug(`Detected swift version file(s): ${uniqueSwiftVersions.join(", ")}`);
     logger.debug("Prompting user to install Swiftly.");
-    await handleMissingSwiftly(uniqueSwiftVersions, context.extensionPath, logger);
+    await handleMissingSwiftly(uniqueSwiftVersions, extensionRoot, logger);
 }
 
 /**
@@ -430,12 +450,12 @@ async function checkForSwiftLangInstallation() {
 }
 
 async function createActiveToolchain(
-    extension: vscode.ExtensionContext,
+    extensionPath: string,
     contextKeys: ContextKeys,
     logger: SwiftLogger
 ): Promise<SwiftToolchain | undefined> {
     try {
-        const toolchain = await SwiftToolchain.create(extension.extensionPath, undefined, logger);
+        const toolchain = await SwiftToolchain.create(extensionPath, undefined, logger);
         toolchain.logDiagnostics(logger);
         contextKeys.updateKeysBasedOnActiveVersion(toolchain.swiftVersion);
         return toolchain;
