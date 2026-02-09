@@ -106,7 +106,7 @@ export async function showToolchainError(
         await selectToolchain();
         return true;
     } else if (selected === "Install Swiftly") {
-        await handleMissingSwiftly(["latest"], extensionPath);
+        await handleMissingSwiftly(["latest"], extensionPath, undefined, true);
         return true;
     }
     return false;
