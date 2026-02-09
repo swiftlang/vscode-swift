@@ -26,6 +26,7 @@ import * as commands from "./commands";
 import { resolveFolderDependencies } from "./commands/dependencies/resolve";
 import { registerSourceKitSchemaWatcher } from "./commands/generateSourcekitConfiguration";
 import { handleMissingSwiftly } from "./commands/installSwiftly";
+import { swiftInstalled } from "./commands/swiftInstalled";
 import configuration, {
     ConfigurationValidationError,
     handleConfigurationChangeEvent,
@@ -80,6 +81,10 @@ export async function activate(
         void checkForSwiftlyInstallation(context.extensionPath, contextKeys, logger);
         const swiftlyCheckElapsed = Date.now() - swiftlyCheckStartTime;
 
+        const swiftLangCheckStartTime = Date.now();
+        await checkForSwiftLangInstallation();
+        const swiftLangCheckElapsed = Date.now() - swiftLangCheckStartTime;
+
         const toolchainStartTime = Date.now();
         const toolchain = await createActiveToolchain(context.extensionPath, contextKeys, logger);
         const toolchainElapsed = Date.now() - toolchainStartTime;
@@ -89,27 +94,28 @@ export async function activate(
         // properly configured.
         if (!toolchain) {
             // In order to select a toolchain we need to register the command first.
-            const subscriptions = commands.registerToolchainCommands(
-                undefined,
-                context.extensionPath,
-                logger
+            context.subscriptions.push(
+                ...commands.registerToolchainCommands(undefined, logger, context.extensionPath)
             );
-            const chosenRemediation = await showToolchainError(context.extensionPath);
-            subscriptions.forEach(sub => sub.dispose());
 
-            // If they tried to fix the improperly configured toolchain, re-initialize the extension.
-            if (chosenRemediation) {
-                return activate(context);
-            } else {
-                return {
-                    workspaceContext: undefined,
-                    logger,
-                    activate: () => activate(context),
-                    deactivate: async () => {
-                        await deactivate(context);
-                    },
-                };
-            }
+            // Show the error dialog asynchronously without blocking activation.
+            // This prevents a UI deadlock where the walkthrough buttons can't work
+            // because activation is blocked waiting for the user to dismiss the dialog.
+            void showToolchainError(context.extensionPath).then(chosenRemediation => {
+                // If they tried to fix the improperly configured toolchain, re-initialize the extension.
+                if (chosenRemediation) {
+                    void activate(context);
+                }
+            });
+
+            return {
+                workspaceContext: undefined,
+                logger,
+                activate: () => activate(context),
+                deactivate: async () => {
+                    await deactivate(context);
+                },
+            };
         }
 
         const workspaceContextStartTime = Date.now();
@@ -123,8 +129,8 @@ export async function activate(
         context.subscriptions.push(
             ...commands.registerToolchainCommands(
                 workspaceContext,
-                context.extensionPath,
-                workspaceContext.logger
+                workspaceContext.logger,
+                context.extensionPath
             )
         );
 
@@ -192,7 +198,7 @@ export async function activate(
 
         const totalActivationTime = Date.now() - activationStartTime;
         logger.info(
-            `Extension activation completed in ${totalActivationTime}ms (log-setup: ${logSetupElapsed}ms, pre-toolchain: ${preToolchainElapsed}ms, toolchain: ${toolchainElapsed}ms, swiftly-check: ${swiftlyCheckElapsed}ms, workspace-context: ${workspaceContextElapsed}ms, subscriptions: ${subscriptionsElapsed}ms, workspace-folders: ${workspaceFoldersElapsed}ms, final-steps: ${finalStepsElapsed}ms)`
+            `Extension activation completed in ${totalActivationTime}ms (log-setup: ${logSetupElapsed}ms, pre-toolchain: ${preToolchainElapsed}ms, toolchain: ${toolchainElapsed}ms, swiftly-check: ${swiftlyCheckElapsed}ms, swift-lang-check: ${swiftLangCheckElapsed}, workspace-context: ${workspaceContextElapsed}ms, subscriptions: ${subscriptionsElapsed}ms, workspace-folders: ${workspaceFoldersElapsed}ms, final-steps: ${finalStepsElapsed}ms)`
         );
 
         return {
@@ -432,6 +438,15 @@ function findSwiftVersionFilesInWorkspace(): Promise<string[]> {
             });
         })
     ).then(results => results.reduceRight((prev, curr) => prev.concat(curr), []));
+}
+
+/**
+ * Checks if swift --version works, and updates the "swiftInstalled" context variable
+ */
+async function checkForSwiftLangInstallation() {
+    const isInstalled = await swiftInstalled();
+    // The welcome page checks the swiftInstalled context variable and renders a check mark if true
+    await vscode.commands.executeCommand("setContext", "swiftInstalled", isInstalled);
 }
 
 async function createActiveToolchain(
