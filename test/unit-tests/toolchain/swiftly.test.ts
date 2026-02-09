@@ -16,7 +16,6 @@ import * as fs from "fs/promises";
 import * as mockFS from "mock-fs";
 import * as os from "os";
 import { match } from "sinon";
-import * as tar from "tar";
 import * as vscode from "vscode";
 
 import * as askpass from "@src/askpass/askpass-server";
@@ -48,7 +47,6 @@ suite("Swiftly Unit Tests", () => {
     const mockedEnv = mockGlobalValue(process, "env");
     const mockSwiftOutputChannelModule = mockGlobalModule(SwiftOutputChannelModule);
     const mockOS = mockGlobalModule(os);
-    const mockTar = mockGlobalModule(tar);
     const mockedFetch = mockGlobalValue(globalThis, "fetch");
 
     setup(() => {
@@ -57,7 +55,6 @@ suite("Swiftly Unit Tests", () => {
         mockUtilities.execFileStreamOutput.reset();
         mockSwiftOutputChannelModule.SwiftOutputChannel.reset();
         mockOS.tmpdir.reset();
-        mockTar.extract.reset();
         mockedFetch.setValue(async () => ({}) as Response);
 
         // Mock os.tmpdir() to return a valid temp directory path for Windows compatibility
@@ -126,7 +123,7 @@ suite("Swiftly Unit Tests", () => {
     });
 
     suite("list()", () => {
-        test("should return toolchain names from list command for version 1.1.0", async () => {
+        test("should return toolchain names and locations from list command for version 1.1.0", async () => {
             // Mock version check to return 1.1.0
             mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
                 stdout: "1.1.0\n",
@@ -140,6 +137,7 @@ suite("Swiftly Unit Tests", () => {
                         {
                             inUse: true,
                             isDefault: true,
+                            location: "/home/.swiftly/toolchains/swift-5.9.0-RELEASE",
                             version: {
                                 major: 5,
                                 minor: 9,
@@ -151,6 +149,7 @@ suite("Swiftly Unit Tests", () => {
                         {
                             inUse: true,
                             isDefault: true,
+                            location: "/home/.swiftly/toolchains/swift-5.10.0-RELEASE",
                             version: {
                                 major: 5,
                                 minor: 10,
@@ -162,6 +161,7 @@ suite("Swiftly Unit Tests", () => {
                         {
                             inUse: true,
                             isDefault: true,
+                            location: "/home/.swiftly/toolchains/swift-5.10.1-RELEASE",
                             version: {
                                 major: 5,
                                 minor: 10,
@@ -181,6 +181,8 @@ suite("Swiftly Unit Tests", () => {
                         {
                             inUse: false,
                             isDefault: false,
+                            location:
+                                "/home/.swiftly/toolchains/swift-DEVELOPMENT-SNAPSHOT-2021-10-15-a",
                             version: {
                                 major: 5,
                                 minor: 10,
@@ -193,6 +195,8 @@ suite("Swiftly Unit Tests", () => {
                         {
                             inUse: false,
                             isDefault: false,
+                            location:
+                                "/home/.swiftly/toolchains/swift-DEVELOPMENT-SNAPSHOT-2023-10-15-a",
                             version: {
                                 major: 5,
                                 minor: 10,
@@ -205,6 +209,7 @@ suite("Swiftly Unit Tests", () => {
                         {
                             inUse: false,
                             isDefault: false,
+                            location: "/home/.swiftly/toolchains/swift-5.8.0-RELEASE",
                             version: {
                                 major: 5,
                                 minor: 8,
@@ -223,13 +228,31 @@ suite("Swiftly Unit Tests", () => {
             // Toolchains should be sorted newest to oldest with system toolchains appearing first, followed by
             // stable toolchains, and finally snapshot toolchains.
             expect(result).to.deep.equal([
-                "xcode",
-                "swift-5.10.1-RELEASE",
-                "swift-5.10.0-RELEASE",
-                "swift-5.9.0-RELEASE",
-                "swift-5.8.0-RELEASE",
-                "swift-DEVELOPMENT-SNAPSHOT-2023-10-15-a",
-                "swift-DEVELOPMENT-SNAPSHOT-2021-10-15-a",
+                { name: "xcode", location: undefined },
+                {
+                    name: "swift-5.10.1-RELEASE",
+                    location: "/home/.swiftly/toolchains/swift-5.10.1-RELEASE",
+                },
+                {
+                    name: "swift-5.10.0-RELEASE",
+                    location: "/home/.swiftly/toolchains/swift-5.10.0-RELEASE",
+                },
+                {
+                    name: "swift-5.9.0-RELEASE",
+                    location: "/home/.swiftly/toolchains/swift-5.9.0-RELEASE",
+                },
+                {
+                    name: "swift-5.8.0-RELEASE",
+                    location: "/home/.swiftly/toolchains/swift-5.8.0-RELEASE",
+                },
+                {
+                    name: "swift-DEVELOPMENT-SNAPSHOT-2023-10-15-a",
+                    location: "/home/.swiftly/toolchains/swift-DEVELOPMENT-SNAPSHOT-2023-10-15-a",
+                },
+                {
+                    name: "swift-DEVELOPMENT-SNAPSHOT-2021-10-15-a",
+                    location: "/home/.swiftly/toolchains/swift-DEVELOPMENT-SNAPSHOT-2021-10-15-a",
+                },
             ]);
 
             expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", ["--version"]);
@@ -271,6 +294,7 @@ suite("Swiftly Unit Tests", () => {
                         {
                             inUse: true,
                             isDefault: true,
+                            location: "/home/.swiftly/toolchains/swift-5.9.0-RELEASE",
                             version: {
                                 major: 5,
                                 minor: 9,
@@ -284,6 +308,7 @@ suite("Swiftly Unit Tests", () => {
                         {
                             inUse: false,
                             isDefault: false,
+                            location: "/home/.swiftly/toolchains/swift-5.8.0-RELEASE",
                             version: {
                                 major: 5,
                                 minor: 8,
@@ -297,6 +322,8 @@ suite("Swiftly Unit Tests", () => {
                         {
                             inUse: false,
                             isDefault: false,
+                            location:
+                                "/home/.swiftly/toolchains/swift-DEVELOPMENT-SNAPSHOT-2023-10-15-a",
                             version: {
                                 major: 5,
                                 minor: 10,
@@ -316,10 +343,19 @@ suite("Swiftly Unit Tests", () => {
             const result = await Swiftly.list();
 
             expect(result).to.deep.equal([
-                "xcode",
-                "swift-5.9.0-RELEASE",
-                "swift-5.8.0-RELEASE",
-                "swift-DEVELOPMENT-SNAPSHOT-2023-10-15-a",
+                { name: "xcode", location: undefined },
+                {
+                    name: "swift-5.9.0-RELEASE",
+                    location: "/home/.swiftly/toolchains/swift-5.9.0-RELEASE",
+                },
+                {
+                    name: "swift-5.8.0-RELEASE",
+                    location: "/home/.swiftly/toolchains/swift-5.8.0-RELEASE",
+                },
+                {
+                    name: "swift-DEVELOPMENT-SNAPSHOT-2023-10-15-a",
+                    location: "/home/.swiftly/toolchains/swift-DEVELOPMENT-SNAPSHOT-2023-10-15-a",
+                },
             ]);
 
             expect(mockUtilities.execFile).to.have.been.calledWith("swiftly", ["--version"]);
@@ -347,7 +383,7 @@ suite("Swiftly Unit Tests", () => {
             const result = await Swiftly.list();
 
             // Toolchains should be sorted by name in descending order
-            expect(result).to.deep.equal(["swift-6.0.0", "swift-5.9.0"]);
+            expect(result).to.deep.equal([{ name: "swift-6.0.0" }, { name: "swift-5.9.0" }]);
         });
 
         test("should return empty array when platform is not supported", async () => {

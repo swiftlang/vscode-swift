@@ -25,6 +25,7 @@ import { showReloadExtensionNotification } from "./ui/ReloadExtension";
 export class ConfigurationValidationError extends Error {
     constructor(
         public readonly settingName: string,
+        public readonly settingValue: unknown,
         message: string
     ) {
         super(message);
@@ -97,6 +98,10 @@ export interface FolderConfiguration {
     readonly autoGenerateLaunchConfigurations: boolean;
     /** disable automatic running of swift package resolve */
     readonly disableAutoResolve: boolean;
+    /** Whether to ignore .swift-version files and disable automatic toolchain switching */
+    readonly ignoreSwiftVersionFile: boolean;
+    /** Whether or not the user should be prompted to install swiftly */
+    readonly disableSwiftlyInstallPrompt: boolean;
     /** location to save swift-testing attachments */
     readonly attachmentsPath: string;
     /** look up saved permissions for the supplied plugin */
@@ -195,7 +200,7 @@ const configuration = {
         };
     },
 
-    folder(workspaceFolder: vscode.WorkspaceFolder): FolderConfiguration {
+    folder(workspaceFolder: vscode.WorkspaceFolder | undefined): FolderConfiguration {
         function pluginSetting<T>(
             setting: string,
             pluginId?: string,
@@ -297,6 +302,22 @@ const configuration = {
                             .get<string>("attachmentsPath", "./.build/attachments")
                     ),
                     "swift.attachmentsPath"
+                );
+            },
+            get disableSwiftlyInstallPrompt(): boolean {
+                return validateBooleanSetting(
+                    vscode.workspace
+                        .getConfiguration("swift")
+                        .get<boolean>("disableSwiftlyInstallPrompt", false),
+                    "swift.disableSwiftlyInstallPrompt"
+                );
+            },
+            get ignoreSwiftVersionFile(): boolean {
+                return validateBooleanSetting(
+                    vscode.workspace
+                        .getConfiguration("swift")
+                        .get<boolean>("ignoreSwiftVersionFile", false),
+                    "swift.ignoreSwiftVersionFile"
                 );
             },
             pluginPermissions(pluginId?: string): PluginPermissionConfiguration {
@@ -746,9 +767,12 @@ export function substituteVariablesInString(val: string): string {
 
 function validateBooleanSetting(val: boolean, settingName: string): boolean {
     if (typeof val !== "boolean") {
-        throw new ConfigurationValidationError(
-            settingName,
-            `The setting \`${settingName}\` must be a boolean`
+        notifyUserSettingUnsupported(
+            new ConfigurationValidationError(
+                settingName,
+                val,
+                `The setting \`${settingName}\` must be a boolean`
+            )
         );
     }
     return val;
@@ -756,9 +780,12 @@ function validateBooleanSetting(val: boolean, settingName: string): boolean {
 
 function validateStringSetting<T extends string = string>(val: string, settingName: string): T {
     if (typeof val !== "string") {
-        throw new ConfigurationValidationError(
-            settingName,
-            `The setting \`${settingName}\` must be a string`
+        notifyUserSettingUnsupported(
+            new ConfigurationValidationError(
+                settingName,
+                val,
+                `The setting \`${settingName}\` must be a string`
+            )
         );
     }
     return val as T;
@@ -767,9 +794,12 @@ function validateStringSetting<T extends string = string>(val: string, settingNa
 function validateStringArraySettings(arr: string[], settingName: string): string[] {
     for (const v of arr) {
         if (typeof v !== "string") {
-            throw new ConfigurationValidationError(
-                settingName,
-                `The setting \`${settingName}\` must be an array of strings`
+            notifyUserSettingUnsupported(
+                new ConfigurationValidationError(
+                    settingName,
+                    arr,
+                    `The setting \`${settingName}\` must be an array of strings`
+                )
             );
         }
     }
@@ -778,12 +808,38 @@ function validateStringArraySettings(arr: string[], settingName: string): string
 
 function validateObjectSetting<T extends object>(obj: T, settingName: string): T {
     if (typeof obj !== "object" || obj === null) {
-        throw new ConfigurationValidationError(
-            settingName,
-            `The setting \`${settingName}\` must be an object`
+        notifyUserSettingUnsupported(
+            new ConfigurationValidationError(
+                settingName,
+                obj,
+                `The setting \`${settingName}\` must be an object`
+            )
         );
     }
     return obj;
+}
+
+// To avoid spamming the user with multiple error messages for the same bad setting/value
+// we keep track of the bad settings we've already reported during this session.
+const badSettingLookup: { [key: string]: unknown } = {};
+
+/**
+ * Notify the user that a configuration setting is unsupported immediately when we try and use it.
+ */
+function notifyUserSettingUnsupported(error: ConfigurationValidationError): void {
+    if (
+        !Object.prototype.hasOwnProperty.call(badSettingLookup, error.settingName) ||
+        badSettingLookup[error.settingName] !== error.settingValue
+    ) {
+        // Handle configuration validation errors with UI that points the user to the poorly configured setting
+        void vscode.window.showErrorMessage(error.message, "Open Settings").then(selection => {
+            if (selection === "Open Settings") {
+                void openSettingsJsonForSetting(error.settingName);
+            }
+        });
+        badSettingLookup[error.settingName] = error.settingValue;
+    }
+    throw error;
 }
 
 function computeVscodeVar(varName: string): string | null {
@@ -868,7 +924,7 @@ export function handleConfigurationChangeEvent(
 /**
  * Opens the appropriate settings JSON file based on where the setting is configured
  */
-export async function openSettingsJsonForSetting(settingName: string): Promise<void> {
+async function openSettingsJsonForSetting(settingName: string): Promise<void> {
     try {
         const config = vscode.workspace.getConfiguration();
         const inspection = config.inspect(settingName);

@@ -21,7 +21,7 @@ import { FolderContext as ExternalFolderContext } from "./SwiftExtensionApi";
 import { SwiftPackage, Target, TargetType } from "./SwiftPackage";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { TestRunManager } from "./TestExplorer/TestRunManager";
-import { TestRunProxy } from "./TestExplorer/TestRunner";
+import { TestRunProxy } from "./TestExplorer/TestRunProxy";
 import { FolderOperation, WorkspaceContext } from "./WorkspaceContext";
 import configuration from "./configuration";
 import { SwiftLogger } from "./logging/SwiftLogger";
@@ -55,7 +55,8 @@ export class FolderContext implements ExternalFolderContext, vscode.Disposable {
         public linuxMain: LinuxMain,
         public swiftPackage: SwiftPackage,
         public workspaceFolder: vscode.WorkspaceFolder,
-        public workspaceContext: WorkspaceContext
+        public workspaceContext: WorkspaceContext,
+        public logger: SwiftLogger
     ) {
         this.packageWatcher = new PackageWatcher(this, workspaceContext.logger);
         this.backgroundCompilation = new BackgroundCompilation(this);
@@ -101,7 +102,7 @@ export class FolderContext implements ExternalFolderContext, vscode.Disposable {
         try {
             toolchain = await SwiftToolchain.create(
                 workspaceContext.extensionContext.extensionPath,
-                folder
+                configuration.folder(workspaceFolder).ignoreSwiftVersionFile ? undefined : folder
             );
         } catch (error) {
             // This error case is quite hard for the user to get in to, but possible.
@@ -118,7 +119,9 @@ export class FolderContext implements ExternalFolderContext, vscode.Disposable {
                 try {
                     toolchain = await SwiftToolchain.create(
                         workspaceContext.extensionContext.extensionPath,
-                        folder
+                        configuration.folder(workspaceFolder).ignoreSwiftVersionFile
+                            ? undefined
+                            : folder
                     );
                     workspaceContext.logger.info(
                         `Successfully created toolchain for ${FolderContext.uriName(folder)} after user selection`,
@@ -151,7 +154,8 @@ export class FolderContext implements ExternalFolderContext, vscode.Disposable {
             linuxMain,
             swiftPackage,
             workspaceFolder,
-            workspaceContext
+            workspaceContext,
+            workspaceContext.logger
         );
 
         // List the package's dependencies without blocking folder creation
@@ -164,7 +168,7 @@ export class FolderContext implements ExternalFolderContext, vscode.Disposable {
                     void vscode.window.showErrorMessage(
                         `Failed to load ${folderContext.name}/Package.swift: ${error.message}`
                     );
-                    workspaceContext.logger.info(
+                    folderContext.logger.info(
                         `Failed to load Package.swift: ${error.message}`,
                         folderContext.name
                     );
@@ -245,7 +249,7 @@ export class FolderContext implements ExternalFolderContext, vscode.Disposable {
             this.testExplorer = new TestExplorer(
                 this,
                 this.workspaceContext.tasks,
-                this.workspaceContext.logger,
+                this.logger,
                 this.workspaceContext.onDidChangeSwiftFiles.bind(this.workspaceContext)
             );
             this.testExplorerResolver?.(this.testExplorer);

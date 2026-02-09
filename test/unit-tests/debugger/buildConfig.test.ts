@@ -42,6 +42,8 @@ suite("BuildConfig Test Suite", () => {
             autoGenerateLaunchConfigurations: false,
             disableAutoResolve: false,
             attachmentsPath: "",
+            disableSwiftlyInstallPrompt: false,
+            ignoreSwiftVersionFile: false,
             pluginPermissions: () => ({ trusted: false }),
             pluginArguments: () => [],
         } as FolderConfiguration;

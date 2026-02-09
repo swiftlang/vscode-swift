@@ -20,7 +20,6 @@ import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
 import { WorkspaceContext } from "../WorkspaceContext";
 import configuration from "../configuration";
-import { TestCoverage } from "../coverage/LcovResults";
 import {
     BuildConfigurationFactory,
     SwiftTestingBuildAguments,
@@ -36,19 +35,10 @@ import {
 } from "../utilities/cancellation";
 import { packageName, resolveScope } from "../utilities/tasks";
 import { TemporaryFolder } from "../utilities/tempFolder";
-import {
-    IS_RUNNING_UNDER_TEST,
-    compactMap,
-    execFile,
-    getErrorDescription,
-} from "../utilities/utilities";
-import { TestClass, runnableTag, upsertTestItem } from "./TestDiscovery";
+import { IS_RUNNING_UNDER_TEST, execFile, getErrorDescription } from "../utilities/utilities";
+import { runnableTag } from "./TestDiscovery";
 import { TestKind, isDebugging, isRelease } from "./TestKind";
-import {
-    SwiftTestingOutputParser,
-    SymbolRenderer,
-    TestSymbol,
-} from "./TestParsers/SwiftTestingOutputParser";
+import { SwiftTestingOutputParser } from "./TestParsers/SwiftTestingOutputParser";
 import { ITestRunState, TestIssueDiff } from "./TestParsers/TestRunState";
 import {
     IXCTestOutputParser,
@@ -56,392 +46,16 @@ import {
     XCTestOutputParser,
 } from "./TestParsers/XCTestOutputParser";
 import { TestRunArguments } from "./TestRunArguments";
+import { TestRunProxy, TestRunState } from "./TestRunProxy";
 import { reduceTestItemChildren } from "./TestUtils";
 import { TestXUnitParser } from "./TestXUnitParser";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-import stripAnsi = require("strip-ansi");
-
+/**
+ * The different types of test library supported by the test runner.
+ */
 export enum TestLibrary {
     xctest = "XCTest",
     swiftTesting = "swift-testing",
-}
-
-export interface TestRunState {
-    pending: vscode.TestItem[];
-    failed: {
-        test: vscode.TestItem;
-        message: vscode.TestMessage | readonly vscode.TestMessage[];
-    }[];
-    passed: vscode.TestItem[];
-    skipped: vscode.TestItem[];
-    errored: vscode.TestItem[];
-    enqueued: Set<vscode.TestItem>;
-    unknown: number;
-    output: string[];
-}
-
-export class TestRunProxy {
-    private testRun?: vscode.TestRun;
-    private addedTestItems: { testClass: TestClass; parentIndex: number }[] = [];
-    private runStarted: boolean = false;
-    private queuedOutput: string[] = [];
-    private _testItems: vscode.TestItem[];
-    private iteration: number | undefined;
-    private attachments: { [key: string]: string[] } = {};
-    private testItemFinder: TestItemFinder;
-    public coverage: TestCoverage;
-    public token: CompositeCancellationToken;
-
-    public testRunCompleteEmitter = new vscode.EventEmitter<void>();
-    public onTestRunComplete: vscode.Event<void>;
-
-    // Allows for introspection on the state of TestItems after a test run.
-    public runState = TestRunProxy.initialTestRunState();
-
-    public static initialTestRunState(): TestRunState {
-        return {
-            pending: [],
-            failed: [],
-            passed: [],
-            skipped: [],
-            errored: [],
-            enqueued: new Set<vscode.TestItem>(),
-            unknown: 0,
-            output: [],
-        };
-    }
-
-    public get testItems(): vscode.TestItem[] {
-        return this._testItems;
-    }
-
-    public get isCancellationRequested(): boolean {
-        return this.token.isCancellationRequested;
-    }
-
-    constructor(
-        private testRunRequest: vscode.TestRunRequest,
-        private controller: vscode.TestController,
-        private args: TestRunArguments,
-        private folderContext: FolderContext,
-        private recordDuration: boolean,
-        testProfileCancellationToken: vscode.CancellationToken
-    ) {
-        this._testItems = args.testItems;
-        this.coverage = new TestCoverage(folderContext);
-        this.token = new CompositeCancellationToken(testProfileCancellationToken);
-        this.testItemFinder =
-            process.platform === "darwin"
-                ? new DarwinTestItemFinder(args.testItems)
-                : new NonDarwinTestItemFinder(args.testItems, this.folderContext);
-        this.onTestRunComplete = this.testRunCompleteEmitter.event;
-    }
-
-    public testRunStarted = () => {
-        if (this.runStarted) {
-            return;
-        }
-
-        this.resetTags(this.controller);
-        this.runStarted = true;
-
-        // When a test run starts we need to do several things:
-        // - Create new TestItems for each paramterized test that was added
-        //   and attach them to their parent TestItem.
-        // - Create a new test run from the TestRunArguments + newly created TestItems.
-        // - Mark all of these test items as enqueued on the test run.
-
-        const addedTestItems = this.addedTestItems
-            .map(({ testClass, parentIndex }) => {
-                const parent = this.args.testItems[parentIndex];
-                // clear out the children before we add the new ones.
-                parent.children.replace([]);
-                return {
-                    testClass,
-                    parent,
-                };
-            })
-            .map(({ testClass, parent }) => {
-                // strip the location off parameterized tests so only the parent TestItem
-                // has one. The parent collects all the issues so they're colated on the top
-                // level test item and users can cycle through them with the up/down arrows in the UI.
-                testClass.location = undefined;
-
-                // Results should inherit any tags from the parent.
-                // Until we can rerun a swift-testing test with an individual argument, mark
-                // the argument test items as not runnable. This should be revisited when
-                // https://github.com/swiftlang/swift-testing/issues/671 is resolved.
-                testClass.tags = compactMap(parent.tags, t =>
-                    t.id === runnableTag.id ? null : new vscode.TestTag(t.id)
-                ).concat(new vscode.TestTag(TestRunProxy.Tags.PARAMETERIZED_TEST_RESULT));
-
-                const added = upsertTestItem(this.controller, testClass, parent);
-
-                // If we just update leaf nodes the root test controller never realizes that
-                // items have updated. This may be a bug in VS Code. We can work around it by
-                // re-adding the existing items back up the chain to refresh all the nodes along the way.
-                let p = parent;
-                while (p?.parent) {
-                    p.parent.children.add(p);
-                    p = p.parent;
-                }
-
-                return added;
-            });
-
-        this.testRun = this.controller.createTestRun(this.testRunRequest);
-        this.token.add(this.testRun.token);
-
-        const existingTestItemCount = this.testItems.length;
-        this._testItems = [...this.testItems, ...addedTestItems];
-
-        if (this._testItems.length !== existingTestItemCount) {
-            // Recreate a test item finder with the added test items
-            this.testItemFinder =
-                process.platform === "darwin"
-                    ? new DarwinTestItemFinder(this.testItems)
-                    : new NonDarwinTestItemFinder(this.testItems, this.folderContext);
-        }
-
-        // Forward any output captured before the testRun was created.
-        for (const outputLine of this.queuedOutput) {
-            this.performAppendOutput(this.testRun, outputLine);
-        }
-        this.queuedOutput = [];
-
-        for (const test of this.testItems) {
-            this.enqueued(test);
-        }
-    };
-
-    public addParameterizedTestCase = (testClass: TestClass, parentIndex: number) => {
-        this.addedTestItems.push({ testClass, parentIndex });
-    };
-
-    public addAttachment = (testIndex: number, attachment: string) => {
-        const attachments = this.attachments[testIndex] ?? [];
-        attachments.push(attachment);
-        this.attachments[testIndex] = attachments;
-
-        const testItem = this.testItems[testIndex];
-        if (testItem) {
-            testItem.tags = [
-                ...testItem.tags,
-                new vscode.TestTag(TestRunProxy.Tags.HAS_ATTACHMENT),
-            ];
-        }
-    };
-
-    public getTestIndex(id: string, filename?: string): number {
-        return this.testItemFinder.getIndex(id, filename);
-    }
-
-    private enqueued(test: vscode.TestItem) {
-        this.testRun?.enqueued(test);
-        this.runState.enqueued.add(test);
-    }
-
-    public unknownTestRan() {
-        this.runState.unknown++;
-    }
-
-    public started(test: vscode.TestItem) {
-        this.clearEnqueuedTest(test);
-        this.runState.pending.push(test);
-        this.testRun?.started(test);
-    }
-
-    private clearPendingTest(test: vscode.TestItem) {
-        this.runState.pending = this.runState.pending.filter(t => t !== test);
-    }
-
-    private clearEnqueuedTest(test: vscode.TestItem) {
-        this.runState.enqueued.delete(test);
-
-        if (!test.parent) {
-            return;
-        }
-
-        const parentHasEnqueuedChildren = Array.from(test.parent.children).some(([_, child]) =>
-            this.runState.enqueued.has(child)
-        );
-
-        if (!parentHasEnqueuedChildren) {
-            this.clearEnqueuedTest(test.parent);
-        }
-    }
-
-    public skipped(test: vscode.TestItem) {
-        this.clearEnqueuedTest(test);
-        test.tags = [...test.tags, new vscode.TestTag(TestRunProxy.Tags.SKIPPED)];
-
-        this.runState.skipped.push(test);
-        this.clearPendingTest(test);
-        this.testRun?.skipped(test);
-    }
-
-    public passed(test: vscode.TestItem, duration?: number) {
-        this.clearEnqueuedTest(test);
-        this.runState.passed.push(test);
-        this.clearPendingTest(test);
-        this.testRun?.passed(test, this.recordDuration ? duration : undefined);
-    }
-
-    public failed(
-        test: vscode.TestItem,
-        message: vscode.TestMessage | readonly vscode.TestMessage[],
-        duration?: number
-    ) {
-        this.clearEnqueuedTest(test);
-        this.runState.failed.push({ test, message });
-        this.clearPendingTest(test);
-        this.testRun?.failed(test, message, this.recordDuration ? duration : undefined);
-    }
-
-    public errored(
-        test: vscode.TestItem,
-        message: vscode.TestMessage | readonly vscode.TestMessage[],
-        duration?: number
-    ) {
-        this.clearEnqueuedTest(test);
-        this.runState.errored.push(test);
-        this.clearPendingTest(test);
-        this.testRun?.errored(test, message, this.recordDuration ? duration : undefined);
-    }
-
-    /**
-     * Skip any pending tests.
-     * Call this method when a test run is cancelled to mark the pending tests as skipped.
-     * Otherwise, pending tests will be marked as failing as we assume they crashed.
-     */
-    public skipPendingTests() {
-        this.runState.pending.forEach(test => {
-            this.skipped(test);
-        });
-        this.runState.pending = [];
-    }
-
-    public async end() {
-        // If the test run never started (typically due to a build error)
-        // start it to flush any queued output, and then immediately end it.
-        if (!this.runStarted) {
-            this.testRunStarted();
-        }
-
-        // Any tests still in the pending state are considered failed. This
-        // can happen if a test causes a crash and aborts the test run.
-        this.runState.pending.forEach(test => {
-            this.failed(test, new vscode.TestMessage("Test did not complete."));
-        });
-        // If there are tests that never started, mark them as skipped.
-        // This can happen if there is a build error preventing tests from running.
-        this.runState.enqueued.forEach(test => {
-            // Omit adding the root test item as a skipped test to keep just the suites/tests
-            // in the test run output, just like a regular pass/fail test run.
-            if (test.parent) {
-                for (const output of this.queuedOutput) {
-                    this.appendOutputToTest(output, test);
-                }
-                this.skipped(test);
-            }
-        });
-
-        this.queuedOutput = [];
-
-        this.reportAttachments();
-        this.testRun?.end();
-        this.testRunCompleteEmitter.fire();
-        this.token.dispose();
-    }
-
-    public setIteration(iteration: number) {
-        this.runState = TestRunProxy.initialTestRunState();
-        this.iteration = iteration;
-        if (this.testRun) {
-            this.performAppendOutput(this.testRun, "\n\r");
-        }
-    }
-
-    public appendOutput(output: string) {
-        const tranformedOutput = this.prependIterationToOutput(output);
-        if (this.testRun) {
-            this.performAppendOutput(this.testRun, tranformedOutput);
-        } else {
-            this.queuedOutput.push(tranformedOutput);
-        }
-    }
-
-    public appendOutputToTest(output: string, test: vscode.TestItem, location?: vscode.Location) {
-        const tranformedOutput = this.prependIterationToOutput(output);
-        if (this.testRun) {
-            this.performAppendOutput(this.testRun, tranformedOutput, location, test);
-        } else {
-            this.queuedOutput.push(tranformedOutput);
-        }
-    }
-
-    private reportAttachments() {
-        const attachmentKeys = Object.keys(this.attachments);
-        if (attachmentKeys.length > 0) {
-            let attachment = "";
-            const totalAttachments = attachmentKeys.reduce((acc, key) => {
-                const attachments = this.attachments[key];
-                attachment = attachments.length ? attachments[0] : attachment;
-                return acc + attachments.length;
-            }, 0);
-
-            if (attachment) {
-                attachment = path.dirname(attachment);
-                this.appendOutput(
-                    `${SymbolRenderer.eventMessageSymbol(TestSymbol.attachment)} ${SymbolRenderer.ansiEscapeCodePrefix}90mRecorded ${totalAttachments} attachment${totalAttachments === 1 ? "" : "s"} to ${attachment}${SymbolRenderer.resetANSIEscapeCode}`
-                );
-            }
-        }
-    }
-
-    private performAppendOutput(
-        testRun: vscode.TestRun,
-        output: string,
-        location?: vscode.Location,
-        test?: vscode.TestItem
-    ) {
-        testRun.appendOutput(output, location, test);
-        this.runState.output.push(stripAnsi(output));
-    }
-
-    private prependIterationToOutput(output: string): string {
-        if (this.iteration === undefined) {
-            return output;
-        }
-        const itr = this.iteration + 1;
-        const lines = output.match(/[^\r\n]*[\r\n]*/g);
-        return lines?.map(line => (line ? `\x1b[34mRun ${itr}\x1b[0m ${line}` : "")).join("") ?? "";
-    }
-
-    public async computeCoverage() {
-        if (!this.testRun) {
-            return;
-        }
-
-        // Compute final coverage numbers if any coverage info has been captured during the run.
-        await this.coverage.computeCoverage(this.testRun);
-    }
-
-    static Tags = {
-        SKIPPED: "skipped",
-        HAS_ATTACHMENT: "hasAttachment",
-        PARAMETERIZED_TEST_RESULT: "parameterizedTestResult",
-    };
-
-    // Remove any tags that were added due to test results
-    private resetTags(controller: vscode.TestController) {
-        function removeTestRunTags(_acc: void, test: vscode.TestItem) {
-            const tags = Object.values(TestRunProxy.Tags);
-            test.tags = test.tags.filter(tag => !tags.includes(tag.id));
-        }
-        reduceTestItemChildren(controller.items, removeTestRunTags, void 0);
-    }
 }
 
 /** Class used to run tests */
@@ -486,8 +100,7 @@ export class TestRunner {
                   )
                 : new XCTestOutputParser();
         this.swiftTestOutputParser = new SwiftTestingOutputParser(
-            this.testRun.testRunStarted,
-            this.testRun.addParameterizedTestCase,
+            this.testRun.addParameterizedTestCases,
             this.testRun.addAttachment
         );
         this.onDebugSessionTerminated = this.debugSessionTerminatedEmitter.event;
@@ -501,8 +114,7 @@ export class TestRunner {
     public setIteration(iteration: number) {
         // The SwiftTestingOutputParser holds state and needs to be reset between iterations.
         this.swiftTestOutputParser = new SwiftTestingOutputParser(
-            this.testRun.testRunStarted,
-            this.testRun.addParameterizedTestCase,
+            this.testRun.addParameterizedTestCases,
             this.testRun.addAttachment
         );
         this.testRun.setIteration(iteration);
@@ -521,7 +133,7 @@ export class TestRunner {
         return new vscode.TestRunRequest(items, request.exclude, request.profile);
     }
 
-    get workspaceContext(): WorkspaceContext {
+    private get workspaceContext(): WorkspaceContext {
         return this.folderContext.workspaceContext;
     }
 
@@ -603,9 +215,7 @@ export class TestRunner {
                                     _testRun,
                                     fileCoverage
                                 ) => {
-                                    return runner.testRun.coverage.loadDetailedCoverage(
-                                        fileCoverage.uri
-                                    );
+                                    return runner.testRun.loadDetailedCoverage(fileCoverage.uri);
                                 };
                             }
                             await vscode.commands.executeCommand("testing.openCoverage");
@@ -753,7 +363,7 @@ export class TestRunner {
      * @returns When complete
      */
     async runHandler() {
-        if (this.testRun.token.isCancellationRequested) {
+        if (this.testRun.isCancellationRequested) {
             return;
         }
 
@@ -762,7 +372,7 @@ export class TestRunner {
 
         const runState = new TestRunnerTestRunState(this.testRun);
 
-        const cancellationDisposable = this.testRun.token.onCancellationRequested(() => {
+        const cancellationDisposable = this.testRun.onCancellationRequested(() => {
             this.testRun.appendOutput("\r\nTest run cancelled.");
         });
 
@@ -830,6 +440,8 @@ export class TestRunner {
                 // The await simply waits for the watching to be configured.
                 await this.swiftTestOutputParser.watch(fifoPipePath, runState);
 
+                this.testRun.testRunStarted();
+
                 await this.launchTests(
                     runState,
                     this.testKind === TestKind.parallel ? TestKind.standard : this.testKind,
@@ -858,7 +470,6 @@ export class TestRunner {
                 return this.testRun.runState;
             }
 
-            // XCTestRuns are started immediately
             this.testRun.testRunStarted();
 
             await this.launchTests(
@@ -973,7 +584,7 @@ export class TestRunner {
             });
 
             // If the test run is iterrupted by a cancellation request from VS Code, ensure the task is terminated.
-            const cancellationDisposable = this.testRun.token.onCancellationRequested(() => {
+            const cancellationDisposable = this.testRun.onCancellationRequested(() => {
                 task.execution.terminate("SIGINT");
                 reject(TestRunner.CANCELLATION_ERROR);
             });
@@ -989,10 +600,7 @@ export class TestRunner {
                 }
             });
 
-            void this.folderContext.taskQueue.queueOperation(
-                new TaskOperation(task),
-                this.testRun.token
-            );
+            void this.folderContext.taskQueue.queueOperation(new TaskOperation(task), this.testRun);
         });
     }
 
@@ -1011,7 +619,7 @@ export class TestRunner {
             }
         }
 
-        await this.testRun.coverage.captureCoverage(testLibrary);
+        await this.testRun.captureCoverage(testLibrary);
     }
 
     /** Run tests in parallel outside of debugger */
@@ -1198,7 +806,7 @@ export class TestRunner {
                             );
 
                             // add cancellation
-                            const cancellation = this.testRun.token.onCancellationRequested(() => {
+                            const cancellation = this.testRun.onCancellationRequested(() => {
                                 this.workspaceContext.logger.debug(
                                     "Test Debugging Cancelled",
                                     this.folderContext.name
@@ -1238,9 +846,8 @@ export class TestRunner {
                                                 fifoPipePath,
                                                 runState
                                             );
-                                        } else if (config.testType === TestLibrary.xctest) {
-                                            this.testRun.testRunStarted();
                                         }
+                                        this.testRun.testRunStarted();
 
                                         this.workspaceContext.logger.debug(
                                             "Start Test Debugging",
@@ -1332,87 +939,6 @@ export class TestRunner {
         if (testingSetting === "openOnTestFailure") {
             void vscode.commands.executeCommand("workbench.panel.testResults.view.focus");
         }
-    }
-}
-
-/** Interface defining how to find test items given a test id from XCTest output */
-interface TestItemFinder {
-    getIndex(id: string, filename?: string): number;
-    testItems: vscode.TestItem[];
-}
-
-/** Defines how to find test items given a test id from XCTest output on Darwin platforms */
-class DarwinTestItemFinder implements TestItemFinder {
-    private readonly testItemMap: Map<string, number>;
-
-    constructor(public testItems: vscode.TestItem[]) {
-        this.testItemMap = new Map(testItems.map((item, index) => [item.id, index]));
-    }
-
-    getIndex(id: string): number {
-        return this.testItemMap.get(id) ?? -1;
-    }
-}
-
-/** Defines how to find test items given a test id from XCTest output on non-Darwin platforms */
-class NonDarwinTestItemFinder implements TestItemFinder {
-    constructor(
-        public testItems: vscode.TestItem[],
-        public folderContext: FolderContext
-    ) {}
-
-    /**
-     * Get test item index from id for non Darwin platforms. It is a little harder to
-     * be certain we have the correct test item on non Darwin platforms as the target
-     * name is not included in the id
-     */
-    getIndex(id: string, filename?: string): number {
-        let testIndex = -1;
-        if (filename) {
-            testIndex = this.testItems.findIndex(item =>
-                this.isTestWithFilenameInTarget(id, filename, item)
-            );
-        }
-        if (testIndex === -1) {
-            testIndex = this.testItems.findIndex(item => item.id.endsWith(id));
-        }
-        return testIndex;
-    }
-
-    /**
-     * Linux test output does not include the target name. So I have to work out which target
-     * the test is in via the test name and if it failed the filename from the error. In theory
-     * if a test fails the filename for where it failed should indicate which target it is in.
-     *
-     * @param testName Test name
-     * @param filename File name of where test failed
-     * @param item TestItem
-     * @returns Is it this TestItem
-     */
-    private isTestWithFilenameInTarget(
-        testName: string,
-        filename: string,
-        item: vscode.TestItem
-    ): boolean {
-        if (!item.id.endsWith(testName)) {
-            return false;
-        }
-        // get target test item
-        const targetTestItem = item.parent?.parent;
-        if (!targetTestItem) {
-            return false;
-        }
-        // get target from Package
-        const target = this.folderContext.swiftPackage.currentTargets.find(
-            item => targetTestItem.label === item.name
-        );
-        if (target) {
-            const fileErrorIsIn = filename;
-            const targetPath = path.join(this.folderContext.folder.fsPath, target.path);
-            const relativePath = path.relative(targetPath, fileErrorIsIn);
-            return target.sources.find(source => source === relativePath) !== undefined;
-        }
-        return false;
     }
 }
 

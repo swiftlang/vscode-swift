@@ -1136,6 +1136,13 @@
             "order": 98,
             "scope": "machine-overridable"
           },
+          "swift.ignoreSwiftVersionFile": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Ignore `.swift-version` files and disable automatic toolchain switching based on them. When enabled, the extension will always use the global default toolchain instead of switching based on per-project `.swift-version` files.",
+            "order": 99,
+            "scope": "machine-overridable"
+          },
           "swift.diagnostics": {
             "type": "boolean",
             "default": false,
@@ -2067,7 +2074,7 @@
     "integration-test": "npm run pretest && vscode-test --label integrationTests",
     "unit-test": "npm run pretest && vscode-test --label unitTests",
     "coverage": "npm run pretest && vscode-test --coverage",
-    "compile-tests": "del-cli ./assets/test/**/.build && del-cli ./assets/test/**/.spm-cache && npm run compile",
+    "compile-tests": "del-cli ./assets/test/**/.build && del-cli ./assets/test/**/.spm-cache && npm run compile && npm run compile-documentation-webview",
     "package": "tsx ./scripts/package.ts",
     "dev-package": "tsx ./scripts/dev_package.ts",
     "preview-package": "tsx ./scripts/preview_package.ts",
@@ -2084,7 +2091,7 @@
     "**/*": "prettier --write --ignore-unknown"
   },
   "devDependencies": {
-    "@actions/core": "^2.0.2",
+    "@actions/core": "^3.0.0",
     "@trivago/prettier-plugin-sort-imports": "^6.0.2",
     "@twbs/fantasticon": "^3.1.0",
     "@types/archiver": "^7.0.0",
@@ -2110,7 +2117,7 @@
     "@types/ttf2woff": "^2.0.4",
     "@types/vscode": "^1.88.0",
     "@types/xml2js": "^0.4.14",
-    "@typescript-eslint/eslint-plugin": "^8.53.1",
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
     "@typescript-eslint/parser": "^8.32.1",
     "@vscode/debugprotocol": "^1.68.0",
     "@vscode/test-cli": "^0.0.12",
@@ -2134,7 +2141,7 @@
     "mocha": "^11.7.5",
     "mock-fs": "^5.5.0",
     "octokit": "^3.2.2",
-    "prettier": "^3.8.0",
+    "prettier": "^3.8.1",
     "replace-in-file": "^8.4.0",
     "semver": "^7.7.3",
     "simple-git": "^3.30.0",
@@ -2156,7 +2163,7 @@
     "fast-glob": "^3.3.3",
     "lcov-parse": "^1.0.0",
     "plist": "^3.1.0",
-    "tar": "^6.2.1",
+    "tar": "^7.5.7",
     "vscode-languageclient": "^9.0.1",
     "xml2js": "^0.6.2",
     "zod": "^4.1.5"

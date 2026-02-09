@@ -14,6 +14,7 @@
 import * as path from "path";
 import * as vscode from "vscode";
 
+import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { Swiftly } from "../toolchain/swiftly";
 import { Workbench } from "../utilities/commands";
@@ -100,15 +101,16 @@ export async function installSwiftlyWithProgress(logger?: SwiftLogger): Promise<
 }
 
 async function promptToRestartVSCode(): Promise<void> {
+    const editorName = vscode.env.appName;
     const selection = await vscode.window.showInformationMessage(
-        "Restart VS Code",
+        `Restart ${editorName}`,
         {
             modal: true,
-            detail: "You must restart Visual Studio Code in order for the swiftly installation to take effect.",
+            detail: `You must restart ${editorName} in order for the Swiftly installation to take effect.`,
         },
-        "Quit Visual Studio Code"
+        `Quit ${editorName}`
     );
-    if (selection === "Quit Visual Studio Code") {
+    if (selection === `Quit ${editorName}`) {
         await vscode.commands.executeCommand(Workbench.ACTION_QUIT);
     }
 }
@@ -124,8 +126,7 @@ export async function handleMissingSwiftly(
     extensionRoot: string,
     logger?: SwiftLogger
 ): Promise<boolean> {
-    // Check if the user wants to disable the prompt
-    if (vscode.workspace.getConfiguration("swift").get("disableSwiftlyInstallPrompt", false)) {
+    if (configuration.folder(undefined).disableSwiftlyInstallPrompt) {
         logger?.debug("Swiftly installation prompt is suppressed");
         return false;
     }

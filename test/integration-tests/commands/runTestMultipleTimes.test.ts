@@ -16,7 +16,7 @@ import * as vscode from "vscode";
 
 import { FolderContext } from "@src/FolderContext";
 import { TestKind } from "@src/TestExplorer/TestKind";
-import { TestRunProxy } from "@src/TestExplorer/TestRunner";
+import { TestRunState } from "@src/TestExplorer/TestRunProxy";
 import { runTestMultipleTimes } from "@src/commands/testMultipleTimes";
 
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
@@ -55,19 +55,19 @@ suite("Test Multiple Times Command Test Suite", () => {
             false,
             TestKind.standard,
             3,
-            () => Promise.resolve(TestRunProxy.initialTestRunState())
+            () => Promise.resolve(new TestRunState())
         );
 
         expect(runState).to.deep.equal([
-            TestRunProxy.initialTestRunState(),
-            TestRunProxy.initialTestRunState(),
-            TestRunProxy.initialTestRunState(),
+            new TestRunState(),
+            new TestRunState(),
+            new TestRunState(),
         ]);
     });
 
     test("Stops after a failure on the 2nd iteration ", async () => {
         const failure = {
-            ...TestRunProxy.initialTestRunState(),
+            ...new TestRunState(),
             failed: [{ test: testItem, message: new vscode.TestMessage("oh no") }],
         };
         let ctr = 0;
@@ -82,10 +82,10 @@ suite("Test Multiple Times Command Test Suite", () => {
                 if (ctr === 2) {
                     return Promise.resolve(failure);
                 }
-                return Promise.resolve(TestRunProxy.initialTestRunState());
+                return Promise.resolve(new TestRunState());
             }
         );
 
-        expect(runState).to.deep.equal([TestRunProxy.initialTestRunState(), failure]);
+        expect(runState).to.deep.equal([new TestRunState(), failure]);
     });
 });
