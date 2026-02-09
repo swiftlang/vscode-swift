@@ -381,16 +381,6 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             Commands.INSTALL_SWIFTLY_SNAPSHOT_TOOLCHAIN,
             async () => await promptToInstallSwiftlyToolchain(ctx, "snapshot")
         ),
-        vscode.commands.registerCommand(
-            Commands.INSTALL_SWIFTLY,
-            async () =>
-                await handleMissingSwiftly(
-                    ["latest"],
-                    ctx.extensionContext.extensionPath,
-                    ctx.logger,
-                    true
-                )
-        ),
     ];
 }
 
