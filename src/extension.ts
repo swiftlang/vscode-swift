@@ -173,7 +173,7 @@ export async function activate(
 
         // setup workspace context with initial workspace folders
         const workspaceFoldersStartTime = Date.now();
-        await workspaceContext.addWorkspaceFolders();
+        void workspaceContext.addWorkspaceFolders();
         const workspaceFoldersElapsed = Date.now() - workspaceFoldersStartTime;
 
         const finalStepsStartTime = Date.now();
@@ -300,10 +300,12 @@ function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise
                 // Create launch.json files based on package description, don't block execution.
                 void debug.makeDebugConfigurations(folder);
 
-                if (await folder.swiftPackage.foundPackage) {
-                    // do not await for this, let packages resolve in parallel
-                    void folderAdded(folder, workspace);
-                }
+                // do not await for this, let packages resolve in parallel
+                void folder.swiftPackage.foundPackage.then(async foundPackage => {
+                    if (foundPackage) {
+                        await folderAdded(folder, workspace);
+                    }
+                });
                 break;
 
             case FolderOperation.packageUpdated:
