@@ -573,6 +573,7 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
             await this.focusUri(this.lastFocusUri);
             this.lastFocusUri = undefined;
         }
+        await Promise.all(this.folders.map(f => f.swiftPackage.foundPackage));
         this.onInitializationCompleteCallback();
     }
 
