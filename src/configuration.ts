@@ -221,7 +221,7 @@ const configuration = {
                 }
                 if (
                     !resultIsArray &&
-                    args !== null &&
+                    !!args &&
                     typeof args === "object" &&
                     Object.keys(args).length !== 0
                 ) {

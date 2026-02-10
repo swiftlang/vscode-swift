@@ -192,11 +192,7 @@ enum Color {
 }
 
 export function colorize(text: string, color: keyof typeof Color): string {
-    const colorCode = Color[color];
-    if (colorCode !== undefined) {
-        return `\x1b[${colorCode}m${text}\x1b[0m`;
-    }
-    return text;
+    return `\x1b[${Color[color]}m${text}\x1b[0m`;
 }
 
 export async function execFileStreamOutput(

@@ -27,7 +27,7 @@ export class Version implements ExternalVersion {
             const major = parseInt(numbers[1]);
             const minor = parseInt(numbers[2]);
             const dev = numbers[4] === "-dev";
-            if (numbers[3] === undefined) {
+            if ((numbers[3] as string | undefined) === undefined) {
                 return new Version(major, minor, 0, dev);
             } else {
                 const patch = parseInt(numbers[3]);

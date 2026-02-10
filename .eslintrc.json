@@ -14,7 +14,6 @@
     // TODO "@typescript-eslint/semi" rule moved to https://eslint.style
     "semi": "error",
     "no-console": "warn",
-    "mocha/no-exclusive-tests": "error",
     "no-restricted-syntax": [
       "error",
       {
@@ -47,13 +46,11 @@
         "caughtErrors": "none"
       }
     ],
-    "sonarjs/no-exclusive-tests": "off",
     "sonarjs/use-type-alias": "off",
     "sonarjs/function-return-type": "off",
     "sonarjs/slow-regex": "off",
     "sonarjs/publicly-writable-directories": "off",
     "sonarjs/no-same-argument-assert": "off",
-    "sonarjs/different-types-comparison": "off",
     "sonarjs/no-invariant-returns": "off",
     "sonarjs/fixme-tag": "off",
     "sonarjs/todo-tag": "off",
