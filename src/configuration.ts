@@ -66,6 +66,8 @@ interface LSPConfiguration {
     readonly supportedLanguages: string[];
     /** Is SourceKit-LSP disabled */
     readonly disable: boolean;
+    /** Is the trace server enabled */
+    readonly traceServer: "off" | "messages" | "verbose";
 }
 
 /** debugger configuration */
@@ -191,6 +193,14 @@ const configuration = {
                         .getConfiguration("swift.sourcekit-lsp")
                         .get<boolean>("disable", false),
                     "swift.sourcekit-lsp.disable"
+                );
+            },
+            get traceServer(): "off" | "messages" | "verbose" {
+                return validateStringSetting<"off" | "messages" | "verbose">(
+                    vscode.workspace
+                        .getConfiguration("swift.sourcekit-lsp.trace")
+                        .get<string>("server", "off"),
+                    "swift.sourcekit-lsp.trace.server"
                 );
             },
         };
