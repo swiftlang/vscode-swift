@@ -20,7 +20,7 @@ export async function swiftInstalled(): Promise<boolean> {
     try {
         await exec("swift --version");
         return true;
-    } catch (error) {
+    } catch {
         return false;
     }
 }
