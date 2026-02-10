@@ -4,6 +4,9 @@
 
 
 ### Added
+- Add a button that installs Swiftly and the latest Swift toolchain to the extension's welcome walkthrough.
+
+### Added
 
 - Add `swift.ignoreSwiftVersionFile` setting to ignore the toolchain set in `.swift-version` files ([#2073](https://github.com/swiftlang/vscode-swift/pull/2073))
 
