@@ -243,11 +243,6 @@
     ],
     "commands": [
       {
-        "command": "swift.checkInstallation",
-        "title": "Check Swift Installation",
-        "category": "Swift"
-      },
-      {
         "command": "swift.showCommands",
         "title": "Show Commands",
         "category": "Swift"
