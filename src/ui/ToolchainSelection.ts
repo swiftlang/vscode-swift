@@ -83,7 +83,12 @@ export async function showToolchainError(
     extensionPath: string,
     folder?: vscode.Uri
 ): Promise<boolean> {
-    let selected: "Remove From Settings" | "Select Toolchain" | "Install Swiftly" | undefined;
+    let selected:
+        | "Remove From Settings"
+        | "Select Toolchain"
+        | "Install Swiftly"
+        | "Install Toolchain Via Swiftly"
+        | undefined;
     const folderName = folder ? `${FolderContext.uriName(folder)}: ` : "";
     if (configuration.path) {
         selected = await vscode.window.showErrorMessage(
@@ -92,11 +97,20 @@ export async function showToolchainError(
             "Select Toolchain"
         );
     } else {
-        selected = await vscode.window.showErrorMessage(
-            `${folderName}Unable to automatically discover your Swift toolchain. Install Swiftly to install the latest toolchain or provide the path to an existing toolchain.`,
-            "Install Swiftly",
-            "Select Toolchain"
-        );
+        const isInstalled = await Swiftly.isInstalled();
+        if (isInstalled) {
+            selected = await vscode.window.showInformationMessage(
+                `${folderName}Swiftly is installed, but missing Swift toolchain. Use Swiftly to install one or provide the path to an existing toolchain.`,
+                "Install Toolchain Via Swiftly",
+                "Select Toolchain"
+            );
+        } else {
+            selected = await vscode.window.showErrorMessage(
+                `${folderName}Unable to automatically discover your Swift toolchain. Install Swiftly to install the latest toolchain or provide the path to an existing toolchain.`,
+                "Install Swiftly",
+                "Select Toolchain"
+            );
+        }
     }
 
     if (selected === "Remove From Settings") {
@@ -105,7 +119,7 @@ export async function showToolchainError(
     } else if (selected === "Select Toolchain") {
         await selectToolchain();
         return true;
-    } else if (selected === "Install Swiftly") {
+    } else if (selected === "Install Swiftly" || selected === "Install Toolchain Via Swiftly") {
         await handleMissingSwiftly(["latest"], extensionPath, undefined, true);
         return true;
     }

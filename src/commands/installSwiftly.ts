@@ -115,6 +115,7 @@ async function promptToRestartVSCode(): Promise<void> {
     }
 }
 
+// TODO: rename function
 /**
  * Main function to handle missing Swiftly detection and installation
  * @param swiftVersionFiles A list of swift version files that will need to be installed
