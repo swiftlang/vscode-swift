@@ -49,7 +49,10 @@
             "media": {
               "markdown": "./assets/walkthrough/welcome.md"
             },
-            "when": "isMac && !swiftInstalled && !swiftlyInstalled"
+            "when": "isMac && !swiftInstalled && !swiftlyInstalled",
+            "completionEvents": [
+              "onContext:swiftlyInstalled"
+            ]
           },
           {
             "id": "installing-mac-not-installed",
@@ -58,7 +61,10 @@
             "media": {
               "markdown": "./assets/walkthrough/welcome.md"
             },
-            "when": "isMac && !swiftInstalled"
+            "when": "isMac && !swiftInstalled",
+            "completionEvents": [
+              "onContext:swiftInstalled"
+            ]
           },
           {
             "id": "installing-mac-installed",
@@ -91,7 +97,10 @@
             "media": {
               "markdown": "./assets/walkthrough/welcome.md"
             },
-            "when": "isLinux && !swiftInstalled"
+            "when": "isLinux && !swiftInstalled",
+            "completionEvents": [
+              "onContext:swiftInstalled"
+            ]
           },
           {
             "id": "installing-linux-installed",
