@@ -777,7 +777,7 @@ export class TestRunner {
             }
 
             const validBuildConfigs = buildConfigs.filter(
-                config => config !== null
+                config => !!config
             ) as vscode.DebugConfiguration[];
 
             const debugRuns = validBuildConfigs.map(config => {
