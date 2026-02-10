@@ -512,7 +512,8 @@ export const folderInRootWorkspace = async (
     workspaceContext: WorkspaceContext
 ): Promise<FolderContext> => {
     const workspaceFolder = getRootWorkspaceFolder();
-    let folder = workspaceContext.folders.find(f => f.relativePath === name);
+    const expectedPath = testAssetUri(name).fsPath;
+    let folder = workspaceContext.folders.find(f => f.folder.fsPath === expectedPath);
     if (!folder) {
         workspaceContext.logger.info(`${name} not found, adding folder ${name} to workspace`);
         folder = await workspaceContext.addPackageFolder(testAssetUri(name), workspaceFolder);
