@@ -128,7 +128,8 @@ export async function handleMissingSwiftly(
     logger?: SwiftLogger,
     skipPrompt: boolean = false
 ): Promise<boolean> {
-    if (await Swiftly.isInstalled()) {
+    const isInstalled = await Swiftly.isInstalled();
+    if (!isInstalled) {
         if (configuration.folder(undefined).disableSwiftlyInstallPrompt) {
             logger?.debug("Swiftly installation prompt is suppressed");
             return false;
