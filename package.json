@@ -43,9 +43,18 @@
         "description": "Learn how to use the Swift extension for VS Code.",
         "steps": [
           {
+            "id": "installing-mac-swiftly-not-installed",
+            "title": "Install Swiftly",
+            "description": "Swift is not installed on your system. The first step is to install Swift's toolchain manager \"Swiftly\".\n\n[Install Swiftly](command:swift.installSwiftly)\n\nOr install it manually from [swift.org](https://www.swift.org/install)",
+            "media": {
+              "markdown": "./assets/walkthrough/welcome.md"
+            },
+            "when": "isMac && !swiftInstalled && !swiftlyInstalled"
+          },
+          {
             "id": "installing-mac-not-installed",
-            "title": "Install Swift",
-            "description": "Swift is not currently installed on your system.\n\n[Install Swift](command:swift.installSwiftly)\n\nOr install manually from [swift.org](https://www.swift.org/install).",
+            "title": "Install Swift Toolchain",
+            "description": "Use Swiftly to install a Swift toolchain on your system.\n\n[Install Swift](command:swift.installSwiftly)\n\nOr install it manually from [swift.org](https://www.swift.org/install).",
             "media": {
               "markdown": "./assets/walkthrough/welcome.md"
             },
@@ -64,9 +73,21 @@
             ]
           },
           {
+            "id": "installing-linux-swiftly-not-installed",
+            "title": "Install Swiftly",
+            "description": "Swift is not installed on your system. The first step is to install Swift's toolchain manager \"Swiftly\".\n\n[Install Swiftly](command:swift.installSwiftly)\n\nOr install it manually from [swift.org](https://www.swift.org/install)",
+            "media": {
+              "markdown": "./assets/walkthrough/welcome.md"
+            },
+            "when": "isLinux && !swiftInstalled && !swiftlyInstalled",
+            "completionEvents": [
+              "onContext:swiftlyInstalled"
+            ]
+          },
+          {
             "id": "installing-linux-not-installed",
-            "title": "Install Swift",
-            "description": "Swift is not currently installed on your system.\n\n[Install Swift](command:swift.installSwiftly)\n\nOr install manually from [swift.org](https://www.swift.org/install).",
+            "title": "Install Swift Toolchain",
+            "description": "Use Swiftly to install a Swift toolchain on your system.\n\n[Install Swift](command:swift.installSwiftly)\n\nOr install it manually from [swift.org](https://www.swift.org/install).",
             "media": {
               "markdown": "./assets/walkthrough/welcome.md"
             },
