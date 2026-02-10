@@ -122,7 +122,6 @@ export enum Commands {
     OPEN_MANIFEST = "swift.openManifest",
     RESTART_LSP = "swift.restartLSPServer",
     SELECT_TOOLCHAIN = "swift.selectToolchain",
-    INSTALL_SWIFTLY = "swift.installSwiftly",
     INSTALL_SWIFTLY_TOOLCHAIN = "swift.installSwiftlyToolchain",
     INSTALL_SWIFTLY_SNAPSHOT_TOOLCHAIN = "swift.installSwiftlySnapshotToolchain",
     GENERATE_SOURCEKIT_CONFIG = "swift.generateSourcekitConfiguration",
@@ -380,16 +379,6 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
         vscode.commands.registerCommand(
             Commands.INSTALL_SWIFTLY_SNAPSHOT_TOOLCHAIN,
             async () => await promptToInstallSwiftlyToolchain(ctx, "snapshot")
-        ),
-        vscode.commands.registerCommand(
-            Commands.INSTALL_SWIFTLY,
-            async () =>
-                await handleMissingSwiftly(
-                    ["latest"],
-                    ctx.extensionContext.extensionPath,
-                    ctx.logger,
-                    true
-                )
         ),
     ];
 }
