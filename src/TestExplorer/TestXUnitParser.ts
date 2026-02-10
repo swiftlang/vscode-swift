@@ -16,7 +16,7 @@ import * as xml2js from "xml2js";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { ITestRunState } from "./TestParsers/TestRunState";
 
-export interface TestResults {
+interface TestResults {
     tests: number;
     failures: number;
     errors: number;

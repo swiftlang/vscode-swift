@@ -163,5 +163,5 @@ export class TaskManager implements vscode.Disposable {
 }
 
 /** Workspace Folder observer function */
-export type TaskStartObserver = (event: vscode.TaskStartEvent) => unknown;
-export type TaskEndObserver = (execution: vscode.TaskProcessEndEvent) => unknown;
+type TaskStartObserver = (event: vscode.TaskStartEvent) => unknown;
+type TaskEndObserver = (execution: vscode.TaskProcessEndEvent) => unknown;

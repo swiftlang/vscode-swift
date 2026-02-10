@@ -73,7 +73,7 @@ export function platformDebugBuildOptions(toolchain: SwiftToolchain): string[] {
 }
 
 /** arguments for setting diagnostics style */
-export function diagnosticsStyleOptions(): string[] {
+function diagnosticsStyleOptions(): string[] {
     if (configuration.diagnosticsStyle !== "default") {
         return ["-Xswiftc", `-diagnostic-style=${configuration.diagnosticsStyle}`];
     }

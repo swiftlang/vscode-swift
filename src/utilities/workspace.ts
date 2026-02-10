@@ -55,10 +55,7 @@ export async function searchForPackages(
     return folders;
 }
 
-export async function hasBSPConfigurationFile(
-    folder: string,
-    swiftVersion: Version
-): Promise<boolean> {
+async function hasBSPConfigurationFile(folder: string, swiftVersion: Version): Promise<boolean> {
     // buildServer.json
     const buildServerPath = path.join(folder, "buildServer.json");
     const buildServerStat = await fs.stat(buildServerPath).catch(() => undefined);
