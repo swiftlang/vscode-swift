@@ -51,7 +51,6 @@ import { runTest } from "./commands/runTest";
 import { switchPlatform } from "./commands/switchPlatform";
 import { extractTestItemsAndCount, runTestMultipleTimes } from "./commands/testMultipleTimes";
 import { SwiftLogger } from "./logging/SwiftLogger";
-import { SwiftToolchain } from "./toolchain/toolchain";
 import { PackageNode, PlaygroundNode } from "./ui/ProjectPanelProvider";
 import { showToolchainSelectionQuickPick } from "./ui/ToolchainSelection";
 
@@ -63,8 +62,6 @@ import { showToolchainSelectionQuickPick } from "./ui/ToolchainSelection";
  * - Implementing commands:
  *   https://code.visualstudio.com/api/extension-guides/command
  */
-
-export type WorkspaceContextWithToolchain = WorkspaceContext & { toolchain: SwiftToolchain };
 
 export function registerToolchainCommands(
     ctx: WorkspaceContext | undefined,

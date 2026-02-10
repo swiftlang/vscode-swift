@@ -22,7 +22,7 @@ import { executeTaskWithUI, updateAfterError } from "../utilities";
 /**
  * Configuration for executing a Swift package command
  */
-export interface SwiftPackageCommandConfig {
+interface SwiftPackageCommandConfig {
     /** The Swift command arguments (e.g., ["package", "show-dependencies", "--format", "json"]) */
     args: string[];
     /** The task name for the SwiftTaskProvider */

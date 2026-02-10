@@ -79,7 +79,7 @@ This process involves updating your shell profile in order to add swiftly to you
  * @param logger Optional logger
  * @returns Promise<boolean> true if installation succeeded
  */
-export async function installSwiftlyWithProgress(logger?: SwiftLogger): Promise<boolean> {
+async function installSwiftlyWithProgress(logger?: SwiftLogger): Promise<boolean> {
     try {
         await vscode.window.withProgress(
             {

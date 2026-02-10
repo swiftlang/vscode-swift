@@ -20,8 +20,8 @@ import configuration from "../configuration";
 import { selectFolder } from "../ui/SelectFolderQuickPick";
 import restartLSPServer from "./restartLSPServer";
 
-export const sourcekitDotFolder: string = ".sourcekit-lsp";
-export const sourcekitConfigFileName: string = "config.json";
+const sourcekitDotFolder: string = ".sourcekit-lsp";
+const sourcekitConfigFileName: string = "config.json";
 
 export async function generateSourcekitConfiguration(ctx: WorkspaceContext): Promise<boolean> {
     if (ctx.folders.length === 0) {

@@ -35,7 +35,7 @@ export async function updateDependencies(ctx: WorkspaceContext) {
  * Run `swift package update` inside a folder
  * @param folderContext folder to run update inside
  */
-export async function updateFolderDependencies(folderContext: FolderContext) {
+async function updateFolderDependencies(folderContext: FolderContext) {
     const task = createSwiftTask(
         ["package", "update"],
         SwiftTaskProvider.updatePackageName,

@@ -16,7 +16,7 @@ import * as vscode from "vscode";
 import { ReadOnlySwiftProcess, SwiftProcess, SwiftPtyProcess } from "./SwiftProcess";
 import { SwiftPseudoterminal } from "./SwiftPseudoterminal";
 
-export interface SwiftExecutionOptions extends vscode.ProcessExecutionOptions {
+interface SwiftExecutionOptions extends vscode.ProcessExecutionOptions {
     presentation?: vscode.TaskPresentationOptions;
     readOnlyTerminal?: boolean;
 }

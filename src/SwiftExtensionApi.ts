@@ -14,7 +14,7 @@
 import * as vscode from "vscode";
 
 /** The identifier for the Swift extension as it appears in the VSCode Marketplace and OpenVSX. */
-export const SWIFT_EXTENSION_ID = "swiftlang.swift-vscode";
+const SWIFT_EXTENSION_ID = "swiftlang.swift-vscode";
 
 /**
  * Retrieves the API for the Swift extension.

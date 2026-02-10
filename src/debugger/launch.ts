@@ -23,7 +23,7 @@ import { getFolderAndNameSuffix } from "./buildConfig";
 import { SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
 
 /** Options used to configure {@link makeDebugConfigurations}. */
-export interface WriteLaunchConfigurationsOptions {
+interface WriteLaunchConfigurationsOptions {
     /** Force the generation of launch configurations regardless of user settings. */
     force?: boolean;
 
@@ -144,7 +144,7 @@ export async function getTargetBinaryPath(
     }
 }
 
-export function getLegacyTargetBinaryPath(
+function getLegacyTargetBinaryPath(
     targetName: string,
     buildConfiguration: "debug" | "release",
     folderCtx: FolderContext

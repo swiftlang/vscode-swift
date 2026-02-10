@@ -33,21 +33,17 @@ export class ConfigurationValidationError extends Error {
     }
 }
 
-export type DebugAdapters = "auto" | "lldb-dap" | "CodeLLDB";
-export type SetupCodeLLDBOptions =
-    | "prompt"
-    | "alwaysUpdateGlobal"
-    | "alwaysUpdateWorkspace"
-    | "never";
-export type CFamilySupportOptions = "enable" | "disable" | "cpptools-inactive";
-export type ActionAfterBuildError = "Focus Problems" | "Focus Terminal" | "Do Nothing";
-export type OpenAfterCreateNewProjectOptions =
+type DebugAdapters = "auto" | "lldb-dap" | "CodeLLDB";
+type SetupCodeLLDBOptions = "prompt" | "alwaysUpdateGlobal" | "alwaysUpdateWorkspace" | "never";
+type CFamilySupportOptions = "enable" | "disable" | "cpptools-inactive";
+type ActionAfterBuildError = "Focus Problems" | "Focus Terminal" | "Do Nothing";
+type OpenAfterCreateNewProjectOptions =
     | "always"
     | "alwaysNewWindow"
     | "whenNoFolderOpen"
     | "prompt";
 export type ShowBuildStatusOptions = "never" | "swiftStatus" | "progress" | "notification";
-export type DiagnosticCollectionOptions =
+type DiagnosticCollectionOptions =
     | "onlySwiftc"
     | "onlySourceKit"
     | "keepSwiftc"
@@ -57,7 +53,7 @@ export type DiagnosticStyle = "default" | "llvm" | "swift";
 export type ValidCodeLens = "run" | "debug" | "coverage";
 
 /** sourcekit-lsp configuration */
-export interface LSPConfiguration {
+interface LSPConfiguration {
     /** Path to sourcekit-lsp executable */
     readonly serverPath: string;
     /** Arguments to pass to sourcekit-lsp executable */
@@ -73,7 +69,7 @@ export interface LSPConfiguration {
 }
 
 /** debugger configuration */
-export interface DebuggerConfiguration {
+interface DebuggerConfiguration {
     /** Get the underlying debug adapter type requested by the user. */
     readonly debugAdapter: DebugAdapters;
     /** Return path to debug adapter */
@@ -125,7 +121,7 @@ export interface PluginPermissionConfiguration {
     allowNetworkConnections?: string;
 }
 
-export interface BackgroundCompilationConfiguration {
+interface BackgroundCompilationConfiguration {
     /** enable background compilation task on save */
     enabled: boolean;
     /** use the default `swift` build task when background compilation is enabled */
@@ -585,18 +581,18 @@ const configuration = {
     },
     /** background indexing */
     get backgroundIndexing(): "on" | "off" | "auto" {
-        const value = validateStringSetting<"on" | "off" | "auto">(
-            vscode.workspace
-                .getConfiguration("swift.sourcekit-lsp")
-                .get("backgroundIndexing", "auto"),
-            "swift.sourcekit-lsp.backgroundIndexing"
-        );
+        const value = vscode.workspace
+            .getConfiguration("swift.sourcekit-lsp")
+            .get("backgroundIndexing", "auto");
 
         // Legacy versions of this setting were a boolean, convert to the new string version.
         if (typeof value === "boolean") {
             return value ? "on" : "off";
         } else {
-            return value;
+            return validateStringSetting<"on" | "off" | "auto">(
+                value,
+                "swift.sourcekit-lsp.backgroundIndexing"
+            );
         }
     },
     /** focus on problems view whenever there is a build error */

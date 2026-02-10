@@ -22,7 +22,7 @@ export interface GetReferenceDocumentParams {
 }
 
 /** Response containing `content` of a {@link GetReferenceDocumentRequest}. */
-export interface GetReferenceDocumentResult {
+interface GetReferenceDocumentResult {
     content: string;
 }
 

@@ -21,7 +21,7 @@ import {
 } from "vscode-languageclient";
 
 /** Parameters used to make a {@link DocCDocumentationRequest}. */
-export interface DocCDocumentationParams {
+interface DocCDocumentationParams {
     /**
      * The document to render documentation for.
      */

@@ -76,7 +76,7 @@ export enum DarwinCompatibleTarget {
     visionOS = "xrOS",
 }
 
-export function getDarwinSDKName(target: DarwinCompatibleTarget): string {
+function getDarwinSDKName(target: DarwinCompatibleTarget): string {
     switch (target) {
         case DarwinCompatibleTarget.iOS:
             return "iphoneos";

@@ -36,7 +36,7 @@ const SystemVersion = z.object({
     type: z.literal("system"),
     name: z.string(),
 });
-export type SystemVersion = z.infer<typeof SystemVersion>;
+type SystemVersion = z.infer<typeof SystemVersion>;
 
 const StableVersion = z.object({
     type: z.literal("stable"),
@@ -46,7 +46,7 @@ const StableVersion = z.object({
     minor: z.number(),
     patch: z.number(),
 });
-export type StableVersion = z.infer<typeof StableVersion>;
+type StableVersion = z.infer<typeof StableVersion>;
 
 const SnapshotVersion = z.object({
     type: z.literal("snapshot"),
@@ -57,18 +57,18 @@ const SnapshotVersion = z.object({
     branch: z.string(),
     date: z.string(),
 });
-export type SnapshotVersion = z.infer<typeof SnapshotVersion>;
+type SnapshotVersion = z.infer<typeof SnapshotVersion>;
 
-export type ToolchainVersion = SystemVersion | StableVersion | SnapshotVersion;
+type ToolchainVersion = SystemVersion | StableVersion | SnapshotVersion;
 
-export interface AvailableToolchain {
+interface AvailableToolchain {
     inUse: boolean;
     installed: boolean;
     isDefault: boolean;
     version: ToolchainVersion;
 }
 
-export interface InstalledToolchain {
+interface InstalledToolchain {
     name: string;
     location?: string;
 }
@@ -128,13 +128,13 @@ const SwiftlyProgressData = z.object({
 
 export type SwiftlyProgressData = z.infer<typeof SwiftlyProgressData>;
 
-export interface PostInstallValidationResult {
+interface PostInstallValidationResult {
     isValid: boolean;
     summary: string;
     invalidCommands?: string[];
 }
 
-export interface MissingToolchainError {
+interface MissingToolchainError {
     version: string;
     originalError: string;
 }
