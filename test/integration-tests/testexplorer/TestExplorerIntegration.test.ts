@@ -582,16 +582,16 @@ tag("large").suite("Test Explorer Suite", function () {
                 const secondRunTokenSource = new vscode.CancellationTokenSource();
                 // Wait for the next tick to cancel the test run so that
                 // handlers have time to set up.
-                await new Promise<void>(resolve => {
-                    setImmediate(async () => {
+                await new Promise<void>((resolve, reject) => {
+                    setImmediate(() => {
                         const secondRunOnCreate = eventPromise(testExplorer.onCreateTestRun);
                         // Start the second test run, which will trigger the mockWindow to resolve with
                         // the request to cancel and start a new run. Then wait for the second run to start,
                         // and cancel it as if VS Code requested it.
                         void targetProfile.runHandler(request, secondRunTokenSource.token);
-                        await secondRunOnCreate;
-                        secondRunTokenSource.cancel();
-                        resolve();
+                        secondRunOnCreate
+                            .then(() => resolve(), reject)
+                            .finally(() => secondRunTokenSource.cancel());
                     });
                 });
 
