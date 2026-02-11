@@ -63,7 +63,7 @@ interface LanguageClientManageOptions {
  * Manages the creation and destruction of Language clients as we move between
  * workspace folders
  */
-export class LanguageClientManager implements vscode.Disposable {
+export class LanguageClientManager {
     // known log names
     static readonly indexingLogName = "SourceKit-LSP: Indexing";
 
@@ -175,7 +175,7 @@ export class LanguageClientManager implements vscode.Disposable {
         this.cancellationToken = new vscode.CancellationTokenSource();
     }
 
-    // The language client stops asnyhronously, so we need to wait for it to stop
+    // The language client stops asynchronously, so we need to wait for it to stop
     // instead of doing it in dispose, which must be synchronous.
     async stop(dispose: boolean = true) {
         if (this.languageClient && this.languageClient.state === State.Running) {
@@ -186,7 +186,7 @@ export class LanguageClientManager implements vscode.Disposable {
         }
     }
 
-    dispose() {
+    async dispose(): Promise<void> {
         this.cancellationToken?.cancel();
         this.cancellationToken?.dispose();
         this.legacyInlayHints?.dispose();
@@ -194,6 +194,7 @@ export class LanguageClientManager implements vscode.Disposable {
         this.getReferenceDocument?.dispose();
         this.subscriptions.forEach(item => item.dispose());
         this.namedOutputChannels.forEach(channel => channel.dispose());
+        await this.stop(true);
     }
 
     /**

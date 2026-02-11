@@ -27,7 +27,7 @@ import { LanguageClientManager } from "./LanguageClientManager";
  * folders share the same toolchain version then they will share the same LanguageClient.
  * This ensures that a folder always uses the LanguageClient bundled with its desired toolchain.
  */
-export class LanguageClientToolchainCoordinator implements vscode.Disposable {
+export class LanguageClientToolchainCoordinator {
     private subscriptions: vscode.Disposable[] = [];
     private clients: Map<string, LanguageClientManager> = new Map();
 
@@ -150,7 +150,13 @@ export class LanguageClientToolchainCoordinator implements vscode.Disposable {
         return client;
     }
 
-    dispose() {
+    async dispose(): Promise<void> {
         this.subscriptions.forEach(item => item.dispose());
+        const disposeClients: Promise<void>[] = [];
+        for (const client of this.clients.values()) {
+            disposeClients.push(client.dispose());
+        }
+        await Promise.all(disposeClients);
+        this.clients.clear();
     }
 }
