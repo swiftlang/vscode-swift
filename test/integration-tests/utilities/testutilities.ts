@@ -434,7 +434,7 @@ const extensionBootstrapper = (() => {
                     ) ?? Promise.resolve()
             );
             activationLogger.info(`Running extension deactivation function.`);
-            activatedAPI.deactivate();
+            await activatedAPI.deactivate();
             activationLogger.reset();
         },
 

@@ -41,7 +41,7 @@ import { SwiftToolchain } from "./toolchain/toolchain";
 import { ProjectPanelProvider } from "./ui/ProjectPanelProvider";
 import { StatusItem } from "./ui/StatusItem";
 import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
-import { Disposable } from "./utilities/Disposable";
+import { AsyncDisposable, Disposable } from "./utilities/Disposable";
 import { isExcluded, isPathInsidePath } from "./utilities/filesystem";
 import { swiftLibraryPathKey } from "./utilities/utilities";
 import { isValidWorkspaceFolder, searchForPackages } from "./utilities/workspace";
@@ -59,7 +59,7 @@ export interface FolderEvent extends ExternalFolderEvent {
  * Context for whole workspace. Holds array of contexts for each workspace folder
  * and the ExtensionContext
  */
-export class WorkspaceContext implements ExternalWorkspaceContext, Disposable {
+export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposable {
     public folders: FolderContext[] = [];
     public currentFolder: FolderContext | null | undefined;
     public currentDocument: vscode.Uri | null;
@@ -149,8 +149,8 @@ export class WorkspaceContext implements ExternalWorkspaceContext, Disposable {
                     )
                     .then(async selected => {
                         if (selected === "Update") {
-                            this.folders.forEach(ctx =>
-                                makeDebugConfigurations(ctx, { yes: true })
+                            await Promise.all(
+                                this.folders.map(ctx => makeDebugConfigurations(ctx, { yes: true }))
                             );
                         }
                     });
@@ -172,10 +172,10 @@ export class WorkspaceContext implements ExternalWorkspaceContext, Disposable {
                         "Update",
                         "Cancel"
                     )
-                    .then(selected => {
+                    .then(async selected => {
                         if (selected === "Update") {
-                            this.folders.forEach(ctx =>
-                                makeDebugConfigurations(ctx, { yes: true })
+                            await Promise.all(
+                                this.folders.map(ctx => makeDebugConfigurations(ctx, { yes: true }))
                             );
                         }
                     });
@@ -246,7 +246,6 @@ export class WorkspaceContext implements ExternalWorkspaceContext, Disposable {
             this.tasks,
             this.diagnostics,
             this.documentation,
-            this.languageClientManager,
             this.buildStatus,
             this.projectPanel,
         ];
@@ -255,19 +254,12 @@ export class WorkspaceContext implements ExternalWorkspaceContext, Disposable {
         this.setupEventListeners();
     }
 
-    async stop() {
-        try {
-            await this.languageClientManager.stop();
-        } catch {
-            // ignore
-        }
-    }
-
-    dispose() {
+    async dispose(): Promise<void> {
         this.folders.forEach(f => f.dispose());
         this.folders.length = 0;
         this.subscriptions.forEach(item => item.dispose());
         this.subscriptions.length = 0;
+        await this.languageClientManager.dispose();
     }
 
     get globalToolchainSwiftVersion() {
