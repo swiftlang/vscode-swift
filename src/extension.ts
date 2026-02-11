@@ -33,9 +33,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<SwiftE
     return swiftExtensionApi;
 }
 
-export function deactivate(): void {
-    swiftExtensionApi?.deactivate();
-    swiftExtensionApi?.dispose();
+export async function deactivate(): Promise<void> {
+    if (!swiftExtensionApi) {
+        return;
+    }
+
+    await swiftExtensionApi.deactivate();
+    swiftExtensionApi.dispose();
     swiftExtensionApi = undefined;
 }
 

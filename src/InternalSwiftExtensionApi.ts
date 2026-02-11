@@ -161,7 +161,7 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
                 promise: this.initializeWorkspace(cancellationSource.token)
                     .then(async ({ workspaceContext, subscriptions }) => {
                         if (cancellationSource.token.isCancellationRequested) {
-                            workspaceContext.dispose();
+                            await workspaceContext.dispose();
                             subscriptions.forEach(s => s.dispose());
                             throw new vscode.CancellationError();
                         }
@@ -301,13 +301,13 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
         return { workspaceContext, subscriptions };
     }
 
-    deactivate(): void {
+    async deactivate(): Promise<void> {
         this.contextKeys.isActivated = false;
         if (this.state.type === "initializing") {
             this.state.cancel();
         }
         if (this.state.type === "active") {
-            this.state.context.dispose();
+            await this.state.context.dispose();
             this.state.subscriptions.forEach(s => s.dispose());
         }
         this.subscriptions.forEach(subscription => subscription.dispose());

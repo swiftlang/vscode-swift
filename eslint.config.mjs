@@ -89,6 +89,7 @@ export default defineConfig([
             ],
 
             "@typescript-eslint/no-floating-promises": ["warn", { checkThenables: true }],
+            "@typescript-eslint/no-misused-promises": "error",
             "@typescript-eslint/await-thenable": "warn",
             "@typescript-eslint/no-non-null-assertion": "off",
             "@typescript-eslint/no-require-imports": "off",
