@@ -113,7 +113,6 @@ export function assertTestResults(
         }[];
         passed?: string[];
         skipped?: string[];
-        errored?: string[];
         enqueued?: string[];
         unknown?: number;
     }
@@ -144,7 +143,6 @@ export function assertTestResults(
                 }))
                 .sort(),
             skipped: (state.skipped ?? []).sort(),
-            errored: (state.errored ?? []).sort(),
             enqueued: (state.enqueued ?? []).sort(),
             unknown: 0,
         },

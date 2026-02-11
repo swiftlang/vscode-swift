@@ -28,13 +28,13 @@ import {
     mockGlobalFunction,
     mockGlobalModule,
     mockGlobalObject,
+    mockGlobalValue,
     mockObject,
 } from "../../MockUtils";
-import { tag } from "../../tags";
 
-tag("large").suite("Swiftly Configuration Tests", () => {
+suite("Swiftly Configuration Tests", () => {
     const mockWindow = mockGlobalObject(vscode, "window");
-    const mockSwiftlyIsSupported = mockGlobalFunction(Swiftly, "isSupported");
+    const mockPlatform = mockGlobalValue(process, "platform");
     const mockSwiftlyIsInstalled = mockGlobalFunction(Swiftly, "isInstalled");
     const mockConfigurationFolder = mockGlobalFunction(configuration, "folder");
     const mockGlobDirectory = mockGlobalFunction(filesystem, "globDirectory");
@@ -42,15 +42,7 @@ tag("large").suite("Swiftly Configuration Tests", () => {
     const mockFsReadFile = mockGlobalFunction(fs, "readFile");
 
     setup(() => {
-        mockWindow.showWarningMessage.reset();
-        mockWindow.showInformationMessage.reset();
-        mockSwiftlyIsSupported.reset();
-        mockSwiftlyIsInstalled.reset();
-        mockGlobDirectory.reset();
-        mockUtilities.execFile.reset();
-        mockFsReadFile.reset();
-
-        mockSwiftlyIsSupported.returns(true);
+        mockPlatform.setValue("darwin");
         mockSwiftlyIsInstalled.resolves(false); // Swiftly not installed by default
 
         // Mock globDirectory to return the .swift-version file by default
@@ -77,8 +69,7 @@ tag("large").suite("Swiftly Configuration Tests", () => {
             await checkForSwiftlyInstallation("extensionPath", {} as any, instance(mockLogger));
 
             // Verify that showWarningMessage was called with the expected message
-            expect(mockWindow.showWarningMessage).to.have.been.calledOnce;
-            expect(mockWindow.showWarningMessage).to.have.been.calledWith(
+            expect(mockWindow.showWarningMessage).to.have.been.calledOnceWith(
                 "A .swift-version file was detected. Install Swiftly to automatically manage Swift toolchain versions for this project.",
                 { modal: false },
                 "Install Swiftly",
@@ -157,12 +148,11 @@ tag("large").suite("Swiftly Configuration Tests", () => {
         });
 
         test("does not prompt on unsupported platform", async () => {
+            mockPlatform.setValue("win32");
             mockConfigurationFolder.returns({
                 disableSwiftlyInstallPrompt: false,
                 ignoreSwiftVersionFile: false,
             } as any);
-
-            mockSwiftlyIsSupported.returns(false);
 
             const mockLogger = mockObject<SwiftLogger>({
                 debug: mockFn(),
@@ -174,7 +164,7 @@ tag("large").suite("Swiftly Configuration Tests", () => {
             expect(mockWindow.showWarningMessage).to.not.have.been.called;
 
             // Verify that the logger was called with the platform message
-            expect(mockLogger.debug).to.have.been.calledWith("Swiftly is not available on darwin");
+            expect(mockLogger.debug).to.have.been.calledWith("Swiftly is not available on win32");
         });
 
         test("does not prompt when no .swift-version files are found", async () => {
