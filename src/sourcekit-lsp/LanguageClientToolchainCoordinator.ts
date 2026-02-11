@@ -150,7 +150,13 @@ export class LanguageClientToolchainCoordinator implements vscode.Disposable {
         return client;
     }
 
-    dispose() {
+    async dispose(): Promise<void> {
         this.subscriptions.forEach(item => item.dispose());
+        const disposeClients: Promise<void>[] = [];
+        for (const client of this.clients.values()) {
+            disposeClients.push(client.dispose());
+        }
+        await Promise.all(disposeClients);
+        this.clients.clear();
     }
 }

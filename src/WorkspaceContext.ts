@@ -58,7 +58,7 @@ export interface FolderEvent extends ExternalFolderEvent {
  * Context for whole workspace. Holds array of contexts for each workspace folder
  * and the ExtensionContext
  */
-export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Disposable {
+export class WorkspaceContext implements ExternalWorkspaceContext {
     public folders: FolderContext[] = [];
     public currentFolder: FolderContext | null | undefined;
     public currentDocument: vscode.Uri | null;
@@ -262,7 +262,7 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
         }
     }
 
-    dispose() {
+    async dispose(): Promise<void> {
         this.folders.forEach(f => f.dispose());
         this.folders.length = 0;
         this.subscriptions.forEach(item => item.dispose());
