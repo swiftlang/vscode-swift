@@ -92,6 +92,9 @@ suite("LanguageClientManager Suite", () => {
         // Mock pieces of the VSCode API
         mockedVSCodeWindow.activeTextEditor = undefined;
         mockedVSCodeWindow.showInformationMessage.resolves();
+        mockedVSCodeWindow.onDidChangeActiveTextEditor.returns(
+            mockObject<vscode.Disposable>({ dispose: mockFn() })
+        );
         mockedVSCodeExtensions.getExtension.returns(undefined);
         changeConfigEmitter = new AsyncEventEmitter();
         mockedVSCodeWorkspace.onDidChangeConfiguration.callsFake(changeConfigEmitter.event);
@@ -102,6 +105,9 @@ suite("LanguageClientManager Suite", () => {
         mockedVSCodeWorkspace.getConfiguration
             .withArgs("files")
             .returns({ get: () => ({}) } as any);
+        mockedVSCodeWorkspace.registerTextDocumentContentProvider.returns(
+            mockObject<vscode.Disposable>({ dispose: mockFn() })
+        );
         // Mock the WorkspaceContext and SwiftToolchain
         mockedBuildFlags = mockObject<BuildFlags>({
             buildPathFlags: mockFn(s => s.returns([])),
@@ -208,6 +214,7 @@ suite("LanguageClientManager Suite", () => {
             sendNotification: mockFn(s => s.resolves()),
             onNotification: mockFn(s => s.returns(new vscode.Disposable(() => {}))),
             onDidChangeState: mockFn(s => s.callsFake(changeStateEmitter.event)),
+            dispose: mockFn(),
         });
         // `new LanguageClient()` will always return the mocked LanguageClient
         languageClientFactoryMock = mockObject<LanguageClientFactory>({
