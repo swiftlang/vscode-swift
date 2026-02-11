@@ -100,8 +100,8 @@ export class TestRunner {
                   )
                 : new XCTestOutputParser();
         this.swiftTestOutputParser = new SwiftTestingOutputParser(
-            this.testRun.addParameterizedTestCases,
-            this.testRun.addAttachment
+            this.testRun.addParameterizedTestCases.bind(this.testRun),
+            this.testRun.addAttachment.bind(this.testRun)
         );
         this.onDebugSessionTerminated = this.debugSessionTerminatedEmitter.event;
     }
