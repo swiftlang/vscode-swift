@@ -2104,7 +2104,7 @@
     "@types/micromatch": "^4.0.10",
     "@types/mocha": "^10.0.10",
     "@types/mock-fs": "^4.13.4",
-    "@types/node": "^22.19.7",
+    "@types/node": "^22.19.8",
     "@types/plist": "^3.0.5",
     "@types/semver": "^7.7.1",
     "@types/sinon": "^21.0.0",
