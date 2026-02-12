@@ -13,6 +13,7 @@
 - Fix legacy boolean setting values for `swift.sourcekit-lsp.backgroundIndexing` not being recognized ([#2092](https://github.com/swiftlang/vscode-swift/pull/2092))
 - Launch configurations defined in multi-root workspaces were unable to find the appropriate folder to run in ([#2105](https://github.com/swiftlang/vscode-swift/pull/2105))
 - Ignoring the dialog to use the toolchain defined in `.swift-version` would prevent extension acitvation ([2107](https://github.com/swiftlang/vscode-swift/pull/2107))
+- Loading large projects will no longer show the extension as unresponsive ([#1932](https://github.com/swiftlang/vscode-swift/pull/1932))
 
 ## 2.16.1 - 2026-02-02
 
