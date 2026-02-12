@@ -259,7 +259,7 @@ export function registerCommands(api: InternalSwiftExtensionApi): vscode.Disposa
         vscode.commands.registerCommand(Commands.DEBUG_SNIPPET, target =>
             api.withWorkspaceContext(ctx => debugSnippet(ctx, ...unwrapTreeItem(target)))
         ),
-        vscode.commands.registerCommand(Commands.RUN_PLUGIN_TASK, () => () => runPluginTask()),
+        vscode.commands.registerCommand(Commands.RUN_PLUGIN_TASK, () => runPluginTask()),
         vscode.commands.registerCommand(Commands.RUN_TASK, name => runTask(api, name)),
         vscode.commands.registerCommand(Commands.RESTART_LSP, () =>
             api.withWorkspaceContext(ctx => restartLSPServer(ctx))

@@ -44,14 +44,34 @@ import { globDirectory } from "./utilities/filesystem";
 import { getErrorDescription } from "./utilities/utilities";
 import { Version } from "./utilities/version";
 
-type State = (
-    | { type: "initializing"; promise: Promise<WorkspaceContext>; cancel(): void }
-    | { type: "active"; context: WorkspaceContext; subscriptions: vscode.Disposable[] }
-    | { type: "failed"; error: Error }
-) & { activatedBy: Error };
+type UninitializedState = {
+    type: "uninitialized";
+};
+
+type InitializingState = {
+    type: "initializing";
+    promise: Promise<WorkspaceContext>;
+    cancel(): void;
+    activatedBy: Error;
+};
+
+type ActiveState = {
+    type: "active";
+    context: WorkspaceContext;
+    subscriptions: vscode.Disposable[];
+    activatedBy: Error;
+};
+
+type FailedState = {
+    type: "failed";
+    error: unknown;
+    activatedBy: Error;
+};
+
+type State = UninitializedState | InitializingState | ActiveState | FailedState;
 
 export class InternalSwiftExtensionApi implements SwiftExtensionApi {
-    private state?: State;
+    private state: State = { type: "uninitialized" };
 
     get workspaceContext(): WorkspaceContext | undefined {
         if (this.state?.type !== "active") {
@@ -76,7 +96,7 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
     }
 
     async waitForWorkspaceContext(): Promise<WorkspaceContext> {
-        if (!this.state) {
+        if (this.state.type === "uninitialized") {
             throw new Error("The Swift extension has not been activated yet.");
         }
         if (this.state.type === "failed") {
@@ -96,11 +116,14 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
     // This method is synchronous on purpose. All asynchronous loading should be done within initializeWorkspace()
     // to avoid delaying extension activation.
     activate(callSite?: Error): void {
-        if (this.state) {
+        if (this.state.type !== "uninitialized") {
             throw new Error("The Swift extension has already been activated.", {
                 cause: this.state.activatedBy,
             });
         }
+
+        const activatedBy = callSite ?? Error("Extension was activated by:");
+        activatedBy.name = "ActivatedBy";
 
         const activationStartTime = Date.now();
         try {
@@ -131,8 +154,6 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
             const subscriptionsElapsed = Date.now() - subscriptionsStartTime;
 
             const finalStepsStartTime = Date.now();
-            const activatedBy = callSite ?? Error("Extension was activated by:");
-            activatedBy.name = "ActivatedBy";
             const cancellationSource = new vscode.CancellationTokenSource();
             this.state = {
                 type: "initializing",
@@ -170,6 +191,7 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
                 `Extension activation completed in ${totalActivationTime}ms (subscriptions: ${subscriptionsElapsed}ms, final-steps: ${finalStepsElapsed}ms)`
             );
         } catch (error) {
+            this.state = { type: "failed", error, activatedBy };
             // Handle configuration validation errors with UI that points the user to the poorly configured setting
             if (error instanceof ConfigurationValidationError) {
                 return; // User is notified by code in configuration.ts
@@ -289,7 +311,7 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
         }
         this.extensionContext.subscriptions.forEach(subscription => subscription.dispose());
         this.extensionContext.subscriptions.length = 0;
-        this.state = undefined;
+        this.state = { type: "uninitialized" };
     }
 
     dispose(): void {
@@ -448,10 +470,12 @@ function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise
                 // Create launch.json files based on package description, don't block execution.
                 void makeDebugConfigurations(folder);
 
-                if (await folder.swiftPackage.foundPackage) {
-                    // do not await for this, let packages resolve in parallel
-                    void folderAdded(folder, workspace);
-                }
+                // Do not await for this, let packages resolve in parallel
+                void folder.swiftPackage.foundPackage.then(async foundPackage => {
+                    if (foundPackage) {
+                        await folderAdded(folder, workspace);
+                    }
+                });
                 break;
 
             case FolderOperation.packageUpdated:
