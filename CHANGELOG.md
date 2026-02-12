@@ -11,6 +11,7 @@
 - Fix false positive workspace detection for non-Swift projects with `build/` or `out/` directories ([#2156](https://github.com/swiftlang/vscode-swift/pull/2156))
 - Fix build status notification to show a determinate progress bar ([#2188](https://github.com/swiftlang/vscode-swift/pull/2188))
 - Fix debugging when running tests with the swiftbuild build system ([#2191](https://github.com/swiftlang/vscode-swift/pull/2191))
+- Loading large projects will no longer show the extension as unresponsive ([#1932](https://github.com/swiftlang/vscode-swift/pull/1932))
 
 ## 2.16.3 - 2026-04-02
 
