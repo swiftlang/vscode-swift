@@ -16,7 +16,7 @@ import * as winston from "winston";
 import type * as Transport from "winston-transport";
 
 import configuration from "../configuration";
-import { IS_RUNNING_IN_DEVELOPMENT_MODE, IS_RUNNING_UNDER_TEST } from "../utilities/utilities";
+import { IS_RUNNING_UNDER_DEBUGGER, IS_RUNNING_UNDER_TEST } from "../utilities/utilities";
 import { FileTransport } from "./FileTransport";
 import { OutputChannelTransport } from "./OutputChannelTransport";
 import { RollingLog } from "./RollingLog";
@@ -59,7 +59,7 @@ export class SwiftLogger implements vscode.Disposable {
             transports.push(rollingLogTransport);
         }
         // Log everything to the console when we're debugging
-        if (IS_RUNNING_IN_DEVELOPMENT_MODE) {
+        if (IS_RUNNING_UNDER_DEBUGGER) {
             transports.push(new winston.transports.Console({ level: "debug" }));
         }
 

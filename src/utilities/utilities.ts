@@ -52,9 +52,9 @@ export const IS_RUNNING_UNDER_TEST = process.env.RUNNING_UNDER_VSCODE_TEST_CLI =
 
 /**
  * Determined by the presence of the `VSCODE_DEBUG` environment variable, set by the
- * launch.json when starting the extension in development.
+ * launch.json when debugging the extension.
  */
-export const IS_RUNNING_IN_DEVELOPMENT_MODE = process.env["VSCODE_DEBUG"] === "1";
+export const IS_RUNNING_UNDER_DEBUGGER = process.env["VSCODE_DEBUG"] === "1";
 
 /** Determines whether the provided object has any properties set to non-null values. */
 export function isEmptyObject(obj: { [key: string]: unknown }): boolean {

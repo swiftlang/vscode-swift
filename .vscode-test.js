@@ -23,8 +23,9 @@ const dataDir = process.env["VSCODE_DATA_DIR"];
 
 // Check if we're debugging by looking at the process executable. Unfortunately, the VS Code debugger
 // doesn't seem to allow setting environment variables on a launched extension host.
-const processPath = process.env["_"] ?? "";
-const isDebugRun = !isCIBuild && !processPath.endsWith("node_modules/.bin/vscode-test");
+//
+// When debugging, the process will be launched under VS Code instead of NodeJS.
+const isDebugRun = !isCIBuild && process.argv0.toLocaleLowerCase().includes("code");
 
 function log(/** @type {string} */ message) {
     if (!isDebugRun) {
