@@ -264,10 +264,10 @@ export class SwiftPackage implements ExternalSwiftPackage, vscode.Disposable {
             return packageState;
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            // if caught error and it begins with "error: root manifest" then there is no Package.swift
+            // if caught error and contains "error: root manifest" then there is no Package.swift
             if (
-                errorMessage.startsWith("error: root manifest") ||
-                errorMessage.startsWith("error: Could not find Package.swift")
+                errorMessage.indexOf("error: root manifest") !== -1 ||
+                errorMessage.indexOf("error: Could not find Package.swift") !== -1
             ) {
                 return undefined;
             } else {
