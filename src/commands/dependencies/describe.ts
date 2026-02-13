@@ -15,8 +15,11 @@ import * as vscode from "vscode";
 
 import { FolderContext } from "../../FolderContext";
 import { PackageContents, SwiftPackage } from "../../SwiftPackage";
+import configuration from "../../configuration";
+import { ReadOnlySwiftProcess } from "../../tasks/SwiftProcess";
 import { SwiftTaskProvider, createSwiftTask } from "../../tasks/SwiftTaskProvider";
 import { packageName } from "../../utilities/tasks";
+import { swiftRuntimeEnv } from "../../utilities/utilities";
 import { executeTaskWithUI, updateAfterError } from "../utilities";
 
 /**
@@ -44,6 +47,22 @@ export async function executeSwiftPackageCommand<T>(
     config: SwiftPackageCommandConfig,
     token?: vscode.CancellationToken
 ): Promise<T> {
+    const swiftPath = folderContext.toolchain.getToolchainExecutable("swift");
+    const args = folderContext.toolchain.buildFlags.withAdditionalFlags(config.args);
+
+    const swiftProcess = new ReadOnlySwiftProcess(swiftPath, args, {
+        cwd: folderContext.folder.fsPath,
+        env: {
+            ...swiftRuntimeEnv(),
+            ...configuration.swiftEnvironmentVariables,
+        },
+    });
+
+    const outputChunks: string[] = [];
+    const writeDisposable = swiftProcess.onDidWrite((data: string) => {
+        outputChunks.push(data);
+    });
+
     const task = createSwiftTask(
         config.args,
         config.taskName,
@@ -57,39 +76,34 @@ export async function executeSwiftPackageCommand<T>(
         },
         folderContext.toolchain,
         undefined,
-        { readOnlyTerminal: true }
+        { readOnlyTerminal: true },
+        swiftProcess
     );
-
-    const outputChunks: string[] = [];
-    task.execution.onDidWrite((data: string) => {
-        outputChunks.push(data);
-    });
-
-    const success = await executeTaskWithUI(
-        task,
-        config.uiMessage,
-        folderContext,
-        false,
-        false,
-        token
-    );
-    updateAfterError(success, folderContext);
-
-    const output = outputChunks.join("");
-
-    if (!success) {
-        throw new Error(output);
-    }
-
-    if (!output.trim()) {
-        throw new Error(`No output received from swift ${config.commandName} command`);
-    }
 
     try {
+        const success = await executeTaskWithUI(
+            task,
+            config.uiMessage,
+            folderContext,
+            false,
+            false,
+            token
+        );
+        updateAfterError(success, folderContext);
+
+        const output = outputChunks.join("");
+
+        if (!success) {
+            throw new Error(output);
+        }
+
+        if (!output.trim()) {
+            throw new Error(`No output received from swift ${config.commandName} command`);
+        }
+
         const trimmedOutput = SwiftPackage.trimStdout(output);
         const parsedOutput = JSON.parse(trimmedOutput);
 
-        // Validate the parsed output is an object
         if (!parsedOutput || typeof parsedOutput !== "object") {
             throw new Error(`Invalid format received from swift ${config.commandName} command`);
         }
@@ -99,6 +113,8 @@ export async function executeSwiftPackageCommand<T>(
         throw new Error(
             `Failed to parse ${config.commandName} output: ${parseError instanceof Error ? parseError.message : "Unknown error"}`
         );
+    } finally {
+        writeDisposable.dispose();
     }
 }
 
