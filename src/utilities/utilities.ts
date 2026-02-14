@@ -192,11 +192,7 @@ enum Color {
 }
 
 export function colorize(text: string, color: keyof typeof Color): string {
-    const colorCode = Color[color];
-    if (colorCode !== undefined) {
-        return `\x1b[${colorCode}m${text}\x1b[0m`;
-    }
-    return text;
+    return `\x1b[${Color[color]}m${text}\x1b[0m`;
 }
 
 export async function execFileStreamOutput(
@@ -354,7 +350,7 @@ export function getRepositoryName(url: string): string {
     // - at the end of the URL: $
     const pattern = /([^/]*)\/?$/;
     // The capture group in this pattern will match the last path component of the URL.
-    let lastPathComponent = url.match(pattern)![1];
+    let lastPathComponent = pattern.exec(url)![1];
     // Trim the optional .git extension.
     if (lastPathComponent.endsWith(".git")) {
         lastPathComponent = lastPathComponent.replace(/\.git$/, "");

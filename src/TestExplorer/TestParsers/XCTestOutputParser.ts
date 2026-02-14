@@ -188,116 +188,149 @@ export class XCTestOutputParser implements IXCTestOutputParser {
      * @param output Output from `swift test`
      */
     public parseResult(rawOutput: string, runState: ITestRunState) {
-        // Windows is inserting ANSI codes into the output to do things like clear the cursor,
-        // which we don't care about.
+        const lines = this.prepareOutputLines(rawOutput, runState);
+
+        for (const line of lines) {
+            const handled =
+                this.handleTestStarted(line, runState) ||
+                this.handleTestFinished(line, runState) ||
+                this.handleTestError(line, runState) ||
+                this.handleTestSkipped(line, runState) ||
+                this.handleSuiteStarted(line, runState) ||
+                this.handleSuitePassed(line, runState) ||
+                this.handleSuiteFailed(line, runState);
+
+            if (!handled) {
+                this.continueErrorMessage(line, runState);
+            }
+        }
+    }
+
+    private prepareOutputLines(rawOutput: string, runState: ITestRunState): string[] {
         const output = process.platform === "win32" ? stripAnsi(rawOutput) : rawOutput;
-        const output2 = output.replace(/\r\n/g, "\n");
-        const lines = output2.split(lineBreakRegex);
+        const normalized = output.replace(/\r\n/g, "\n");
+        const lines = normalized.split(lineBreakRegex);
+
         if (runState.excess) {
             lines[0] = runState.excess + lines[0];
         }
-        // pop empty string off the end of the lines array
         if (lines.length > 0 && lines[lines.length - 1] === "") {
             lines.pop();
         }
-        // if submitted text does not end with a newline then pop that off and store in excess
-        // for next call of parseResult
-        if (output2[output2.length - 1] !== "\n") {
+        if (normalized[normalized.length - 1] !== "\n") {
             runState.excess = lines.pop();
         } else {
             runState.excess = undefined;
         }
 
-        // Non-Darwin test output does not include the test target name. The only way to find out
-        // the target for a test is when it fails and returns a file name. If we find failed tests
-        // first and then remove them from the list we cannot set them to passed by mistake.
-        // We extract the file name from the error and use that to check whether the file belongs
-        // to the target associated with the TestItem. This does not work 100% as the error could
-        // occur in another target, so we revert to just searching for class and function name if
-        // the above method is unsuccessful.
-        for (const line of lines) {
-            // Regex "Test Case '-[<test target> <class.function>]' started"
-            const startedMatch = this.regex.started.exec(line);
-            if (startedMatch) {
-                const testName = `${startedMatch[1]}/${startedMatch[2]}`;
+        return lines;
+    }
 
-                // Save the active TestTarget.SuiteClass.
-                // Note that TestTarget is only present on Darwin.
-                runState.activeSuite = startedMatch[1];
-                this.processPendingSuiteOutput(runState, startedMatch[1]);
-
-                const startedTestIndex = runState.getTestItemIndex(testName, undefined);
-                this.startTest(startedTestIndex, runState);
-                this.appendTestOutput(startedTestIndex, line, runState);
-                continue;
-            }
-            // Regex "Test Case '-[<test target> <class.function>]' <completion_state> (<duration> seconds)"
-            const finishedMatch = this.regex.finished.exec(line);
-            if (finishedMatch) {
-                const testName = `${finishedMatch[1]}/${finishedMatch[2]}`;
-                const testIndex = runState.getTestItemIndex(testName, undefined);
-                const state = finishedMatch[3] as TestCompletionState;
-                const duration = +finishedMatch[4];
-                switch (state) {
-                    case TestCompletionState.failed:
-                        this.failTest(testIndex, { duration }, runState);
-                        break;
-                    case TestCompletionState.passed:
-                        this.passTest(testIndex, { duration }, runState);
-                        break;
-                    case TestCompletionState.skipped:
-                        this.skipTest(testIndex, runState);
-                        break;
-                }
-
-                this.appendTestOutput(testIndex, line, runState);
-                continue;
-            }
-            // Regex "<path/to/test>:<line number>: error: <class>.<function> : <error>"
-            const errorMatch = this.regex.error.exec(line);
-            if (errorMatch) {
-                const testName = `${errorMatch[3]}/${errorMatch[4]}`;
-                const failedTestIndex = runState.getTestItemIndex(testName, errorMatch[1]);
-                this.startErrorMessage(
-                    failedTestIndex,
-                    errorMatch[5],
-                    errorMatch[1],
-                    errorMatch[2],
-                    runState
-                );
-                this.appendTestOutput(failedTestIndex, line, runState);
-                continue;
-            }
-            // Regex "<path/to/test>:<line number>: <class>.<function> : Test skipped"
-            const skippedMatch = this.regex.skipped.exec(line);
-            if (skippedMatch) {
-                const testName = `${skippedMatch[3]}/${skippedMatch[4]}`;
-                const skippedTestIndex = runState.getTestItemIndex(testName, skippedMatch[1]);
-                this.skipTest(skippedTestIndex, runState);
-                this.appendTestOutput(skippedTestIndex, line, runState);
-                continue;
-            }
-            // Regex "Test Suite '-[<test target> <class.function>]' started"
-            const startedSuiteMatch = this.regex.startedSuite.exec(line);
-            if (startedSuiteMatch) {
-                this.startTestSuite(startedSuiteMatch[1], line, runState);
-                continue;
-            }
-            // Regex "Test Suite '-[<test target> <class.function>]' passed"
-            const passedSuiteMatch = this.regex.passedSuite.exec(line);
-            if (passedSuiteMatch) {
-                this.completeSuite(runState, line, this.passTestSuite);
-                continue;
-            }
-            // Regex "Test Suite '-[<test target> <class.function>]' failed"
-            const failedSuiteMatch = this.regex.failedSuite.exec(line);
-            if (failedSuiteMatch) {
-                this.completeSuite(runState, line, this.failTestSuite);
-                continue;
-            }
-            // unrecognised output could be the continuation of a previous error message
-            this.continueErrorMessage(line, runState);
+    private handleTestStarted(line: string, runState: ITestRunState): boolean {
+        const match = this.regex.started.exec(line);
+        if (!match) {
+            return false;
         }
+
+        const testName = `${match[1]}/${match[2]}`;
+        runState.activeSuite = match[1];
+        this.processPendingSuiteOutput(runState, match[1]);
+
+        const testIndex = runState.getTestItemIndex(testName, undefined);
+        this.startTest(testIndex, runState);
+        this.appendTestOutput(testIndex, line, runState);
+        return true;
+    }
+
+    private handleTestFinished(line: string, runState: ITestRunState): boolean {
+        const match = this.regex.finished.exec(line);
+        if (!match) {
+            return false;
+        }
+
+        const testName = `${match[1]}/${match[2]}`;
+        const testIndex = runState.getTestItemIndex(testName, undefined);
+        const state = match[3] as TestCompletionState;
+        const duration = +match[4];
+
+        this.applyTestCompletionState(testIndex, state, duration, runState);
+        this.appendTestOutput(testIndex, line, runState);
+        return true;
+    }
+
+    private applyTestCompletionState(
+        testIndex: number,
+        state: TestCompletionState,
+        duration: number,
+        runState: ITestRunState
+    ) {
+        switch (state) {
+            case TestCompletionState.failed:
+                this.failTest(testIndex, { duration }, runState);
+                break;
+            case TestCompletionState.passed:
+                this.passTest(testIndex, { duration }, runState);
+                break;
+            case TestCompletionState.skipped:
+                this.skipTest(testIndex, runState);
+                break;
+        }
+    }
+
+    private handleTestError(line: string, runState: ITestRunState): boolean {
+        const match = this.regex.error.exec(line);
+        if (!match) {
+            return false;
+        }
+
+        const testName = `${match[3]}/${match[4]}`;
+        const testIndex = runState.getTestItemIndex(testName, match[1]);
+        this.startErrorMessage(testIndex, match[5], match[1], match[2], runState);
+        this.appendTestOutput(testIndex, line, runState);
+        return true;
+    }
+
+    private handleTestSkipped(line: string, runState: ITestRunState): boolean {
+        const match = this.regex.skipped.exec(line);
+        if (!match) {
+            return false;
+        }
+
+        const testName = `${match[3]}/${match[4]}`;
+        const testIndex = runState.getTestItemIndex(testName, match[1]);
+        this.skipTest(testIndex, runState);
+        this.appendTestOutput(testIndex, line, runState);
+        return true;
+    }
+
+    private handleSuiteStarted(line: string, runState: ITestRunState): boolean {
+        const match = this.regex.startedSuite.exec(line);
+        if (!match) {
+            return false;
+        }
+
+        this.startTestSuite(match[1], line, runState);
+        return true;
+    }
+
+    private handleSuitePassed(line: string, runState: ITestRunState): boolean {
+        const match = this.regex.passedSuite.exec(line);
+        if (!match) {
+            return false;
+        }
+
+        this.completeSuite(runState, line, this.passTestSuite);
+        return true;
+    }
+
+    private handleSuiteFailed(line: string, runState: ITestRunState): boolean {
+        const match = this.regex.failedSuite.exec(line);
+        if (!match) {
+            return false;
+        }
+
+        this.completeSuite(runState, line, this.failTestSuite);
+        return true;
     }
 
     /**
@@ -461,7 +494,7 @@ export class XCTestOutputParser implements IXCTestOutputParser {
 
     private extractDiff(message: string): TestIssueDiff | undefined {
         const regex = /\((.*)\) is not .* to \((.*)\)/ms;
-        const match = message.match(regex);
+        const match = regex.exec(message);
         if (match && match[1] !== match[2]) {
             return {
                 actual: match[1],

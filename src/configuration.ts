@@ -66,6 +66,8 @@ interface LSPConfiguration {
     readonly supportedLanguages: string[];
     /** Is SourceKit-LSP disabled */
     readonly disable: boolean;
+    /** Is the trace server enabled */
+    readonly traceServer: "off" | "messages" | "verbose";
 }
 
 /** debugger configuration */
@@ -193,6 +195,14 @@ const configuration = {
                     "swift.sourcekit-lsp.disable"
                 );
             },
+            get traceServer(): "off" | "messages" | "verbose" {
+                return validateStringSetting<"off" | "messages" | "verbose">(
+                    vscode.workspace
+                        .getConfiguration("swift.sourcekit-lsp.trace")
+                        .get<string>("server", "off"),
+                    "swift.sourcekit-lsp.trace.server"
+                );
+            },
         };
     },
 
@@ -218,9 +228,10 @@ const configuration = {
 
                 if (resultIsArray && Array.isArray(args)) {
                     return args;
-                } else if (
+                }
+                if (
                     !resultIsArray &&
-                    args !== null &&
+                    !!args &&
                     typeof args === "object" &&
                     Object.keys(args).length !== 0
                 ) {
@@ -353,15 +364,13 @@ const configuration = {
                         .get<DebugAdapters>("debugAdapter", "auto"),
                     "swift.debugger.debugAdapter"
                 );
-                switch (selectedAdapter) {
-                    case "auto":
-                        if (useDebugAdapterFromToolchain !== undefined) {
-                            return useDebugAdapterFromToolchain ? "lldb-dap" : "CodeLLDB";
-                        }
-                        return "auto";
-                    default:
-                        return selectedAdapter;
+                if (selectedAdapter === "auto") {
+                    if (useDebugAdapterFromToolchain !== undefined) {
+                        return useDebugAdapterFromToolchain ? "lldb-dap" : "CodeLLDB";
+                    }
+                    return "auto";
                 }
+                return selectedAdapter;
             },
             get customDebugAdapterPath(): string {
                 return validateStringSetting(

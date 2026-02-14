@@ -44,34 +44,30 @@ export class LanguageStatusItems implements vscode.Disposable {
 
         // Update Package.swift item based on current focus
         const onFocus = workspaceContext.onDidChangeFolders(async ({ folder, operation }) => {
-            switch (operation) {
-                case FolderOperation.focus:
-                    if (folder && (await folder.swiftPackage.foundPackage)) {
-                        packageSwiftItem.text = "Package.swift";
-                        packageSwiftItem.command = Command.create(
-                            "Open Package",
-                            "swift.openPackage"
-                        );
-                        packageSwiftItem.accessibilityInformation = {
-                            label: "Open Package.swift",
-                        };
+            if (operation === FolderOperation.focus) {
+                if (folder && (await folder.swiftPackage.foundPackage)) {
+                    packageSwiftItem.text = "Package.swift";
+                    packageSwiftItem.command = Command.create("Open Package", "swift.openPackage");
+                    packageSwiftItem.accessibilityInformation = {
+                        label: "Open Package.swift",
+                    };
 
-                        swiftVersionItem.text = folder.toolchain.swiftVersionString;
-                        swiftVersionItem.accessibilityInformation = {
-                            label: `Swift Version ${folder.toolchain.swiftVersion.toString()}`,
-                        };
-                    } else {
-                        packageSwiftItem.text = "No Package.swift";
-                        packageSwiftItem.accessibilityInformation = {
-                            label: "There is no Package.swift",
-                        };
-                        packageSwiftItem.command = undefined;
+                    swiftVersionItem.text = folder.toolchain.swiftVersionString;
+                    swiftVersionItem.accessibilityInformation = {
+                        label: `Swift Version ${folder.toolchain.swiftVersion.toString()}`,
+                    };
+                } else {
+                    packageSwiftItem.text = "No Package.swift";
+                    packageSwiftItem.accessibilityInformation = {
+                        label: "There is no Package.swift",
+                    };
+                    packageSwiftItem.command = undefined;
 
-                        swiftVersionItem.text = workspaceContext.globalToolchain.swiftVersionString;
-                        swiftVersionItem.accessibilityInformation = {
-                            label: `Swift Version ${workspaceContext.globalToolchain.swiftVersion.toString()}`,
-                        };
-                    }
+                    swiftVersionItem.text = workspaceContext.globalToolchain.swiftVersionString;
+                    swiftVersionItem.accessibilityInformation = {
+                        label: `Swift Version ${workspaceContext.globalToolchain.swiftVersion.toString()}`,
+                    };
+                }
             }
         });
         this.subscriptions = [onFocus, swiftVersionItem, packageSwiftItem];

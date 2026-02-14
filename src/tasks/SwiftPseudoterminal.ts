@@ -65,7 +65,7 @@ export class SwiftPseudoterminal implements vscode.Pseudoterminal, vscode.Dispos
             if (initialDimensions) {
                 this.setDimensions(initialDimensions);
             }
-        } catch (error) {
+        } catch {
             this.closeEmitter.fire();
             this.dispose();
         }

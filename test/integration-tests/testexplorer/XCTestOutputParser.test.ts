@@ -63,10 +63,12 @@ suite("XCTestOutputParser Suite", () => {
         return `<?xml version="1.0" encoding="UTF-8"?>
 <testsuites>
 <testsuite name="TestResults" errors="0" tests="${tests.length}" failures="${extractFailures(tests)}" time="0.0">
-${tests.map(
-    t =>
-        `<testcase classname="${extractClassName(t.name)}" name="${extractName(t.name)}" ${extractTiming(t)}>${(t.issues ?? []).map(() => `\n<failure message="failed"></failure>`).join("\n")}</testcase>`
-)}
+${tests.map(t => {
+    const failures = (t.issues ?? [])
+        .map(() => '\n<failure message="failed"></failure>')
+        .join("\n");
+    return `<testcase classname="${extractClassName(t.name)}" name="${extractName(t.name)}" ${extractTiming(t)}>${failures}</testcase>`;
+})}
 </testsuite>
 </testsuites>
 </xml>`;

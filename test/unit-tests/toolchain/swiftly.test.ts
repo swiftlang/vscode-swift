@@ -516,7 +516,7 @@ suite("Swiftly Unit Tests", () => {
             mockedPlatform.setValue("win32");
 
             await expect(
-                Swiftly.installToolchain("6.0.0", "/path/to/extension", undefined)
+                Swiftly.installToolchain("6.0.0", "/path/to/extension")
             ).to.eventually.be.rejectedWith("Swiftly is not supported on this platform");
             expect(mockUtilities.execFile).to.not.have.been.called;
         });
@@ -530,7 +530,7 @@ suite("Swiftly Unit Tests", () => {
                 [tmpDir]: {},
             });
 
-            await Swiftly.installToolchain("6.0.0", "/path/to/extension", undefined);
+            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
 
             expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
                 "swiftly",
@@ -574,7 +574,7 @@ suite("Swiftly Unit Tests", () => {
             });
 
             await expect(
-                Swiftly.installToolchain("6.0.0", "/path/to/extension", undefined)
+                Swiftly.installToolchain("6.0.0", "/path/to/extension")
             ).to.eventually.be.rejectedWith("Installation failed");
         });
     });
@@ -1029,7 +1029,6 @@ apt-get -y install libncurses5-dev`;
                 .callsFake(async (_command, args) => {
                     const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, validScript);
-                    return;
                 });
             mockUtilities.execFile
                 .withArgs("chmod", match.array)
@@ -1085,7 +1084,6 @@ apt-get -y install build-essential`;
                 .callsFake(async (_command, args) => {
                     const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, validScript);
-                    return;
                 });
 
             // @ts-expect-error mocking vscode window methods makes type checking difficult
@@ -1129,7 +1127,6 @@ apt-get -y install build-essential`;
                 .callsFake(async (_command, args) => {
                     const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, invalidScript);
-                    return;
                 });
 
             await Swiftly.installToolchain("6.0.0", "/path/to/extension");
@@ -1169,7 +1166,6 @@ apt-get -y install build-essential`;
                 .callsFake(async (_command, args) => {
                     const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, validScript);
-                    return;
                 });
             mockUtilities.execFile
                 .withArgs("chmod", match.array)
@@ -1238,7 +1234,6 @@ yum install ncurses-devel`;
                 .callsFake(async (_command, args) => {
                     const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, yumScript);
-                    return;
                 });
             mockUtilities.execFile
                 .withArgs("chmod", match.array)
@@ -1283,7 +1278,6 @@ yum remove important-system-package`;
                 .callsFake(async (_command, args) => {
                     const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, malformedScript);
-                    return;
                 });
 
             await Swiftly.installToolchain("6.0.0", "/path/to/extension");
@@ -1323,7 +1317,6 @@ apt-get -y install libncurses5-dev
                 .callsFake(async (_command, args) => {
                     const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, scriptWithComments);
-                    return;
                 });
             mockUtilities.execFile
                 .withArgs("chmod", match.array)

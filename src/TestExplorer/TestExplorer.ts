@@ -34,7 +34,7 @@ import { flattenTestItemCollection } from "./TestUtils";
 
 /** Build test explorer UI */
 export class TestExplorer {
-    static errorTestItemId = "#Error#";
+    static readonly errorTestItemId = "#Error#";
     public controller: vscode.TestController;
     public testRunProfiles: vscode.TestRunProfile[];
 
@@ -410,11 +410,11 @@ export class TestExplorer {
                     const errorDescription = getErrorDescription(error);
                     if (
                         (process.platform === "darwin" &&
-                            errorDescription.match(/error: unableToLoadBundle/)) ||
+                            /error: unableToLoadBundle/.exec(errorDescription)) ||
                         (process.platform === "win32" &&
-                            errorDescription.match(/The file doesn’t exist./)) ||
+                            /The file doesn't exist./.exec(errorDescription)) ||
                         (!["darwin", "win32"].includes(process.platform) &&
-                            errorDescription.match(/No such file or directory/))
+                            /No such file or directory/.exec(errorDescription))
                     ) {
                         explorer.setErrorTestItem("Build the project to enable test discovery.");
                     } else if (errorDescription.startsWith("error: no tests found")) {

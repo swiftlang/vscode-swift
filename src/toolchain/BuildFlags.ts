@@ -43,27 +43,24 @@ export class BuildFlags {
     private withSwiftSDKFlags(args: string[]): string[] {
         switch (args[0]) {
             case "package": {
-                switch (args[1]) {
-                    case "plugin":
-                        // Don't append build path flags for `swift package plugin` commands
-                        return args;
-                    default: {
-                        const subcommand = args.splice(0, 2).concat(this.buildPathFlags());
-                        switch (subcommand[1]) {
-                            case "dump-symbol-graph":
-                            case "diagnose-api-breaking-changes":
-                            case "resolve": {
-                                // These two tools require building the package, so SDK
-                                // flags are needed. Destination control flags are
-                                // required to be placed before subcommand options.
-                                return [...subcommand, ...this.swiftpmSDKFlags(), ...args];
-                            }
-                            default:
-                                // Other swift-package subcommands operate on the host,
-                                // so it doesn't need to know about the destination.
-                                return subcommand.concat(args);
-                        }
+                if (args[1] === "plugin") {
+                    // Don't append build path flags for `swift package plugin` commands
+                    return args;
+                }
+                const subcommand = args.splice(0, 2).concat(this.buildPathFlags());
+                switch (subcommand[1]) {
+                    case "dump-symbol-graph":
+                    case "diagnose-api-breaking-changes":
+                    case "resolve": {
+                        // These two tools require building the package, so SDK
+                        // flags are needed. Destination control flags are
+                        // required to be placed before subcommand options.
+                        return [...subcommand, ...this.swiftpmSDKFlags(), ...args];
                     }
+                    default:
+                        // Other swift-package subcommands operate on the host,
+                        // so it doesn't need to know about the destination.
+                        return subcommand.concat(args);
                 }
             }
             case "build":
@@ -170,8 +167,11 @@ export class BuildFlags {
         absolute = false,
         platform?: "posix" | "win32"
     ): string {
-        const nodePath =
-            platform === "posix" ? path.posix : platform === "win32" ? path.win32 : path;
+        const platformPaths = {
+            posix: path.posix,
+            win32: path.win32,
+        };
+        const nodePath = platform ? platformPaths[platform] : path;
 
         const buildPath =
             BuildFlags.extractScratchPath(configuration.buildArguments) ??

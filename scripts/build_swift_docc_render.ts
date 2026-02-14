@@ -49,8 +49,8 @@ async function cloneSwiftDocCRender(buildDirectory: string): Promise<string> {
         })
     )
         .filter(entity => entity.isFile() && entity.name.endsWith(".patch"))
-        .map(entity => path.join(entity.path, entity.name))
-        .sort();
+        .map(entity => path.join(entity.parentPath, entity.name))
+        .sort((a, b) => a.localeCompare(b));
     console.log("> git apply \\\n" + patches.map(e => "    " + e).join(" \\\n"));
     await git.applyPatch(patches);
     return swiftDocCRenderDirectory;

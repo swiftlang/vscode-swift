@@ -369,12 +369,12 @@ export function createSwiftTask(
  * See {@link SwiftTaskProvider.provideTasks provideTasks} for a list of provided tasks.
  */
 export class SwiftTaskProvider implements vscode.TaskProvider {
-    static buildAllName = "Build All";
-    static cleanBuildName = "Clean Build";
-    static resolvePackageName = "Resolve Package Dependencies";
-    static updatePackageName = "Update Package Dependencies";
-    static showDependenciesName = "List Package Dependencies";
-    static describePackageName = "Describe Package";
+    static readonly buildAllName = "Build All";
+    static readonly cleanBuildName = "Clean Build";
+    static readonly resolvePackageName = "Resolve Package Dependencies";
+    static readonly updatePackageName = "Update Package Dependencies";
+    static readonly showDependenciesName = "List Package Dependencies";
+    static readonly describePackageName = "Describe Package";
 
     constructor(private workspaceContext: WorkspaceContext) {}
 

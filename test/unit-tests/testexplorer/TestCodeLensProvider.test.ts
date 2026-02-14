@@ -146,15 +146,7 @@ suite("TestCodeLensProvider", () => {
         const testItemIds = result!.map(
             lens => (lens.command?.arguments?.[0] as vscode.TestItem).id
         );
-        expect(testItemIds).to.include.members([
-            "test1",
-            "test1",
-            "test1",
-            "test3",
-            "test3",
-            "test3",
-        ]);
-        expect(testItemIds).to.not.include.members(["test2", "test4"]);
+        expect(testItemIds).to.deep.equal(["test1", "test1", "test1", "test3", "test3", "test3"]);
     });
 
     test("provideCodeLenses should create code lenses for all types when showTestCodeLenses is true", async () => {

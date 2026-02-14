@@ -79,9 +79,13 @@ suite("TestRunArguments Suite", () => {
         expected: Partial<Omit<TestRunArguments, "testItems">> & { testItems: string[] }
     ) {
         // Order of testItems doesn't matter, that they contain the same elements.
+        const actualTestItems = args.testItems.map(item => item.id);
+        actualTestItems.sort((a, b) => a.localeCompare(b));
+        const expectedTestItems = [...expected.testItems];
+        expectedTestItems.sort((a, b) => a.localeCompare(b));
         assert.deepStrictEqual(
-            { ...args, testItems: args.testItems.map(item => item.id).sort() },
-            { ...expected, testItems: expected.testItems.sort() }
+            { ...args, testItems: actualTestItems },
+            { ...expected, testItems: expectedTestItems }
         );
     }
 

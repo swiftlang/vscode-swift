@@ -130,7 +130,8 @@ function generateDiff(actual: string, expected: string) {
 }
 
 function tag(tag: string, attributes: string[], content: string): string {
-    return `<${tag}${attributes.length > 0 ? ` ${attributes.join(" ")}` : ""}>${content}</${tag}>`;
+    const attributeString = attributes.length > 0 ? " " + attributes.join(" ") : "";
+    return `<${tag}${attributeString}>${content}</${tag}>`;
 }
 
 function details(summary: string, open: boolean, content: string): string {
