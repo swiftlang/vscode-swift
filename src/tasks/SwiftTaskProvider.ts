@@ -22,6 +22,7 @@ import configuration, {
 } from "../configuration";
 import { BuildConfigurationFactory } from "../debugger/buildConfig";
 import { SwiftExecution } from "../tasks/SwiftExecution";
+import { SwiftProcess } from "../tasks/SwiftProcess";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import { getPlatformConfig, packageName, resolveScope, resolveTaskCwd } from "../utilities/tasks";
 import { swiftRuntimeEnv } from "../utilities/utilities";
@@ -292,7 +293,8 @@ export function createSwiftTask(
     config: TaskConfig,
     toolchain: SwiftToolchain,
     cmdEnv: { [key: string]: string } = {},
-    options: { readOnlyTerminal: boolean } = { readOnlyTerminal: false }
+    options: { readOnlyTerminal: boolean } = { readOnlyTerminal: false },
+    swiftProcess?: SwiftProcess
 ): SwiftTask {
     const swift = toolchain.getToolchainExecutable("swift");
     args = toolchain.buildFlags.withAdditionalFlags(args);
@@ -340,12 +342,17 @@ export function createSwiftTask(
         config?.scope ?? vscode.TaskScope.Workspace,
         name,
         "swift",
-        new SwiftExecution(swift, args, {
-            cwd: fullCwd,
-            env: env,
-            presentation,
-            readOnlyTerminal: options.readOnlyTerminal,
-        })
+        new SwiftExecution(
+            swift,
+            args,
+            {
+                cwd: fullCwd,
+                env: env,
+                presentation,
+                readOnlyTerminal: options.readOnlyTerminal,
+            },
+            swiftProcess
+        )
     );
     // This doesn't include any quotes added by VS Code.
     // See also: https://github.com/microsoft/vscode/issues/137895

@@ -18,7 +18,11 @@ import { WorkspaceContext } from "@src/WorkspaceContext";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
 
 import { testSwiftTask } from "../../fixtures";
-import { executeTaskAndWaitForResult, waitForStartTaskProcess } from "../../utilities/tasks";
+import {
+    executeTaskAndWaitForResult,
+    waitForEndTaskProcess,
+    waitForStartTaskProcess,
+} from "../../utilities/tasks";
 import { activateExtensionForSuite } from "../utilities/testutilities";
 
 suite("SwiftExecution Tests Suite", () => {
@@ -59,5 +63,26 @@ suite("SwiftExecution Tests Suite", () => {
             output,
             "Fetching some dependency\n[5/7] Building main.swift\nBuild complete\n"
         );
+    });
+
+    test("Pre-registered SwiftProcess listener captures output before task execution", async () => {
+        const fixture = testSwiftTask("swift", ["build"], workspaceFolder, toolchain);
+
+        const outputChunks: string[] = [];
+        fixture.process.onDidWrite((data: string) => {
+            outputChunks.push(data);
+        });
+
+        const endPromise = waitForEndTaskProcess(fixture.task);
+        await vscode.tasks.executeTask(fixture.task);
+
+        fixture.process.write("First output");
+        fixture.process.write("Second output");
+        fixture.process.close(0);
+
+        await endPromise;
+
+        const output = outputChunks.join("");
+        assert.equal(output, "First output\nSecond output\n");
     });
 });
