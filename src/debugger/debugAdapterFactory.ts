@@ -99,7 +99,9 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         // attempt to find a folder context that matches the "cwd" in the launch configuration.
         if (!folderContext && launchConfig.cwd) {
             folderContext = this.workspaceContext.folders.find(
-                f => f.workspaceFolder.uri.fsPath === launchConfig.cwd
+                f =>
+                    path.normalize(f.workspaceFolder.uri.fsPath) ===
+                    path.normalize(launchConfig.cwd)
             );
         }
 
