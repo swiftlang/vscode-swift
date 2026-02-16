@@ -90,10 +90,18 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         folder: vscode.WorkspaceFolder | undefined,
         launchConfig: vscode.DebugConfiguration
     ): Promise<vscode.DebugConfiguration | undefined | null> {
-        const folderContext = this.workspaceContext.folders.find(
+        // First attempt to find a folder context that matches the provided "folder".
+        let folderContext = this.workspaceContext.folders.find(
             f => f.workspaceFolder.uri.fsPath === folder?.uri.fsPath
         );
-        const toolchain = folderContext?.toolchain ?? this.workspaceContext.globalToolchain;
+
+        // If we can't find it we're likely in a multi-root workspace and we should
+        // attempt to find a folder context that matches the "cwd" in the launch configuration.
+        if (!folderContext && launchConfig.cwd) {
+            folderContext = this.workspaceContext.folders.find(
+                f => f.workspaceFolder.uri.fsPath === launchConfig.cwd
+            );
+        }
 
         // "launch" requests must have either a "target" or "program" property
         if (
@@ -173,6 +181,8 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             const existingEnv = launchConfig.env ?? {};
             launchConfig.env = { ...runtimeEnv, existingEnv };
         }
+
+        const toolchain = folderContext?.toolchain ?? this.workspaceContext.globalToolchain;
 
         // Delegate to the appropriate debug adapter extension
         launchConfig.type = DebugAdapter.getLaunchConfigType(toolchain.swiftVersion);
