@@ -47,7 +47,7 @@ jobs:
   tests:
     name: ${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && 'Full Test Run' || 'Test'}}
     needs: package
-    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.6
+    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.7
     with:
       needs_token: true
       # Linux
@@ -75,7 +75,7 @@ jobs:
 
   soundness:
     name: Soundness
-    uses: swiftlang/github-workflows/.github/workflows/soundness.yml@0.0.6
+    uses: swiftlang/github-workflows/.github/workflows/soundness.yml@0.0.7
     with:
       # Pending https://github.com/swiftlang/vscode-swift/pull/1176
       license_header_check_enabled: false
