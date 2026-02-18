@@ -2162,7 +2162,7 @@
     "fast-glob": "^3.3.3",
     "lcov-parse": "^1.0.0",
     "plist": "^3.1.0",
-    "tar": "^7.5.7",
+    "tar": "^7.5.8",
     "vscode-languageclient": "^9.0.1",
     "xml2js": "^0.6.2",
     "zod": "^4.1.5"
