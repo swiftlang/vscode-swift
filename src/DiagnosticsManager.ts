@@ -15,9 +15,11 @@ import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
 
+import type { FolderContext } from "./FolderContext";
 import { WorkspaceContext } from "./WorkspaceContext";
 import configuration from "./configuration";
 import { SwiftExecution } from "./tasks/SwiftExecution";
+import { maybeShowSwiftlyXcodeToolchainMismatchWarning } from "./toolchain/toolchainMismatch";
 import { validFileTypes } from "./utilities/filesystem";
 import { checkIfBuildComplete, lineBreakRegex } from "./utilities/tasks";
 
@@ -65,7 +67,7 @@ export class DiagnosticsManager implements vscode.Disposable {
     allDiagnostics: Map<string, vscode.Diagnostic[]> = new Map();
     private disposed = false;
 
-    constructor(context: WorkspaceContext) {
+    constructor(private readonly context: WorkspaceContext) {
         this.onDidChangeConfigurationDisposible = vscode.workspace.onDidChangeConfiguration(e => {
             if (e.affectsConfiguration("swift.diagnosticsCollection")) {
                 this.diagnosticCollection.clear();
@@ -83,10 +85,11 @@ export class DiagnosticsManager implements vscode.Disposable {
             if (!this.includeSwiftcDiagnostics()) {
                 return;
             }
+            const folderContext = this.folderContextForTask(task);
             // Provide new list of diagnostics
             const swiftExecution = task.execution as SwiftExecution;
             const provideDiagnostics: Promise<DiagnosticsMap> =
-                this.parseDiagnostics(swiftExecution);
+                this.parseDiagnostics(swiftExecution, folderContext);
 
             provideDiagnostics
                 .then(map => {
@@ -295,11 +298,18 @@ export class DiagnosticsManager implements vscode.Disposable {
         return configuration.diagnosticsCollection !== "onlySourceKit";
     }
 
-    private parseDiagnostics(swiftExecution: SwiftExecution): Promise<DiagnosticsMap> {
+    private parseDiagnostics(
+        swiftExecution: SwiftExecution,
+        folderContext?: FolderContext
+    ): Promise<DiagnosticsMap> {
         return new Promise<DiagnosticsMap>(res => {
             const diagnostics = new Map();
             const disposables: vscode.Disposable[] = [];
+            let outputBuffer = "";
             const done = () => {
+                if (folderContext && outputBuffer.length > 0) {
+                    maybeShowSwiftlyXcodeToolchainMismatchWarning(outputBuffer, folderContext);
+                }
                 disposables.forEach(d => d.dispose());
                 res(diagnostics);
             };
@@ -308,7 +318,14 @@ export class DiagnosticsManager implements vscode.Disposable {
             let lastDiagnosticNeedsSaving = false;
             disposables.push(
                 swiftExecution.onDidWrite(data => {
-                    const sanitizedData = (remainingData || "") + stripAnsi(data);
+                    const chunk = stripAnsi(data);
+                    if (folderContext) {
+                        outputBuffer += chunk;
+                        if (outputBuffer.length > 256_000) {
+                            outputBuffer = outputBuffer.slice(outputBuffer.length - 256_000);
+                        }
+                    }
+                    const sanitizedData = (remainingData || "") + chunk;
                     const lines = sanitizedData.split(lineBreakRegex);
                     // If ends with \n then will be "" and there's no affect.
                     // Otherwise want to keep remaining data to pre-pend next write
@@ -389,6 +406,43 @@ export class DiagnosticsManager implements vscode.Disposable {
                 swiftExecution.onDidClose(done)
             );
         });
+    }
+
+    private folderContextForTask(task: vscode.Task): FolderContext | undefined {
+        const swiftExecution = task.execution as SwiftExecution;
+        const cwd = swiftExecution.options?.cwd;
+        if (cwd) {
+            const exactFolder = this.context.folders.find(folder => folder.folder.fsPath === cwd);
+            if (exactFolder) {
+                return exactFolder;
+            }
+
+            const containingFolder = this.context.folders
+                .filter(folder => {
+                    const folderPath = folder.folder.fsPath;
+                    return cwd === folderPath || cwd.startsWith(`${folderPath}${path.sep}`);
+                })
+                .sort((a, b) => b.folder.fsPath.length - a.folder.fsPath.length)[0];
+            if (containingFolder) {
+                return containingFolder;
+            }
+        }
+
+        if (
+            task.scope &&
+            task.scope !== vscode.TaskScope.Global &&
+            task.scope !== vscode.TaskScope.Workspace
+        ) {
+            const scopeFolder = task.scope as vscode.WorkspaceFolder;
+            const scopedFolders = this.context.folders.filter(
+                folder => folder.workspaceFolder.uri.fsPath === scopeFolder.uri.fsPath
+            );
+            if (scopedFolders.length === 1) {
+                return scopedFolders[0];
+            }
+        }
+
+        return undefined;
     }
 
     private isValidUri(uri: string): boolean {

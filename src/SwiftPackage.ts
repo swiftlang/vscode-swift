@@ -32,6 +32,7 @@ import { describePackage } from "./commands/dependencies/describe";
 import { showPackageDependencies } from "./commands/dependencies/show";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { BuildFlags } from "./toolchain/BuildFlags";
+import { maybeShowSwiftlyXcodeToolchainMismatchWarning } from "./toolchain/toolchainMismatch";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { isPathInsidePath } from "./utilities/filesystem";
 import { lineBreakRegex } from "./utilities/tasks";
@@ -264,6 +265,8 @@ export class SwiftPackage implements ExternalSwiftPackage, vscode.Disposable {
             return packageState;
         } catch (error: unknown) {
             const errorMessage = error instanceof Error ? error.message : String(error);
+            // Give the user a targeted action if this looks like a Swiftly/Xcode version mismatch.
+            maybeShowSwiftlyXcodeToolchainMismatchWarning(errorMessage, folderContext);
             // if caught error and contains "error: root manifest" then there is no Package.swift
             if (
                 errorMessage.indexOf("error: root manifest") !== -1 ||
