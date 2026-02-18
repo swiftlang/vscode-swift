@@ -630,6 +630,10 @@ export class Swiftly {
                     if (installed) {
                         // Retry toolchain location after successful installation
                         return await this.getActiveToolchain(extensionRoot, cwd, logger);
+                    } else if (cwd) {
+                        // If the user dismisses the installation prompt then fall back
+                        // to using the global toolchain
+                        return await Swiftly.getActiveToolchain(extensionRoot, undefined, logger);
                     }
                 }
             }
