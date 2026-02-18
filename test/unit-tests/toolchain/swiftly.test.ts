@@ -28,6 +28,7 @@ import {
     parseSwiftlyMissingToolchainError,
 } from "@src/toolchain/swiftly";
 import * as utilities from "@src/utilities/utilities";
+import { ExecFileError } from "@src/utilities/utilities";
 
 import {
     MockedObject,
@@ -1431,6 +1432,31 @@ apt-get -y install libncurses5-dev
 
             const result = await handleMissingSwiftlyToolchain("6.1.2", "/path/to/extension");
             expect(result).to.be.true;
+        });
+
+        test("getActiveToolchain falls back to global toolchain when user declines and cwd is provided", async () => {
+            const missingToolchainError = Object.create(ExecFileError.prototype);
+            missingToolchainError.causedBy = new Error("swiftly use failed");
+            missingToolchainError.stdout = "";
+            missingToolchainError.stderr =
+                "The swift version file uses toolchain version 6.1.2, but it doesn't match any of the installed toolchains";
+            missingToolchainError.message = "swiftly use failed";
+
+            // First call (with cwd) fails with missing toolchain error
+            mockedUtilities.execFile.onFirstCall().rejects(missingToolchainError);
+            // Second call (recursive, with undefined cwd) succeeds
+            mockedUtilities.execFile
+                .onSecondCall()
+                .resolves({ stdout: "/global/toolchain/path\n", stderr: "" });
+
+            // User declines installation prompt
+            mockWindow.showWarningMessage.resolves(undefined);
+
+            const cwd = vscode.Uri.file("/project/path");
+            const result = await Swiftly.getActiveToolchain("/extension/root", cwd);
+
+            expect(result).to.equal("/global/toolchain/path");
+            expect(mockedUtilities.execFile).to.have.been.calledTwice;
         });
     });
 
