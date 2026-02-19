@@ -25,7 +25,7 @@ import { WorkspaceContext } from "../WorkspaceContext";
 import configuration from "../configuration";
 import { DebugAdapter } from "../debugger/debugAdapter";
 import { Extension } from "../utilities/extensions";
-import { destructuredPromise, execFileStreamOutput } from "../utilities/utilities";
+import { destructuredPromise, execFileStreamOutput, randomString } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 
 export async function captureDiagnostics(
@@ -115,7 +115,7 @@ async function captureFolderDiagnostics(
     archivedLldbDapLogFolders: Set<string>
 ): Promise<void> {
     const baseName = path.basename(folder.folder.fsPath);
-    const guid = Math.random().toString(36).substring(2, 10);
+    const guid = randomString(10, 36);
     const singleFolderWorkspace = ctx.folders.length === 1;
     const outputDir = singleFolderWorkspace ? diagnosticsDir : path.join(diagnosticsDir, baseName);
 

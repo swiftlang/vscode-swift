@@ -363,8 +363,9 @@ export function getRepositoryName(url: string): string {
  * @param length Length of string to return (max 16)
  * @returns Random string
  */
-export function randomString(length = 8): string {
-    return Math.random().toString(16).substring(2, length);
+export function randomString(length = 8, radix = 16): string {
+    // eslint-disable-next-line sonarjs/pseudo-random
+    return Math.random().toString(radix).substring(2, length);
 }
 
 /**
