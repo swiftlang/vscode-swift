@@ -251,7 +251,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
     }
 
     async promptForCodeLldbSettingsIfRequired(toolchain: SwiftToolchain) {
-        const libLldbPathResult = await getLLDBLibPath(toolchain);
+        const libLldbPathResult = await getLLDBLibPath(toolchain, this.logger);
         if (!libLldbPathResult.success) {
             const errorMessage = `Error: ${getErrorDescription(libLldbPathResult.failure)}`;
             void vscode.window.showWarningMessage(

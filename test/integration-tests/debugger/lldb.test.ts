@@ -29,7 +29,10 @@ suite("lldb contract test suite", () => {
     });
 
     test("getLLDBLibPath Contract Test, make sure we can find lib LLDB", async () => {
-        const libPath = await getLLDBLibPath(workspaceContext.globalToolchain);
+        const libPath = await getLLDBLibPath(
+            workspaceContext.globalToolchain,
+            workspaceContext.logger
+        );
 
         // Check the result for various platforms
         if (process.platform === "linux") {
