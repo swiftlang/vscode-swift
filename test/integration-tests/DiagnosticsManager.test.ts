@@ -87,6 +87,41 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
 
     // Wait for all the expected diagnostics to be recieved. This may happen over several `onChangeDiagnostics` events.
     type ExpectedDiagnostics = { [uri: string]: vscode.Diagnostic[] };
+
+    function filterRemainingDiagnostics(
+        expectedDiagnostics: ExpectedDiagnostics,
+        changedUris: readonly vscode.Uri[]
+    ) {
+        const matchingPaths = Object.keys(expectedDiagnostics).filter(uri =>
+            changedUris.some(u => u.fsPath === uri)
+        );
+        for (const uri of matchingPaths) {
+            const actualDiagnostics = vscode.languages.getDiagnostics(vscode.Uri.file(uri));
+            for (const actualDiagnostic of actualDiagnostics) {
+                remainingExpectedDiagnostics[uri] = remainingExpectedDiagnostics[uri].filter(
+                    expectedDiagnostic => !isEqual(actualDiagnostic, expectedDiagnostic)
+                );
+            }
+        }
+    }
+
+    function allDiagnosticsFulfilled(): boolean {
+        return Object.values(remainingExpectedDiagnostics).every(
+            diagnostics => diagnostics.length === 0
+        );
+    }
+
+    function waitForDiagnosticsCleared(uri: vscode.Uri): Promise<void> {
+        return new Promise<void>(resolve => {
+            const diagnosticDisposable = vscode.languages.onDidChangeDiagnostics(() => {
+                if (vscode.languages.getDiagnostics(uri).length === 0) {
+                    diagnosticDisposable?.dispose();
+                    resolve();
+                }
+            });
+        });
+    }
+
     const waitForDiagnostics = (expectedDiagnostics: ExpectedDiagnostics) => {
         return new Promise<void>(resolve => {
             if (diagnosticWaiterDisposable) {
@@ -95,29 +130,10 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                 );
                 diagnosticWaiterDisposable?.dispose();
             }
-            // Keep a lookup of diagnostics we haven't encountered yet. When all array values in
-            // this lookup are empty then we've seen all diagnostics and we can resolve successfully.
             remainingExpectedDiagnostics = { ...expectedDiagnostics };
             diagnosticWaiterDisposable = vscode.languages.onDidChangeDiagnostics(e => {
-                const matchingPaths = Object.keys(expectedDiagnostics).filter(uri =>
-                    e.uris.some(u => u.fsPath === uri)
-                );
-                for (const uri of matchingPaths) {
-                    const actualDiagnostics = vscode.languages.getDiagnostics(vscode.Uri.file(uri));
-                    for (const actualDiagnostic of actualDiagnostics) {
-                        remainingExpectedDiagnostics[uri] = remainingExpectedDiagnostics[
-                            uri
-                        ].filter(expectedDiagnostic => {
-                            return !isEqual(actualDiagnostic, expectedDiagnostic);
-                        });
-                    }
-                }
-
-                const allDiagnosticsFulfilled = Object.values(remainingExpectedDiagnostics).every(
-                    diagnostics => diagnostics.length === 0
-                );
-
-                if (allDiagnosticsFulfilled) {
+                filterRemainingDiagnostics(expectedDiagnostics, e.uris);
+                if (allDiagnosticsFulfilled()) {
                     diagnosticWaiterDisposable?.dispose();
                     diagnosticWaiterDisposable = undefined;
                     resolve();
@@ -144,10 +160,7 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
     teardown(function () {
         diagnosticWaiterDisposable?.dispose();
         diagnosticWaiterDisposable = undefined;
-        const allDiagnosticsFulfilled = Object.values(remainingExpectedDiagnostics ?? {}).every(
-            diagnostics => diagnostics.length === 0
-        );
-        if (!allDiagnosticsFulfilled) {
+        if (remainingExpectedDiagnostics && !allDiagnosticsFulfilled()) {
             const title = this.currentTest?.fullTitle() ?? "<unknown test>";
             const remainingDiagnostics = Object.entries(remainingExpectedDiagnostics ?? {}).filter(
                 ([_uri, diagnostics]) => diagnostics.length > 0
@@ -243,15 +256,7 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
 
                         // Clean up any lingering diagnostics
                         if (vscode.languages.getDiagnostics(mainUri).length > 0) {
-                            const clearPromise = new Promise<void>(resolve => {
-                                const diagnosticDisposable =
-                                    vscode.languages.onDidChangeDiagnostics(() => {
-                                        if (vscode.languages.getDiagnostics(mainUri).length === 0) {
-                                            diagnosticDisposable?.dispose();
-                                            resolve();
-                                        }
-                                    });
-                            });
+                            const clearPromise = waitForDiagnosticsCleared(mainUri);
                             workspaceContext.diagnostics.clear();
                             await clearPromise;
                         }

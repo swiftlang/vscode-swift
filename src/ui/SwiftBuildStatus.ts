@@ -66,30 +66,8 @@ export class SwiftBuildStatus implements vscode.Disposable {
 
         const execution = task.execution as SwiftExecution;
         const isBuildTask = task.group === vscode.TaskGroup.Build;
-        const disposables: vscode.Disposable[] = [];
         const handleTaskOutput = (update: (message: string) => void) =>
-            new Promise<void>(res => {
-                const done = () => {
-                    disposables.forEach(d => d.dispose());
-                    res();
-                };
-                disposables.push(
-                    this.outputParser(
-                        new RunningTask(task).name,
-                        execution,
-                        isBuildTask,
-                        showBuildStatus,
-                        update,
-                        done
-                    ),
-                    execution.onDidClose(done),
-                    vscode.tasks.onDidEndTask(e => {
-                        if (e.execution.task === task) {
-                            done();
-                        }
-                    })
-                );
-            });
+            this.awaitTaskCompletion(task, execution, isBuildTask, showBuildStatus, update);
         if (showBuildStatus === "progress" || showBuildStatus === "notification") {
             void vscode.window.withProgress<void>(
                 {
@@ -105,6 +83,38 @@ export class SwiftBuildStatus implements vscode.Disposable {
                 handleTaskOutput(message => this.statusItem.update(task, message))
             );
         }
+    }
+
+    private awaitTaskCompletion(
+        task: vscode.Task,
+        execution: SwiftExecution,
+        isBuildTask: boolean,
+        showBuildStatus: ShowBuildStatusOptions,
+        update: (message: string) => void
+    ): Promise<void> {
+        const disposables: vscode.Disposable[] = [];
+        return new Promise<void>(res => {
+            const done = () => {
+                disposables.forEach(d => d.dispose());
+                res();
+            };
+            disposables.push(
+                this.outputParser(
+                    new RunningTask(task).name,
+                    execution,
+                    isBuildTask,
+                    showBuildStatus,
+                    update,
+                    done
+                ),
+                execution.onDidClose(done),
+                vscode.tasks.onDidEndTask(e => {
+                    if (e.execution.task === task) {
+                        done();
+                    }
+                })
+            );
+        });
     }
 
     private outputParser(

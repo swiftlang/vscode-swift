@@ -781,89 +781,7 @@ export class TestRunner {
             ) as vscode.DebugConfiguration[];
 
             const debugRuns = validBuildConfigs.map(config => {
-                return () =>
-                    new Promise<void>((resolve, reject) => {
-                        if (this.testRun.isCancellationRequested) {
-                            resolve();
-                            return;
-                        }
-
-                        const startSession = vscode.debug.onDidStartDebugSession(session => {
-                            const outputHandler = this.testOutputHandler(config.testType, runState);
-                            outputHandler(`> ${config.program} ${config.args.join(" ")}\n\n\r`);
-
-                            LoggingDebugAdapterTracker.setDebugSessionCallback(
-                                session,
-                                this.workspaceContext.logger,
-                                output => outputHandler(output),
-                                exitCode => {
-                                    // Debug session is stopped with exitCode 9 (SIGKILL)
-                                    // when the user terminates it manually.
-                                    if (exitCode === 9) {
-                                        this.debugSessionTerminatedEmitter.fire();
-                                    }
-                                }
-                            );
-
-                            // add cancellation
-                            const cancellation = this.testRun.onCancellationRequested(() => {
-                                this.workspaceContext.logger.debug(
-                                    "Test Debugging Cancelled",
-                                    this.folderContext.name
-                                );
-                                void vscode.debug.stopDebugging(session).then(() => resolve());
-                            });
-                            subscriptions.push(cancellation);
-                        });
-                        subscriptions.push(startSession);
-
-                        const terminateSession = vscode.debug.onDidTerminateDebugSession(e => {
-                            if (e.name !== config.name) {
-                                return;
-                            }
-                            this.workspaceContext.logger.debug(
-                                "Stop Test Debugging",
-                                this.folderContext.name
-                            );
-                            // dispose terminate debug handler
-                            subscriptions.forEach(sub => sub.dispose());
-
-                            void vscode.commands
-                                .executeCommand("workbench.view.extension.test")
-                                .then(() => resolve());
-                        });
-                        subscriptions.push(terminateSession);
-
-                        vscode.debug
-                            .startDebugging(this.folderContext.workspaceFolder, config)
-                            .then(
-                                async started => {
-                                    if (started) {
-                                        if (config.testType === TestLibrary.swiftTesting) {
-                                            // Watch the pipe for JSONL output and parse the events into test explorer updates.
-                                            // The await simply waits for the watching to be configured.
-                                            await this.swiftTestOutputParser.watch(
-                                                fifoPipePath,
-                                                runState
-                                            );
-                                        }
-                                        this.testRun.testRunStarted();
-
-                                        this.workspaceContext.logger.debug(
-                                            "Start Test Debugging",
-                                            this.folderContext.name
-                                        );
-                                    } else {
-                                        subscriptions.forEach(sub => sub.dispose());
-                                        reject("Debugger not started");
-                                    }
-                                },
-                                reason => {
-                                    subscriptions.forEach(sub => sub.dispose());
-                                    reject(reason);
-                                }
-                            );
-                    });
+                return () => this.startDebugSession(config, runState, subscriptions, fifoPipePath);
             });
 
             // Run each debugging session sequentially
@@ -878,6 +796,82 @@ export class TestRunner {
         });
 
         return this.testRun.runState;
+    }
+
+    private startDebugSession(
+        config: vscode.DebugConfiguration,
+        runState: TestRunnerTestRunState,
+        subscriptions: vscode.Disposable[],
+        fifoPipePath: string
+    ): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            if (this.testRun.isCancellationRequested) {
+                resolve();
+                return;
+            }
+
+            const startSession = vscode.debug.onDidStartDebugSession(session => {
+                const outputHandler = this.testOutputHandler(config.testType, runState);
+                outputHandler(`> ${config.program} ${config.args.join(" ")}\n\n\r`);
+
+                LoggingDebugAdapterTracker.setDebugSessionCallback(
+                    session,
+                    this.workspaceContext.logger,
+                    output => outputHandler(output),
+                    exitCode => {
+                        if (exitCode === 9) {
+                            this.debugSessionTerminatedEmitter.fire();
+                        }
+                    }
+                );
+
+                const cancellation = this.testRun.onCancellationRequested(() => {
+                    this.workspaceContext.logger.debug(
+                        "Test Debugging Cancelled",
+                        this.folderContext.name
+                    );
+                    void vscode.debug.stopDebugging(session).then(resolve);
+                });
+                subscriptions.push(cancellation);
+            });
+            subscriptions.push(startSession);
+
+            const terminateSession = vscode.debug.onDidTerminateDebugSession(e => {
+                if (e.name !== config.name) {
+                    return;
+                }
+                this.workspaceContext.logger.debug("Stop Test Debugging", this.folderContext.name);
+                subscriptions.forEach(sub => sub.dispose());
+
+                void vscode.commands
+                    .executeCommand("workbench.view.extension.test")
+                    .then(() => resolve());
+            });
+            subscriptions.push(terminateSession);
+
+            vscode.debug.startDebugging(this.folderContext.workspaceFolder, config).then(
+                async started => {
+                    if (started) {
+                        if (config.testType === TestLibrary.swiftTesting) {
+                            await this.swiftTestOutputParser.watch(fifoPipePath, runState);
+                        }
+                        this.testRun.testRunStarted();
+
+                        this.workspaceContext.logger.debug(
+                            "Start Test Debugging",
+                            this.folderContext.name
+                        );
+                    } else {
+                        subscriptions.forEach(sub => sub.dispose());
+                        reject("Debugger not started");
+                    }
+                },
+                reason => {
+                    subscriptions.forEach(sub => sub.dispose());
+                    reject(reason);
+                }
+            );
+        });
     }
 
     /** Returns a callback that handles a chunk of stdout output from a test run. */
