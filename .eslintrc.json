@@ -60,7 +60,7 @@
     "sonarjs/no-async-constructor": "off",
 
     // Ratchet this down over time to 15
-    "sonarjs/cognitive-complexity": ["error", 25]
+    "sonarjs/cognitive-complexity": ["error", 20]
   },
   "extends": [
     "eslint:recommended",

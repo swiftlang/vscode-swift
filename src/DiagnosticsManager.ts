@@ -323,72 +323,88 @@ export class DiagnosticsManager implements vscode.Disposable {
                             continue;
                         }
                         if (result instanceof vscode.DiagnosticRelatedInformation) {
-                            if (!lastDiagnostic) {
-                                continue;
-                            }
-                            const relatedInformation =
-                                result as vscode.DiagnosticRelatedInformation;
-                            if (
-                                lastDiagnostic.relatedInformation?.find(
-                                    d =>
-                                        d.message === relatedInformation.message &&
-                                        d.location.uri.fsPath ===
-                                            relatedInformation.location.uri.fsPath &&
-                                        d.location.range.isEqual(relatedInformation.location.range)
-                                )
-                            ) {
-                                // De-duplicate duplicate notes from SwiftPM
-                                // TODO remove when https://github.com/apple/swift/issues/73973 is fixed
-                                continue;
-                            }
-                            lastDiagnostic.relatedInformation = (
-                                lastDiagnostic.relatedInformation || []
-                            ).concat(relatedInformation);
-
-                            if (lastDiagnosticNeedsSaving) {
-                                const expandedUri = relatedInformation.location.uri.fsPath;
-                                const currentUriDiagnostics = diagnostics.get(expandedUri) || [];
-                                lastDiagnostic.range = relatedInformation.location.range;
-                                diagnostics.set(expandedUri, [
-                                    ...currentUriDiagnostics,
-                                    lastDiagnostic,
-                                ]);
-
-                                lastDiagnosticNeedsSaving = false;
-                            }
+                            lastDiagnosticNeedsSaving = this.handleRelatedInformation(
+                                result,
+                                lastDiagnostic,
+                                lastDiagnosticNeedsSaving,
+                                diagnostics
+                            );
                             continue;
                         }
-                        const { uri, diagnostic } = result as ParsedDiagnostic;
-
-                        const currentUriDiagnostics: vscode.Diagnostic[] =
-                            diagnostics.get(uri) || [];
-                        if (
-                            currentUriDiagnostics.find(
-                                d =>
-                                    d.message === diagnostic.message &&
-                                    d.range.isEqual(diagnostic.range)
-                            )
-                        ) {
-                            // De-duplicate duplicate diagnostics from SwiftPM
-                            // TODO remove when https://github.com/apple/swift/issues/73973 is fixed
-                            lastDiagnostic = undefined;
-                            continue;
-                        }
-                        lastDiagnostic = diagnostic;
-
-                        // If the diagnostic comes from a macro expansion the URI is going to be an invalid URI.
-                        // Save the diagnostic for when we get the related information which has the macro expansion location
-                        // that should be used as the correct URI.
-                        if (this.isValidUri(uri)) {
-                            diagnostics.set(uri, [...currentUriDiagnostics, diagnostic]);
-                        } else {
-                            lastDiagnosticNeedsSaving = true;
-                        }
+                        const parsed = this.handleParsedDiagnostic(
+                            result as ParsedDiagnostic,
+                            diagnostics
+                        );
+                        lastDiagnostic = parsed.lastDiagnostic;
+                        lastDiagnosticNeedsSaving = parsed.needsSaving;
                     }
                 }),
                 swiftExecution.onDidClose(done)
             );
         });
+    }
+
+    private handleRelatedInformation(
+        relatedInformation: vscode.DiagnosticRelatedInformation,
+        lastDiagnostic: vscode.Diagnostic | undefined,
+        needsSaving: boolean,
+        diagnostics: DiagnosticsMap
+    ): boolean {
+        if (!lastDiagnostic) {
+            return needsSaving;
+        }
+        // De-duplicate duplicate notes from SwiftPM
+        // TODO remove when https://github.com/apple/swift/issues/73973 is fixed
+        if (this.isDuplicateRelatedInfo(lastDiagnostic, relatedInformation)) {
+            return needsSaving;
+        }
+        lastDiagnostic.relatedInformation = (lastDiagnostic.relatedInformation || []).concat(
+            relatedInformation
+        );
+        if (!needsSaving) {
+            return false;
+        }
+        const expandedUri = relatedInformation.location.uri.fsPath;
+        const currentUriDiagnostics = diagnostics.get(expandedUri) || [];
+        lastDiagnostic.range = relatedInformation.location.range;
+        diagnostics.set(expandedUri, [...currentUriDiagnostics, lastDiagnostic]);
+        return false;
+    }
+
+    private isDuplicateRelatedInfo(
+        diagnostic: vscode.Diagnostic,
+        info: vscode.DiagnosticRelatedInformation
+    ): boolean {
+        return !!diagnostic.relatedInformation?.find(
+            d =>
+                d.message === info.message &&
+                d.location.uri.fsPath === info.location.uri.fsPath &&
+                d.location.range.isEqual(info.location.range)
+        );
+    }
+
+    private handleParsedDiagnostic(
+        { uri, diagnostic }: ParsedDiagnostic,
+        diagnostics: DiagnosticsMap
+    ): { lastDiagnostic: vscode.Diagnostic | undefined; needsSaving: boolean } {
+        const currentUriDiagnostics: vscode.Diagnostic[] = diagnostics.get(uri) || [];
+        // De-duplicate duplicate diagnostics from SwiftPM
+        // TODO remove when https://github.com/apple/swift/issues/73973 is fixed
+        if (
+            currentUriDiagnostics.find(
+                d => d.message === diagnostic.message && d.range.isEqual(diagnostic.range)
+            )
+        ) {
+            return { lastDiagnostic: undefined, needsSaving: false };
+        }
+        // If the diagnostic comes from a macro expansion the URI is going to be an invalid URI.
+        // Save the diagnostic for when we get the related information which has the macro expansion location
+        // that should be used as the correct URI.
+        if (this.isValidUri(uri)) {
+            diagnostics.set(uri, [...currentUriDiagnostics, diagnostic]);
+            return { lastDiagnostic: diagnostic, needsSaving: false };
+        }
+        return { lastDiagnostic: diagnostic, needsSaving: true };
     }
 
     private isValidUri(uri: string): boolean {

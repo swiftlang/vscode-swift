@@ -17,6 +17,41 @@ import { TestClass } from "./TestDiscovery";
 /*
  * Build an array of TestClasses from test list output by `swift test list`
  */
+function insertTestComponents(
+    roots: TestClass[],
+    targetName: string,
+    testName: string,
+    style: TestStyle
+): void {
+    const components = [targetName, ...testName.split("/")];
+    let separator = ".";
+    let currentTests = roots;
+    let currentId: string | undefined;
+    for (const component of components) {
+        const id = currentId ? `${currentId}${separator}${component}` : component;
+        if (currentId) {
+            separator = "/";
+        }
+
+        const testStyle: TestStyle = id === targetName ? "test-target" : style;
+        let target = currentTests.find(item => item.id === id);
+        if (!target) {
+            target = {
+                id,
+                label: component,
+                location: undefined,
+                style,
+                children: [],
+                disabled: false,
+                tags: [{ id: testStyle }],
+            };
+            currentTests.push(target);
+        }
+        currentTests = target.children;
+        currentId = id;
+    }
+}
+
 export function parseTestsFromSwiftTestListOutput(input: string): TestClass[] {
     const tests = new Array<TestClass>();
     const lines = input.match(/[^\r\n]+/g);
@@ -48,33 +83,7 @@ export function parseTestsFromSwiftTestListOutput(input: string): TestClass[] {
             continue;
         }
 
-        const components = [targetName, ...testName.split("/")];
-        let separator = ".";
-        let currentTests = tests;
-        let currentId: string | undefined;
-        for (const component of components) {
-            const id = currentId ? `${currentId}${separator}${component}` : component;
-            if (currentId) {
-                separator = "/";
-            }
-
-            const testStyle: TestStyle = id === targetName ? "test-target" : style;
-            let target = currentTests.find(item => item.id === id);
-            if (!target) {
-                target = {
-                    id,
-                    label: component,
-                    location: undefined,
-                    style,
-                    children: [],
-                    disabled: false,
-                    tags: [{ id: testStyle }],
-                };
-                currentTests.push(target);
-            }
-            currentTests = target.children;
-            currentId = id;
-        }
+        insertTestComponents(tests, targetName, testName, style);
     }
     return tests;
 }

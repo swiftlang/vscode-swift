@@ -311,6 +311,76 @@ export class Swiftly {
         }
     }
 
+    private static async streamResponseToFile(
+        reader: ReadableStreamDefaultReader<Uint8Array>,
+        fileStream: fsSync.WriteStream,
+        totalLength: number,
+        progress: vscode.Progress<{ message?: string; increment?: number }>
+    ): Promise<void> {
+        let downloadedLength = 0;
+        let lastReportedPercent = 0;
+
+        try {
+            // eslint-disable-next-line no-constant-condition
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) {
+                    break;
+                }
+
+                downloadedLength += value.length;
+                fileStream.write(value);
+
+                if (totalLength > 0) {
+                    const percent = Math.floor((downloadedLength / totalLength) * 100);
+                    if (percent > lastReportedPercent && percent % 10 === 0) {
+                        progress.report({
+                            message: `Downloading Swiftly installer... ${percent}%`,
+                            increment: percent - lastReportedPercent,
+                        });
+                        lastReportedPercent = percent;
+                    }
+                }
+            }
+        } finally {
+            reader.releaseLock();
+            fileStream.end();
+        }
+
+        await new Promise<void>((resolve, reject) => {
+            fileStream.on("finish", () => {
+                fileStream.close(err => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
+                });
+            });
+            fileStream.on("error", reject);
+        });
+    }
+
+    private static async cleanupDownload(
+        filePath: string | undefined,
+        tmpDir: string | undefined
+    ): Promise<void> {
+        if (filePath) {
+            try {
+                await fs.unlink(filePath);
+            } catch {
+                // Swallow cleanup errors
+            }
+        }
+        if (tmpDir) {
+            try {
+                await fs.rm(tmpDir, { recursive: true });
+            } catch {
+                // Swallow cleanup errors
+            }
+        }
+    }
+
     private static async downloadSwiftlyInstaller(
         url: string,
         progress: vscode.Progress<{ message?: string; increment?: number }>,
@@ -337,73 +407,17 @@ export class Swiftly {
 
             const contentLength = response.headers.get("content-length");
             const totalLength = contentLength ? parseInt(contentLength, 10) : 0;
-            let downloadedLength = 0;
-            let lastReportedPercent = 0;
-
             const fileStream = fsSync.createWriteStream(filePath);
             const reader = response.body.getReader();
 
-            try {
-                // eslint-disable-next-line no-constant-condition
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) {
-                        break;
-                    }
-
-                    downloadedLength += value.length;
-                    fileStream.write(value);
-
-                    if (totalLength > 0) {
-                        const percent = Math.floor((downloadedLength / totalLength) * 100);
-                        if (percent > lastReportedPercent && percent % 10 === 0) {
-                            progress.report({
-                                message: `Downloading Swiftly installer... ${percent}%`,
-                                increment: percent - lastReportedPercent,
-                            });
-                            lastReportedPercent = percent;
-                        }
-                    }
-                }
-            } finally {
-                reader.releaseLock();
-                fileStream.end();
-            }
-
-            await new Promise<void>((resolve, reject) => {
-                fileStream.on("finish", () => {
-                    fileStream.close(err => {
-                        if (err) {
-                            reject(err);
-                        } else {
-                            resolve();
-                        }
-                    });
-                });
-                fileStream.on("error", reject);
-            });
+            await this.streamResponseToFile(reader, fileStream, totalLength, progress);
 
             progress.report({ message: "Download completed" });
             logger?.info(`Swiftly installer downloaded to: ${filePath}`);
 
             return filePath;
         } catch (error) {
-            // Cleanup temporary resources on error
-            if (filePath) {
-                try {
-                    await fs.unlink(filePath);
-                } catch {
-                    // Swallow cleanup errors
-                }
-            }
-            if (tmpDir) {
-                try {
-                    await fs.rm(tmpDir, { recursive: true });
-                } catch {
-                    // Swallow cleanup errors
-                }
-            }
-
+            await this.cleanupDownload(filePath, tmpDir);
             logger?.error(`Failed to download Swiftly installer: ${error}`);
             throw error;
         }
