@@ -120,6 +120,27 @@ export class BuildFlags {
         }
     }
 
+    private static readonly scratchPathFlags = ["--scratch-path", "--build-path"];
+
+    private static validatePath(flagName: string, value: string): string {
+        if (value === "") {
+            throw new Error(`Invalid ${flagName}: path cannot be empty`);
+        }
+        if (value.startsWith("--")) {
+            throw new Error(`Invalid ${flagName}: expected a path but got another flag '${value}'`);
+        }
+        return value;
+    }
+
+    private static parseEqualsForm(arg: string): string | undefined {
+        for (const flag of BuildFlags.scratchPathFlags) {
+            if (arg.startsWith(`${flag}=`)) {
+                return BuildFlags.validatePath(flag, arg.substring(flag.length + 1));
+            }
+        }
+        return undefined;
+    }
+
     /**
      * Extract scratch-path or build-path value from an array of arguments
      * @param args Array of command-line arguments to search
@@ -128,31 +149,12 @@ export class BuildFlags {
     private static extractScratchPath(args: string[]): string | undefined {
         for (let i = 0; i < args.length; i++) {
             const arg = args[i];
-            if ((arg === "--scratch-path" || arg === "--build-path") && i + 1 < args.length) {
-                const path = args[i + 1];
-                if (path === "") {
-                    throw new Error(`Invalid ${arg}: path cannot be empty`);
-                }
-                if (path.startsWith("--")) {
-                    throw new Error(
-                        `Invalid ${arg}: expected a path but got another flag '${path}'`
-                    );
-                }
-                return path;
+            if (BuildFlags.scratchPathFlags.includes(arg) && i + 1 < args.length) {
+                return BuildFlags.validatePath(arg, args[i + 1]);
             }
-            if (arg.startsWith("--scratch-path=")) {
-                const path = arg.substring("--scratch-path=".length);
-                if (path === "") {
-                    throw new Error("Invalid --scratch-path: path cannot be empty");
-                }
-                return path;
-            }
-            if (arg.startsWith("--build-path=")) {
-                const path = arg.substring("--build-path=".length);
-                if (path === "") {
-                    throw new Error("Invalid --build-path: path cannot be empty");
-                }
-                return path;
+            const equalsResult = BuildFlags.parseEqualsForm(arg);
+            if (equalsResult !== undefined) {
+                return equalsResult;
             }
         }
         return undefined;
@@ -358,42 +360,36 @@ export class BuildFlags {
         let pendingCount = 0;
 
         for (const arg of args) {
-            if (pendingCount > 0) {
-                if (!exclude) {
-                    filteredArguments.push(arg);
-                }
+            const isMatchedByPending = pendingCount > 0;
+            if (isMatchedByPending) {
                 pendingCount -= 1;
-                continue;
             }
 
-            // Check if this argument matches any filter
-            const matchingFilter = filter.find(item => item.argument === arg);
-            if (matchingFilter) {
-                if (!exclude) {
-                    filteredArguments.push(arg);
-                }
-                pendingCount = matchingFilter.include;
-                continue;
+            const exactMatch = isMatchedByPending
+                ? undefined
+                : this.findExactMatchingFilter(arg, filter);
+            if (exactMatch) {
+                pendingCount = exactMatch.include;
             }
 
-            // Check for arguments of form --arg=value (only for filters with include=1)
-            const combinedArgFilter = filter.find(
-                item => item.include === 1 && arg.startsWith(item.argument + "=")
-            );
-            if (combinedArgFilter) {
-                if (!exclude) {
-                    filteredArguments.push(arg);
-                }
-                continue;
-            }
-
-            // Handle unmatched arguments
-            if (exclude) {
+            const matched =
+                isMatchedByPending || !!exactMatch || this.isCombinedArgMatch(arg, filter);
+            if (matched !== exclude) {
                 filteredArguments.push(arg);
             }
-            // In include mode, unmatched arguments are not added
         }
 
         return filteredArguments;
+    }
+
+    private static findExactMatchingFilter(
+        arg: string,
+        filter: ArgumentFilter[]
+    ): ArgumentFilter | undefined {
+        return filter.find(item => item.argument === arg);
+    }
+
+    private static isCombinedArgMatch(arg: string, filter: ArgumentFilter[]): boolean {
+        return filter.some(item => item.include === 1 && arg.startsWith(item.argument + "="));
     }
 }

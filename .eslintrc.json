@@ -46,6 +46,8 @@
         "caughtErrors": "none"
       }
     ],
+    "sonarjs/cognitive-complexity": ["error", 15],
+
     "sonarjs/use-type-alias": "off",
     "sonarjs/function-return-type": "off",
     "sonarjs/slow-regex": "off",
@@ -57,10 +59,7 @@
 
     // These should be progressively enabled over time as we fix the underlying issues
     "sonarjs/no-ignored-exceptions": "off",
-    "sonarjs/no-async-constructor": "off",
-
-    // Ratchet this down over time to 15
-    "sonarjs/cognitive-complexity": ["error", 20]
+    "sonarjs/no-async-constructor": "off"
   },
   "extends": [
     "eslint:recommended",
