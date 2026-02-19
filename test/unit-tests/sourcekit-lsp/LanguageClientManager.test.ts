@@ -67,6 +67,7 @@ suite("LanguageClientManager Suite", () => {
     let mockLoggerFactory: MockedObject<SwiftLoggerFactory>;
     let mockedToolchain: MockedObject<SwiftToolchain>;
     let mockedBuildFlags: MockedObject<BuildFlags>;
+    let coordinator: LanguageClientToolchainCoordinator | undefined;
 
     const mockedConfig = mockGlobalModule(configuration);
     const mockedEnvironment = mockGlobalValue(process, "env");
@@ -227,6 +228,10 @@ suite("LanguageClientManager Suite", () => {
         excludeConfig.setValue({});
     });
 
+    teardown(() => {
+        coordinator?.dispose();
+    });
+
     suite("LanguageClientToolchainCoordinator", () => {
         test("returns the same language client for the same folder", async () => {
             const factory = new LanguageClientToolchainCoordinator(
@@ -361,7 +366,7 @@ suite("LanguageClientManager Suite", () => {
         mockedFolder.swiftVersion = new Version(6, 0, 0);
         mockedConfig.backgroundIndexing = "auto";
 
-        new LanguageClientToolchainCoordinator(
+        coordinator = new LanguageClientToolchainCoordinator(
             instance(mockedWorkspace),
             {},
             languageClientFactoryMock
@@ -380,7 +385,7 @@ suite("LanguageClientManager Suite", () => {
         mockedFolder.swiftVersion = new Version(6, 1, 0);
         mockedConfig.backgroundIndexing = "auto";
 
-        new LanguageClientToolchainCoordinator(
+        coordinator = new LanguageClientToolchainCoordinator(
             instance(mockedWorkspace),
             {},
             languageClientFactoryMock
@@ -399,7 +404,7 @@ suite("LanguageClientManager Suite", () => {
         mockedFolder.swiftVersion = new Version(6, 0, 0);
         mockedConfig.backgroundIndexing = "on";
 
-        new LanguageClientToolchainCoordinator(
+        coordinator = new LanguageClientToolchainCoordinator(
             instance(mockedWorkspace),
             {},
             languageClientFactoryMock
@@ -442,7 +447,7 @@ suite("LanguageClientManager Suite", () => {
             logger: instance(mockLogger),
         });
 
-        new LanguageClientToolchainCoordinator(
+        coordinator = new LanguageClientToolchainCoordinator(
             instance(mockedWorkspace),
             {},
             languageClientFactoryMock
@@ -584,7 +589,7 @@ suite("LanguageClientManager Suite", () => {
             ];
         };
 
-        new LanguageClientToolchainCoordinator(
+        coordinator = new LanguageClientToolchainCoordinator(
             instance(mockedWorkspace),
             {},
             languageClientFactoryMock
@@ -649,7 +654,7 @@ suite("LanguageClientManager Suite", () => {
                 uri: vscode.Uri.file("/test/file.swift"),
             });
 
-            new LanguageClientToolchainCoordinator(
+            coordinator = new LanguageClientToolchainCoordinator(
                 instance(mockedWorkspace),
                 {},
                 languageClientFactoryMock
@@ -846,9 +851,14 @@ suite("LanguageClientManager Suite", () => {
 
     suite("active document changes", () => {
         const mockWindow = mockGlobalObject(vscode, "window");
+        let clientManager: LanguageClientManager | undefined;
 
         setup(() => {
             mockedWorkspace.globalToolchainSwiftVersion = new Version(6, 1, 0);
+        });
+
+        teardown(() => {
+            clientManager?.dispose();
         });
 
         test("Notifies when the active document changes", async () => {
@@ -864,7 +874,11 @@ suite("LanguageClientManager Suite", () => {
                 return { dispose: () => {} };
             });
 
-            new LanguageClientManager(instance(mockedFolder), {}, languageClientFactoryMock);
+            clientManager = new LanguageClientManager(
+                instance(mockedFolder),
+                {},
+                languageClientFactoryMock
+            );
             await waitForReturnedPromises(languageClientMock.start);
 
             const activeDocumentManager = new LSPActiveDocumentManager();
@@ -896,7 +910,11 @@ suite("LanguageClientManager Suite", () => {
                     document,
                 })
             );
-            new LanguageClientManager(instance(mockedFolder), {}, languageClientFactoryMock);
+            clientManager = new LanguageClientManager(
+                instance(mockedFolder),
+                {},
+                languageClientFactoryMock
+            );
             await waitForReturnedPromises(languageClientMock.start);
 
             const activeDocumentManager = new LSPActiveDocumentManager();

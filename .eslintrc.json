@@ -56,7 +56,6 @@
     "sonarjs/todo-tag": "off",
 
     // These should be progressively enabled over time as we fix the underlying issues
-    "sonarjs/constructor-for-side-effects": "off",
     "sonarjs/no-ignored-exceptions": "off",
     "sonarjs/no-async-constructor": "off",
 
