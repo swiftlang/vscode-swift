@@ -34,7 +34,8 @@ suite("SwiftExecution Tests Suite", () => {
         async setup(ctx) {
             workspaceContext = ctx;
             toolchain = await SwiftToolchain.create(
-                workspaceContext.extensionContext.extensionPath
+                workspaceContext.extensionContext.extensionPath,
+                ctx.logger
             );
             assert.notEqual(workspaceContext.folders.length, 0);
             workspaceFolder = workspaceContext.folders[0].workspaceFolder;
