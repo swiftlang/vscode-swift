@@ -162,8 +162,10 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
 
     suite("Playgrounds", () => {
         let mockPlaygroundProvider: MockPlaygroundProvider | undefined;
+        let existingPlaygroundProvider: FolderContext["playgroundProvider"];
 
         beforeEach(() => {
+            existingPlaygroundProvider = folderContext.playgroundProvider;
             mockPlaygroundProvider = new MockPlaygroundProvider();
             folderContext.playgroundProvider =
                 mockPlaygroundProvider as unknown as FolderContext["playgroundProvider"];
@@ -173,7 +175,7 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
         afterEach(() => {
             mockPlaygroundProvider?.dispose();
             mockPlaygroundProvider = undefined;
-            folderContext.playgroundProvider = undefined;
+            folderContext.playgroundProvider = existingPlaygroundProvider;
             treeProvider.observeFolder(folderContext);
         });
 
