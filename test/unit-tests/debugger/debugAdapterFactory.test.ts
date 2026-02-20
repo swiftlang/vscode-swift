@@ -25,6 +25,7 @@ import * as lldb from "@src/debugger/lldb";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { BuildFlags } from "@src/toolchain/BuildFlags";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
+import * as utilities from "@src/utilities/utilities";
 import { Result } from "@src/utilities/result";
 import { Version } from "@src/utilities/version";
 
@@ -32,6 +33,7 @@ import {
     MockedObject,
     instance,
     mockFn,
+    mockGlobalFunction,
     mockGlobalModule,
     mockGlobalObject,
     mockObject,
@@ -42,10 +44,12 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
     let mockToolchain: MockedObject<SwiftToolchain>;
     let mockBuildFlags: MockedObject<BuildFlags>;
     let mockLogger: MockedObject<SwiftLogger>;
+    const mockExecFile = mockGlobalFunction(utilities, "execFile");
     const mockDebugAdapter = mockGlobalObject(debugAdapter, "DebugAdapter");
     const mockWindow = mockGlobalObject(vscode, "window");
 
     setup(() => {
+        mockExecFile.resolves({ stdout: "", stderr: "" });
         mockBuildFlags = mockObject<BuildFlags>({ getBuildBinaryPath: mockFn() });
         mockToolchain = mockObject<SwiftToolchain>({
             swiftVersion: new Version(6, 0, 0),
@@ -53,6 +57,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         });
         mockLogger = mockObject<SwiftLogger>({
             info: mockFn(),
+            error: mockFn(),
         });
         mockWorkspaceContext = mockObject<WorkspaceContext>({
             globalToolchain: instance(mockToolchain),
@@ -417,6 +422,53 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             expect(launchConfig).to.containSubset({
                 program: "${workspaceFolder}/.build/debug/executable.exe",
             });
+        });
+
+        test("shows a helpful error on Windows when Python 3.10 runtime is missing", async () => {
+            mockToolchain.swiftVersion = new Version(6, 2, 3);
+            mockExecFile.rejects(new Error("python310.dll was not found"));
+            const configProvider = new LLDBDebugConfigurationProvider(
+                "win32",
+                instance(mockWorkspaceContext),
+                instance(mockLogger)
+            );
+            const launchConfig =
+                await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
+                    name: "Test Launch Config",
+                    type: SWIFT_LAUNCH_CONFIG_TYPE,
+                    request: "launch",
+                    program: "${workspaceFolder}/.build/debug/executable.exe",
+                });
+            expect(launchConfig).to.be.undefined;
+            expect(mockWindow.showErrorMessage).to.have.been.calledOnce;
+            expect(mockWindow.showErrorMessage).to.have.been.calledWithMatch(
+                "Failed to launch LLDB-DAP because Python 3.10 was not found."
+            );
+            expect(mockExecFile).to.have.been.calledWithMatch("where", ["python310.dll"]);
+        });
+
+        test("allows debugging on Windows when Python 3.10 runtime is available", async () => {
+            mockToolchain.swiftVersion = new Version(6, 2, 3);
+            mockExecFile.resolves({
+                stdout: "C:\\Users\\swift\\AppData\\Local\\Programs\\Python\\Python310\\python310.dll",
+                stderr: "",
+            });
+            const configProvider = new LLDBDebugConfigurationProvider(
+                "win32",
+                instance(mockWorkspaceContext),
+                instance(mockLogger)
+            );
+            const launchConfig =
+                await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
+                    name: "Test Launch Config",
+                    type: SWIFT_LAUNCH_CONFIG_TYPE,
+                    request: "launch",
+                    program: "${workspaceFolder}/.build/debug/executable.exe",
+                });
+            expect(launchConfig).to.containSubset({
+                debugAdapterExecutable: "/path/to/lldb-dap",
+            });
+            expect(mockExecFile).to.have.been.calledWithMatch("where", ["python310.dll"]);
         });
 
         test("does not modify program on macOS", async () => {

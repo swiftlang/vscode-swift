@@ -12,6 +12,7 @@
 - Swift-testing test runs are marked as 'started' in the UI immediately, not after compilation finishes ([#2079](https://github.com/swiftlang/vscode-swift/pull/2079))
 - Fix legacy boolean setting values for `swift.sourcekit-lsp.backgroundIndexing` not being recognized ([#2092](https://github.com/swiftlang/vscode-swift/pull/2092))
 - Launch configurations defined in multi-root workspaces were unable to find the appropriate folder to run in ([#2105](https://github.com/swiftlang/vscode-swift/pull/2105))
+- Show a helpful error on Windows when LLDB-DAP cannot launch because `python310.dll` is missing ([#2054](https://github.com/swiftlang/vscode-swift/issues/2054))
 
 ## 2.16.1 - 2026-02-02
 

@@ -19,7 +19,8 @@ import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import { fileExists } from "../utilities/filesystem";
-import { getErrorDescription, swiftRuntimeEnv } from "../utilities/utilities";
+import { execFile, getErrorDescription, swiftRuntimeEnv } from "../utilities/utilities";
+import { Version } from "../utilities/version";
 import { DebugAdapter, LaunchConfigType, SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
 import { getTargetBinaryPath, swiftPrelaunchBuildTaskArguments } from "./launch";
 import { getLLDBLibPath, updateLaunchConfigForCI } from "./lldb";
@@ -80,6 +81,8 @@ function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vscode.Di
  * although it isn't at the moment.
  */
 export class LLDBDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
+    private static windowsPython310RequirementVersion = new Version(6, 2, 3);
+
     constructor(
         private platform: NodeJS.Platform,
         private workspaceContext: WorkspaceContext,
@@ -215,10 +218,69 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
                 );
                 return undefined;
             }
+            if (!(await this.checkWindowsPython310Requirement(lldbDapPath, toolchain.swiftVersion))) {
+                return undefined;
+            }
             launchConfig.debugAdapterExecutable = lldbDapPath;
         }
 
         return updateLaunchConfigForCI(launchConfig);
+    }
+
+    private async checkWindowsPython310Requirement(
+        lldbDapPath: string,
+        swiftVersion: Version
+    ): Promise<boolean> {
+        if (
+            this.platform !== "win32" ||
+            swiftVersion.isLessThan(
+                LLDBDebugConfigurationProvider.windowsPython310RequirementVersion
+            )
+        ) {
+            return true;
+        }
+
+        if (await this.python310RuntimeAvailable(lldbDapPath)) {
+            return true;
+        }
+
+        const minimumVersion =
+            LLDBDebugConfigurationProvider.windowsPython310RequirementVersion.toString();
+        await vscode.window.showErrorMessage(
+            "Failed to launch LLDB-DAP because Python 3.10 was not found.",
+            {
+                modal: true,
+                detail:
+                    `Swift toolchains ${minimumVersion} and newer require Python 3.10 on Windows for LLDB-DAP debugging.\n\n` +
+                    `Install Python 3.10 (64-bit), ensure \`python310.dll\` is on PATH, then restart Visual Studio Code.\n\n` +
+                    `You can verify this by running \`where python310.dll\` in a terminal.\n\n` +
+                    `LLDB-DAP path: "${lldbDapPath}"`,
+            }
+        );
+        this.logger.error(
+            `Python 3.10 runtime was not found while preparing LLDB-DAP at ${lldbDapPath}.`
+        );
+        return false;
+    }
+
+    private async python310RuntimeAvailable(lldbDapPath: string): Promise<boolean> {
+        const pythonRuntimeDLL = "python310.dll";
+        if (await fileExists(path.join(path.dirname(lldbDapPath), pythonRuntimeDLL))) {
+            return true;
+        }
+
+        try {
+            const { stdout } = await execFile(
+                "where",
+                [pythonRuntimeDLL],
+                { windowsHide: true },
+                undefined,
+                false
+            );
+            return stdout.trim().length > 0;
+        } catch {
+            return false;
+        }
     }
 
     private async promptToInstallCodeLLDB(): Promise<boolean> {
