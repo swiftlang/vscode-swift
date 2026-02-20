@@ -610,8 +610,8 @@ export class Swiftly {
 
     public static async getActiveToolchain(
         extensionRoot: string,
-        cwd?: vscode.Uri,
-        logger?: SwiftLogger
+        logger: SwiftLogger,
+        cwd?: vscode.Uri
     ): Promise<string> {
         try {
             return await Swiftly.inUseLocation("swiftly", cwd);
@@ -629,11 +629,11 @@ export class Swiftly {
                     );
                     if (installed) {
                         // Retry toolchain location after successful installation
-                        return await this.getActiveToolchain(extensionRoot, cwd, logger);
+                        return await this.getActiveToolchain(extensionRoot, logger, cwd);
                     } else if (cwd) {
                         // If the user dismisses the installation prompt then fall back
                         // to using the global toolchain
-                        return await Swiftly.getActiveToolchain(extensionRoot, undefined, logger);
+                        return await Swiftly.getActiveToolchain(extensionRoot, logger, undefined);
                     }
                 }
             }

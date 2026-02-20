@@ -21,6 +21,7 @@ import * as vscode from "vscode";
 import * as askpass from "@src/askpass/askpass-server";
 import { handleMissingSwiftly, promptForSwiftlyInstallation } from "@src/commands/installSwiftly";
 import { installSwiftlyToolchainWithProgress } from "@src/commands/installSwiftlyToolchain";
+import { SwiftLogger } from "@src/logging/SwiftLogger";
 import * as SwiftOutputChannelModule from "@src/logging/SwiftOutputChannel";
 import {
     Swiftly,
@@ -1452,8 +1453,16 @@ apt-get -y install libncurses5-dev
             // User declines installation prompt
             mockWindow.showWarningMessage.resolves(undefined);
 
+            const mockLogger = mockObject<SwiftLogger>({
+                info: mockFn(),
+            });
+
             const cwd = vscode.Uri.file("/project/path");
-            const result = await Swiftly.getActiveToolchain("/extension/root", cwd);
+            const result = await Swiftly.getActiveToolchain(
+                "/extension/root",
+                instance(mockLogger),
+                cwd
+            );
 
             expect(result).to.equal("/global/toolchain/path");
             expect(mockedUtilities.execFile).to.have.been.calledTwice;

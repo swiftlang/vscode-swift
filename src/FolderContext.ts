@@ -102,6 +102,7 @@ export class FolderContext implements ExternalFolderContext, vscode.Disposable {
         try {
             toolchain = await SwiftToolchain.create(
                 workspaceContext.extensionContext.extensionPath,
+                workspaceContext.logger,
                 configuration.folder(workspaceFolder).ignoreSwiftVersionFile ? undefined : folder
             );
         } catch (error) {
@@ -119,6 +120,7 @@ export class FolderContext implements ExternalFolderContext, vscode.Disposable {
                 try {
                     toolchain = await SwiftToolchain.create(
                         workspaceContext.extensionContext.extensionPath,
+                        workspaceContext.logger,
                         configuration.folder(workspaceFolder).ignoreSwiftVersionFile
                             ? undefined
                             : folder
