@@ -27,6 +27,7 @@ import { RollingLogTransport } from "./RollingLogTransport";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type LoggerMeta = any;
 type LogMessageOptions = { append: boolean };
+type SwiftLoggerOptions = { logConsole?: boolean };
 
 export class SwiftLogger implements vscode.Disposable {
     private subscriptions: vscode.Disposable[] = [];
@@ -40,8 +41,10 @@ export class SwiftLogger implements vscode.Disposable {
     constructor(
         public readonly name: string,
         public readonly logFilePath: string,
-        logStoreLinesSize: number = 250_000 // default to capturing 250k log lines
+        logStoreLinesSize: number = 250_000, // default to capturing 250k log lines
+        options: SwiftLoggerOptions = {}
     ) {
+        const { logConsole = true } = options;
         this.rollingLog = new RollingLog(logStoreLinesSize);
         this.outputChannel = vscode.window.createOutputChannel(name);
         const ouptutChannelTransport = new OutputChannelTransport(this.outputChannel);
@@ -59,7 +62,7 @@ export class SwiftLogger implements vscode.Disposable {
             transports.push(rollingLogTransport);
         }
         // Log everything to the console when we're debugging
-        if (IS_RUNNING_UNDER_DEBUGGER) {
+        if (logConsole && IS_RUNNING_UNDER_DEBUGGER) {
             transports.push(new winston.transports.Console({ level: "debug" }));
         }
 

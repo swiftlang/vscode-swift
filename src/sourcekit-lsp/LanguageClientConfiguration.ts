@@ -225,7 +225,7 @@ export function lspClientOptions(
         outputChannel: workspaceContext.loggerFactory.create(
             `SourceKit Language Server (${swiftVersion.toString()})`,
             `sourcekit-lsp-${swiftVersion.toString()}.log`,
-            { outputChannel: true }
+            { outputChannel: true, logConsole: false }
         ),
         middleware: {
             didOpen: activeDocumentManager.didOpen.bind(activeDocumentManager),
