@@ -13,6 +13,7 @@
 - Fix legacy boolean setting values for `swift.sourcekit-lsp.backgroundIndexing` not being recognized ([#2092](https://github.com/swiftlang/vscode-swift/pull/2092))
 - Launch configurations defined in multi-root workspaces were unable to find the appropriate folder to run in ([#2105](https://github.com/swiftlang/vscode-swift/pull/2105))
 - Show a helpful error on Windows when LLDB-DAP cannot launch because `python310.dll` is missing ([#2054](https://github.com/swiftlang/vscode-swift/issues/2054))
+- Ignoring the dialog to use the toolchain defined in `.swift-version` would prevent extension acitvation ([2107](https://github.com/swiftlang/vscode-swift/pull/2107))
 
 ## 2.16.1 - 2026-02-02
 
