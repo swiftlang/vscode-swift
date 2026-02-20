@@ -25,8 +25,8 @@ import * as lldb from "@src/debugger/lldb";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { BuildFlags } from "@src/toolchain/BuildFlags";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
-import * as utilities from "@src/utilities/utilities";
 import { Result } from "@src/utilities/result";
+import * as utilities from "@src/utilities/utilities";
 import { Version } from "@src/utilities/version";
 
 import {
@@ -469,6 +469,26 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 debugAdapterExecutable: "/path/to/lldb-dap",
             });
             expect(mockExecFile).to.have.been.calledWithMatch("where", ["python310.dll"]);
+        });
+
+        test("skips Python 3.10 checks on non-Windows platforms", async () => {
+            mockToolchain.swiftVersion = new Version(6, 2, 3);
+            const configProvider = new LLDBDebugConfigurationProvider(
+                "linux",
+                instance(mockWorkspaceContext),
+                instance(mockLogger)
+            );
+            const launchConfig =
+                await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
+                    name: "Test Launch Config",
+                    type: SWIFT_LAUNCH_CONFIG_TYPE,
+                    request: "launch",
+                    program: "${workspaceFolder}/.build/debug/executable",
+                });
+            expect(launchConfig).to.containSubset({
+                debugAdapterExecutable: "/path/to/lldb-dap",
+            });
+            expect(mockExecFile).to.not.have.been.called;
         });
 
         test("does not modify program on macOS", async () => {

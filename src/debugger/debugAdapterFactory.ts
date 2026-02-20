@@ -19,7 +19,12 @@ import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import { fileExists } from "../utilities/filesystem";
-import { execFile, getErrorDescription, swiftRuntimeEnv } from "../utilities/utilities";
+import {
+    ExecFileError,
+    execFile,
+    getErrorDescription,
+    swiftRuntimeEnv,
+} from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { DebugAdapter, LaunchConfigType, SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
 import { getTargetBinaryPath, swiftPrelaunchBuildTaskArguments } from "./launch";
@@ -218,7 +223,9 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
                 );
                 return undefined;
             }
-            if (!(await this.checkWindowsPython310Requirement(lldbDapPath, toolchain.swiftVersion))) {
+            if (
+                !(await this.checkWindowsPython310Requirement(lldbDapPath, toolchain.swiftVersion))
+            ) {
                 return undefined;
             }
             launchConfig.debugAdapterExecutable = lldbDapPath;
@@ -278,7 +285,12 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
                 false
             );
             return stdout.trim().length > 0;
-        } catch {
+        } catch (error: unknown) {
+            if (!(error instanceof ExecFileError)) {
+                this.logger.error(
+                    `Failed while searching for ${pythonRuntimeDLL} with the 'where' command: ${getErrorDescription(error)}`
+                );
+            }
             return false;
         }
     }
