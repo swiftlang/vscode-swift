@@ -644,7 +644,7 @@ export class Swiftly {
                     } else if (cwd) {
                         // If the user dismisses the installation prompt then fall back
                         // to using the global toolchain
-                        return await Swiftly.getActiveToolchain(extensionRoot, logger, undefined);
+                        return await Swiftly.getActiveToolchain(extensionRoot, logger);
                     }
                 }
             }
