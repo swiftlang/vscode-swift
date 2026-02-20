@@ -48,7 +48,8 @@ export function detectSwiftlyXcodeToolchainMismatch(
 
     const lowerOutput = output.toLowerCase();
     const hasSwiftlyPath =
-        lowerOutput.includes(".swiftly/toolchains") || lowerOutput.includes("\\.swiftly\\toolchains");
+        lowerOutput.includes(".swiftly/toolchains") ||
+        lowerOutput.includes("\\.swiftly\\toolchains");
     const hasXcodePath =
         lowerOutput.includes("xcodedefault.xctoolchain") ||
         lowerOutput.includes("/applications/xcode") ||

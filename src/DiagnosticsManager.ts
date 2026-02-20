@@ -88,8 +88,10 @@ export class DiagnosticsManager implements vscode.Disposable {
             const folderContext = this.folderContextForTask(task);
             // Provide new list of diagnostics
             const swiftExecution = task.execution as SwiftExecution;
-            const provideDiagnostics: Promise<DiagnosticsMap> =
-                this.parseDiagnostics(swiftExecution, folderContext);
+            const provideDiagnostics: Promise<DiagnosticsMap> = this.parseDiagnostics(
+                swiftExecution,
+                folderContext
+            );
 
             provideDiagnostics
                 .then(map => {
