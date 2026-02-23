@@ -34,7 +34,7 @@ import { flattenTestItemCollection } from "./TestUtils";
 
 /** Build test explorer UI */
 export class TestExplorer {
-    static errorTestItemId = "#Error#";
+    static readonly errorTestItemId = "#Error#";
     public controller: vscode.TestController;
     public testRunProfiles: vscode.TestRunProfile[];
 
@@ -308,131 +308,129 @@ export class TestExplorer {
      * Uses `swift test --list-tests` to get the list of tests
      */
     private async discoverTestsInWorkspaceSPM(token: vscode.CancellationToken) {
-        const runDiscover = async (explorer: TestExplorer, firstTry: boolean) => {
-            try {
-                // we depend on sourcekit-lsp to detect swift-testing tests so let the user know
-                // that things won't work properly if sourcekit-lsp has been disabled for some reason
-                // and provide an option to enable sourcekit-lsp again
-                const ok = "OK";
-                const enable = "Enable SourceKit-LSP";
-                if (firstTry && configuration.lsp.disable === true) {
-                    void vscode.window
-                        .showInformationMessage(
-                            `swift-testing tests will not be detected since SourceKit-LSP
-                            has been disabled for this workspace.`,
-                            enable,
-                            ok
-                        )
-                        .then(selected => {
-                            if (selected === enable) {
-                                this.logger.info(
-                                    `Enabling SourceKit-LSP after swift-testing message`
-                                );
-                                void vscode.workspace
-                                    .getConfiguration("swift")
-                                    .update("sourcekit-lsp.disable", false)
-                                    .then(() => {
-                                        /* Put in worker queue */
-                                    });
-                            } else if (selected === ok) {
-                                this.logger.info(
-                                    `User acknowledged that SourceKit-LSP is disabled`
-                                );
-                            }
-                        });
-                }
-                const toolchain = explorer.folderContext.toolchain;
+        if (configuration.lsp.disable === true) {
+            this.warnSourceKitLSPDisabled();
+        }
 
-                // get build options before build is run so we can be sure they aren't changed
-                // mid-build
-                const testBuildOptions = buildOptions(toolchain);
+        try {
+            await this.runTestDiscovery(token);
+        } catch (error) {
+            await this.retryTestDiscoveryAfterBuild(token);
+        }
+    }
 
-                // normally we wouldn't run the build here, but you can suspend swiftPM on macOS
-                // if you try and list tests while skipping the build if you are using a different
-                // sanitizer settings
-                if (process.platform === "darwin" && configuration.sanitizer !== "off") {
-                    const task = await getBuildAllTask(explorer.folderContext);
-                    task.definition.dontTriggerTestDiscovery = true;
-                    const exitCode = await explorer.folderContext.taskQueue.queueOperation(
-                        new TaskOperation(task)
-                    );
-                    if (exitCode === undefined || exitCode !== 0) {
-                        explorer.setErrorTestItem("Build the project to enable test discovery.");
-                        return;
-                    }
-                }
+    private async runTestDiscovery(token: vscode.CancellationToken) {
+        const toolchain = this.folderContext.toolchain;
+        const testBuildOptions = buildOptions(toolchain);
 
-                if (token.isCancellationRequested) {
-                    return;
-                }
-
-                // get list of tests from `swift test list --skip-build`
-                let listTestArguments: string[] = ["test", "list", "--skip-build"];
-                listTestArguments = [...listTestArguments, ...testBuildOptions];
-                const listTestsOperation = new SwiftExecOperation(
-                    listTestArguments,
-                    explorer.folderContext,
-                    "Listing Tests",
-                    { showStatusItem: true, checkAlreadyRunning: false, log: "Listing tests" },
-                    stdout => {
-                        // if we got to this point we can get rid of any error test item
-                        explorer.deleteErrorTestItem();
-
-                        const tests = parseTestsFromSwiftTestListOutput(stdout);
-                        this.logger.debug(
-                            `Discovered ${tests.length} top level tests via 'swift test --list-tests', updating test explorer`,
-                            "Test Discovery"
-                        );
-                        explorer.updateTests(explorer.controller, tests);
-                    }
-                );
-                await explorer.folderContext.taskQueue.queueOperation(listTestsOperation, token);
-            } catch (error) {
-                // If a test list fails its possible the tests have not been built.
-                // Build them and try again, and if we still fail then notify the user.
-                if (firstTry) {
-                    const backgroundTask = await getBuildAllTask(explorer.folderContext);
-                    if (!backgroundTask) {
-                        return;
-                    }
-
-                    try {
-                        await explorer.folderContext.taskQueue.queueOperation(
-                            new TaskOperation(backgroundTask)
-                        );
-                    } catch {
-                        // can ignore if running task fails
-                    }
-
-                    // Retry test discovery after performing a build.
-                    await runDiscover(explorer, false);
-                } else {
-                    const errorDescription = getErrorDescription(error);
-                    if (
-                        (process.platform === "darwin" &&
-                            errorDescription.match(/error: unableToLoadBundle/)) ||
-                        (process.platform === "win32" &&
-                            errorDescription.match(/The file doesn’t exist./)) ||
-                        (!["darwin", "win32"].includes(process.platform) &&
-                            errorDescription.match(/No such file or directory/))
-                    ) {
-                        explorer.setErrorTestItem("Build the project to enable test discovery.");
-                    } else if (errorDescription.startsWith("error: no tests found")) {
-                        explorer.setErrorTestItem(
-                            "Add a test target to your Package.",
-                            "No Tests Found."
-                        );
-                    } else {
-                        explorer.setErrorTestItem(errorDescription);
-                    }
-                    this.logger.error(
-                        `Test Discovery Failed: ${errorDescription}`,
-                        explorer.folderContext.name
-                    );
-                }
+        if (process.platform === "darwin" && configuration.sanitizer !== "off") {
+            const succeeded = await this.buildBeforeTestDiscovery();
+            if (!succeeded) {
+                return;
             }
-        };
-        await runDiscover(this, true);
+        }
+
+        if (token.isCancellationRequested) {
+            return;
+        }
+
+        const listTestArguments = ["test", "list", "--skip-build", ...testBuildOptions];
+        const listTestsOperation = new SwiftExecOperation(
+            listTestArguments,
+            this.folderContext,
+            "Listing Tests",
+            { showStatusItem: true, checkAlreadyRunning: false, log: "Listing tests" },
+            stdout => {
+                this.deleteErrorTestItem();
+
+                const tests = parseTestsFromSwiftTestListOutput(stdout);
+                this.logger.debug(
+                    `Discovered ${tests.length} top level tests via 'swift test --list-tests', updating test explorer`,
+                    "Test Discovery"
+                );
+                this.updateTests(this.controller, tests);
+            }
+        );
+        await this.folderContext.taskQueue.queueOperation(listTestsOperation, token);
+    }
+
+    private async buildBeforeTestDiscovery(): Promise<boolean> {
+        const task = await getBuildAllTask(this.folderContext);
+        task.definition.dontTriggerTestDiscovery = true;
+        const exitCode = await this.folderContext.taskQueue.queueOperation(new TaskOperation(task));
+        if (exitCode === undefined || exitCode !== 0) {
+            this.setErrorTestItem("Build the project to enable test discovery.");
+            return false;
+        }
+        return true;
+    }
+
+    private async retryTestDiscoveryAfterBuild(token: vscode.CancellationToken) {
+        const backgroundTask = await getBuildAllTask(this.folderContext);
+        if (!backgroundTask) {
+            return;
+        }
+
+        try {
+            await this.folderContext.taskQueue.queueOperation(new TaskOperation(backgroundTask));
+        } catch {
+            // can ignore if running task fails
+        }
+
+        try {
+            await this.runTestDiscovery(token);
+        } catch (retryError) {
+            this.handleDiscoveryError(this, retryError);
+        }
+    }
+
+    private warnSourceKitLSPDisabled() {
+        const ok = "OK";
+        const enable = "Enable SourceKit-LSP";
+        void vscode.window
+            .showInformationMessage(
+                `swift-testing tests will not be detected since SourceKit-LSP
+                            has been disabled for this workspace.`,
+                enable,
+                ok
+            )
+            .then(selected => {
+                if (selected === enable) {
+                    this.logger.info(`Enabling SourceKit-LSP after swift-testing message`);
+                    void vscode.workspace
+                        .getConfiguration("swift")
+                        .update("sourcekit-lsp.disable", false)
+                        .then(() => {
+                            /* Put in worker queue */
+                        });
+                } else if (selected === ok) {
+                    this.logger.info(`User acknowledged that SourceKit-LSP is disabled`);
+                }
+            });
+    }
+
+    private handleDiscoveryError(explorer: TestExplorer, error: unknown) {
+        const errorDescription = getErrorDescription(error);
+        if (this.isMissingBinaryError(errorDescription)) {
+            explorer.setErrorTestItem("Build the project to enable test discovery.");
+        } else if (errorDescription.startsWith("error: no tests found")) {
+            explorer.setErrorTestItem("Add a test target to your Package.", "No Tests Found.");
+        } else {
+            explorer.setErrorTestItem(errorDescription);
+        }
+        this.logger.error(
+            `Test Discovery Failed: ${errorDescription}`,
+            explorer.folderContext.name
+        );
+    }
+
+    private isMissingBinaryError(errorDescription: string): boolean {
+        return (
+            (process.platform === "darwin" && /error: unableToLoadBundle/.test(errorDescription)) ||
+            (process.platform === "win32" && /The file doesn't exist./.test(errorDescription)) ||
+            (!["darwin", "win32"].includes(process.platform) &&
+                /No such file or directory/.test(errorDescription))
+        );
     }
 
     /**

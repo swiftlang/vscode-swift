@@ -203,7 +203,6 @@ async function checkDocumentSchema(doc: vscode.TextDocument, workspaceContext: W
             doc.uri,
             Buffer.from(JSON.stringify(config, undefined, 2))
         );
-        return;
     } else if (result === "Don't Ask Again") {
         configuration.checkLspConfigurationSchema = false;
         return;

@@ -35,6 +35,7 @@ suite("SwiftBuildStatus Unit Test Suite", function () {
     const didStartTaskMock = mockGlobalEvent(vscode.tasks, "onDidStartTask");
     const configurationMock = mockGlobalValue(configuration, "showBuildStatus");
 
+    let buildStatus: SwiftBuildStatus;
     let mockedProgress: MockedObject<
         vscode.Progress<{
             message?: string;
@@ -91,10 +92,14 @@ suite("SwiftBuildStatus Unit Test Suite", function () {
         });
     });
 
+    teardown(() => {
+        buildStatus.dispose();
+    });
+
     test("Never show status", async () => {
         configurationMock.setValue("never");
 
-        new SwiftBuildStatus(instance(mockedStatusItem));
+        buildStatus = new SwiftBuildStatus(instance(mockedStatusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         expect(mockedStatusItem.showStatusWhileRunning).to.not.have.been.called;
@@ -105,7 +110,7 @@ suite("SwiftBuildStatus Unit Test Suite", function () {
         mockedTask.definition = { type: "shell" };
         configurationMock.setValue("swiftStatus");
 
-        new SwiftBuildStatus(instance(mockedStatusItem));
+        buildStatus = new SwiftBuildStatus(instance(mockedStatusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         expect(mockedStatusItem.showStatusWhileRunning).to.not.have.been.called;
@@ -115,7 +120,7 @@ suite("SwiftBuildStatus Unit Test Suite", function () {
     test("Show swift status", async () => {
         configurationMock.setValue("swiftStatus");
 
-        new SwiftBuildStatus(instance(mockedStatusItem));
+        buildStatus = new SwiftBuildStatus(instance(mockedStatusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         expect(mockedStatusItem.showStatusWhileRunning).to.have.been.calledWith(
@@ -127,7 +132,7 @@ suite("SwiftBuildStatus Unit Test Suite", function () {
     test("Show status bar progress", async () => {
         configurationMock.setValue("progress");
 
-        new SwiftBuildStatus(instance(mockedStatusItem));
+        buildStatus = new SwiftBuildStatus(instance(mockedStatusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         expect(windowMock.withProgress).to.have.been.calledWith({
@@ -139,7 +144,7 @@ suite("SwiftBuildStatus Unit Test Suite", function () {
     test("Show notification progress", async () => {
         configurationMock.setValue("notification");
 
-        new SwiftBuildStatus(instance(mockedStatusItem));
+        buildStatus = new SwiftBuildStatus(instance(mockedStatusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         expect(windowMock.withProgress).to.have.been.calledWith({
@@ -151,12 +156,12 @@ suite("SwiftBuildStatus Unit Test Suite", function () {
     test("Update fetching", async () => {
         // Setup progress
         configurationMock.setValue("progress");
-        new SwiftBuildStatus(instance(mockedStatusItem));
+        buildStatus = new SwiftBuildStatus(instance(mockedStatusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         // Setup swiftStatus
         configurationMock.setValue("swiftStatus");
-        new SwiftBuildStatus(instance(mockedStatusItem));
+        buildStatus = new SwiftBuildStatus(instance(mockedStatusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         testSwiftProcess.write(
@@ -174,12 +179,12 @@ suite("SwiftBuildStatus Unit Test Suite", function () {
     test("Update build progress", async () => {
         // Setup progress
         configurationMock.setValue("progress");
-        new SwiftBuildStatus(instance(mockedStatusItem));
+        buildStatus = new SwiftBuildStatus(instance(mockedStatusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         // Setup swiftStatus
         configurationMock.setValue("swiftStatus");
-        new SwiftBuildStatus(instance(mockedStatusItem));
+        buildStatus = new SwiftBuildStatus(instance(mockedStatusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         testSwiftProcess.write(
@@ -202,12 +207,12 @@ suite("SwiftBuildStatus Unit Test Suite", function () {
     test("Build complete", async () => {
         // Setup progress
         configurationMock.setValue("progress");
-        new SwiftBuildStatus(instance(mockedStatusItem));
+        buildStatus = new SwiftBuildStatus(instance(mockedStatusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         // Setup swiftStatus
         configurationMock.setValue("swiftStatus");
-        new SwiftBuildStatus(instance(mockedStatusItem));
+        buildStatus = new SwiftBuildStatus(instance(mockedStatusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         testSwiftProcess.write(

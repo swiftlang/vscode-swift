@@ -149,7 +149,7 @@ function isPackage(state: SwiftPackageState): state is PackageContents {
     if (state === undefined) {
         return false;
     }
-    return (state as PackageContents).products !== undefined;
+    return "products" in state;
 }
 
 function isError(state: SwiftPackageState): state is Error {

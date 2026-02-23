@@ -102,7 +102,7 @@ export function updateTestsForTarget(
         // To determine if any root level test items are missing a parent we check how many
         // components there are in the ID. If there are more than one (the test target) then
         // we synthesize all the intermediary test items.
-        const idComponents = testItem.id.split(/\.|\//);
+        const idComponents = testItem.id.split(/[./]/);
 
         // Remove the last component to get the parent ID components
         idComponents.pop();

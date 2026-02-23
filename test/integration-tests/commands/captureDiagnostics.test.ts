@@ -20,6 +20,7 @@ import * as vscode from "vscode";
 
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { captureDiagnostics } from "@src/commands/captureDiagnostics";
+import { randomString } from "@src/utilities/utilities";
 import { Version } from "@src/utilities/version";
 
 import { mockGlobalObject } from "../../MockUtils";
@@ -180,10 +181,7 @@ tag("medium").suite("captureDiagnostics Test Suite", () => {
     async function decompressZip(
         zipPath: string
     ): Promise<{ folder: string; files: decompress.File[] }> {
-        const tempDir = path.join(
-            os.tmpdir(),
-            `vscode-swift-test-${Math.random().toString(36).substring(7)}`
-        );
+        const tempDir = path.join(os.tmpdir(), `vscode-swift-test-${randomString(7, 36)}`);
         await mkdir(tempDir, { recursive: true });
         return { folder: tempDir, files: await decompress(zipPath as string, tempDir) };
     }

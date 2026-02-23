@@ -234,6 +234,7 @@ export class SwiftTestingOutputParser {
         }
 
         await new Promise<void>(resolve => {
+            // eslint-disable-next-line sonarjs/os-command
             exec(`echo '{}' > ${this.path}`, () => {
                 resolve();
             });
@@ -440,7 +441,7 @@ export class SwiftTestingOutputParser {
 
     private testName(id: string): string {
         const nameMatcher = /^(.*\(.*\))\/(.*)\.swift:\d+:\d+$/;
-        const matches = id.match(nameMatcher);
+        const matches = nameMatcher.exec(id);
         return !matches ? id : matches[1];
     }
 
@@ -588,8 +589,8 @@ export class SymbolRenderer {
         return this.colorize(symbol, this.symbol(symbol));
     }
 
-    static ansiEscapeCodePrefix = "\u{001B}[";
-    static resetANSIEscapeCode = `${SymbolRenderer.ansiEscapeCodePrefix}0m`;
+    static readonly ansiEscapeCodePrefix = "\u{001B}[";
+    static readonly resetANSIEscapeCode = `${SymbolRenderer.ansiEscapeCodePrefix}0m`;
 
     // This is adapted from
     // https://github.com/apple/swift-testing/blob/786ade71421eb1d8a9c1d99c902cf1c93096e7df/Sources/Testing/Events/Recorder/Event.Symbol.swift#L102

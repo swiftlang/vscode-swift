@@ -29,6 +29,26 @@ interface CommunicationBridge {
  *
  * @returns A promise that resolves to the created CommunicationBridge
  */
+function createBridge(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    sender: any,
+    messageHandlers: Set<(message: VueAppMessage) => void>
+): CommunicationBridge {
+    return {
+        send(message) {
+            sender.receive(message);
+        },
+        onDidReceiveMessage(handler): Disposable {
+            messageHandlers.add(handler);
+            return {
+                dispose() {
+                    messageHandlers.delete(handler);
+                },
+            };
+        },
+    };
+}
+
 export function createCommunicationBridge(): Promise<CommunicationBridge> {
     if ("webkit" in window) {
         throw new Error("A CommunicationBridge has already been established");
@@ -59,19 +79,7 @@ export function createCommunicationBridge(): Promise<CommunicationBridge> {
                 },
                 set(value) {
                     windowBridge = value;
-                    resolve({
-                        send(message) {
-                            value.receive(message);
-                        },
-                        onDidReceiveMessage(handler): Disposable {
-                            messageHandlers.add(handler);
-                            return {
-                                dispose() {
-                                    messageHandlers.delete(handler);
-                                },
-                            };
-                        },
-                    });
+                    resolve(createBridge(value, messageHandlers));
                 },
             });
         } catch (error) {

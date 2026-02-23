@@ -65,10 +65,10 @@ interface LanguageClientManageOptions {
  */
 export class LanguageClientManager implements vscode.Disposable {
     // known log names
-    static indexingLogName = "SourceKit-LSP: Indexing";
+    static readonly indexingLogName = "SourceKit-LSP: Indexing";
 
     // build argument to sourcekit-lsp filter
-    static buildArgumentFilter: ArgumentFilter[] = [
+    static readonly buildArgumentFilter: ArgumentFilter[] = [
         { argument: "--build-path", include: 1 },
         { argument: "--scratch-path", include: 1 },
         { argument: "-Xswiftc", include: 1 },
@@ -296,7 +296,6 @@ export class LanguageClientManager implements vscode.Disposable {
                     })
                 );
             });
-            return;
         } else {
             // don't check for undefined uri's or if the current workspace is the same if we are
             // running a single server. The only way we can get here while using a single server
