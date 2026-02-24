@@ -88,7 +88,7 @@ jobs:
     with:
       needs_token: true
       # Linux
-      linux_exclude_swift_versions: '[{"swift_version": "5.8"}, {"swift_version": "5.9"}, {"swift_version": "5.10"}, {"swift_version": "6.0"}, {"swift_version": "6.1"}, {"swift_version": "nightly-6.1"}, {"swift_version": "nightly-6.2"}, {"swift_version": "nightly-main"}]'
+      linux_exclude_swift_versions: '[{"swift_version": "5.8"}, {"swift_version": "5.9"}, {"swift_version": "5.10"}, {"swift_version": "6.0"}, {"swift_version": "6.1"}, {"swift_version": "nightly-6.1"}, {"swift_version": "nightly-6.2"}, {"swift_version": "nightly-6.3"}, {"swift_version": "nightly-main"}]'
       linux_env_vars: |
         NODE_VERSION=${{ needs.package.outputs.node-version }}
         NODE_PATH=${{ needs.package.outputs.node-path }}
