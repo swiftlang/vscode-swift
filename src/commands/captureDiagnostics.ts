@@ -25,7 +25,7 @@ import { WorkspaceContext } from "../WorkspaceContext";
 import configuration from "../configuration";
 import { DebugAdapter } from "../debugger/debugAdapter";
 import { Extension } from "../utilities/extensions";
-import { destructuredPromise, execFileStreamOutput } from "../utilities/utilities";
+import { destructuredPromise, execFileStreamOutput, randomString } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 
 export async function captureDiagnostics(
@@ -47,75 +47,32 @@ export async function captureDiagnostics(
 
         await fsPromises.mkdir(diagnosticsDir);
 
-        const singleFolderWorkspace = ctx.folders.length === 1;
         const zipDir = await createDiagnosticsZipDir();
         const zipFilePath = path.join(zipDir, `${path.basename(diagnosticsDir)}.zip`);
         const { archive, done: archivingDone } = configureZipArchiver(zipFilePath);
 
-        const archivedLldbDapLogFolders = new Set<string>();
-        const includeLldbDapLogs = DebugAdapter.getLaunchConfigType(
-            ctx.globalToolchainSwiftVersion
+        const archivedLldbDapLogFolders = await captureDefaultLldbDapLogs(
+            ctx,
+            captureMode,
+            diagnosticsDir
         );
-        if (captureMode === "Full" && includeLldbDapLogs) {
-            for (const defaultLldbDapLogs of [defaultLldbDapLogFolder(ctx), lldbDapLogFolder()]) {
-                if (!defaultLldbDapLogs || archivedLldbDapLogFolders.has(defaultLldbDapLogs)) {
-                    continue;
-                }
-                archivedLldbDapLogFolders.add(defaultLldbDapLogs);
-                await copyLogFolder(ctx, diagnosticsDir, defaultLldbDapLogs);
-            }
-        }
 
         for (const folder of ctx.folders) {
-            const baseName = path.basename(folder.folder.fsPath);
-            const guid = Math.random().toString(36).substring(2, 10);
-            const outputDir = singleFolderWorkspace
-                ? diagnosticsDir
-                : path.join(diagnosticsDir, baseName);
-            await fsPromises.mkdir(outputDir, { recursive: true });
-            await writeLogFile(outputDir, `${baseName}-${guid}-settings.txt`, settingsLogs(folder));
-
-            if (captureMode === "Full") {
-                await writeLogFile(
-                    outputDir,
-                    `${baseName}-${guid}-source-code-diagnostics.txt`,
-                    diagnosticLogs()
-                );
-
-                // The `sourcekit-lsp diagnose` command is only available in 6.0 and higher.
-                if (folder.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
-                    await sourcekitDiagnose(folder, outputDir);
-                } else if (
-                    vscode.workspace
-                        .getConfiguration("sourcekit-lsp")
-                        .get<string>("trace.server", "off") !== "off"
-                ) {
-                    const logFile = sourceKitLogFile(folder);
-                    if (logFile) {
-                        await copyLogFile(outputDir, logFile);
-                    }
-                }
-
-                const includeLldbDapLogs = DebugAdapter.getLaunchConfigType(folder.swiftVersion);
-                if (!includeLldbDapLogs) {
-                    continue;
-                }
-                // Copy lldb-dap logs
-                const lldbDapLogs = lldbDapLogFolder(folder.workspaceFolder);
-                if (lldbDapLogs && !archivedLldbDapLogFolders.has(lldbDapLogs)) {
-                    archivedLldbDapLogFolders.add(lldbDapLogs);
-                    await copyLogFolder(ctx, outputDir, lldbDapLogs);
-                }
-            }
+            await captureFolderDiagnostics(
+                ctx,
+                folder,
+                captureMode,
+                diagnosticsDir,
+                archivedLldbDapLogFolders
+            );
         }
-        // Leave at end in case log above
+
         await copyLogFile(diagnosticsDir, extensionLogFile(ctx));
 
         archive.directory(diagnosticsDir, false);
         void archive.finalize();
         await archivingDone;
 
-        // Clean up the diagnostics directory, leaving `zipFilePath` with the zip file.
         await fsPromises.rm(diagnosticsDir, { recursive: true, force: true });
 
         ctx.logger.info(`Saved diagnostics to ${zipFilePath}`);
@@ -125,6 +82,94 @@ export async function captureDiagnostics(
     } catch (error) {
         void vscode.window.showErrorMessage(`Unable to capture diagnostic logs: ${error}`);
     }
+}
+
+async function captureDefaultLldbDapLogs(
+    ctx: WorkspaceContext,
+    captureMode: "Minimal" | "Full",
+    diagnosticsDir: string
+): Promise<Set<string>> {
+    const archivedLldbDapLogFolders = new Set<string>();
+    const includeLldbDapLogs = DebugAdapter.getLaunchConfigType(ctx.globalToolchainSwiftVersion);
+
+    if (captureMode !== "Full" || !includeLldbDapLogs) {
+        return archivedLldbDapLogFolders;
+    }
+
+    for (const logFolder of [defaultLldbDapLogFolder(ctx), lldbDapLogFolder()]) {
+        if (!logFolder || archivedLldbDapLogFolders.has(logFolder)) {
+            continue;
+        }
+        archivedLldbDapLogFolders.add(logFolder);
+        await copyLogFolder(ctx, diagnosticsDir, logFolder);
+    }
+
+    return archivedLldbDapLogFolders;
+}
+
+async function captureFolderDiagnostics(
+    ctx: WorkspaceContext,
+    folder: FolderContext,
+    captureMode: "Minimal" | "Full",
+    diagnosticsDir: string,
+    archivedLldbDapLogFolders: Set<string>
+): Promise<void> {
+    const baseName = path.basename(folder.folder.fsPath);
+    const guid = randomString(10, 36);
+    const singleFolderWorkspace = ctx.folders.length === 1;
+    const outputDir = singleFolderWorkspace ? diagnosticsDir : path.join(diagnosticsDir, baseName);
+
+    await fsPromises.mkdir(outputDir, { recursive: true });
+    await writeLogFile(outputDir, `${baseName}-${guid}-settings.txt`, settingsLogs(folder));
+
+    if (captureMode !== "Full") {
+        return;
+    }
+
+    await writeLogFile(
+        outputDir,
+        `${baseName}-${guid}-source-code-diagnostics.txt`,
+        diagnosticLogs()
+    );
+
+    await captureSourceKitLogs(folder, outputDir);
+    await captureFolderLldbDapLogs(ctx, folder, outputDir, archivedLldbDapLogFolders);
+}
+
+async function captureSourceKitLogs(folder: FolderContext, outputDir: string): Promise<void> {
+    if (folder.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
+        await sourcekitDiagnose(folder, outputDir);
+        return;
+    }
+
+    if (configuration.lsp.traceServer === "off") {
+        return;
+    }
+
+    const logFile = sourceKitLogFile(folder);
+    if (logFile) {
+        await copyLogFile(outputDir, logFile);
+    }
+}
+
+async function captureFolderLldbDapLogs(
+    ctx: WorkspaceContext,
+    folder: FolderContext,
+    outputDir: string,
+    archivedLldbDapLogFolders: Set<string>
+): Promise<void> {
+    const includeLldbDapLogs = DebugAdapter.getLaunchConfigType(folder.swiftVersion);
+    if (!includeLldbDapLogs) {
+        return;
+    }
+
+    const lldbDapLogs = lldbDapLogFolder(folder.workspaceFolder);
+    if (!lldbDapLogs || archivedLldbDapLogFolders.has(lldbDapLogs)) {
+        return;
+    }
+
+    archivedLldbDapLogFolders.add(lldbDapLogs);
+    await copyLogFolder(ctx, outputDir, lldbDapLogs);
 }
 
 function configureZipArchiver(zipFilePath: string): {
@@ -221,6 +266,7 @@ async function showCapturedDiagnosticsResults(diagnosticsPath: string) {
         await vscode.env.clipboard.writeText(diagnosticsPath);
     } else if (result === showInFinderButton) {
         const dirToShow = path.dirname(diagnosticsPath);
+        // eslint-disable-next-line sonarjs/os-command
         exec(showDirectoryCommand(dirToShow), error => {
             // Opening the explorer on windows returns an exit code of 1 despite opening successfully.
             if (error && process.platform !== "win32") {
@@ -368,7 +414,7 @@ function progressUpdatingWritable(updateProgress: (str: string) => void): Writab
     return new Writable({
         write(chunk, _encoding, callback) {
             const str = (chunk as Buffer).toString("utf8").trim();
-            const percent = /^([0-9]+)%/.exec(str);
+            const percent = /^(\d+)%/.exec(str);
             if (percent && percent[1]) {
                 updateProgress(percent[1]);
             }

@@ -65,7 +65,8 @@ function createParsingError(options: {
     stderr: string;
 }): Error {
     const { command, args, stdout, stderr } = options;
-    let message = `Failed to parse the output of '${command} ${args.map(a => `"${a}"`).join(" ")}'.`;
+    const quotedArgs = args.map(a => `"${a}"`).join(" ");
+    let message = `Failed to parse the output of '${command} ${quotedArgs}'.`;
     if (stdout.trim()) {
         message += `\nstdout: ${stdout.trim()}`;
     }

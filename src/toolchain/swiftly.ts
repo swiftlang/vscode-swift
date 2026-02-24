@@ -148,7 +148,7 @@ export function parseSwiftlyMissingToolchainError(
     stderr: string
 ): MissingToolchainError | undefined {
     // Parse error message like: "uses toolchain version 6.1.2, but it doesn't match any of the installed toolchains"
-    const versionMatch = stderr.match(/uses toolchain version ([0-9.]+(?:-[a-zA-Z0-9-]+)*)/);
+    const versionMatch = /uses toolchain version ([0-9.]+(?:-[a-zA-Z0-9-]+)*)/.exec(stderr);
     if (versionMatch && stderr.includes("doesn't match any of the installed toolchains")) {
         return {
             version: versionMatch[1],
@@ -187,19 +187,16 @@ export async function handleMissingSwiftlyToolchain(
 }
 
 export class Swiftly {
-    public static cancellationMessage = "Installation cancelled by user";
+    public static readonly cancellationMessage = "Installation cancelled by user";
 
     public static defaultHomeDir(): string {
-        switch (process.platform) {
-            case "linux": {
-                if (process.env["XDG_DATA_HOME"]) {
-                    return path.join(process.env["XDG_DATA_HOME"], "swiftly");
-                }
-                return path.join(os.homedir(), ".local/share/swiftly");
+        if (process.platform === "linux") {
+            if (process.env["XDG_DATA_HOME"]) {
+                return path.join(process.env["XDG_DATA_HOME"], "swiftly");
             }
-            default:
-                return path.join(os.homedir(), ".swiftly");
+            return path.join(os.homedir(), ".local/share/swiftly");
         }
+        return path.join(os.homedir(), ".swiftly");
     }
 
     /**
@@ -314,6 +311,76 @@ export class Swiftly {
         }
     }
 
+    private static async streamResponseToFile(
+        reader: ReadableStreamDefaultReader<Uint8Array>,
+        fileStream: fsSync.WriteStream,
+        totalLength: number,
+        progress: vscode.Progress<{ message?: string; increment?: number }>
+    ): Promise<void> {
+        let downloadedLength = 0;
+        let lastReportedPercent = 0;
+
+        try {
+            // eslint-disable-next-line no-constant-condition
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) {
+                    break;
+                }
+
+                downloadedLength += value.length;
+                fileStream.write(value);
+
+                if (totalLength > 0) {
+                    const percent = Math.floor((downloadedLength / totalLength) * 100);
+                    if (percent > lastReportedPercent && percent % 10 === 0) {
+                        progress.report({
+                            message: `Downloading Swiftly installer... ${percent}%`,
+                            increment: percent - lastReportedPercent,
+                        });
+                        lastReportedPercent = percent;
+                    }
+                }
+            }
+        } finally {
+            reader.releaseLock();
+            fileStream.end();
+        }
+
+        await new Promise<void>((resolve, reject) => {
+            fileStream.on("finish", () => {
+                fileStream.close(err => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
+                });
+            });
+            fileStream.on("error", reject);
+        });
+    }
+
+    private static async cleanupDownload(
+        filePath: string | undefined,
+        tmpDir: string | undefined
+    ): Promise<void> {
+        if (filePath) {
+            try {
+                await fs.unlink(filePath);
+            } catch {
+                // Swallow cleanup errors
+            }
+        }
+        if (tmpDir) {
+            try {
+                await fs.rm(tmpDir, { recursive: true });
+            } catch {
+                // Swallow cleanup errors
+            }
+        }
+    }
+
     private static async downloadSwiftlyInstaller(
         url: string,
         progress: vscode.Progress<{ message?: string; increment?: number }>,
@@ -340,73 +407,17 @@ export class Swiftly {
 
             const contentLength = response.headers.get("content-length");
             const totalLength = contentLength ? parseInt(contentLength, 10) : 0;
-            let downloadedLength = 0;
-            let lastReportedPercent = 0;
-
             const fileStream = fsSync.createWriteStream(filePath);
             const reader = response.body.getReader();
 
-            try {
-                // eslint-disable-next-line no-constant-condition
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) {
-                        break;
-                    }
-
-                    downloadedLength += value.length;
-                    fileStream.write(value);
-
-                    if (totalLength > 0) {
-                        const percent = Math.floor((downloadedLength / totalLength) * 100);
-                        if (percent > lastReportedPercent && percent % 10 === 0) {
-                            progress.report({
-                                message: `Downloading Swiftly installer... ${percent}%`,
-                                increment: percent - lastReportedPercent,
-                            });
-                            lastReportedPercent = percent;
-                        }
-                    }
-                }
-            } finally {
-                reader.releaseLock();
-                fileStream.end();
-            }
-
-            await new Promise<void>((resolve, reject) => {
-                fileStream.on("finish", () => {
-                    fileStream.close(err => {
-                        if (err) {
-                            reject(err);
-                        } else {
-                            resolve();
-                        }
-                    });
-                });
-                fileStream.on("error", reject);
-            });
+            await this.streamResponseToFile(reader, fileStream, totalLength, progress);
 
             progress.report({ message: "Download completed" });
             logger?.info(`Swiftly installer downloaded to: ${filePath}`);
 
             return filePath;
         } catch (error) {
-            // Cleanup temporary resources on error
-            if (filePath) {
-                try {
-                    await fs.unlink(filePath);
-                } catch {
-                    // Swallow cleanup errors
-                }
-            }
-            if (tmpDir) {
-                try {
-                    await fs.rm(tmpDir, { recursive: true });
-                } catch {
-                    // Swallow cleanup errors
-                }
-            }
-
+            await this.cleanupDownload(filePath, tmpDir);
             logger?.error(`Failed to download Swiftly installer: ${error}`);
             throw error;
         }
@@ -610,8 +621,8 @@ export class Swiftly {
 
     public static async getActiveToolchain(
         extensionRoot: string,
-        cwd?: vscode.Uri,
-        logger?: SwiftLogger
+        logger: SwiftLogger,
+        cwd?: vscode.Uri
     ): Promise<string> {
         try {
             return await Swiftly.inUseLocation("swiftly", cwd);
@@ -629,7 +640,11 @@ export class Swiftly {
                     );
                     if (installed) {
                         // Retry toolchain location after successful installation
-                        return await this.getActiveToolchain(extensionRoot, cwd, logger);
+                        return await this.getActiveToolchain(extensionRoot, logger, cwd);
+                    } else if (cwd) {
+                        // If the user dismisses the installation prompt then fall back
+                        // to using the global toolchain
+                        return await Swiftly.getActiveToolchain(extensionRoot, logger);
                     }
                 }
             }

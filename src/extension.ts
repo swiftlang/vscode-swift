@@ -432,7 +432,7 @@ async function createActiveToolchain(
     logger: SwiftLogger
 ): Promise<SwiftToolchain | undefined> {
     try {
-        const toolchain = await SwiftToolchain.create(extensionPath, undefined, logger);
+        const toolchain = await SwiftToolchain.create(extensionPath, logger);
         toolchain.logDiagnostics(logger);
         contextKeys.updateKeysBasedOnActiveVersion(toolchain.swiftVersion);
         return toolchain;

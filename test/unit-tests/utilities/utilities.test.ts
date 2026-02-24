@@ -208,9 +208,7 @@ suite("Utilities Unit Test Suite", () => {
 
         test("columns default to 0", () => {
             expect(
-                sourceLocationToVSCodeLocation("/my/file", 1, undefined).range.isEqual(
-                    new Range(0, 0, 0, 0)
-                )
+                sourceLocationToVSCodeLocation("/my/file", 1).range.isEqual(new Range(0, 0, 0, 0))
             ).to.be.true;
         });
     });

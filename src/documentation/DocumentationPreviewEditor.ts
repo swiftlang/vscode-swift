@@ -245,17 +245,14 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
                         // We can safely ignore cancellations
                         return undefined;
                     }
-                    switch (error.code) {
-                        case LSPErrorCodes.RequestFailed:
-                            // RequestFailed response errors can be shown to the user
-                            livePreviewErrorMessage = error.message;
-                            break;
-                        default:
-                            // We should log additional info for other response errors
-                            this.context.logger.error(
-                                baseLogErrorMessage + JSON.stringify(error.toJson(), undefined, 2)
-                            );
-                            break;
+                    if (error.code === LSPErrorCodes.RequestFailed) {
+                        // RequestFailed response errors can be shown to the user
+                        livePreviewErrorMessage = error.message;
+                    } else {
+                        // We should log additional info for other response errors
+                        this.context.logger.error(
+                            baseLogErrorMessage + JSON.stringify(error.toJson(), undefined, 2)
+                        );
                     }
                 } else {
                     this.context.logger.error(baseLogErrorMessage + `${error}`);

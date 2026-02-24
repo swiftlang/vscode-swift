@@ -153,39 +153,55 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
         if (!parser.match(/\b(?:func|init)\b(?=[^{]*\{)/)) {
             return null;
         }
-        const funcName = parser.match(/^([^(<]*)\s*(\(|<)/);
+        const funcName = parser.match(/^([^(<]*)\s*([(<])/);
         if (!funcName) {
             return null;
         }
-        // if we catch "<" then we have generic arguments
         if (funcName[1] === "<") {
             parser.skipUntil(">");
-            // match open bracket
             if (!parser.match(/^\(/)) {
                 return null;
             }
         }
-        // extract parameters
+        const parameters = this.parseParameters(parser);
+        if (!parameters) {
+            return null;
+        }
+        const throws = this.parseFunctionMarkers(parser);
+        const returns = parser.match(/^\s*->/) !== null;
+        return {
+            indent: document.lineAt(position.line).firstNonWhitespaceCharacterIndex,
+            parameters,
+            returns,
+            throws,
+        };
+    }
+
+    private parseParameters(parser: DocumentParser): string[] | null {
+        if (parser.match(/^\)/)) {
+            return [];
+        }
         const parameters: string[] = [];
-        // if next character is ")" skip parameter parsing
-        if (!parser.match(/^\)/)) {
-            // eslint-disable-next-line no-constant-condition
-            while (true) {
-                const parameter = parser.match(/(\S*)(?:\s*)?:/);
-                if (!parameter) {
-                    return null;
-                }
-                parameters.push(...parameter);
-                const nextChar = parser.skipUntil(",)");
-                if (!nextChar) {
-                    return null;
-                }
-                if (nextChar === ")") {
-                    break;
-                }
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+            // eslint-disable-next-line sonarjs/empty-string-repetition
+            const parameter = parser.match(/(\S*)(?:\s*)?:/);
+            if (!parameter) {
+                return null;
+            }
+            parameters.push(...parameter);
+            const nextChar = parser.skipUntil(",)");
+            if (!nextChar) {
+                return null;
+            }
+            if (nextChar === ")") {
+                break;
             }
         }
-        // go through function markers
+        return parameters;
+    }
+
+    private parseFunctionMarkers(parser: DocumentParser): boolean {
         let throws = false;
         // eslint-disable-next-line no-constant-condition
         while (true) {
@@ -195,20 +211,10 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
             }
             if (mark[0] === "throws") {
                 throws = true;
-
-                // Check for a type annotation on the throw i.e. throws(MyError)
                 parser.match(/^\s*(\(.*\))/);
             }
         }
-        // if we find a `->` then function returns a value
-        const returns = parser.match(/^\s*->/) !== null;
-        // read function
-        return {
-            indent: document.lineAt(position.line).firstNonWhitespaceCharacterIndex,
-            parameters: parameters,
-            returns: returns,
-            throws: throws,
-        };
+        return throws;
     }
 
     private constructSnippet(

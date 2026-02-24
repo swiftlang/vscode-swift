@@ -6,7 +6,7 @@
     "sourceType": "module",
     "project": true
   },
-  "plugins": ["@typescript-eslint", "mocha"],
+  "plugins": ["@typescript-eslint", "mocha", "sonarjs"],
   "rules": {
     "curly": "error",
     "eqeqeq": "warn",
@@ -14,7 +14,6 @@
     // TODO "@typescript-eslint/semi" rule moved to https://eslint.style
     "semi": "error",
     "no-console": "warn",
-    "mocha/no-exclusive-tests": "error",
     "no-restricted-syntax": [
       "error",
       {
@@ -46,8 +45,27 @@
         "argsIgnorePattern": "^_",
         "caughtErrors": "none"
       }
-    ]
+    ],
+    "sonarjs/cognitive-complexity": ["error", 15],
+
+    "sonarjs/use-type-alias": "off",
+    "sonarjs/function-return-type": "off",
+    "sonarjs/slow-regex": "off",
+    "sonarjs/publicly-writable-directories": "off",
+    "sonarjs/no-same-argument-assert": "off",
+    "sonarjs/no-invariant-returns": "off",
+    "sonarjs/fixme-tag": "off",
+    "sonarjs/todo-tag": "off",
+
+    // These should be progressively enabled over time as we fix the underlying issues
+    "sonarjs/no-ignored-exceptions": "off",
+    "sonarjs/no-async-constructor": "off"
   },
-  "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended", "prettier"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:sonarjs/recommended-legacy",
+    "prettier"
+  ],
   "ignorePatterns": ["assets", "out", "dist", "**/*.d.ts"]
 }

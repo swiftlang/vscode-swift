@@ -380,7 +380,7 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
  * If the command is called via a command palette or other means, the target will be a string.
  */
 function unwrapTreeItem(target?: string | { args: string[] }): string[] {
-    if (typeof target === "object" && target !== null && "args" in target) {
+    if (!!target && typeof target === "object" && "args" in target) {
         return target.args ?? [];
     } else if (typeof target === "string") {
         return [target];

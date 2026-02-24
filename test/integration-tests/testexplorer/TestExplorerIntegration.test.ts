@@ -341,7 +341,8 @@ tag("large").suite("Test Explorer Suite", function () {
                 }));
                 assert(attachmentFolders.length > 0, "Attachments directory is empty");
 
-                const latestFolder = attachmentFolders.sort((a, b) => b.time - a.time)[0];
+                attachmentFolders.sort((a, b) => b.time - a.time);
+                const latestFolder = attachmentFolders[0];
                 const latestFolderPath = path.join(attachments, latestFolder.name);
                 const latestFolderContents = fs.readdirSync(latestFolderPath);
                 assert.deepStrictEqual(latestFolderContents, ["hello.txt"]);

@@ -57,7 +57,7 @@ jobs:
   tests_release:
     name: Test Release
     needs: package
-    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.6
+    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.7
     with:
       needs_token: true
       # Linux
@@ -72,7 +72,7 @@ jobs:
       linux_pre_build_command: . .github/workflows/scripts/setup-linux.sh
       linux_build_command: ./scripts/test.sh
       # Windows
-      windows_exclude_swift_versions: '[{"swift_version": "nightly-6.1"}, {"swift_version": "nightly"},  {"swift_version": "6.2"}]'  # Missing https://github.com/swiftlang/swift/pull/80144
+      windows_exclude_swift_versions: '[{"swift_version": "nightly-6.1"}, {"swift_version": "nightly"}, {"swift_version": "6.2"}]'  # Missing https://github.com/swiftlang/swift/pull/80144
       windows_env_vars: |
         CI=1
         VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
@@ -84,11 +84,11 @@ jobs:
   tests_insiders:
     name: Test Insiders
     needs: package
-    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.6
+    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.7
     with:
       needs_token: true
       # Linux
-      linux_exclude_swift_versions: '[{"swift_version": "5.8"}, {"swift_version": "5.9"}, {"swift_version": "5.10"}, {"swift_version": "6.0"}, {"swift_version": "6.1"}, {"swift_version": "nightly-6.1"}, {"swift_version": "nightly-6.2"}, {"swift_version": "nightly-main"}]'
+      linux_exclude_swift_versions: '[{"swift_version": "5.8"}, {"swift_version": "5.9"}, {"swift_version": "5.10"}, {"swift_version": "6.0"}, {"swift_version": "6.1"}, {"swift_version": "nightly-6.1"}, {"swift_version": "nightly-6.2"}, {"swift_version": "nightly-6.3"}, {"swift_version": "nightly-main"}]'
       linux_env_vars: |
         NODE_VERSION=${{ needs.package.outputs.node-version }}
         NODE_PATH=${{ needs.package.outputs.node-path }}

@@ -483,7 +483,7 @@ export class TestRunProxy implements vscode.CancellationToken {
     /**
      * Extra tags automatically applied by the extension to `vscode.TestItems`.
      */
-    static Tags = {
+    static readonly Tags = {
         SKIPPED: "skipped",
         HAS_ATTACHMENT: "hasAttachment",
         PARAMETERIZED_TEST_RESULT: "parameterizedTestResult",

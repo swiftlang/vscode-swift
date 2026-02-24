@@ -127,15 +127,15 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
 
     static async create(
         extensionRoot: string,
-        folder?: vscode.Uri,
-        logger?: SwiftLogger
+        logger: SwiftLogger,
+        folder?: vscode.Uri
     ): Promise<SwiftToolchain> {
         const swiftBinaryPath = await this.findSwiftBinaryInPath();
         const { toolchainPath, toolchainManager } = await this.getToolchainPath(
             swiftBinaryPath,
             extensionRoot,
-            folder,
-            logger
+            logger,
+            folder
         );
         const targetInfo = await this.getSwiftTargetInfo(
             this._getToolchainExecutable(toolchainPath, "swift"),
@@ -297,7 +297,7 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
                 (await fs.readdir(directory, { withFileTypes: true }))
                     .filter(dirent => dirent.name.startsWith("swift-"))
                     .map(async dirent => {
-                        const toolchainPath = path.join(dirent.path, dirent.name);
+                        const toolchainPath = path.join(dirent.parentPath, dirent.name);
                         const toolchainSwiftPath = path.join(toolchainPath, "usr", "bin", "swift");
                         if (!(await pathExists(toolchainSwiftPath))) {
                             return null;
@@ -330,7 +330,7 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
         // Loop through the possible project types in the output
         position += 1;
         const result: SwiftProjectTemplate[] = [];
-        const typeRegex = /^\s*([a-zA-z-]+)\s+-\s+(.+)$/;
+        const typeRegex = /^\s*([a-zA-Z-]+)\s+-\s+(.+)$/;
         for (; position < lines.length; position++) {
             const line = lines[position];
             // Stop if we hit a new command line option
@@ -338,7 +338,7 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
                 break;
             }
             // Check if this is the start of a new project type
-            const match = line.match(typeRegex);
+            const match = typeRegex.exec(line);
             if (match) {
                 const nameSegments = match[1].split("-");
                 result.push({
@@ -550,8 +550,8 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
     private static async getToolchainPath(
         swiftBinaryPath: string,
         extensionRoot: string,
-        cwd?: vscode.Uri,
-        logger?: SwiftLogger
+        logger: SwiftLogger,
+        cwd?: vscode.Uri
     ): Promise<{
         toolchainPath: string;
         toolchainManager: ToolchainManager;
@@ -574,7 +574,11 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
             }
             // Check if the swift binary is managed by swiftly
             if (await Swiftly.isManagedBySwiftly(swiftBinaryPath)) {
-                const swiftlyToolchainPath = await Swiftly.getActiveToolchain(extensionRoot, cwd);
+                const swiftlyToolchainPath = await Swiftly.getActiveToolchain(
+                    extensionRoot,
+                    logger,
+                    cwd
+                );
                 return {
                     toolchainPath: path.resolve(swiftlyToolchainPath, "usr"),
                     toolchainManager: "swiftly",
@@ -866,7 +870,7 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
      * @returns swift version object
      */
     private static getSwiftVersion(targetInfo: SwiftTargetInfo): Version {
-        const match = targetInfo.compilerVersion.match(/Swift version ([\S]+)/);
+        const match = /Swift version (\S+)/.exec(targetInfo.compilerVersion);
         let version: Version | undefined;
         if (match) {
             version = Version.fromString(match[1]);

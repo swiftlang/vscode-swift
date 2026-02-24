@@ -21,6 +21,7 @@ import * as vscode from "vscode";
 import * as askpass from "@src/askpass/askpass-server";
 import { handleMissingSwiftly, promptForSwiftlyInstallation } from "@src/commands/installSwiftly";
 import { installSwiftlyToolchainWithProgress } from "@src/commands/installSwiftlyToolchain";
+import { SwiftLogger } from "@src/logging/SwiftLogger";
 import * as SwiftOutputChannelModule from "@src/logging/SwiftOutputChannel";
 import {
     Swiftly,
@@ -28,6 +29,7 @@ import {
     parseSwiftlyMissingToolchainError,
 } from "@src/toolchain/swiftly";
 import * as utilities from "@src/utilities/utilities";
+import { ExecFileError } from "@src/utilities/utilities";
 
 import {
     MockedObject,
@@ -516,7 +518,7 @@ suite("Swiftly Unit Tests", () => {
             mockedPlatform.setValue("win32");
 
             await expect(
-                Swiftly.installToolchain("6.0.0", "/path/to/extension", undefined)
+                Swiftly.installToolchain("6.0.0", "/path/to/extension")
             ).to.eventually.be.rejectedWith("Swiftly is not supported on this platform");
             expect(mockUtilities.execFile).to.not.have.been.called;
         });
@@ -530,7 +532,7 @@ suite("Swiftly Unit Tests", () => {
                 [tmpDir]: {},
             });
 
-            await Swiftly.installToolchain("6.0.0", "/path/to/extension", undefined);
+            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
 
             expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
                 "swiftly",
@@ -574,7 +576,7 @@ suite("Swiftly Unit Tests", () => {
             });
 
             await expect(
-                Swiftly.installToolchain("6.0.0", "/path/to/extension", undefined)
+                Swiftly.installToolchain("6.0.0", "/path/to/extension")
             ).to.eventually.be.rejectedWith("Installation failed");
         });
     });
@@ -1029,7 +1031,6 @@ apt-get -y install libncurses5-dev`;
                 .callsFake(async (_command, args) => {
                     const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, validScript);
-                    return;
                 });
             mockUtilities.execFile
                 .withArgs("chmod", match.array)
@@ -1085,7 +1086,6 @@ apt-get -y install build-essential`;
                 .callsFake(async (_command, args) => {
                     const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, validScript);
-                    return;
                 });
 
             // @ts-expect-error mocking vscode window methods makes type checking difficult
@@ -1129,7 +1129,6 @@ apt-get -y install build-essential`;
                 .callsFake(async (_command, args) => {
                     const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, invalidScript);
-                    return;
                 });
 
             await Swiftly.installToolchain("6.0.0", "/path/to/extension");
@@ -1169,7 +1168,6 @@ apt-get -y install build-essential`;
                 .callsFake(async (_command, args) => {
                     const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, validScript);
-                    return;
                 });
             mockUtilities.execFile
                 .withArgs("chmod", match.array)
@@ -1238,7 +1236,6 @@ yum install ncurses-devel`;
                 .callsFake(async (_command, args) => {
                     const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, yumScript);
-                    return;
                 });
             mockUtilities.execFile
                 .withArgs("chmod", match.array)
@@ -1283,7 +1280,6 @@ yum remove important-system-package`;
                 .callsFake(async (_command, args) => {
                     const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, malformedScript);
-                    return;
                 });
 
             await Swiftly.installToolchain("6.0.0", "/path/to/extension");
@@ -1323,7 +1319,6 @@ apt-get -y install libncurses5-dev
                 .callsFake(async (_command, args) => {
                     const postInstallPath = args[4];
                     await fs.writeFile(postInstallPath, scriptWithComments);
-                    return;
                 });
             mockUtilities.execFile
                 .withArgs("chmod", match.array)
@@ -1431,6 +1426,39 @@ apt-get -y install libncurses5-dev
 
             const result = await handleMissingSwiftlyToolchain("6.1.2", "/path/to/extension");
             expect(result).to.be.true;
+        });
+
+        test("getActiveToolchain falls back to global toolchain when user declines and cwd is provided", async () => {
+            const missingToolchainError = Object.create(ExecFileError.prototype);
+            missingToolchainError.causedBy = new Error("swiftly use failed");
+            missingToolchainError.stdout = "";
+            missingToolchainError.stderr =
+                "The swift version file uses toolchain version 6.1.2, but it doesn't match any of the installed toolchains";
+            missingToolchainError.message = "swiftly use failed";
+
+            // First call (with cwd) fails with missing toolchain error
+            mockedUtilities.execFile.onFirstCall().rejects(missingToolchainError);
+            // Second call (recursive, with undefined cwd) succeeds
+            mockedUtilities.execFile
+                .onSecondCall()
+                .resolves({ stdout: "/global/toolchain/path\n", stderr: "" });
+
+            // User declines installation prompt
+            mockWindow.showWarningMessage.resolves(undefined);
+
+            const mockLogger = mockObject<SwiftLogger>({
+                info: mockFn(),
+            });
+
+            const cwd = vscode.Uri.file("/project/path");
+            const result = await Swiftly.getActiveToolchain(
+                "/extension/root",
+                instance(mockLogger),
+                cwd
+            );
+
+            expect(result).to.equal("/global/toolchain/path");
+            expect(mockedUtilities.execFile).to.have.been.calledTwice;
         });
     });
 
