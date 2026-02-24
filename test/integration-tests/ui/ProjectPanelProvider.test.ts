@@ -19,6 +19,7 @@ import * as vscode from "vscode";
 import { FolderContext } from "@src/FolderContext";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { Commands } from "@src/commands";
+import { PlaygroundProvider } from "@src/playgrounds/PlaygroundProvider";
 import { Playground } from "@src/sourcekit-lsp/extensions";
 import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
 import {
@@ -44,33 +45,13 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
     let folderContext: FolderContext;
     let treeProvider: ProjectPanelProvider;
 
-    type PlaygroundChangeEvent = {
-        uri: string;
-        playgrounds: Playground[];
-    };
-
-    class MockPlaygroundProvider {
-        private didChangePlaygroundsEmitter: vscode.EventEmitter<PlaygroundChangeEvent> =
-            new vscode.EventEmitter();
-        private workspacePlaygrounds: Playground[] = [];
-
-        onDidChangePlaygrounds: vscode.Event<PlaygroundChangeEvent> =
-            this.didChangePlaygroundsEmitter.event;
-
-        async getWorkspacePlaygrounds(): Promise<Playground[]> {
-            return this.workspacePlaygrounds;
-        }
-
+    class MockPlaygroundProvider extends PlaygroundProvider {
         setPlaygrounds(playgrounds: Playground[]) {
-            this.workspacePlaygrounds = playgrounds;
+            this.setWorkspacePlaygrounds(playgrounds);
             this.didChangePlaygroundsEmitter.fire({
                 uri: playgrounds[0]?.location.uri ?? "",
                 playgrounds,
             });
-        }
-
-        dispose() {
-            this.didChangePlaygroundsEmitter.dispose();
         }
     }
 
@@ -166,9 +147,8 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
 
         beforeEach(() => {
             existingPlaygroundProvider = folderContext.playgroundProvider;
-            mockPlaygroundProvider = new MockPlaygroundProvider();
-            folderContext.playgroundProvider =
-                mockPlaygroundProvider as unknown as FolderContext["playgroundProvider"];
+            mockPlaygroundProvider = new MockPlaygroundProvider(folderContext);
+            folderContext.playgroundProvider = mockPlaygroundProvider;
             treeProvider.observeFolder(folderContext);
         });
 
@@ -226,6 +206,36 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
                 headers => {
                     expect(headers.find(header => header.name === "Playgrounds")).to.be.undefined;
                     return headers;
+                }
+            );
+        });
+
+        test("Hooks up playground command", async () => {
+            const playgroundFile = vscode.Uri.file(
+                path.join(folderContext.folder.fsPath, "Sources/ExecutableTarget/main.swift")
+            ).toString();
+            mockPlaygroundProvider?.setPlaygrounds([
+                makePlayground("ExecutableTarget/main.swift:4", playgroundFile, "named playground"),
+            ]);
+
+            await waitForChildren(
+                () => getHeaderChildren("Playgrounds"),
+                playgrounds => {
+                    const node = playgrounds[0];
+                    const item = node.toTreeItem();
+                    expect(item.command?.title).to.equal("Open Playground");
+                    expect(item.command?.command).to.equal("vscode.openWith");
+                    expect(item.command?.arguments?.[0]).to.deep.equal(
+                        vscode.Uri.parse(playgroundFile)
+                    );
+                    expect(item.command?.arguments?.[1]).to.equal("default");
+                    expect(item.command?.arguments?.[2]).to.deep.equal({
+                        selection: {
+                            start: { line: 0, character: 0 },
+                            end: { line: 0, character: 0 },
+                        },
+                    });
+                    return playgrounds;
                 }
             );
         });
