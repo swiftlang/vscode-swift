@@ -72,7 +72,7 @@ jobs:
       linux_pre_build_command: . .github/workflows/scripts/setup-linux.sh
       linux_build_command: ./scripts/test.sh
       # Windows
-      windows_exclude_swift_versions: '[{"swift_version": "nightly-6.1"}, {"swift_version": "nightly"},  {"swift_version": "6.2"}]'  # Missing https://github.com/swiftlang/swift/pull/80144
+      windows_exclude_swift_versions: '[{"swift_version": "nightly-6.1"}, {"swift_version": "nightly"}, {"swift_version": "6.2"}]'  # Missing https://github.com/swiftlang/swift/pull/80144
       windows_env_vars: |
         CI=1
         VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
