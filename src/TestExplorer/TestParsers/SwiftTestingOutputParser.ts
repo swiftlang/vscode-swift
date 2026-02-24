@@ -89,7 +89,7 @@ type ParameterizedTestRecord = TestRecord & {
     };
 };
 
-export interface TestCase {
+interface TestCase {
     id: string;
     displayName: string;
 }
@@ -191,8 +191,7 @@ export class SwiftTestingOutputParser {
     private path?: string;
 
     constructor(
-        public testRunStarted: () => void,
-        public addParameterizedTestCase: (testClass: TestClass, parentIndex: number) => void,
+        public addParameterizedTestCases: (testClasses: TestClass[], parentIndex: number) => void,
         public onAttachment: (testIndex: number, path: string) => void
     ) {}
 
@@ -235,6 +234,7 @@ export class SwiftTestingOutputParser {
         }
 
         await new Promise<void>(resolve => {
+            // eslint-disable-next-line sonarjs/os-command
             exec(`echo '{}' > ${this.path}`, () => {
                 resolve();
             });
@@ -280,7 +280,6 @@ export class SwiftTestingOutputParser {
     private handleEventRecord(payload: EventRecordPayload, runState: ITestRunState) {
         switch (payload.kind) {
             case "runStarted":
-                this.handleRunStarted();
                 break;
             case "testStarted":
                 this.handleTestStarted(payload, runState);
@@ -322,9 +321,8 @@ export class SwiftTestingOutputParser {
 
         const testIndex = this.testItemIndexFromTestID(item.payload.id, runState);
         // If a test has test cases it is paramterized and we need to notify
-        // the caller that the TestClass should be added to the vscode.TestRun
-        // before it starts.
-        item.payload._testCases
+        // the caller that the TestClass should be added to the vscode.TestRun.
+        const parameterizedTestCases = item.payload._testCases
             .map((testCase, index) =>
                 this.parameterizedFunctionTestCaseToTestClass(
                     item.payload.id,
@@ -337,14 +335,9 @@ export class SwiftTestingOutputParser {
                     index
                 )
             )
-            .flatMap(testClass => (testClass ? [testClass] : []))
-            .forEach(testClass => this.addParameterizedTestCase(testClass, testIndex));
-    }
+            .flatMap(testClass => (testClass ? [testClass] : []));
 
-    private handleRunStarted() {
-        // Notify the runner that we've received all the test cases and
-        // are going to start running tests now.
-        this.testRunStarted();
+        this.addParameterizedTestCases(parameterizedTestCases, testIndex);
     }
 
     private handleTestStarted(payload: TestStarted, runState: ITestRunState) {
@@ -448,7 +441,7 @@ export class SwiftTestingOutputParser {
 
     private testName(id: string): string {
         const nameMatcher = /^(.*\(.*\))\/(.*)\.swift:\d+:\d+$/;
-        const matches = id.match(nameMatcher);
+        const matches = nameMatcher.exec(id);
         return !matches ? id : matches[1];
     }
 
@@ -596,8 +589,8 @@ export class SymbolRenderer {
         return this.colorize(symbol, this.symbol(symbol));
     }
 
-    static ansiEscapeCodePrefix = "\u{001B}[";
-    static resetANSIEscapeCode = `${SymbolRenderer.ansiEscapeCodePrefix}0m`;
+    static readonly ansiEscapeCodePrefix = "\u{001B}[";
+    static readonly resetANSIEscapeCode = `${SymbolRenderer.ansiEscapeCodePrefix}0m`;
 
     // This is adapted from
     // https://github.com/apple/swift-testing/blob/786ade71421eb1d8a9c1d99c902cf1c93096e7df/Sources/Testing/Events/Recorder/Event.Symbol.swift#L102

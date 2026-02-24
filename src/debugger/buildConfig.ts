@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 import * as fs from "fs/promises";
-import * as os from "os";
 import * as path from "path";
 import * as vscode from "vscode";
 
@@ -82,10 +81,6 @@ export class BuildConfigurationFactory {
 
     /** flag for enabling test discovery */
     private testDiscoveryFlag(ctx: FolderContext): string[] {
-        // Test discovery is only available in SwiftPM 5.1 and later.
-        if (ctx.swiftVersion.isLessThan(new Version(5, 1, 0))) {
-            return [];
-        }
         // Test discovery is always enabled on Darwin.
         if (process.platform !== "darwin") {
             const hasLinuxMain = ctx.linuxMain.exists;
@@ -295,7 +290,6 @@ export class TestingConfigurationFactory {
         }
     }
 
-    /* eslint-disable no-case-declarations */
     private async buildWindowsConfig(): Promise<vscode.DebugConfiguration | null> {
         if (isDebugging(this.testKind)) {
             const testEnv = {
@@ -327,7 +321,6 @@ export class TestingConfigurationFactory {
         }
     }
 
-    /* eslint-disable no-case-declarations */
     private async buildLinuxConfig(): Promise<vscode.DebugConfiguration | null> {
         if (isDebugging(this.testKind) && this.testLibrary === TestLibrary.xctest) {
             const baseConfig = await this.baseConfig();
@@ -349,223 +342,139 @@ export class TestingConfigurationFactory {
     }
 
     private async buildDarwinConfig(): Promise<vscode.DebugConfiguration | null> {
-        const baseConfig = await this.baseConfig();
         switch (this.testLibrary) {
             case TestLibrary.swiftTesting:
-                switch (this.testKind) {
-                    case TestKind.debugRelease:
-                    case TestKind.debug:
-                        // In the debug case we need to build the testing executable and then
-                        // launch it with LLDB instead of going through `swift test`.
-                        const toolchain = this.ctx.toolchain;
-                        const libraryPath = toolchain.swiftTestingLibraryPath();
-                        const frameworkPath = toolchain.swiftTestingFrameworkPath();
-                        const swiftPMTestingHelperPath = toolchain.swiftPMTestingHelperPath;
-                        const env = {
-                            ...this.testEnv,
-                            ...this.sanitizerRuntimeEnvironment,
-                            DYLD_FRAMEWORK_PATH: frameworkPath,
-                            DYLD_LIBRARY_PATH: libraryPath,
-                            SWT_SF_SYMBOLS_ENABLED: "0",
-                            SWT_EXPERIMENTAL_EVENT_STREAM_FIELDS_ENABLED: "1",
-                        };
-
-                        // Toolchains that contain https://github.com/swiftlang/swift-package-manager/commit/844bd137070dcd18d0f46dd95885ef7907ea0697
-                        // produce a single testing binary for both xctest and swift-testing (called <ProductName>.xctest).
-                        // We can continue to invoke it with the xctest utility, but to run swift-testing tests
-                        // we need to invoke then using the swiftpm-testing-helper utility. If this helper utility exists
-                        // then we know we're working with a unified binary.
-                        if (swiftPMTestingHelperPath) {
-                            const result = {
-                                ...baseConfig,
-                                program: swiftPMTestingHelperPath,
-                                args: this.addBuildOptionsToArgs(
-                                    this.addTestsToArgs(
-                                        this.addSwiftTestingFlagsArgs([
-                                            "--test-bundle-path",
-                                            await this.unifiedTestingOutputPath(),
-                                            "--testing-library",
-                                            "swift-testing",
-                                        ])
-                                    )
-                                ),
-                                env,
-                            };
-                            return result;
-                        }
-
-                        const result = {
-                            ...baseConfig,
-                            program: await this.testExecutableOutputPath(),
-                            args: this.debuggingTestExecutableArgs(),
-                            env,
-                        };
-                        return result;
-                    default:
-                        let args = this.addSwiftTestingFlagsArgs([
-                            "test",
-                            ...(this.testKind === TestKind.coverage
-                                ? ["--enable-code-coverage"]
-                                : []),
-                        ]);
-
-                        if (this.swiftVersionGreaterOrEqual(6, 0, 0)) {
-                            args = [...args, "--disable-xctest"];
-                        }
-
-                        return {
-                            ...baseConfig,
-                            program: this.swiftProgramPath,
-                            args: this.addBuildOptionsToArgs(this.addTestsToArgs(args)),
-                            env: {
-                                ...this.testEnv,
-                                ...this.sanitizerRuntimeEnvironment,
-                                SWT_SF_SYMBOLS_ENABLED: "0",
-                                SWT_EXPERIMENTAL_EVENT_STREAM_FIELDS_ENABLED: "1",
-                            },
-                            // For coverage we need to rebuild so do the build/test all in one step,
-                            // otherwise we do a build, then test, to give better progress.
-                            preLaunchTask:
-                                this.testKind === TestKind.coverage
-                                    ? undefined
-                                    : baseConfig.preLaunchTask,
-                        };
-                }
+                return isDebugging(this.testKind)
+                    ? this.buildDarwinSwiftTestingDebugConfig()
+                    : this.buildDarwinSwiftTestingRunConfig();
             case TestLibrary.xctest:
-                switch (this.testKind) {
-                    case TestKind.debugRelease:
-                    case TestKind.debug:
-                        const xcTestPath = this.ctx.toolchain.xcTestPath;
-                        // On macOS, find the path to xctest
-                        // and point it at the .xctest bundle from the configured build directory.
-                        if (xcTestPath === undefined) {
-                            return null;
-                        }
-                        const toolchain = this.ctx.toolchain;
-                        return {
-                            ...baseConfig,
-                            program: path.join(xcTestPath, "xctest"),
-                            args: this.addXCTestExecutableTestsToArgs([
-                                await this.xcTestOutputPath(),
-                            ]),
-                            env: {
-                                ...this.testEnv,
-                                ...this.sanitizerRuntimeEnvironment,
-                                ...(toolchain.swiftVersion.isGreaterThanOrEqual(
-                                    new Version(6, 2, 0)
-                                )
-                                    ? {
-                                          // Starting in 6.2 we need to provide libTesting.dylib for xctests
-                                          DYLD_FRAMEWORK_PATH:
-                                              toolchain.swiftTestingFrameworkPath(),
-                                          DYLD_LIBRARY_PATH: toolchain.swiftTestingLibraryPath(),
-                                      }
-                                    : {}),
-                                SWIFT_TESTING_ENABLED: "0",
-                            },
-                        };
-                    default:
-                        const swiftVersion = this.ctx.toolchain.swiftVersion;
-                        if (
-                            swiftVersion.isLessThan(new Version(5, 7, 0)) &&
-                            swiftVersion.isGreaterThanOrEqual(new Version(5, 6, 0)) &&
-                            process.platform === "darwin"
-                        ) {
-                            // if debugging on macOS with Swift 5.6 we need to create a custom launch
-                            // configuration so we can set the system architecture
-                            return await this.createDarwin56TestConfiguration();
-                        }
-
-                        let xcTestArgs = [
-                            "test",
-                            ...(this.testKind === TestKind.coverage
-                                ? ["--enable-code-coverage"]
-                                : []),
-                        ];
-                        if (this.swiftVersionGreaterOrEqual(6, 0, 0)) {
-                            xcTestArgs = [
-                                ...xcTestArgs,
-                                "--enable-xctest",
-                                "--disable-experimental-swift-testing",
-                            ];
-                        }
-
-                        if (this.testKind === TestKind.parallel) {
-                            xcTestArgs = [...xcTestArgs, "--parallel"];
-                        }
-
-                        return {
-                            ...baseConfig,
-                            program: this.swiftProgramPath,
-                            args: this.addBuildOptionsToArgs(this.addTestsToArgs(xcTestArgs)),
-                            env: {
-                                ...this.testEnv,
-                                ...this.sanitizerRuntimeEnvironment,
-                                SWT_SF_SYMBOLS_ENABLED: "0",
-                            },
-                            // For coverage we need to rebuild so do the build/test all in one step,
-                            // otherwise we do a build, then test, to give better progress.
-                            preLaunchTask:
-                                this.testKind === TestKind.coverage
-                                    ? undefined
-                                    : baseConfig.preLaunchTask,
-                        };
-                }
+                return isDebugging(this.testKind)
+                    ? this.buildDarwinXCTestDebugConfig()
+                    : this.buildDarwinXCTestRunConfig();
         }
     }
-    /* eslint-enable no-case-declarations */
 
-    /**
-     * Return custom Darwin test configuration that works with Swift 5.6
-     **/
-    private async createDarwin56TestConfiguration(): Promise<vscode.DebugConfiguration | null> {
-        if ((await this.ctx.swiftPackage.getTargets(TargetType.test)).length === 0) {
-            return null;
-        }
+    private async buildDarwinSwiftTestingDebugConfig(): Promise<vscode.DebugConfiguration> {
+        const baseConfig = await this.baseConfig();
+        const toolchain = this.ctx.toolchain;
+        const libraryPath = toolchain.swiftTestingLibraryPath();
+        const frameworkPath = toolchain.swiftTestingFrameworkPath();
+        const swiftPMTestingHelperPath = toolchain.swiftPMTestingHelperPath;
+        const env = {
+            ...this.testEnv,
+            ...this.sanitizerRuntimeEnvironment,
+            DYLD_FRAMEWORK_PATH: frameworkPath,
+            DYLD_LIBRARY_PATH: libraryPath,
+            SWT_SF_SYMBOLS_ENABLED: "0",
+            SWT_EXPERIMENTAL_EVENT_STREAM_FIELDS_ENABLED: "1",
+        };
 
-        let testFilterArg: string;
-        const testList = this.testList.join(",");
-        if (testList.length > 0) {
-            testFilterArg = `-XCTest ${testList}`;
-        } else {
-            testFilterArg = "";
+        if (swiftPMTestingHelperPath) {
+            return {
+                ...baseConfig,
+                program: swiftPMTestingHelperPath,
+                args: this.addBuildOptionsToArgs(
+                    this.addTestsToArgs(
+                        this.addSwiftTestingFlagsArgs([
+                            "--test-bundle-path",
+                            await this.unifiedTestingOutputPath(),
+                            "--testing-library",
+                            "swift-testing",
+                        ])
+                    )
+                ),
+                env,
+            };
         }
-
-        const { folder, nameSuffix } = getFolderAndNameSuffix(this.ctx, true);
-        // On macOS, find the path to xctest
-        // and point it at the .xctest bundle from the configured build directory.
-        const xctestPath = this.ctx.toolchain.xcTestPath;
-        if (xctestPath === undefined) {
-            return null;
-        }
-        let arch: string;
-        switch (os.arch()) {
-            case "x64":
-                arch = "x86_64";
-                break;
-            case "arm64":
-                arch = "arm64e";
-                break;
-            default:
-                return null;
-        }
-        const sanitizer = this.ctx.toolchain.sanitizer(configuration.sanitizer);
-        const envCommands = Object.entries({
-            ...swiftRuntimeEnv(),
-            ...configuration.folder(this.ctx.workspaceFolder).testEnvironmentVariables,
-            ...sanitizer?.runtimeEnvironment,
-        }).map(([key, value]) => `settings set target.env-vars ${key}="${value}"`);
 
         return {
-            type: SWIFT_LAUNCH_CONFIG_TYPE,
-            request: "custom",
-            name: `Test ${await this.ctx.swiftPackage.name}`,
-            targetCreateCommands: [`file -a ${arch} ${xctestPath}/xctest`],
-            processCreateCommands: [
-                ...envCommands,
-                `process launch -w ${folder} -- ${testFilterArg} ${this.xcTestOutputPath()}`,
-            ],
-            preLaunchTask: `swift: Build All${nameSuffix}`,
+            ...baseConfig,
+            program: await this.testExecutableOutputPath(),
+            args: this.debuggingTestExecutableArgs(),
+            env,
+        };
+    }
+
+    private async buildDarwinSwiftTestingRunConfig(): Promise<vscode.DebugConfiguration> {
+        const baseConfig = await this.baseConfig();
+        const codeCoverageArgs =
+            this.testKind === TestKind.coverage ? ["--enable-code-coverage"] : [];
+        let args = this.addSwiftTestingFlagsArgs(["test", ...codeCoverageArgs]);
+
+        if (this.swiftVersionGreaterOrEqual(6, 0, 0)) {
+            args = [...args, "--disable-xctest"];
+        }
+
+        return {
+            ...baseConfig,
+            program: this.swiftProgramPath,
+            args: this.addBuildOptionsToArgs(this.addTestsToArgs(args)),
+            env: {
+                ...this.testEnv,
+                ...this.sanitizerRuntimeEnvironment,
+                SWT_SF_SYMBOLS_ENABLED: "0",
+                SWT_EXPERIMENTAL_EVENT_STREAM_FIELDS_ENABLED: "1",
+            },
+            preLaunchTask:
+                this.testKind === TestKind.coverage ? undefined : baseConfig.preLaunchTask,
+        };
+    }
+
+    private async buildDarwinXCTestDebugConfig(): Promise<vscode.DebugConfiguration | null> {
+        const baseConfig = await this.baseConfig();
+        const xcTestPath = this.ctx.toolchain.xcTestPath;
+        if (xcTestPath === undefined) {
+            return null;
+        }
+        const toolchain = this.ctx.toolchain;
+        const needsTestingLibrary = toolchain.swiftVersion.isGreaterThanOrEqual(
+            new Version(6, 2, 0)
+        );
+        const testingLibraryEnv = needsTestingLibrary
+            ? {
+                  DYLD_FRAMEWORK_PATH: toolchain.swiftTestingFrameworkPath(),
+                  DYLD_LIBRARY_PATH: toolchain.swiftTestingLibraryPath(),
+              }
+            : {};
+
+        return {
+            ...baseConfig,
+            program: path.join(xcTestPath, "xctest"),
+            args: this.addXCTestExecutableTestsToArgs([await this.xcTestOutputPath()]),
+            env: {
+                ...this.testEnv,
+                ...this.sanitizerRuntimeEnvironment,
+                ...testingLibraryEnv,
+                SWIFT_TESTING_ENABLED: "0",
+            },
+        };
+    }
+
+    private async buildDarwinXCTestRunConfig(): Promise<vscode.DebugConfiguration> {
+        const baseConfig = await this.baseConfig();
+        const codeCoverageArgs =
+            this.testKind === TestKind.coverage ? ["--enable-code-coverage"] : [];
+        let xcTestArgs = ["test", ...codeCoverageArgs];
+
+        if (this.swiftVersionGreaterOrEqual(6, 0, 0)) {
+            xcTestArgs = [...xcTestArgs, "--enable-xctest", "--disable-experimental-swift-testing"];
+        }
+
+        if (this.testKind === TestKind.parallel) {
+            xcTestArgs = [...xcTestArgs, "--parallel"];
+        }
+
+        return {
+            ...baseConfig,
+            program: this.swiftProgramPath,
+            args: this.addBuildOptionsToArgs(this.addTestsToArgs(xcTestArgs)),
+            env: {
+                ...this.testEnv,
+                ...this.sanitizerRuntimeEnvironment,
+                SWT_SF_SYMBOLS_ENABLED: "0",
+            },
+            preLaunchTask:
+                this.testKind === TestKind.coverage ? undefined : baseConfig.preLaunchTask,
         };
     }
 
@@ -655,24 +564,37 @@ export class TestingConfigurationFactory {
         return this.ctx.toolchain.getToolchainExecutable("swift");
     }
 
-    private get buildDirectory(): string {
-        const { folder } = getFolderAndNameSuffix(this.ctx, this.expandEnvVariables);
-        return BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
-    }
-
     private get artifactFolderForTestKind(): string {
         const mode = isRelease(this.testKind) ? "release" : "debug";
         const triple = this.ctx.toolchain.unversionedTriple;
         return triple ? path.join(triple, mode) : mode;
     }
 
+    private async getBuildBinaryPath(): Promise<string> {
+        const buildConfiguration: "debug" | "release" = isRelease(this.testKind)
+            ? "release"
+            : "debug";
+
+        try {
+            return await this.ctx.toolchain.buildFlags.getBuildBinaryPath(
+                this.ctx.folder.fsPath,
+                buildConfiguration,
+                this.ctx.workspaceContext.logger,
+                "tests",
+                configuration.folder(this.ctx.workspaceFolder).additionalTestArguments
+            );
+        } catch (error) {
+            this.ctx.workspaceContext.logger.warn(
+                `Failed to get build binary path for tests, falling back to legacy path construction: ${error}`
+            );
+            return path.join(this.artifactFolderForTestKind);
+        }
+    }
+
     private async xcTestOutputPath(): Promise<string> {
         const packageName = await this.ctx.swiftPackage.name;
-        return path.join(
-            this.buildDirectory,
-            this.artifactFolderForTestKind,
-            `${packageName}PackageTests.xctest`
-        );
+        const binPath = await this.getBuildBinaryPath();
+        return path.join(binPath, `${packageName}PackageTests.xctest`);
     }
 
     private async unifiedTestingOutputPath(): Promise<string> {
@@ -757,7 +679,11 @@ export function getFolderAndNameSuffix(
     expandEnvVariables = false,
     platform?: "posix" | "win32"
 ): { folder: string; nameSuffix: string } {
-    const nodePath = platform === "posix" ? path.posix : platform === "win32" ? path.win32 : path;
+    const platformPaths = {
+        posix: path.posix,
+        win32: path.win32,
+    };
+    const nodePath = platform ? platformPaths[platform] : path;
     const workspaceFolder = expandEnvVariables
         ? ctx.workspaceFolder.uri.fsPath
         : `\${workspaceFolder:${ctx.workspaceFolder.name}}`;

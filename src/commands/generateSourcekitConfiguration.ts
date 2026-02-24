@@ -47,7 +47,7 @@ export async function generateSourcekitConfiguration(ctx: WorkspaceContext): Pro
         await Promise.all(
             foldersToGenerate.map(folder => createSourcekitConfiguration(ctx, folder))
         )
-    ).reduceRight((prev, curr) => prev || curr);
+    ).reduceRight((prev, curr) => prev || curr, false);
 }
 
 export const sourcekitFolderPath = (f: FolderContext) => join(f.folder.fsPath, sourcekitDotFolder);
@@ -203,7 +203,6 @@ async function checkDocumentSchema(doc: vscode.TextDocument, workspaceContext: W
             doc.uri,
             Buffer.from(JSON.stringify(config, undefined, 2))
         );
-        return;
     } else if (result === "Don't Ask Again") {
         configuration.checkLspConfigurationSchema = false;
         return;

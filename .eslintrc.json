@@ -6,7 +6,7 @@
     "sourceType": "module",
     "project": true
   },
-  "plugins": ["@typescript-eslint", "mocha"],
+  "plugins": ["@typescript-eslint", "mocha", "sonarjs"],
   "rules": {
     "curly": "error",
     "eqeqeq": "warn",
@@ -14,7 +14,6 @@
     // TODO "@typescript-eslint/semi" rule moved to https://eslint.style
     "semi": "error",
     "no-console": "warn",
-    "mocha/no-exclusive-tests": "error",
     "no-restricted-syntax": [
       "error",
       {
@@ -24,6 +23,14 @@
       {
         "selector": "ImportExpression",
         "message": "Dynamic imports using 'import()' are not allowed. Use static imports at the top of the file instead."
+      },
+      {
+        "selector": "CallExpression[arguments.length=1] > MemberExpression.callee > Identifier.property[name='reduce']",
+        "message": "Provide initialValue to .reduce(). Otherwise an empty array will throw a 'reduce of empty array with no initial value' error."
+      },
+      {
+        "selector": "CallExpression[arguments.length=1] > MemberExpression.callee > Identifier.property[name='reduceRight']",
+        "message": "Provide initialValue to .reduceRight(). Otherwise an empty array will throw a 'reduce of empty array with no initial value' error."
       }
     ],
     "@typescript-eslint/no-floating-promises": ["warn", { "checkThenables": true }],
@@ -38,8 +45,27 @@
         "argsIgnorePattern": "^_",
         "caughtErrors": "none"
       }
-    ]
+    ],
+    "sonarjs/cognitive-complexity": ["error", 15],
+
+    "sonarjs/use-type-alias": "off",
+    "sonarjs/function-return-type": "off",
+    "sonarjs/slow-regex": "off",
+    "sonarjs/publicly-writable-directories": "off",
+    "sonarjs/no-same-argument-assert": "off",
+    "sonarjs/no-invariant-returns": "off",
+    "sonarjs/fixme-tag": "off",
+    "sonarjs/todo-tag": "off",
+
+    // These should be progressively enabled over time as we fix the underlying issues
+    "sonarjs/no-ignored-exceptions": "off",
+    "sonarjs/no-async-constructor": "off"
   },
-  "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended", "prettier"],
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:sonarjs/recommended-legacy",
+    "prettier"
+  ],
   "ignorePatterns": ["assets", "out", "dist", "**/*.d.ts"]
 }

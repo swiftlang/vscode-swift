@@ -1,6 +1,9 @@
 {
     "name": "Swift",
-    "dockerFile": "Dockerfile",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": ".."
+    },
     "features": {
         "ghcr.io/devcontainers/features/common-utils:2": {
             "installZsh": "false",
@@ -16,6 +19,9 @@
         "--security-opt",
         "seccomp=unconfined"
     ],
+    "remoteEnv": {
+        "DEVELOPER_DIR": null
+    },
     // Configure tool-specific properties.
     "customizations": {
         // Configure properties specific to VS Code.

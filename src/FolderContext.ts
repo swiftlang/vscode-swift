@@ -17,10 +17,11 @@ import * as vscode from "vscode";
 import { BackgroundCompilation } from "./BackgroundCompilation";
 import { LinuxMain } from "./LinuxMain";
 import { PackageWatcher } from "./PackageWatcher";
+import { FolderContext as ExternalFolderContext } from "./SwiftExtensionApi";
 import { SwiftPackage, Target, TargetType } from "./SwiftPackage";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { TestRunManager } from "./TestExplorer/TestRunManager";
-import { TestRunProxy } from "./TestExplorer/TestRunner";
+import { TestRunProxy } from "./TestExplorer/TestRunProxy";
 import { FolderOperation, WorkspaceContext } from "./WorkspaceContext";
 import configuration from "./configuration";
 import { SwiftLogger } from "./logging/SwiftLogger";
@@ -30,7 +31,7 @@ import { SwiftToolchain } from "./toolchain/toolchain";
 import { showToolchainError } from "./ui/ToolchainSelection";
 import { isPathInsidePath } from "./utilities/filesystem";
 
-export class FolderContext implements vscode.Disposable {
+export class FolderContext implements ExternalFolderContext, vscode.Disposable {
     public backgroundCompilation: BackgroundCompilation;
     public hasResolveErrors = false;
     public taskQueue: TaskQueue;
@@ -54,7 +55,8 @@ export class FolderContext implements vscode.Disposable {
         public linuxMain: LinuxMain,
         public swiftPackage: SwiftPackage,
         public workspaceFolder: vscode.WorkspaceFolder,
-        public workspaceContext: WorkspaceContext
+        public workspaceContext: WorkspaceContext,
+        public logger: SwiftLogger
     ) {
         this.packageWatcher = new PackageWatcher(this, workspaceContext.logger);
         this.backgroundCompilation = new BackgroundCompilation(this);
@@ -75,6 +77,7 @@ export class FolderContext implements vscode.Disposable {
     /** dispose of any thing FolderContext holds */
     dispose() {
         this.linuxMain?.dispose();
+        this.swiftPackage.dispose();
         this.packageWatcher.dispose();
         this.testExplorer?.dispose();
         this.backgroundCompilation.dispose();
@@ -99,7 +102,8 @@ export class FolderContext implements vscode.Disposable {
         try {
             toolchain = await SwiftToolchain.create(
                 workspaceContext.extensionContext.extensionPath,
-                folder
+                workspaceContext.logger,
+                configuration.folder(workspaceFolder).ignoreSwiftVersionFile ? undefined : folder
             );
         } catch (error) {
             // This error case is quite hard for the user to get in to, but possible.
@@ -116,7 +120,10 @@ export class FolderContext implements vscode.Disposable {
                 try {
                     toolchain = await SwiftToolchain.create(
                         workspaceContext.extensionContext.extensionPath,
-                        folder
+                        workspaceContext.logger,
+                        configuration.folder(workspaceFolder).ignoreSwiftVersionFile
+                            ? undefined
+                            : folder
                     );
                     workspaceContext.logger.info(
                         `Successfully created toolchain for ${FolderContext.uriName(folder)} after user selection`,
@@ -138,11 +145,7 @@ export class FolderContext implements vscode.Disposable {
         const { linuxMain, swiftPackage } =
             await workspaceContext.statusItem.showStatusWhileRunning(statusItemText, async () => {
                 const linuxMain = await LinuxMain.create(folder);
-                const swiftPackage = await SwiftPackage.create(
-                    folder,
-                    toolchain,
-                    configuration.disableSwiftPMIntegration
-                );
+                const swiftPackage = await SwiftPackage.create(folder);
                 return { linuxMain, swiftPackage };
             });
         workspaceContext.statusItem.end(statusItemText);
@@ -153,19 +156,26 @@ export class FolderContext implements vscode.Disposable {
             linuxMain,
             swiftPackage,
             workspaceFolder,
-            workspaceContext
+            workspaceContext,
+            workspaceContext.logger
         );
 
-        const error = await swiftPackage.error;
-        if (error) {
-            void vscode.window.showErrorMessage(
-                `Failed to load ${folderContext.name}/Package.swift: ${error.message}`
-            );
-            workspaceContext.logger.info(
-                `Failed to load Package.swift: ${error.message}`,
-                folderContext.name
-            );
-        }
+        // List the package's dependencies without blocking folder creation
+        void swiftPackage
+            .loadPackageState(folderContext, configuration.disableSwiftPMIntegration)
+            .then(async () => await swiftPackage.error)
+            .catch(error => error)
+            .then(async error => {
+                if (error) {
+                    void vscode.window.showErrorMessage(
+                        `Failed to load ${folderContext.name}/Package.swift: ${error.message}`
+                    );
+                    folderContext.logger.info(
+                        `Failed to load Package.swift: ${error.message}`,
+                        folderContext.name
+                    );
+                }
+            });
 
         // Start watching for changes to Package.swift, Package.resolved and .swift-version
         await folderContext.packageWatcher.install();
@@ -200,7 +210,7 @@ export class FolderContext implements vscode.Disposable {
 
     /** reload swift package for this folder */
     async reload() {
-        await this.swiftPackage.reload(this.toolchain, configuration.disableSwiftPMIntegration);
+        await this.swiftPackage.reload(this, configuration.disableSwiftPMIntegration);
     }
 
     /** reload Package.resolved for this folder */
@@ -241,7 +251,7 @@ export class FolderContext implements vscode.Disposable {
             this.testExplorer = new TestExplorer(
                 this,
                 this.workspaceContext.tasks,
-                this.workspaceContext.logger,
+                this.logger,
                 this.workspaceContext.onDidChangeSwiftFiles.bind(this.workspaceContext)
             );
             this.testExplorerResolver?.(this.testExplorer);
@@ -377,12 +387,7 @@ export class FolderContext implements vscode.Disposable {
             uri.scheme === "file" &&
             isPathInsidePath(uri.fsPath, this.folder.fsPath)
         ) {
-            void this.playgroundProvider.onDocumentCodeLens(document, codeLens);
+            this.playgroundProvider.onDocumentCodeLens(document, codeLens);
         }
     }
-}
-
-export interface EditedPackage {
-    name: string;
-    folder: string;
 }

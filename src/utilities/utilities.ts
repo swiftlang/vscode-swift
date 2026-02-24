@@ -52,9 +52,9 @@ export const IS_RUNNING_UNDER_TEST = process.env.RUNNING_UNDER_VSCODE_TEST_CLI =
 
 /**
  * Determined by the presence of the `VSCODE_DEBUG` environment variable, set by the
- * launch.json when starting the extension in development.
+ * launch.json when debugging the extension.
  */
-export const IS_RUNNING_IN_DEVELOPMENT_MODE = process.env["VSCODE_DEBUG"] === "1";
+export const IS_RUNNING_UNDER_DEBUGGER = process.env["VSCODE_DEBUG"] === "1";
 
 /** Determines whether the provided object has any properties set to non-null values. */
 export function isEmptyObject(obj: { [key: string]: unknown }): boolean {
@@ -192,11 +192,7 @@ enum Color {
 }
 
 export function colorize(text: string, color: keyof typeof Color): string {
-    const colorCode = Color[color];
-    if (colorCode !== undefined) {
-        return `\x1b[${colorCode}m${text}\x1b[0m`;
-    }
-    return text;
+    return `\x1b[${Color[color]}m${text}\x1b[0m`;
 }
 
 export async function execFileStreamOutput(
@@ -315,6 +311,21 @@ export function compactMap<T, U>(
         return acc;
     }, []);
 }
+
+/**
+ * Create a promise that can be resolved outside the promise executor.
+ * @returns An object containing the promise that can be awaited, and its resolve and reject functions.
+ */
+export function unwrapPromise<T>() {
+    let resolve: (value: T | PromiseLike<T>) => void;
+    let reject: (reason?: unknown) => void;
+    const promise = new Promise<T>((res, rej) => {
+        resolve = res;
+        reject = rej;
+    });
+    return { promise, resolve: resolve!, reject: reject! };
+}
+
 /**
  * Get path to swift executable, or executable in swift bin folder
  *
@@ -339,7 +350,7 @@ export function getRepositoryName(url: string): string {
     // - at the end of the URL: $
     const pattern = /([^/]*)\/?$/;
     // The capture group in this pattern will match the last path component of the URL.
-    let lastPathComponent = url.match(pattern)![1];
+    let lastPathComponent = pattern.exec(url)![1];
     // Trim the optional .git extension.
     if (lastPathComponent.endsWith(".git")) {
         lastPathComponent = lastPathComponent.replace(/\.git$/, "");
@@ -352,8 +363,9 @@ export function getRepositoryName(url: string): string {
  * @param length Length of string to return (max 16)
  * @returns Random string
  */
-export function randomString(length = 8): string {
-    return Math.random().toString(16).substring(2, length);
+export function randomString(length = 8, radix = 16): string {
+    // eslint-disable-next-line sonarjs/pseudo-random
+    return Math.random().toString(radix).substring(2, length);
 }
 
 /**

@@ -22,6 +22,7 @@ import configuration, {
 } from "../configuration";
 import { BuildConfigurationFactory } from "../debugger/buildConfig";
 import { SwiftExecution } from "../tasks/SwiftExecution";
+import { SwiftProcess } from "../tasks/SwiftProcess";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import { getPlatformConfig, packageName, resolveScope, resolveTaskCwd } from "../utilities/tasks";
 import { swiftRuntimeEnv } from "../utilities/utilities";
@@ -73,7 +74,7 @@ export function platformDebugBuildOptions(toolchain: SwiftToolchain): string[] {
 }
 
 /** arguments for setting diagnostics style */
-export function diagnosticsStyleOptions(): string[] {
+function diagnosticsStyleOptions(): string[] {
     if (configuration.diagnosticsStyle !== "default") {
         return ["-Xswiftc", `-diagnostic-style=${configuration.diagnosticsStyle}`];
     }
@@ -292,7 +293,8 @@ export function createSwiftTask(
     config: TaskConfig,
     toolchain: SwiftToolchain,
     cmdEnv: { [key: string]: string } = {},
-    options: { readOnlyTerminal: boolean } = { readOnlyTerminal: false }
+    options: { readOnlyTerminal: boolean } = { readOnlyTerminal: false },
+    swiftProcess?: SwiftProcess
 ): SwiftTask {
     const swift = toolchain.getToolchainExecutable("swift");
     args = toolchain.buildFlags.withAdditionalFlags(args);
@@ -340,12 +342,17 @@ export function createSwiftTask(
         config?.scope ?? vscode.TaskScope.Workspace,
         name,
         "swift",
-        new SwiftExecution(swift, args, {
-            cwd: fullCwd,
-            env: env,
-            presentation,
-            readOnlyTerminal: options.readOnlyTerminal,
-        })
+        new SwiftExecution(
+            swift,
+            args,
+            {
+                cwd: fullCwd,
+                env: env,
+                presentation,
+                readOnlyTerminal: options.readOnlyTerminal,
+            },
+            swiftProcess
+        )
     );
     // This doesn't include any quotes added by VS Code.
     // See also: https://github.com/microsoft/vscode/issues/137895
@@ -362,10 +369,12 @@ export function createSwiftTask(
  * See {@link SwiftTaskProvider.provideTasks provideTasks} for a list of provided tasks.
  */
 export class SwiftTaskProvider implements vscode.TaskProvider {
-    static buildAllName = "Build All";
-    static cleanBuildName = "Clean Build";
-    static resolvePackageName = "Resolve Package Dependencies";
-    static updatePackageName = "Update Package Dependencies";
+    static readonly buildAllName = "Build All";
+    static readonly cleanBuildName = "Clean Build";
+    static readonly resolvePackageName = "Resolve Package Dependencies";
+    static readonly updatePackageName = "Update Package Dependencies";
+    static readonly showDependenciesName = "List Package Dependencies";
+    static readonly describePackageName = "Describe Package";
 
     constructor(private workspaceContext: WorkspaceContext) {}
 
@@ -388,45 +397,12 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             if (!(await folderContext.swiftPackage.foundPackage)) {
                 continue;
             }
-            const activeOperation = folderContext.taskQueue.activeOperation;
-            // if there is an active task running on the folder task queue (eg resolve or update)
-            // then don't add build tasks for this folder instead create a dummy task indicating why
-            // the build tasks are unavailable
-            //
-            // Ignore an active build task, it could be the build task that has just been
-            // initiated.
-            //
-            // This is only required in Swift toolchains before v6 as SwiftPM in newer toolchains
-            // will block multiple processes accessing the .build folder at the same time
-            if (
-                folderContext.toolchain.swiftVersion.isLessThan(new Version(6, 0, 0)) &&
-                activeOperation &&
-                !activeOperation.operation.isBuildOperation
-            ) {
-                let buildTaskName = "Build tasks disabled";
-                if (folderContext.relativePath.length > 0) {
-                    buildTaskName += ` (${folderContext.relativePath})`;
-                }
-                const task = new vscode.Task(
-                    {
-                        type: "swift",
-                        args: [],
-                    },
-                    resolveScope(folderContext.workspaceFolder),
-                    buildTaskName,
-                    "swift",
-                    new vscode.CustomExecution(() => {
-                        throw Error("Task disabled.");
-                    })
-                );
-                task.group = vscode.TaskGroup.Build;
-                task.detail = `While ${activeOperation.operation.name} is running.`;
-                task.presentationOptions = { reveal: vscode.TaskRevealKind.Never, echo: false };
-                tasks.push(task);
+            const disabledTask = this.createDisabledBuildTask(folderContext);
+            if (disabledTask) {
+                tasks.push(disabledTask);
                 continue;
             }
 
-            // Create debug Build All task.
             tasks.push(await createBuildAllTask(folderContext, false));
 
             const executables = await folderContext.swiftPackage.executableProducts;
@@ -434,17 +410,50 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
                 tasks.push(...createBuildTasks(executable, folderContext));
             }
 
-            if (configuration.createTasksForLibraryProducts) {
-                const libraries = await folderContext.swiftPackage.libraryProducts;
-                for (const lib of libraries) {
-                    if (isAutomatic(lib)) {
-                        continue;
-                    }
-                    tasks.push(...createBuildTasks(lib, folderContext));
-                }
-            }
+            tasks.push(...(await this.createLibraryBuildTasks(folderContext)));
         }
         return tasks;
+    }
+
+    private createDisabledBuildTask(folderContext: FolderContext): vscode.Task | undefined {
+        const activeOperation = folderContext.taskQueue.activeOperation;
+        if (
+            !folderContext.toolchain.swiftVersion.isLessThan(new Version(6, 0, 0)) ||
+            !activeOperation ||
+            activeOperation.operation.isBuildOperation
+        ) {
+            return undefined;
+        }
+        let buildTaskName = "Build tasks disabled";
+        if (folderContext.relativePath.length > 0) {
+            buildTaskName += ` (${folderContext.relativePath})`;
+        }
+        const task = new vscode.Task(
+            {
+                type: "swift",
+                args: [],
+            },
+            resolveScope(folderContext.workspaceFolder),
+            buildTaskName,
+            "swift",
+            new vscode.CustomExecution(() => {
+                throw Error("Task disabled.");
+            })
+        );
+        task.group = vscode.TaskGroup.Build;
+        task.detail = `While ${activeOperation.operation.name} is running.`;
+        task.presentationOptions = { reveal: vscode.TaskRevealKind.Never, echo: false };
+        return task;
+    }
+
+    private async createLibraryBuildTasks(folderContext: FolderContext): Promise<vscode.Task[]> {
+        if (!configuration.createTasksForLibraryProducts) {
+            return [];
+        }
+        const libraries = await folderContext.swiftPackage.libraryProducts;
+        return libraries
+            .filter(lib => !isAutomatic(lib))
+            .flatMap(lib => createBuildTasks(lib, folderContext));
     }
 
     /**

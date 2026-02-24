@@ -17,7 +17,7 @@ import { FolderContext } from "../FolderContext";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { execSwift, poll } from "../utilities/utilities";
 
-export interface SwiftOperationOptions {
+interface SwiftOperationOptions {
     // Should I show a status item
     showStatusItem: boolean;
     // Should I check if an instance of this task is already running
@@ -26,7 +26,7 @@ export interface SwiftOperationOptions {
     log?: string;
 }
 /** Swift operation to add to TaskQueue */
-export interface SwiftOperation {
+interface SwiftOperation {
     // options
     options: SwiftOperationOptions;
     // identifier for statusitem
@@ -240,7 +240,6 @@ export class TaskQueue implements vscode.Disposable {
             const operation = this.queue.shift();
 
             if (operation) {
-                //const task = operation.task;
                 this.activeOperation = operation;
                 // show active task status item
                 if (operation.showStatusItem === true) {
@@ -260,19 +259,16 @@ export class TaskQueue implements vscode.Disposable {
                     .then(result => {
                         // log result
                         if (operation.log && !operation.token?.isCancellationRequested) {
-                            switch (result) {
-                                case 0:
-                                    this.workspaceContext.logger.info(
-                                        `${operation.log}: ... done.`,
-                                        this.folderContext.name
-                                    );
-                                    break;
-                                default:
-                                    this.workspaceContext.logger.error(
-                                        `${operation.log}: ... failed.`,
-                                        this.folderContext.name
-                                    );
-                                    break;
+                            if (result === 0) {
+                                this.workspaceContext.logger.info(
+                                    `${operation.log}: ... done.`,
+                                    this.folderContext.name
+                                );
+                            } else {
+                                this.workspaceContext.logger.error(
+                                    `${operation.log}: ... failed.`,
+                                    this.folderContext.name
+                                );
                             }
                         }
                         this.finishTask(operation, { success: result });

@@ -14,7 +14,6 @@
 import * as path from "path";
 import * as vscode from "vscode";
 
-import { SwiftExecution } from "@src/tasks/SwiftExecution";
 import { SwiftProcess } from "@src/tasks/SwiftProcess";
 import { SwiftTask, createSwiftTask } from "@src/tasks/SwiftTaskProvider";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
@@ -176,7 +175,6 @@ export function testSwiftTask(
     toolchain: SwiftToolchain
 ): SwiftTaskFixture {
     const process = new TestSwiftProcess(command, args);
-    const execution = new SwiftExecution(command, args, {}, process);
     const task = createSwiftTask(
         args,
         "my test task",
@@ -184,9 +182,11 @@ export function testSwiftTask(
             cwd: workspaceFolder.uri,
             scope: workspaceFolder,
         },
-        toolchain
+        toolchain,
+        undefined,
+        { readOnlyTerminal: false },
+        process
     );
-    task.execution = execution;
     return {
         task,
         process,

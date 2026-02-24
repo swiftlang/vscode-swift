@@ -221,8 +221,42 @@ async function getQuickPickItems(
                 swiftFolderPath: path.join(toolchainPath, "bin"),
             };
         });
-    // Find any public Swift toolchains on the system
+    // Find any Swift toolchains installed via Swiftly
+    const installedSwiftlyToolchains = await Swiftly.list(logger);
+    const swiftlyLocations = new Set(
+        installedSwiftlyToolchains
+            .map(t => t.location)
+            .filter((loc): loc is string => loc !== undefined)
+    );
+    const swiftlyToolchains = installedSwiftlyToolchains.map<SwiftlyToolchainItem>(toolchain => ({
+        type: "toolchain",
+        label: toolchain.name,
+        category: "swiftly",
+        version: toolchain.name,
+        onDidSelect: async target => {
+            try {
+                if (target === vscode.ConfigurationTarget.Global) {
+                    await Swiftly.use(toolchain.name);
+                } else {
+                    await Promise.all(
+                        vscode.workspace.workspaceFolders?.map(async folder => {
+                            await Swiftly.use(toolchain.name, folder.uri.fsPath);
+                        }) ?? []
+                    );
+                }
+                void showReloadExtensionNotification(
+                    "Changing the Swift path requires Visual Studio Code be reloaded."
+                );
+            } catch (error) {
+                logger.error(error);
+                void vscode.window.showErrorMessage(`Failed to switch Swiftly toolchain: ${error}`);
+            }
+        },
+    }));
+
+    // Find any public Swift toolchains on the system, excluding those managed by swiftly
     const publicToolchains = (await SwiftToolchain.getToolchainInstalls())
+        .filter(toolchainPath => !swiftlyLocations.has(toolchainPath))
         // Sort in descending order alphabetically
         .sort((a, b) => -a.localeCompare(b))
         .map<SwiftToolchainItem>(toolchainPath => {
@@ -244,38 +278,6 @@ async function getQuickPickItems(
             }
             return result;
         });
-
-    // Find any Swift toolchains installed via Swiftly
-    const swiftlyToolchains = (await Swiftly.list(logger)).map<SwiftlyToolchainItem>(
-        toolchainPath => ({
-            type: "toolchain",
-            label: path.basename(toolchainPath),
-            category: "swiftly",
-            version: path.basename(toolchainPath),
-            onDidSelect: async target => {
-                try {
-                    const version = path.basename(toolchainPath);
-                    if (target === vscode.ConfigurationTarget.Global) {
-                        await Swiftly.use(version);
-                    } else {
-                        await Promise.all(
-                            vscode.workspace.workspaceFolders?.map(async folder => {
-                                await Swiftly.use(version, folder.uri.fsPath);
-                            }) ?? []
-                        );
-                    }
-                    void showReloadExtensionNotification(
-                        "Changing the Swift path requires Visual Studio Code be reloaded."
-                    );
-                } catch (error) {
-                    logger.error(error);
-                    void vscode.window.showErrorMessage(
-                        `Failed to switch Swiftly toolchain: ${error}`
-                    );
-                }
-            },
-        })
-    );
 
     if (activeToolchain) {
         let currentSwiftlyVersion: string | undefined = undefined;
@@ -436,7 +438,6 @@ export async function showToolchainSelectionQuickPick(
         }
         // Update the toolchain configuration
         await setToolchainPath(selectedToolchain, developerDir);
-        return;
     }
 }
 

@@ -30,11 +30,11 @@ export class LanguageClientFactory {
      * @returns the newly created {@link LanguageClient}
      */
     createLanguageClient(
-        name: string,
         id: string,
+        name: string,
         serverOptions: ServerOptions,
         clientOptions: LanguageClientOptions
     ): LanguageClient {
-        return new LanguageClient(name, id, serverOptions, clientOptions);
+        return new LanguageClient(id, name, serverOptions, clientOptions);
     }
 }

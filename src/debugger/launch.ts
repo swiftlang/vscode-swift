@@ -23,7 +23,7 @@ import { getFolderAndNameSuffix } from "./buildConfig";
 import { SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
 
 /** Options used to configure {@link makeDebugConfigurations}. */
-export interface WriteLaunchConfigurationsOptions {
+interface WriteLaunchConfigurationsOptions {
     /** Force the generation of launch configurations regardless of user settings. */
     force?: boolean;
 
@@ -55,7 +55,34 @@ export async function makeDebugConfigurations(
         : vscode.workspace.getConfiguration("launch", ctx.folder);
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
 
-    // Determine which launch configurations need updating/creating
+    const { configsToCreate, configsToUpdate } = await classifyConfigurations(ctx, launchConfigs);
+
+    const needsUpdate = await applyConfigurationChanges(
+        ctx,
+        launchConfigs,
+        configsToCreate,
+        configsToUpdate,
+        options
+    );
+
+    if (!needsUpdate) {
+        return false;
+    }
+
+    await wsLaunchSection.update(
+        "configurations",
+        launchConfigs,
+        vscode.workspace.workspaceFile
+            ? vscode.ConfigurationTarget.Workspace
+            : vscode.ConfigurationTarget.WorkspaceFolder
+    );
+    return true;
+}
+
+async function classifyConfigurations(
+    ctx: FolderContext,
+    launchConfigs: vscode.DebugConfiguration[]
+) {
     const configsToCreate: vscode.DebugConfiguration[] = [];
     const configsToUpdate: { index: number; config: vscode.DebugConfiguration }[] = [];
     for (const generatedConfig of await createExecutableConfigurations(ctx)) {
@@ -65,7 +92,6 @@ export async function makeDebugConfigurations(
             continue;
         }
 
-        // deep clone the existing config and update with keys from generated config
         const config = structuredClone(launchConfigs[index]);
         updateConfigWithNewKeys(config, generatedConfig, [
             "program",
@@ -76,13 +102,20 @@ export async function makeDebugConfigurations(
             "type",
         ]);
 
-        // Check to see if the config has changed
         if (!isDeepStrictEqual(launchConfigs[index], config)) {
             configsToUpdate.push({ index, config });
         }
     }
+    return { configsToCreate, configsToUpdate };
+}
 
-    // Create/Update launch configurations if necessary
+async function applyConfigurationChanges(
+    ctx: FolderContext,
+    launchConfigs: vscode.DebugConfiguration[],
+    configsToCreate: vscode.DebugConfiguration[],
+    configsToUpdate: { index: number; config: vscode.DebugConfiguration }[],
+    options: WriteLaunchConfigurationsOptions
+): Promise<boolean> {
     let needsUpdate = false;
     if (configsToCreate.length > 0) {
         launchConfigs.push(...configsToCreate);
@@ -107,19 +140,7 @@ export async function makeDebugConfigurations(
             needsUpdate = true;
         }
     }
-
-    if (!needsUpdate) {
-        return false;
-    }
-
-    await wsLaunchSection.update(
-        "configurations",
-        launchConfigs,
-        vscode.workspace.workspaceFile
-            ? vscode.ConfigurationTarget.Workspace
-            : vscode.ConfigurationTarget.WorkspaceFolder
-    );
-    return true;
+    return needsUpdate;
 }
 
 export async function getTargetBinaryPath(
@@ -144,7 +165,7 @@ export async function getTargetBinaryPath(
     }
 }
 
-export function getLegacyTargetBinaryPath(
+function getLegacyTargetBinaryPath(
     targetName: string,
     buildConfiguration: "debug" | "release",
     folderCtx: FolderContext

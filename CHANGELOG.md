@@ -2,16 +2,46 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+
+### Added
+
+- Add `swift.ignoreSwiftVersionFile` setting to ignore the toolchain set in `.swift-version` files ([#2073](https://github.com/swiftlang/vscode-swift/pull/2073))
+
+### Fixed
+
+- Swift-testing test runs are marked as 'started' in the UI immediately, not after compilation finishes ([#2079](https://github.com/swiftlang/vscode-swift/pull/2079))
+- Fix legacy boolean setting values for `swift.sourcekit-lsp.backgroundIndexing` not being recognized ([#2092](https://github.com/swiftlang/vscode-swift/pull/2092))
+- Launch configurations defined in multi-root workspaces were unable to find the appropriate folder to run in ([#2105](https://github.com/swiftlang/vscode-swift/pull/2105))
+- Ignoring the dialog to use the toolchain defined in `.swift-version` would prevent extension acitvation ([2107](https://github.com/swiftlang/vscode-swift/pull/2107))
+
+## 2.16.1 - 2026-02-02
+
+### Fixed
+
+- Fixed extension activation issues involving swiftly ([#2066](https://github.com/swiftlang/vscode-swift/pull/2066))
+- Fixed not all settings notifying the user when malformed ([#2086](https://github.com/swiftlang/vscode-swift/pull/2086))
+
+## 2.16.0 - 2026-01-28
+
+### Added
+
+- Show progress when describing/listing dependencies on package load ([#2028](https://github.com/swiftlang/vscode-swift/pull/2028))
+- Drop support for Swift 5.8 ([#1853](https://github.com/swiftlang/vscode-swift/pull/1853))
+- An official public API for the Swift extension that can be used by other Visual Studio Code extensions ([#2030](https://github.com/swiftlang/vscode-swift/pull/2030))
+- Add support for installing the swiftly toolchain manager ([1881](https://github.com/swiftlang/vscode-swift/pull/1881))
+
 ### Fixed
 
 - Fix the wrong toolchain being shown as selected when using swiftly v1.0.1 ([#2014](https://github.com/swiftlang/vscode-swift/pull/2014))
 - Fix extension displaying SwiftPM's project view and automatic build tasks even when `disableSwiftPMIntegration` was true ([#2011](https://github.com/swiftlang/vscode-swift/pull/2011))
+- Validate extension settings and warn if they are invalid ([#2016](https://github.com/swiftlang/vscode-swift/pull/2016))
+- Show the Test Results panel when tests fail to compile and the user has `testing.automaticallyOpenTestResults` set to `openOnTestFailure` ([#2035](https://github.com/swiftlang/vscode-swift/pull/2035))
+- Added missing icon for `macro` targets in the Project Panel ([#2043](https://github.com/swiftlang/vscode-swift/pull/2043))
 
 ## 2.14.3 - 2025-12-15
 
 ### Fixed
 
-- Fix breakpoint filtering fallback in debugger logging ([#1989](https://github.com/swiftlang/vscode-swift/pull/1989))
 - Fix extension failing to find `lldb-dap` when `swift.path` points at an Xcode toolchain ([#1998](https://github.com/swiftlang/vscode-swift/pull/1998))
 - Omit `--scratch-path` when enumerating plugins with `swift package plugin --list` ([#1996](https://github.com/swiftlang/vscode-swift/pull/1996))
 

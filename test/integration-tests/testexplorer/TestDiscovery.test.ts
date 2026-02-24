@@ -24,7 +24,6 @@ import {
 } from "@src/TestExplorer/TestDiscovery";
 import { reduceTestItemChildren } from "@src/TestExplorer/TestUtils";
 import { TestStyle } from "@src/sourcekit-lsp/extensions";
-import { SwiftToolchain } from "@src/toolchain/toolchain";
 
 suite("TestDiscovery Suite", () => {
     let testController: vscode.TestController;
@@ -223,10 +222,7 @@ suite("TestDiscovery Suite", () => {
 
     test("updates tests from classes within a swift package", async () => {
         const targetFolder = vscode.Uri.file("file:///some/");
-        const swiftPackage = await SwiftPackage.create(
-            targetFolder,
-            await SwiftToolchain.create("/path/to/extension")
-        );
+        const swiftPackage = await SwiftPackage.create(targetFolder);
         const testTargetName = "TestTarget";
         const target: Target = {
             c99name: testTargetName,

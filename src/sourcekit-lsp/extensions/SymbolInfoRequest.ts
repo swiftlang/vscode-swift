@@ -23,7 +23,7 @@ import {
 } from "vscode-languageclient";
 
 /** Parameters used to make a {@link SymbolInfoRequest}. */
-export interface SymbolInfoParams {
+interface SymbolInfoParams {
     /** The document in which to lookup the symbol location. */
     textDocument: TextDocumentIdentifier;
 
@@ -32,7 +32,7 @@ export interface SymbolInfoParams {
 }
 
 /** Information about which module a symbol is defined in. */
-export interface ModuleInfo {
+interface ModuleInfo {
     /** The name of the module in which the symbol is defined. */
     moduleName: string;
 
@@ -41,7 +41,7 @@ export interface ModuleInfo {
 }
 
 /** Detailed information about a symbol, such as the response to a {@link SymbolInfoRequest}. */
-export interface SymbolDetails {
+interface SymbolDetails {
     /** The name of the symbol, if any. */
     name?: string;
 

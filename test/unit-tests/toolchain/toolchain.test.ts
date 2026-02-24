@@ -278,7 +278,9 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 .withArgs("xcode-select", ["-p"])
                 .resolves({ stdout: "", stderr: "" });
 
-            const sortedXcodeInstalls = (await SwiftToolchain.findXcodeInstalls()).sort();
+            const sortedXcodeInstalls = (await SwiftToolchain.findXcodeInstalls()).sort((a, b) =>
+                a.localeCompare(b)
+            );
             expect(sortedXcodeInstalls).to.deep.equal([
                 "/Applications/Xcode-beta.app",
                 "/Applications/Xcode.app",
@@ -295,7 +297,9 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 .withArgs("xcode-select", ["-p"])
                 .resolves({ stdout: "/Applications/Xcode.app\n", stderr: "" });
 
-            const sortedXcodeInstalls = (await SwiftToolchain.findXcodeInstalls()).sort();
+            const sortedXcodeInstalls = (await SwiftToolchain.findXcodeInstalls()).sort((a, b) =>
+                a.localeCompare(b)
+            );
             expect(sortedXcodeInstalls).to.deep.equal([
                 "/Applications/Xcode-beta.app",
                 "/Applications/Xcode.app",
@@ -312,7 +316,9 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 .withArgs("xcode-select", ["-p"])
                 .resolves({ stdout: "/Applications/Xcode.app\n", stderr: "" });
 
-            const sortedXcodeInstalls = (await SwiftToolchain.findXcodeInstalls()).sort();
+            const sortedXcodeInstalls = (await SwiftToolchain.findXcodeInstalls()).sort((a, b) =>
+                a.localeCompare(b)
+            );
             expect(sortedXcodeInstalls).to.deep.equal([
                 "/Applications/Xcode-beta.app",
                 "/Applications/Xcode.app",

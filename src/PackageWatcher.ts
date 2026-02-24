@@ -17,6 +17,7 @@ import * as vscode from "vscode";
 
 import { FolderContext } from "./FolderContext";
 import { FolderOperation } from "./WorkspaceContext";
+import configuration from "./configuration";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { BuildFlags } from "./toolchain/BuildFlags";
 import { showReloadExtensionNotification } from "./ui/ReloadExtension";
@@ -108,8 +109,6 @@ export class PackageWatcher {
         watcher.onDidDelete(async () => await this.handleWorkspaceStateChange());
 
         if (await fileExists(uri.fsPath)) {
-            // TODO: Remove this
-            this.logger.info("Loading initial workspace-state.json");
             await this.handleWorkspaceStateChange();
         }
 
@@ -139,7 +138,10 @@ export class PackageWatcher {
 
     async handleSwiftVersionFileChange() {
         const version = await this.readSwiftVersionFile();
-        if (version?.toString() !== this.currentVersion?.toString()) {
+        if (
+            version?.toString() !== this.currentVersion?.toString() &&
+            !configuration.folder(this.folderContext.workspaceFolder).ignoreSwiftVersionFile
+        ) {
             await this.folderContext.fireEvent(FolderOperation.swiftVersionUpdated);
             await showReloadExtensionNotification(
                 "Changing the swift toolchain version requires the extension to be reloaded"
@@ -195,10 +197,6 @@ export class PackageWatcher {
      */
     private async handleWorkspaceStateChange() {
         await this.folderContext.reloadWorkspaceState();
-        // TODO: Remove this
-        this.logger.info(
-            `Package watcher state updated workspace-state.json: ${JSON.stringify(this.folderContext.swiftPackage.workspaceState, null, 2)}`
-        );
         await this.folderContext.fireEvent(FolderOperation.workspaceStateUpdated);
     }
 }

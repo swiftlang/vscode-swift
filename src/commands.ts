@@ -50,7 +50,6 @@ import { runTest } from "./commands/runTest";
 import { switchPlatform } from "./commands/switchPlatform";
 import { extractTestItemsAndCount, runTestMultipleTimes } from "./commands/testMultipleTimes";
 import { SwiftLogger } from "./logging/SwiftLogger";
-import { SwiftToolchain } from "./toolchain/toolchain";
 import { PackageNode, PlaygroundNode } from "./ui/ProjectPanelProvider";
 import { showToolchainSelectionQuickPick } from "./ui/ToolchainSelection";
 
@@ -62,8 +61,6 @@ import { showToolchainSelectionQuickPick } from "./ui/ToolchainSelection";
  * - Implementing commands:
  *   https://code.visualstudio.com/api/extension-guides/command
  */
-
-export type WorkspaceContextWithToolchain = WorkspaceContext & { toolchain: SwiftToolchain };
 
 export function registerToolchainCommands(
     ctx: WorkspaceContext | undefined,
@@ -383,7 +380,7 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
  * If the command is called via a command palette or other means, the target will be a string.
  */
 function unwrapTreeItem(target?: string | { args: string[] }): string[] {
-    if (typeof target === "object" && target !== null && "args" in target) {
+    if (!!target && typeof target === "object" && "args" in target) {
         return target.args ?? [];
     } else if (typeof target === "string") {
         return [target];

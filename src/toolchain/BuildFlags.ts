@@ -16,11 +16,10 @@ import * as path from "path";
 import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { execSwift } from "../utilities/utilities";
-import { Version } from "../utilities/version";
 import { DarwinCompatibleTarget, SwiftToolchain, getDarwinTargetTriple } from "./toolchain";
 
 /** Target info */
-export interface DarwinTargetInfo {
+interface DarwinTargetInfo {
     name: string;
     target: DarwinCompatibleTarget;
     version: string;
@@ -44,26 +43,19 @@ export class BuildFlags {
     private withSwiftSDKFlags(args: string[]): string[] {
         switch (args[0]) {
             case "package": {
-                switch (args[1]) {
-                    case "plugin":
-                        // Don't append build path flags for `swift package plugin` commands
-                        return args;
-                    default: {
-                        const subcommand = args.splice(0, 2).concat(this.buildPathFlags());
-                        switch (subcommand[1]) {
-                            case "dump-symbol-graph":
-                            case "diagnose-api-breaking-changes":
-                            case "resolve": {
-                                // These two tools require building the package, so SDK
-                                // flags are needed. Destination control flags are
-                                // required to be placed before subcommand options.
-                                return [...subcommand, ...this.swiftpmSDKFlags(), ...args];
-                            }
-                            default:
-                                // Other swift-package subcommands operate on the host,
-                                // so it doesn't need to know about the destination.
-                                return subcommand.concat(args);
-                        }
+                if (args[1] === "plugin") {
+                    // Don't append build path flags for `swift package plugin` commands
+                    return args;
+                }
+                const subcommand = args.splice(0, 2).concat(this.buildPathFlags());
+                switch (subcommand[1]) {
+                    case "dump-symbol-graph":
+                    case "diagnose-api-breaking-changes":
+                    case "resolve": {
+                        // These two tools require building the package, so SDK
+                        // flags are needed. Destination control flags are
+                        // required to be placed before subcommand options.
+                        return [...subcommand, ...this.swiftpmSDKFlags(), ...args];
                     }
                 }
             }
@@ -118,14 +110,50 @@ export class BuildFlags {
      */
     buildPathFlags(): string[] {
         if (configuration.buildPath && configuration.buildPath.length > 0) {
-            if (this.toolchain.swiftVersion.isLessThan(new Version(5, 8, 0))) {
-                return ["--build-path", configuration.buildPath];
-            } else {
-                return ["--scratch-path", configuration.buildPath];
-            }
+            return ["--scratch-path", configuration.buildPath];
         } else {
             return [];
         }
+    }
+
+    private static readonly scratchPathFlags = ["--scratch-path", "--build-path"];
+
+    private static validatePath(flagName: string, value: string): string {
+        if (value === "") {
+            throw new Error(`Invalid ${flagName}: path cannot be empty`);
+        }
+        if (value.startsWith("--")) {
+            throw new Error(`Invalid ${flagName}: expected a path but got another flag '${value}'`);
+        }
+        return value;
+    }
+
+    private static parseEqualsForm(arg: string): string | undefined {
+        for (const flag of BuildFlags.scratchPathFlags) {
+            if (arg.startsWith(`${flag}=`)) {
+                return BuildFlags.validatePath(flag, arg.substring(flag.length + 1));
+            }
+        }
+        return undefined;
+    }
+
+    /**
+     * Extract scratch-path or build-path value from an array of arguments
+     * @param args Array of command-line arguments to search
+     * @returns The path value if found, otherwise undefined
+     */
+    private static extractScratchPath(args: string[]): string | undefined {
+        for (let i = 0; i < args.length; i++) {
+            const arg = args[i];
+            if (BuildFlags.scratchPathFlags.includes(arg) && i + 1 < args.length) {
+                return BuildFlags.validatePath(arg, args[i + 1]);
+            }
+            const equalsResult = BuildFlags.parseEqualsForm(arg);
+            if (equalsResult !== undefined) {
+                return equalsResult;
+            }
+        }
+        return undefined;
     }
 
     /**
@@ -137,9 +165,17 @@ export class BuildFlags {
         absolute = false,
         platform?: "posix" | "win32"
     ): string {
-        const nodePath =
-            platform === "posix" ? path.posix : platform === "win32" ? path.win32 : path;
-        const buildPath = configuration.buildPath.length > 0 ? configuration.buildPath : ".build";
+        const platformPaths = {
+            posix: path.posix,
+            win32: path.win32,
+        };
+        const nodePath = platform ? platformPaths[platform] : path;
+
+        const buildPath =
+            BuildFlags.extractScratchPath(configuration.buildArguments) ??
+            BuildFlags.extractScratchPath(configuration.packageArguments) ??
+            (configuration.buildPath.length > 0 ? configuration.buildPath : ".build");
+
         if (!nodePath.isAbsolute(buildPath) && absolute) {
             return nodePath.join(workspacePath, buildPath);
         } else {
@@ -320,42 +356,36 @@ export class BuildFlags {
         let pendingCount = 0;
 
         for (const arg of args) {
-            if (pendingCount > 0) {
-                if (!exclude) {
-                    filteredArguments.push(arg);
-                }
+            const isMatchedByPending = pendingCount > 0;
+            if (isMatchedByPending) {
                 pendingCount -= 1;
-                continue;
             }
 
-            // Check if this argument matches any filter
-            const matchingFilter = filter.find(item => item.argument === arg);
-            if (matchingFilter) {
-                if (!exclude) {
-                    filteredArguments.push(arg);
-                }
-                pendingCount = matchingFilter.include;
-                continue;
+            const exactMatch = isMatchedByPending
+                ? undefined
+                : this.findExactMatchingFilter(arg, filter);
+            if (exactMatch) {
+                pendingCount = exactMatch.include;
             }
 
-            // Check for arguments of form --arg=value (only for filters with include=1)
-            const combinedArgFilter = filter.find(
-                item => item.include === 1 && arg.startsWith(item.argument + "=")
-            );
-            if (combinedArgFilter) {
-                if (!exclude) {
-                    filteredArguments.push(arg);
-                }
-                continue;
-            }
-
-            // Handle unmatched arguments
-            if (exclude) {
+            const matched =
+                isMatchedByPending || !!exactMatch || this.isCombinedArgMatch(arg, filter);
+            if (matched !== exclude) {
                 filteredArguments.push(arg);
             }
-            // In include mode, unmatched arguments are not added
         }
 
         return filteredArguments;
+    }
+
+    private static findExactMatchingFilter(
+        arg: string,
+        filter: ArgumentFilter[]
+    ): ArgumentFilter | undefined {
+        return filter.find(item => item.argument === arg);
+    }
+
+    private static isCombinedArgMatch(arg: string, filter: ArgumentFilter[]): boolean {
+        return filter.some(item => item.include === 1 && arg.startsWith(item.argument + "="));
     }
 }

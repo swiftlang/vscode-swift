@@ -11,14 +11,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import { Version as ExternalVersion, VersionInterface } from "../SwiftExtensionApi";
 
-export interface VersionInterface {
-    major: number;
-    minor: number;
-    patch: number;
-}
-
-export class Version implements VersionInterface {
+export class Version implements ExternalVersion {
     constructor(
         readonly major: number,
         readonly minor: number,
@@ -27,12 +22,12 @@ export class Version implements VersionInterface {
     ) {}
 
     static fromString(s: string): Version | undefined {
-        const numbers = s.match(/(\d+).(\d+)(?:.(\d+))?(-dev)?/);
+        const numbers = /(\d+).(\d+)(?:.(\d+))?(-dev)?/.exec(s);
         if (numbers) {
             const major = parseInt(numbers[1]);
             const minor = parseInt(numbers[2]);
             const dev = numbers[4] === "-dev";
-            if (numbers[3] === undefined) {
+            if ((numbers[3] as string | undefined) === undefined) {
                 return new Version(major, minor, 0, dev);
             } else {
                 const patch = parseInt(numbers[3]);
@@ -89,6 +84,11 @@ export class Version implements VersionInterface {
     }
 
     compare(rhs: VersionInterface): number {
-        return this.isGreaterThan(rhs) ? 1 : this.isLessThan(rhs) ? -1 : 0;
+        if (this.isGreaterThan(rhs)) {
+            return 1;
+        } else if (this.isLessThan(rhs)) {
+            return -1;
+        }
+        return 0;
     }
 }

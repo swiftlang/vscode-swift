@@ -16,7 +16,7 @@ import { Disposable } from "./Disposable";
 /**
  * Sends and receives messages from swift-docc-render
  */
-export interface CommunicationBridge {
+interface CommunicationBridge {
     send(message: VueAppMessage): void;
     onDidReceiveMessage(handler: (message: VueAppMessage) => void): Disposable;
 }
@@ -29,6 +29,26 @@ export interface CommunicationBridge {
  *
  * @returns A promise that resolves to the created CommunicationBridge
  */
+function createBridge(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    sender: any,
+    messageHandlers: Set<(message: VueAppMessage) => void>
+): CommunicationBridge {
+    return {
+        send(message) {
+            sender.receive(message);
+        },
+        onDidReceiveMessage(handler): Disposable {
+            messageHandlers.add(handler);
+            return {
+                dispose() {
+                    messageHandlers.delete(handler);
+                },
+            };
+        },
+    };
+}
+
 export function createCommunicationBridge(): Promise<CommunicationBridge> {
     if ("webkit" in window) {
         throw new Error("A CommunicationBridge has already been established");
@@ -59,19 +79,7 @@ export function createCommunicationBridge(): Promise<CommunicationBridge> {
                 },
                 set(value) {
                     windowBridge = value;
-                    resolve({
-                        send(message) {
-                            value.receive(message);
-                        },
-                        onDidReceiveMessage(handler): Disposable {
-                            messageHandlers.add(handler);
-                            return {
-                                dispose() {
-                                    messageHandlers.delete(handler);
-                                },
-                            };
-                        },
-                    });
+                    resolve(createBridge(value, messageHandlers));
                 },
             });
         } catch (error) {
@@ -83,13 +91,13 @@ export function createCommunicationBridge(): Promise<CommunicationBridge> {
 /**
  * Represents a message that can be sent between the webview and swift-docc-render
  */
-export type VueAppMessage = RenderedMessage | NavigationMessage | UpdateContentMessage;
+type VueAppMessage = RenderedMessage | NavigationMessage | UpdateContentMessage;
 
 /**
  * Sent from swift-docc-render to the webview when content as been rendered
  * to the screen.
  */
-export interface RenderedMessage {
+interface RenderedMessage {
     type: "rendered";
 }
 
@@ -100,7 +108,7 @@ export interface RenderedMessage {
  * need to send an {@link UpdateContentMessage} after the first render to
  * switch pages.
  */
-export interface NavigationMessage {
+interface NavigationMessage {
     type: "navigation";
     data: string;
 }
@@ -113,7 +121,7 @@ export interface NavigationMessage {
  * JavaScript object before sending. Raw strings will not be parsed
  * automatically.
  */
-export interface UpdateContentMessage {
+interface UpdateContentMessage {
     type: "contentUpdate";
     data: unknown;
 }

@@ -25,7 +25,7 @@ import {
     MessageRenderer,
     TestSymbol,
 } from "@src/TestExplorer/TestParsers/SwiftTestingOutputParser";
-import { TestRunProxy } from "@src/TestExplorer/TestRunner";
+import { TestRunProxy } from "@src/TestExplorer/TestRunProxy";
 import { flattenTestItemCollection, reduceTestItemChildren } from "@src/TestExplorer/TestUtils";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { Commands } from "@src/commands";
@@ -341,7 +341,8 @@ tag("large").suite("Test Explorer Suite", function () {
                 }));
                 assert(attachmentFolders.length > 0, "Attachments directory is empty");
 
-                const latestFolder = attachmentFolders.sort((a, b) => b.time - a.time)[0];
+                attachmentFolders.sort((a, b) => b.time - a.time);
+                const latestFolder = attachmentFolders[0];
                 const latestFolderPath = path.join(attachments, latestFolder.name);
                 const latestFolderContents = fs.readdirSync(latestFolderPath);
                 assert.deepStrictEqual(latestFolderContents, ["hello.txt"]);

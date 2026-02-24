@@ -17,6 +17,7 @@ import * as path from "path";
 import * as plist from "plist";
 import * as vscode from "vscode";
 
+import { SwiftToolchain as ExternalSwiftToolchain, ToolchainManager } from "../SwiftExtensionApi";
 import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { expandFilePathTilde, fileExists, pathExists } from "../utilities/filesystem";
@@ -75,7 +76,7 @@ export enum DarwinCompatibleTarget {
     visionOS = "xrOS",
 }
 
-export function getDarwinSDKName(target: DarwinCompatibleTarget): string {
+function getDarwinSDKName(target: DarwinCompatibleTarget): string {
     switch (target) {
         case DarwinCompatibleTarget.iOS:
             return "iphoneos";
@@ -101,17 +102,12 @@ export function getDarwinTargetTriple(target: DarwinCompatibleTarget): string | 
     }
 }
 
-/**
- * Different entities which are used to manage toolchain installations. Possible values are:
- *  - `xcrun`: An Xcode/CommandLineTools toolchain controlled via the `xcrun` and `xcode-select` utilities on macOS.
- *  - `swiftly`: A toolchain managed by `swiftly`.
- *  - `swiftenv`: A toolchain managed by `swiftenv`.
- *  - `unknown`: This toolchain was installed via a method unknown to the extension.
- */
-export type ToolchainManager = "xcrun" | "swiftly" | "swiftenv" | "unknown";
-
-export class SwiftToolchain {
+export class SwiftToolchain implements ExternalSwiftToolchain {
     public swiftVersionString: string;
+
+    public get sdk(): string | undefined {
+        return this.customSDK ?? this.defaultSDK;
+    }
 
     constructor(
         public manager: ToolchainManager,
@@ -131,15 +127,15 @@ export class SwiftToolchain {
 
     static async create(
         extensionRoot: string,
-        folder?: vscode.Uri,
-        logger?: SwiftLogger
+        logger: SwiftLogger,
+        folder?: vscode.Uri
     ): Promise<SwiftToolchain> {
         const swiftBinaryPath = await this.findSwiftBinaryInPath();
         const { toolchainPath, toolchainManager } = await this.getToolchainPath(
             swiftBinaryPath,
             extensionRoot,
-            folder,
-            logger
+            logger,
+            folder
         );
         const targetInfo = await this.getSwiftTargetInfo(
             this._getToolchainExecutable(toolchainPath, "swift"),
@@ -301,7 +297,7 @@ export class SwiftToolchain {
                 (await fs.readdir(directory, { withFileTypes: true }))
                     .filter(dirent => dirent.name.startsWith("swift-"))
                     .map(async dirent => {
-                        const toolchainPath = path.join(dirent.path, dirent.name);
+                        const toolchainPath = path.join(dirent.parentPath, dirent.name);
                         const toolchainSwiftPath = path.join(toolchainPath, "usr", "bin", "swift");
                         if (!(await pathExists(toolchainSwiftPath))) {
                             return null;
@@ -323,10 +319,6 @@ export class SwiftToolchain {
      * @returns a {@link SwiftProjectTemplate} for each discovered project type
      */
     public async getProjectTemplates(): Promise<SwiftProjectTemplate[]> {
-        // Only swift versions >=5.8.0 are supported
-        if (this.swiftVersion.isLessThan(new Version(5, 8, 0))) {
-            return [];
-        }
         // Parse the output from `swift package init --help`
         const { stdout } = await execSwift(["package", "init", "--help"], "default");
         const lines = stdout.split(/\r?\n/g);
@@ -338,7 +330,7 @@ export class SwiftToolchain {
         // Loop through the possible project types in the output
         position += 1;
         const result: SwiftProjectTemplate[] = [];
-        const typeRegex = /^\s*([a-zA-z-]+)\s+-\s+(.+)$/;
+        const typeRegex = /^\s*([a-zA-Z-]+)\s+-\s+(.+)$/;
         for (; position < lines.length; position++) {
             const line = lines[position];
             // Stop if we hit a new command line option
@@ -346,7 +338,7 @@ export class SwiftToolchain {
                 break;
             }
             // Check if this is the start of a new project type
-            const match = line.match(typeRegex);
+            const match = typeRegex.exec(line);
             if (match) {
                 const nameSegments = match[1].split("-");
                 result.push({
@@ -458,11 +450,10 @@ export class SwiftToolchain {
     }
 
     private basePlatformDeveloperPath(): string | undefined {
-        const sdk = this.customSDK ?? this.defaultSDK;
-        if (!sdk) {
+        if (!this.sdk) {
             return undefined;
         }
-        return path.resolve(sdk, "../../");
+        return path.resolve(this.sdk, "../../");
     }
 
     /**
@@ -502,6 +493,9 @@ export class SwiftToolchain {
         }
         if (this.targetInfo.target?.triple) {
             str += `\nDefault Target: ${this.targetInfo.target?.triple}`;
+        }
+        if (this.sdk) {
+            str += `\nSelected SDK: ${this.sdk}`;
         }
         if (this.defaultSDK) {
             str += `\nDefault SDK: ${this.defaultSDK}`;
@@ -556,8 +550,8 @@ export class SwiftToolchain {
     private static async getToolchainPath(
         swiftBinaryPath: string,
         extensionRoot: string,
-        cwd?: vscode.Uri,
-        logger?: SwiftLogger
+        logger: SwiftLogger,
+        cwd?: vscode.Uri
     ): Promise<{
         toolchainPath: string;
         toolchainManager: ToolchainManager;
@@ -580,7 +574,11 @@ export class SwiftToolchain {
             }
             // Check if the swift binary is managed by swiftly
             if (await Swiftly.isManagedBySwiftly(swiftBinaryPath)) {
-                const swiftlyToolchainPath = await Swiftly.getActiveToolchain(extensionRoot, cwd);
+                const swiftlyToolchainPath = await Swiftly.getActiveToolchain(
+                    extensionRoot,
+                    logger,
+                    cwd
+                );
                 return {
                     toolchainPath: path.resolve(swiftlyToolchainPath, "usr"),
                     toolchainManager: "swiftly",
@@ -872,7 +870,7 @@ export class SwiftToolchain {
      * @returns swift version object
      */
     private static getSwiftVersion(targetInfo: SwiftTargetInfo): Version {
-        const match = targetInfo.compilerVersion.match(/Swift version ([\S]+)/);
+        const match = /Swift version (\S+)/.exec(targetInfo.compilerVersion);
         let version: Version | undefined;
         if (match) {
             version = Version.fromString(match[1]);

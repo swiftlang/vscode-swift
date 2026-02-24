@@ -23,8 +23,9 @@ const dataDir = process.env["VSCODE_DATA_DIR"];
 
 // Check if we're debugging by looking at the process executable. Unfortunately, the VS Code debugger
 // doesn't seem to allow setting environment variables on a launched extension host.
-const processPath = process.env["_"] ?? "";
-const isDebugRun = !isCIBuild && !processPath.endsWith("node_modules/.bin/vscode-test");
+//
+// When debugging, the process will be launched under VS Code instead of NodeJS.
+const isDebugRun = !isCIBuild && process.argv0.toLocaleLowerCase().includes("code");
 
 function log(/** @type {string} */ message) {
     if (!isDebugRun) {
@@ -80,7 +81,7 @@ if (vsixPath) {
     extensionDependencies.push("vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap");
 }
 
-const vscodeVersion = process.env["VSCODE_VERSION"] ?? "1.106.3";
+const vscodeVersion = process.env["VSCODE_VERSION"] ?? "1.105.1";
 log("Running tests against VS Code version " + vscodeVersion);
 
 const installConfigs = [];

@@ -113,7 +113,8 @@ export class PackageNode {
      * So instead we'll check for this set boolean property. Even if the implementation of the
      * {@link PackageNode} class changes, this property should not need to change
      */
-    static isPackageNode = (item: { __isPackageNode?: boolean }) => item.__isPackageNode ?? false;
+    static readonly isPackageNode = (item: { __isPackageNode?: boolean }) =>
+        item.__isPackageNode ?? false;
     __isPackageNode = true;
 
     constructor(
@@ -345,6 +346,8 @@ class TargetNode {
                     return LOADING_ICON;
                 }
                 return "notebook";
+            case "macro":
+                return "target";
         }
     }
 
@@ -422,7 +425,7 @@ export class PlaygroundNode {
      * So instead we'll check for this set boolean property. Even if the implementation of the
      * {@link PlaygroundNode} class changes, this property should not need to change
      */
-    static isPlaygroundNode = (item: { __isPlaygroundNode?: boolean }) =>
+    static readonly isPlaygroundNode = (item: { __isPlaygroundNode?: boolean }) =>
         item.__isPlaygroundNode ?? false;
     __isPlaygroundNode = true;
 

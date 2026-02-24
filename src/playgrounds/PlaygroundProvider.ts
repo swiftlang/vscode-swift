@@ -20,7 +20,7 @@ import { LSPPlaygroundsDiscovery, Playground } from "./LSPPlaygroundsDiscovery";
 
 export { Playground };
 
-export interface PlaygroundChangeEvent {
+interface PlaygroundChangeEvent {
     uri: string;
     playgrounds: Playground[];
 }

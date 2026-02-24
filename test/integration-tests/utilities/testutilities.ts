@@ -21,7 +21,7 @@ import { FolderContext } from "@src/FolderContext";
 import { FolderOperation, WorkspaceContext } from "@src/WorkspaceContext";
 import configuration from "@src/configuration";
 import { getLLDBLibPath } from "@src/debugger/lldb";
-import { Api } from "@src/extension";
+import { InternalSwiftExtensionApi } from "@src/extension";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { buildAllTaskName, resetBuildAllTaskCache } from "@src/tasks/SwiftTaskProvider";
 import { Extension } from "@src/utilities/extensions";
@@ -44,7 +44,7 @@ interface Loggable {
 
 function printLogs(logger: Loggable, message: string) {
     console.error(`${message}, captured logs are:`);
-    logger.logs.map(log => console.log(log));
+    logger.logs.forEach(log => console.log(log));
     console.log("======== END OF LOGS ========\n");
 }
 
@@ -103,8 +103,8 @@ function configureLogDumpOnTimeout(timeout: number, logger: ExtensionActivationL
 }
 
 const extensionBootstrapper = (() => {
-    let activator: (() => Promise<Api>) | undefined = undefined;
-    let activatedAPI: Api | undefined = undefined;
+    let activator: (() => Promise<InternalSwiftExtensionApi>) | undefined = undefined;
+    let activatedAPI: InternalSwiftExtensionApi | undefined = undefined;
     let lastTestName: string | undefined = undefined;
     const testTitle = (currentTest: Mocha.Test) => currentTest.titlePath().join(" → ");
     let activationLogger: ExtensionActivationLogger;
@@ -308,7 +308,7 @@ const extensionBootstrapper = (() => {
             }
 
             const extensionId = "swiftlang.swift-vscode";
-            const ext = vscode.extensions.getExtension<Api>(extensionId);
+            const ext = vscode.extensions.getExtension<InternalSwiftExtensionApi>(extensionId);
             if (!ext) {
                 throw new Error(`Unable to find extension "${extensionId}"`);
             }
@@ -323,7 +323,7 @@ const extensionBootstrapper = (() => {
                     "Performing the one and only extension activation for this test run."
                 );
                 for (const depId of [Extension.CODELLDB, Extension.LLDBDAP]) {
-                    const dep = vscode.extensions.getExtension<Api>(depId);
+                    const dep = vscode.extensions.getExtension<InternalSwiftExtensionApi>(depId);
                     if (!dep) {
                         throw new Error(`Unable to find extension "${depId}"`);
                     }
@@ -665,8 +665,8 @@ export function isConfigurationSuperset(configValue: unknown, expected: unknown)
     if (
         typeof configValue === "object" &&
         typeof expected === "object" &&
-        configValue !== null &&
-        expected !== null &&
+        !!configValue &&
+        !!expected &&
         !Array.isArray(configValue) &&
         !Array.isArray(expected)
     ) {

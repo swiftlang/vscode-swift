@@ -15,17 +15,16 @@ jobs:
       image: swift:6.0-jammy
     outputs:
       artifact-id: ${{ steps.archive.outputs.artifact-id }}
+      node-version: ${{ steps.read-node-version.outputs.version }}
+      node-path: ${{ steps.read-node-version.outputs.path }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Build Extension
         run: |
-          export NODE_VERSION=v20.19.0
-          export NODE_PATH=/usr/local/nvm/versions/node/v20.19.0/bin
           export NVM_DIR=/usr/local/nvm
           . .github/workflows/scripts/setup-linux.sh
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-          npm ci
           npm run dev-package
           for file in *.vsix; do
             name="$(basename "$file" .vsix)-${{github.run_number}}.vsix"
@@ -36,7 +35,7 @@ jobs:
           git rev-parse HEAD > vscode-swift-sha.txt
       - name: Archive production artifacts
         id: archive
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: ${{ env.ACT != 'true' }}
         with:
           if-no-files-found: error
@@ -48,14 +47,14 @@ jobs:
   tests:
     name: ${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && 'Full Test Run' || 'Test'}}
     needs: package
-    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.2
+    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.7
     with:
       needs_token: true
       # Linux
       linux_exclude_swift_versions: "${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && '[{\"swift_version\": \"nightly-6.1\"}]' || '[{\"swift_version\": \"nightly-6.1\"},{\"swift_version\": \"nightly-6.2\"},{\"swift_version\": \"nightly-6.3\"},{\"swift_version\": \"nightly-main\"}]' }}"
       linux_env_vars: |
-        NODE_VERSION=v20.19.0
-        NODE_PATH=/usr/local/nvm/versions/node/v20.19.0/bin
+        NODE_VERSION=${{ needs.package.outputs.node-version }}
+        NODE_PATH=${{ needs.package.outputs.node-path }}
         NVM_DIR=/usr/local/nvm
         CI=1
         FAST_TEST_RUN=${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && '0' || '1'}}
@@ -76,7 +75,7 @@ jobs:
 
   soundness:
     name: Soundness
-    uses: swiftlang/github-workflows/.github/workflows/soundness.yml@0.0.2
+    uses: swiftlang/github-workflows/.github/workflows/soundness.yml@0.0.7
     with:
       # Pending https://github.com/swiftlang/vscode-swift/pull/1176
       license_header_check_enabled: false
