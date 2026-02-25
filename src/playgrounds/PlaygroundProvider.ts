@@ -35,7 +35,7 @@ export class PlaygroundProvider implements vscode.Disposable {
     private hasFetched: boolean = false;
     private fetchPromise: Promise<Playground[]> | undefined;
     private documentPlaygrounds: Map<string, Playground[]> = new Map();
-    private didChangePlaygroundsEmitter: vscode.EventEmitter<PlaygroundChangeEvent> =
+    protected didChangePlaygroundsEmitter: vscode.EventEmitter<PlaygroundChangeEvent> =
         new vscode.EventEmitter();
 
     constructor(private folderContext: FolderContext) {}
@@ -114,6 +114,17 @@ export class PlaygroundProvider implements vscode.Disposable {
     onDidChangePlaygrounds: vscode.Event<PlaygroundChangeEvent> =
         this.didChangePlaygroundsEmitter.event;
 
+    protected setWorkspacePlaygrounds(playgrounds: Playground[]) {
+        this.documentPlaygrounds.clear();
+        for (const playground of playgrounds) {
+            const uri = playground.location.uri;
+            this.documentPlaygrounds.set(
+                uri,
+                (this.documentPlaygrounds.get(uri) ?? []).concat(playground)
+            );
+        }
+    }
+
     async fetch() {
         this.hasFetched = true;
         if (this.fetchPromise) {
@@ -129,15 +140,7 @@ export class PlaygroundProvider implements vscode.Disposable {
         }
         this.fetchPromise = this.lspPlaygroundDiscovery.getWorkspacePlaygrounds();
         try {
-            const playgrounds = await this.fetchPromise;
-            this.documentPlaygrounds.clear();
-            for (const playground of playgrounds) {
-                const uri = playground.location.uri;
-                this.documentPlaygrounds.set(
-                    uri,
-                    (this.documentPlaygrounds.get(uri) ?? []).concat(playground)
-                );
-            }
+            this.setWorkspacePlaygrounds(await this.fetchPromise);
         } catch (error) {
             this.logger.error(
                 `Failed to fetch workspace playgrounds: ${error}`,

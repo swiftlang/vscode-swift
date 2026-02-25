@@ -19,6 +19,8 @@ import * as vscode from "vscode";
 import { FolderContext } from "@src/FolderContext";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { Commands } from "@src/commands";
+import { PlaygroundProvider } from "@src/playgrounds/PlaygroundProvider";
+import { Playground } from "@src/sourcekit-lsp/extensions";
 import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
 import {
     FileNode,
@@ -40,13 +42,38 @@ import {
 
 tag("medium").suite("ProjectPanelProvider Test Suite", function () {
     let workspaceContext: WorkspaceContext;
+    let folderContext: FolderContext;
     let treeProvider: ProjectPanelProvider;
+
+    class MockPlaygroundProvider extends PlaygroundProvider {
+        setPlaygrounds(playgrounds: Playground[]) {
+            this.setWorkspacePlaygrounds(playgrounds);
+            this.didChangePlaygroundsEmitter.fire({
+                uri: playgrounds[0]?.location.uri ?? "",
+                playgrounds,
+            });
+        }
+    }
+
+    function makePlayground(id: string, uri: string, label?: string): Playground {
+        return {
+            id,
+            ...(label ? { label } : {}),
+            location: {
+                uri,
+                range: {
+                    start: { line: 0, character: 0 },
+                    end: { line: 0, character: 0 },
+                },
+            },
+        };
+    }
 
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;
 
-            const folderContext = await folderInRootWorkspace("targets", workspaceContext);
+            folderContext = await folderInRootWorkspace("targets", workspaceContext);
             await vscode.workspace.openTextDocument(
                 path.join(folderContext.folder.fsPath, "Package.swift")
             );
@@ -112,6 +139,106 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
                 }
             }
         );
+    });
+
+    suite("Playgrounds", () => {
+        let mockPlaygroundProvider: MockPlaygroundProvider | undefined;
+        let existingPlaygroundProvider: FolderContext["playgroundProvider"];
+
+        beforeEach(() => {
+            existingPlaygroundProvider = folderContext.playgroundProvider;
+            mockPlaygroundProvider = new MockPlaygroundProvider(folderContext);
+            folderContext.playgroundProvider = mockPlaygroundProvider;
+            treeProvider.observeFolder(folderContext);
+        });
+
+        afterEach(() => {
+            mockPlaygroundProvider?.dispose();
+            mockPlaygroundProvider = undefined;
+            folderContext.playgroundProvider = existingPlaygroundProvider;
+            treeProvider.observeFolder(folderContext);
+        });
+
+        test("Includes playgrounds", async () => {
+            const playgroundFile = vscode.Uri.file(
+                path.join(folderContext.folder.fsPath, "Sources/ExecutableTarget/main.swift")
+            ).toString();
+            mockPlaygroundProvider?.setPlaygrounds([
+                makePlayground("ExecutableTarget/main.swift:4", playgroundFile, "named playground"),
+                makePlayground("ExecutableTarget/main.swift:9", playgroundFile),
+            ]);
+
+            await waitForChildren(
+                () => getHeaderChildren("Playgrounds"),
+                playgrounds => {
+                    expect(playgrounds.map(playground => playground.name)).to.deep.equal([
+                        "named playground",
+                        "ExecutableTarget/main.swift:9",
+                    ]);
+                    const treeItem = playgrounds[0].toTreeItem();
+                    expect(treeItem.contextValue).to.equal("playground");
+                    expect(treeItem.command?.command).to.equal("vscode.openWith");
+                    return playgrounds;
+                }
+            );
+        });
+
+        test("Hides playgrounds when no playgrounds are returned", async () => {
+            const playgroundFile = vscode.Uri.file(
+                path.join(folderContext.folder.fsPath, "Sources/ExecutableTarget/main.swift")
+            ).toString();
+            mockPlaygroundProvider?.setPlaygrounds([
+                makePlayground("ExecutableTarget/main.swift:4", playgroundFile, "named playground"),
+            ]);
+
+            await waitForChildren(
+                () => treeProvider.getChildren(),
+                headers => {
+                    expect(headers.find(header => header.name === "Playgrounds")).to.not.be
+                        .undefined;
+                    return headers;
+                }
+            );
+
+            mockPlaygroundProvider?.setPlaygrounds([]);
+            await waitForChildren(
+                () => treeProvider.getChildren(),
+                headers => {
+                    expect(headers.find(header => header.name === "Playgrounds")).to.be.undefined;
+                    return headers;
+                }
+            );
+        });
+
+        test("Hooks up playground command", async () => {
+            const playgroundFile = vscode.Uri.file(
+                path.join(folderContext.folder.fsPath, "Sources/ExecutableTarget/main.swift")
+            ).toString();
+            mockPlaygroundProvider?.setPlaygrounds([
+                makePlayground("ExecutableTarget/main.swift:4", playgroundFile, "named playground"),
+            ]);
+
+            await waitForChildren(
+                () => getHeaderChildren("Playgrounds"),
+                playgrounds => {
+                    const node = playgrounds[0];
+                    const item = node.toTreeItem();
+                    expect(item.command?.title).to.equal("Open Playground");
+                    expect(item.command?.command).to.equal("vscode.openWith");
+                    expect(item.command?.arguments?.[0]).to.deep.equal(
+                        vscode.Uri.parse(playgroundFile)
+                    );
+                    expect(item.command?.arguments?.[1]).to.equal("default");
+                    expect(item.command?.arguments?.[2]).to.deep.equal({
+                        selection: {
+                            start: { line: 0, character: 0 },
+                            end: { line: 0, character: 0 },
+                        },
+                    });
+                    return playgrounds;
+                }
+            );
+        });
     });
 
     suite("Targets", () => {
