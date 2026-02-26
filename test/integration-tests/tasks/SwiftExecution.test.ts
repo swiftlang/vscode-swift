@@ -31,7 +31,8 @@ suite("SwiftExecution Tests Suite", () => {
     let workspaceFolder: vscode.WorkspaceFolder;
 
     activateExtensionForSuite({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             workspaceContext = ctx;
             toolchain = await SwiftToolchain.create(
                 workspaceContext.extensionContext.extensionPath,

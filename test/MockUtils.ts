@@ -133,6 +133,11 @@ export function mockObject<T>(overrides: Partial<T>): MockedObject<T> {
     const clonedObject = replaceWithMocks<T>(overrides);
     function checkAndAcquireValueFromTarget(target: any, property: string | symbol): any {
         if (!Object.prototype.hasOwnProperty.call(target, property)) {
+            if (property === "then") {
+                // Utilities that check for promise-like objects expect that accessing a
+                // property won't result in an error.
+                return undefined;
+            }
             throw new Error(
                 `Attempted to access property '${String(property)}', but it was not mocked.`
             );

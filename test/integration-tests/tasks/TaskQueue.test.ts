@@ -26,7 +26,8 @@ tag("medium").suite("TaskQueue Test Suite", () => {
     let taskQueue: TaskQueue;
 
     activateExtensionForSuite({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             workspaceContext = ctx;
             assert.notEqual(workspaceContext.folders.length, 0);
             taskQueue = workspaceContext.folders[0].taskQueue;

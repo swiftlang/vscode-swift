@@ -187,6 +187,7 @@ export class LanguageClientManager implements vscode.Disposable {
     }
 
     dispose() {
+        void this.languageClient?.dispose();
         this.cancellationToken?.cancel();
         this.cancellationToken?.dispose();
         this.legacyInlayHints?.dispose();

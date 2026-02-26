@@ -13,30 +13,32 @@
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
 
-import { WorkspaceContext } from "../WorkspaceContext";
+import { InternalSwiftExtensionApi } from "../InternalSwiftExtensionApi";
 import { TaskOperation } from "../tasks/TaskQueue";
 
-export const runTask = async (ctx: WorkspaceContext, name: string) => {
-    if (!ctx.currentFolder) {
-        return;
-    }
+export function runTask(api: InternalSwiftExtensionApi, name: string): Promise<boolean> {
+    return api.withWorkspaceContext(async ctx => {
+        if (!ctx.currentFolder) {
+            return false;
+        }
 
-    const tasks = await vscode.tasks.fetchTasks();
-    let task = tasks.find(task => task.name === name);
-    if (!task) {
-        const pluginTaskProvider = ctx.pluginProvider;
-        const pluginTasks = await pluginTaskProvider.provideTasks(
-            new vscode.CancellationTokenSource().token
-        );
-        task = pluginTasks.find(task => task.name === name);
-    }
+        const tasks = await vscode.tasks.fetchTasks();
+        let task = tasks.find(task => task.name === name);
+        if (!task) {
+            const pluginTaskProvider = ctx.pluginProvider;
+            const pluginTasks = await pluginTaskProvider.provideTasks(
+                new vscode.CancellationTokenSource().token
+            );
+            task = pluginTasks.find(task => task.name === name);
+        }
 
-    if (!task) {
-        void vscode.window.showErrorMessage(`Task "${name}" not found`);
-        return;
-    }
+        if (!task) {
+            void vscode.window.showErrorMessage(`Task "${name}" not found`);
+            return false;
+        }
 
-    return ctx.currentFolder.taskQueue
-        .queueOperation(new TaskOperation(task))
-        .then(result => result === 0);
-};
+        return ctx.currentFolder.taskQueue
+            .queueOperation(new TaskOperation(task))
+            .then(result => result === 0);
+    });
+}
