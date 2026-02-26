@@ -57,10 +57,6 @@ export class BuildFlags {
                         // required to be placed before subcommand options.
                         return [...subcommand, ...this.swiftpmSDKFlags(), ...args];
                     }
-                    default:
-                        // Other swift-package subcommands operate on the host,
-                        // so it doesn't need to know about the destination.
-                        return subcommand.concat(args);
                 }
             }
             case "build":
