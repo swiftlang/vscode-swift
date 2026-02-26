@@ -11,6 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+/* eslint-disable no-console */
 import * as child_process from "child_process";
 import type * as nodePty from "node-pty";
 import * as vscode from "vscode";
@@ -203,6 +204,20 @@ export class SwiftPtyProcess implements SwiftProcess {
     onDidClose: vscode.Event<number | void> = this.closeHandler.event;
 }
 
+function getStackTrace(): string {
+    const stack = Error().stack;
+    if (!stack) {
+        return "";
+    }
+    return (
+        stack
+            .split("\n")
+            .filter(l => l.startsWith("    at "))
+            .slice(1)
+            .join("\n") ?? ""
+    );
+}
+
 /**
  * A {@link SwiftProcess} that spawns a child process and does not bind to stdio.
  *
@@ -237,6 +252,10 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
     }
 
     spawn(): void {
+        const commandLine = [this.command, ...this.args].join(" ");
+        console.log(
+            `[ReadOnlySwiftProcess] Spawning ${commandLine} in ${this.options.cwd ?? "workspace root"}\n${getStackTrace()}`
+        );
         try {
             this.spawnedProcess = child_process.spawn(this.command, this.args, {
                 cwd: this.options.cwd,
