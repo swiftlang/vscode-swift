@@ -11,6 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+/* eslint-disable no-console */
 import * as vscode from "vscode";
 
 import { WorkspaceContext } from "../WorkspaceContext";
@@ -19,9 +20,13 @@ import { WorkspaceContext } from "../WorkspaceContext";
 export class TaskManager implements vscode.Disposable {
     constructor(private workspaceContext: WorkspaceContext) {
         this.onDidEndTaskProcessDisposible = vscode.tasks.onDidEndTaskProcess(event => {
+            const task = event.execution.task;
+            console.log(`[VSCode Tasks] Ended task process: ${task.name} (${task.definition.id})`);
             this.taskEndObservers.forEach(observer => observer(event));
         });
         this.onDidEndTaskDisposible = vscode.tasks.onDidEndTask(event => {
+            const task = event.execution.task;
+            console.log(`[VSCode Tasks] Ended task: ${task.name} (${task.definition.id})`);
             this.taskEndObservers.forEach(observer =>
                 observer({ execution: event.execution, exitCode: undefined })
             );
@@ -31,6 +36,8 @@ export class TaskManager implements vscode.Disposable {
             }
         });
         this.onDidStartTaskDisposible = vscode.tasks.onDidStartTask(event => {
+            const task = event.execution.task;
+            console.log(`[VSCode Tasks] Started task: ${task.name} (${task.definition.id})`);
             if (this.taskStartObserver) {
                 this.taskStartObserver(event);
             }
@@ -97,10 +104,13 @@ export class TaskManager implements vscode.Disposable {
         token?: vscode.CancellationToken
     ) {
         const disposable = this.onDidEndTaskProcess(event => {
-            if (event.execution.task.definition.id === task.definition.id) {
-                disposable.dispose();
-                resolve(event.exitCode);
+            if (event.execution.task.definition.id !== task.definition.id) {
+                console.log(`[TaskObserver] task did not match id ${task.definition.id}`);
+                return;
             }
+            console.log(`[TaskObserver] found end task for id ${task.definition.id}`);
+            disposable.dispose();
+            resolve(event.exitCode);
         });
         // setup startingTaskPromise to be resolved one task has started
         if (this.startingTaskPromise !== undefined) {
