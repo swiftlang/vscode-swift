@@ -386,4 +386,107 @@ suite("ToolchainSelection Unit Test Suite", () => {
             );
         });
     });
+
+    suite("Install Swiftly action", () => {
+        setup(() => {
+            mockedPlatform.setValue("darwin");
+            mockedSwiftly.isSupported.returns(true);
+            mockedSwiftly.isInstalled.resolves(false);
+            mockedSwiftly.installSwiftly.resolves();
+            // Default: user dismisses the confirmation dialog
+            mockedVSCodeWindow.showInformationMessage.resolves(undefined);
+        });
+
+        test("shows 'Install Swiftly for toolchain management' action when swiftly is not installed", async () => {
+            let actionLabels: string[] = [];
+            mockedVSCodeWindow.showQuickPick
+                .withArgs(match.any, match.has("title", "Select the Swift toolchain"))
+                .callsFake(async items => {
+                    actionLabels = (await items)
+                        .filter((t: any) => t.type === "action")
+                        .map((t: any) => t.label);
+                    return undefined;
+                });
+
+            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
+
+            expect(actionLabels.some(l => l.includes("Install Swiftly for toolchain management")))
+                .to.be.true;
+        });
+
+        test("does not show 'Install Swiftly' action when swiftly is already installed", async () => {
+            mockedSwiftly.isInstalled.resolves(true);
+            mockedSwiftly.version.resolves({ isLessThan: () => false } as any);
+
+            let actionLabels: string[] = [];
+            mockedVSCodeWindow.showQuickPick
+                .withArgs(match.any, match.has("title", "Select the Swift toolchain"))
+                .callsFake(async items => {
+                    actionLabels = (await items)
+                        .filter((t: any) => t.type === "action")
+                        .map((t: any) => t.label);
+                    return undefined;
+                });
+
+            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
+
+            expect(actionLabels.some(l => l.includes("Install Swiftly for toolchain management")))
+                .to.be.false;
+        });
+
+        test("installs swiftly when user selects the action and confirms installation", async () => {
+            mockedVSCodeWindow.showInformationMessage.resolves("Continue" as any);
+
+            mockedVSCodeWindow.showQuickPick
+                .withArgs(match.any, match.has("title", "Select the Swift toolchain"))
+                .callsFake(async items => {
+                    return (await items).find(
+                        (t: any) =>
+                            t.type === "action" &&
+                            t.label.includes("Install Swiftly for toolchain management")
+                    );
+                });
+
+            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
+
+            expect(mockedSwiftly.installSwiftly).to.have.been.called;
+        });
+
+        test("does not install swiftly when user cancels the confirmation dialog", async () => {
+            mockedVSCodeWindow.showInformationMessage.resolves(undefined);
+
+            mockedVSCodeWindow.showQuickPick
+                .withArgs(match.any, match.has("title", "Select the Swift toolchain"))
+                .callsFake(async items => {
+                    return (await items).find(
+                        (t: any) =>
+                            t.type === "action" &&
+                            t.label.includes("Install Swiftly for toolchain management")
+                    );
+                });
+
+            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
+
+            expect(mockedSwiftly.installSwiftly).not.to.have.been.called;
+        });
+
+        test("opens swiftly documentation when user selects 'Open Swiftly Documentation'", async () => {
+            mockedVSCodeWindow.showInformationMessage.resolves("Open Swiftly Documentation" as any);
+
+            mockedVSCodeWindow.showQuickPick
+                .withArgs(match.any, match.has("title", "Select the Swift toolchain"))
+                .callsFake(async items => {
+                    return (await items).find(
+                        (t: any) =>
+                            t.type === "action" &&
+                            t.label.includes("Install Swiftly for toolchain management")
+                    );
+                });
+
+            await showToolchainSelectionQuickPick(undefined, instance(mockedLogger));
+
+            expect(mockedSwiftly.installSwiftly).not.to.have.been.called;
+            expect(mockedVSCodeEnv.openExternal).to.have.been.called;
+        });
+    });
 });
