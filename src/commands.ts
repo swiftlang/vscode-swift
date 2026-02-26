@@ -30,6 +30,7 @@ import { useLocalDependency } from "./commands/dependencies/useLocal";
 import { generateLaunchConfigurations } from "./commands/generateLaunchConfigurations";
 import { generateSourcekitConfiguration } from "./commands/generateSourcekitConfiguration";
 import { insertFunctionComment } from "./commands/insertFunctionComment";
+import { handleMissingSwiftly } from "./commands/installSwiftly";
 import { promptToInstallSwiftlyToolchain } from "./commands/installSwiftlyToolchain";
 import { newSwiftFile } from "./commands/newFile";
 import { openDocumentation } from "./commands/openDocumentation";
@@ -64,7 +65,8 @@ import { showToolchainSelectionQuickPick } from "./ui/ToolchainSelection";
 
 export function registerToolchainCommands(
     ctx: WorkspaceContext | undefined,
-    logger: SwiftLogger
+    logger: SwiftLogger,
+    extensionPath: string
 ): vscode.Disposable[] {
     return [
         vscode.commands.registerCommand("swift.createNewProject", () =>
@@ -79,6 +81,9 @@ export function registerToolchainCommands(
         ),
         vscode.commands.registerCommand("swift.pickProcess", configuration =>
             pickProcess(configuration)
+        ),
+        vscode.commands.registerCommand("swift.installSwiftly", () =>
+            handleMissingSwiftly(["latest"], extensionPath, logger, true)
         ),
     ];
 }
