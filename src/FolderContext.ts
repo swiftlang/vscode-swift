@@ -114,7 +114,10 @@ export class FolderContext implements ExternalFolderContext, vscode.Disposable {
                 `Failed to discover Swift toolchain for ${FolderContext.uriName(folder)}: ${error}`,
                 FolderContext.uriName(folder)
             );
-            const userMadeSelection = await showToolchainError(folder);
+            const userMadeSelection = await showToolchainError(
+                workspaceContext.extensionContext.extensionPath,
+                folder
+            );
             if (userMadeSelection) {
                 // User updated toolchain settings, retry once
                 try {
