@@ -24,6 +24,9 @@ import { showReloadExtensionNotification } from "./ui/ReloadExtension";
 import { fileExists } from "./utilities/filesystem";
 import { Version } from "./utilities/version";
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+import debounce = require("lodash.debounce");
+
 /**
  * Watches for changes to **Package.swift** and **Package.resolved**.
  *
@@ -61,6 +64,8 @@ export class PackageWatcher {
      * when the extension deactivates.
      */
     dispose() {
+        this.handlePackageSwiftChange.cancel();
+        this.handlePackageResolvedChange.cancel();
         this.packageFileWatcher?.dispose();
         this.resolvedChangedDisposable?.dispose();
         this.resolvedFileWatcher?.dispose();
@@ -169,26 +174,29 @@ export class PackageWatcher {
      * This will reload the swift package description, update the
      * launch configuration if required and then resolve the package
      * dependencies.
+     *
+     * Debounced by 500ms to coalesce rapid file system events (e.g. during rebases).
      */
-    async handlePackageSwiftChange() {
-        // Load SwiftPM Package.swift description
+    handlePackageSwiftChange = debounce(async () => {
         await this.folderContext.reload();
         await this.folderContext.fireEvent(FolderOperation.packageUpdated);
-    }
+    }, 500);
 
     /**
      * Handles a create or change event for **Package.resolved**.
      *
      * This will resolve any changes in the Package.resolved.
+     *
+     * Debounced by 500ms to coalesce rapid file system events (e.g. during rebases).
      */
-    private async handlePackageResolvedChange() {
+    handlePackageResolvedChange = debounce(async () => {
         const packageResolvedHash = this.folderContext.swiftPackage.resolved?.fileHash;
         await this.folderContext.reloadPackageResolved();
         // if file contents has changed then send resolve updated message
         if (this.folderContext.swiftPackage.resolved?.fileHash !== packageResolvedHash) {
             await this.folderContext.fireEvent(FolderOperation.resolvedUpdated);
         }
-    }
+    }, 500);
 
     /**
      * Handles a create or change event for **.build/workspace-state.json**.
