@@ -25,11 +25,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
       - name: Build Extension
+        env:
+          PATCH_RELEASE: ${{ github.event.inputs.patchRelease }}
         run: |
           . .github/workflows/scripts/setup-linux.sh
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
           npm ci
-          if [ "${{github.event.inputs.patchRelease}}" = "true" ]; then
+          if [ "$PATCH_RELEASE" = "true" ]; then
             echo "Making patch release\n"
             npm run patch-package
           else
