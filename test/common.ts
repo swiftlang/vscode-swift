@@ -20,6 +20,7 @@ import * as path from "path";
 import * as sinonChai from "sinon-chai";
 import * as sourceMapSupport from "source-map-support";
 import * as tsConfigPaths from "tsconfig-paths";
+import * as vscode from "vscode";
 
 import { chaiPathPlugin } from "./chai-path-plugin";
 import { installTagSupport } from "./tags";
@@ -57,3 +58,35 @@ chai.use(chaiPathPlugin);
 chai.use(chaiAsPromised);
 
 installTagSupport();
+
+setup(function () {
+    if (!this.currentTest) {
+        return;
+    }
+
+    console.log(`[Tests] Started test ${this.currentTest.titlePath().join(" → ")}`);
+});
+
+teardown(function () {
+    if (!this.currentTest) {
+        return;
+    }
+
+    console.log(`[Tests] Finished test ${this.currentTest.titlePath().join(" → ")}`);
+});
+
+vscode.tasks.onDidStartTask(e => {
+    console.log(`[VSCode Tasks] started task "${e.execution.task.name}"`);
+});
+
+vscode.tasks.onDidStartTaskProcess(e => {
+    console.log(`[VSCode Tasks] started task process "${e.execution.task.name}"`);
+});
+
+vscode.tasks.onDidEndTaskProcess(e => {
+    console.log(`[VSCode Tasks] ended task process "${e.execution.task.name}"`);
+});
+
+vscode.tasks.onDidEndTask(e => {
+    console.log(`[VSCode Tasks] ended task "${e.execution.task.name}"`);
+});
