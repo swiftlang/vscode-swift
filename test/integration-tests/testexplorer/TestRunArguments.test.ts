@@ -206,6 +206,19 @@ suite("TestRunArguments Suite", () => {
                 testItems: [testTargetId, xcSuiteId, xcTestId, swiftTestSuiteId, swiftTestId],
             });
         });
+
+        test("Entire test target (debug mode)", () => {
+            const testArgs = new TestRunArguments(runRequestByIds([testTargetId], []), true);
+            assertRunArguments(testArgs, {
+                // XCTests must remain expanded in debug mode since the xctest
+                // binary requires exact suite names.
+                xcTestArgs: [xcSuiteId],
+                // Swift-testing supports target-level wildcards during debug,
+                // keeping the argument list short and avoiding debug adapter crashes.
+                swiftTestArgs: [`${testTargetId}.*`],
+                testItems: [testTargetId, xcSuiteId, xcTestId, swiftTestSuiteId, swiftTestId],
+            });
+        });
     });
 
     test("Test empty test target", () => {
@@ -349,6 +362,32 @@ suite("TestRunArguments Suite", () => {
                 testTargetId,
                 xcTestId2,
                 xcTestId,
+            ],
+        });
+    });
+
+    test("Full swift-testing Target (debug mode)", () => {
+        const swiftTestSuiteId2 = "Swift Test Suite 2";
+        const swiftTestId1 = "Swift Test Item 1";
+        const swiftTestId2 = "Swift Test Item 2";
+        const dsl = `
+        tt:${testTargetId}
+            st:${swiftTestSuiteId}
+                st:${swiftTestId1}
+            st:${swiftTestSuiteId2}
+                st:${swiftTestId2}
+        `;
+        createTestItemTree(controller, dsl);
+        const testArgs = new TestRunArguments(runRequestByIds([testTargetId]), true);
+        assertRunArguments(testArgs, {
+            xcTestArgs: [],
+            swiftTestArgs: [`${testTargetId}.*`],
+            testItems: [
+                swiftTestSuiteId,
+                swiftTestSuiteId2,
+                swiftTestId1,
+                swiftTestId2,
+                testTargetId,
             ],
         });
     });
