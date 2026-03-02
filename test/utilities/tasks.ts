@@ -87,6 +87,16 @@ export async function waitForClose(fixture: {
     });
 }
 
+function logRunningTasks(): boolean {
+    const runningTasks = vscode.tasks.taskExecutions.map(e => e.task.name);
+    if (runningTasks.length === 0) {
+        console.log("[waitForNoRunningTasks] no running tasks");
+        return false;
+    }
+    console.log(`[waitForNoRunningTasks] tasks are still running: ${runningTasks.join(", ")}`);
+    return true;
+}
+
 /**
  * So spuratic failures can happen if a task that closely
  * matches an old one is spawned to close together, so this
@@ -94,19 +104,20 @@ export async function waitForClose(fixture: {
  * before starting a new test
  */
 export function waitForNoRunningTasks(options?: { timeout: number }): Promise<void> {
-    return new Promise<void>((res, reject) => {
-        if (vscode.tasks.taskExecutions.length === 0) {
-            res();
+    return new Promise<void>((resolve, reject) => {
+        if (!logRunningTasks()) {
+            resolve();
             return;
         }
         let timeout: NodeJS.Timeout;
-        const disposable = vscode.tasks.onDidEndTask(() => {
-            if (vscode.tasks.taskExecutions.length > 0) {
+        const disposable = vscode.tasks.onDidEndTask(e => {
+            console.log(`[waitForNoRunningTasks] task ended: ${e.execution.task.name}`);
+            if (logRunningTasks()) {
                 return;
             }
-            disposable?.dispose();
+            disposable.dispose();
             clearTimeout(timeout);
-            res();
+            resolve();
         });
         if (options?.timeout) {
             timeout = setTimeout(() => {
