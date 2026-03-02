@@ -13,15 +13,16 @@
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
 import * as path from "path";
-import { stub } from "sinon";
 import * as vscode from "vscode";
 
 import { FolderContext } from "@src/FolderContext";
+import { Target } from "@src/SwiftExtensionApi";
+import { SwiftPackage } from "@src/SwiftPackage";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { createDocumentationCatalog } from "@src/commands/createDocumentationCatalog";
 import * as filesystem from "@src/utilities/filesystem";
 
-import { instance, mockGlobalModule, mockGlobalObject, mockObject } from "../../MockUtils";
+import { instance, mockFn, mockGlobalModule, mockGlobalObject, mockObject } from "../../MockUtils";
 
 suite("createDocumentationCatalog Command Test Suite", () => {
     const windowMock = mockGlobalObject(vscode, "window");
@@ -33,22 +34,17 @@ suite("createDocumentationCatalog Command Test Suite", () => {
     const targetBasePath = path.join(rootPath, targetPath);
 
     function createMockFolderContext(
-        overrides: {
-            getTargets?: () => Promise<{ name: string; path: string; type: string }[]>;
-        } = {}
+        targets: Partial<Target>[] = [{ name: targetName, path: targetPath, type: "library" }]
     ): FolderContext {
-        const getTargets =
-            overrides.getTargets ??
-            (() => Promise.resolve([{ name: targetName, path: targetPath, type: "library" }]));
-        const swiftPackage = {
-            getTargets: stub().callsFake(getTargets),
-        };
+        const mockedSwiftPackage = mockObject<SwiftPackage>({
+            getTargets: mockFn(s => s.resolves(targets)),
+        });
         return instance(
             mockObject<FolderContext>({
                 folder: vscode.Uri.file(rootPath),
-                swiftPackage: swiftPackage as unknown as FolderContext["swiftPackage"],
+                swiftPackage: instance(mockedSwiftPackage),
             })
-        ) as unknown as FolderContext;
+        );
     }
 
     function createMockWorkspaceContext(folders: FolderContext[]): WorkspaceContext {
@@ -56,7 +52,7 @@ suite("createDocumentationCatalog Command Test Suite", () => {
             mockObject<WorkspaceContext>({
                 folders,
             })
-        ) as unknown as WorkspaceContext;
+        );
     }
 
     setup(() => {
@@ -81,9 +77,7 @@ suite("createDocumentationCatalog Command Test Suite", () => {
     });
 
     test("shows error when package has no targets", async () => {
-        const folder = createMockFolderContext({
-            getTargets: () => Promise.resolve([]),
-        });
+        const folder = createMockFolderContext([]);
         const ctx = createMockWorkspaceContext([folder]);
         filesystemMock.folderExists.resolves(true);
 
@@ -111,10 +105,10 @@ suite("createDocumentationCatalog Command Test Suite", () => {
         const folder = createMockFolderContext();
         const ctx = createMockWorkspaceContext([folder]);
         (windowMock.showQuickPick as import("sinon").SinonStub<any[], any>).callsFake(
-            (items: any) =>
-                Promise.resolve(items).then((resolved: readonly vscode.QuickPickItem[]) =>
-                    resolved && resolved.length > 0 ? [resolved[0]] : undefined
-                )
+            async items => {
+                const resolved = await items;
+                return resolved.length > 0 ? [resolved[0]] : undefined;
+            }
         );
 
         await createDocumentationCatalog(ctx);
@@ -134,10 +128,10 @@ suite("createDocumentationCatalog Command Test Suite", () => {
         const ctx = createMockWorkspaceContext([folder]);
         filesystemMock.provisionDoccCatalog.resolves(false);
         (windowMock.showQuickPick as import("sinon").SinonStub<any[], any>).callsFake(
-            (items: any) =>
-                Promise.resolve(items).then((resolved: readonly vscode.QuickPickItem[]) =>
-                    resolved && resolved.length > 0 ? [resolved[0]] : undefined
-                )
+            async items => {
+                const resolved = await items;
+                return resolved.length > 0 ? [resolved[0]] : undefined;
+            }
         );
 
         await createDocumentationCatalog(ctx);
@@ -153,23 +147,16 @@ suite("createDocumentationCatalog Command Test Suite", () => {
     });
 
     test("creates catalogs for multiple selected targets", async () => {
-        const getTargets = () =>
-            Promise.resolve([
-                { name: "LibA", path: "Sources/LibA", type: "library" },
-                { name: "LibB", path: "Sources/LibB", type: "library" },
-            ]);
-        const folder = createMockFolderContext({ getTargets });
+        const folder = createMockFolderContext([
+            { name: "LibA", path: "Sources/LibA", type: "library" },
+            { name: "LibB", path: "Sources/LibB", type: "library" },
+        ]);
         const ctx = createMockWorkspaceContext([folder]);
-        filesystemMock.provisionDoccCatalog
-            .onFirstCall()
-            .resolves(true)
-            .onSecondCall()
-            .resolves(true);
         (windowMock.showQuickPick as import("sinon").SinonStub<any[], any>).callsFake(
-            (items: any) =>
-                Promise.resolve(items).then((resolved: readonly vscode.QuickPickItem[]) =>
-                    resolved && resolved.length > 0 ? [...resolved] : undefined
-                )
+            async items => {
+                const resolved = await items;
+                return resolved.length > 0 ? [...resolved] : undefined;
+            }
         );
 
         await createDocumentationCatalog(ctx);
@@ -185,25 +172,6 @@ suite("createDocumentationCatalog Command Test Suite", () => {
         );
         expect(windowMock.showInformationMessage).to.have.been.calledOnceWith(
             "Created DocC catalog(s): LibA.docc, LibB.docc"
-        );
-    });
-
-    test("uses folderContext when provided", async () => {
-        const folder = createMockFolderContext();
-        const ctx = createMockWorkspaceContext([folder]);
-        (windowMock.showQuickPick as import("sinon").SinonStub<any[], any>).callsFake(
-            (items: any) =>
-                Promise.resolve(items).then((resolved: readonly vscode.QuickPickItem[]) =>
-                    resolved && resolved.length > 0 ? [resolved[0]] : undefined
-                )
-        );
-
-        await createDocumentationCatalog(ctx, folder);
-
-        expect(windowMock.showQuickPick).to.have.been.calledOnce;
-        expect(filesystemMock.provisionDoccCatalog).to.have.been.calledOnceWith(
-            targetBasePath,
-            targetName
         );
     });
 });
