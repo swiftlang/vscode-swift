@@ -14,6 +14,7 @@
 - Launch configurations defined in multi-root workspaces were unable to find the appropriate folder to run in ([#2105](https://github.com/swiftlang/vscode-swift/pull/2105))
 - Ignoring the dialog to use the toolchain defined in `.swift-version` would prevent extension acitvation ([#2107](https://github.com/swiftlang/vscode-swift/pull/2107))
 - Avoid rapidly resolving packages during rebases ([#2125](https://github.com/swiftlang/vscode-swift/pull/2125))
+- Fix typo in Swift extension setting ([#2130](https://github.com/swiftlang/vscode-swift/pull/2130))
 
 ## 2.16.1 - 2026-02-02
 
