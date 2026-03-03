@@ -708,13 +708,9 @@ const configuration = {
     },
     /** Whether or not to disable SwiftPM sandboxing */
     get disableSandbox(): boolean {
-        return validateBooleanSetting(
-            vscode.workspace.getConfiguration("swift").get<boolean>("disableSandbox", false),
-            "swift.disableSandbox"
-        ) ?? validateBooleanSetting(
-            vscode.workspace.getConfiguration("swift").get<boolean>("disableSandox", false),
-            "swift.disableSandox"
-        );
+        const config = vscode.workspace.getConfiguration("swift");
+        const key = config.has("disableSandbox") ? "disableSandbox" : "disableSandox";
+        return validateBooleanSetting(config.get<boolean>(key, false), `swift.${key}`);
     },
     /** Workspace folder glob patterns to exclude */
     get excludePathsFromActivation(): Record<string, boolean> {
