@@ -711,6 +711,9 @@ const configuration = {
         return validateBooleanSetting(
             vscode.workspace.getConfiguration("swift").get<boolean>("disableSandbox", false),
             "swift.disableSandbox"
+        ) ?? validateBooleanSetting(
+            vscode.workspace.getConfiguration("swift").get<boolean>("disableSandox", false),
+            "swift.disableSandox"
         );
     },
     /** Workspace folder glob patterns to exclude */
