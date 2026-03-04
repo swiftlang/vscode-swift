@@ -1122,12 +1122,20 @@
             "markdownDescription": "The [Swift SDK](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0387-cross-compilation-destinations.md) to compile against (`--swift-sdk` parameter).",
             "scope": "machine-overridable"
           },
-          "swift.disableSandox": {
+          "swift.disableSandbox": {
             "type": "boolean",
             "default": false,
             "markdownDescription": "Disable sandboxing when running SwiftPM commands. In most cases you should keep the sandbox enabled and leave this setting set to `false`",
             "order": 4,
             "scope": "machine-overridable"
+          },
+          "swift.disableSandox": {
+            "type": "boolean",
+            "default": false,
+            "order": 4,
+            "scope": "machine-overridable",
+            "markdownDescription": "Disable sandboxing when running SwiftPM commands. In most cases you should keep the sandbox enabled and leave this setting set to `false`",
+            "deprecationMessage": "**Deprecated**: Please use `#swift.disableSandbox#` instead."
           },
           "swift.disableSwiftlyInstallPrompt": {
             "type": "boolean",
