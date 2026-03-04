@@ -904,6 +904,7 @@
           "swift.sourcekit-lsp.serverPath": {
             "type": "string",
             "markdownDescription": "The path of the `sourcekit-lsp` executable. The default is to look in the path where `swift` is found.",
+            "deprecationMessage": "Deprecated: The sourcekit-lsp executable relies on outputs from tools in your current toolchain. If your sourcekit-lsp version does not match your toolchain you may experience unexpected behaviour. Only modify this setting when developing sourcekit-lsp.",
             "markdownDeprecationMessage": "**Deprecated**: The sourcekit-lsp executable relies on outputs from tools in your current toolchain. If your sourcekit-lsp version does not match your toolchain you may experience unexpected behaviour. Only modify this setting when developing sourcekit-lsp.",
             "order": 1
           },
@@ -974,6 +975,7 @@
             "type": "boolean",
             "default": true,
             "markdownDescription": "Display Inlay Hints. Inlay Hints are variable annotations indicating their inferred type. They are only available if you are using Swift 5.6 or later.",
+            "deprecationMessage": "Deprecated: Please use \"editor.inlayHints.enabled\" instead.",
             "markdownDeprecationMessage": "**Deprecated**: Please use `#editor.inlayHints.enabled#` instead."
           },
           "sourcekit-lsp.support-c-cpp": {
@@ -990,11 +992,13 @@
               "Disable when C/C++ extension is active"
             ],
             "markdownDescription": "Add LSP functionality for C/C++ files. By default this is set to disable when the C/C++ extension is active.",
+            "deprecationMessage": "Deprecated: Please use \"swift.sourcekit-lsp.supported-languages\" instead.",
             "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.sourcekit-lsp.supported-languages#` instead."
           },
           "sourcekit-lsp.serverPath": {
             "type": "string",
             "markdownDescription": "The path of the `sourcekit-lsp` executable. The default is to look in the path where `swift` is found.",
+            "deprecationMessage": "Deprecated: Please use \"swift.sourcekit-lsp.serverPath\" instead.",
             "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.sourcekit-lsp.serverPath#` instead."
           },
           "sourcekit-lsp.serverArguments": {
@@ -1004,6 +1008,7 @@
               "type": "string"
             },
             "markdownDescription": "Arguments to pass to SourceKit-LSP. Keys and values should be provided as individual entries in the list. e.g. `--experimental-feature=show-macro-expansions`",
+            "deprecationMessage": "Deprecated: Please use \"swift.sourcekit-lsp.serverArguments\" instead.",
             "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.sourcekit-lsp.serverArguments#` instead."
           },
           "sourcekit-lsp.trace.server": {
@@ -1015,12 +1020,14 @@
               "verbose"
             ],
             "markdownDescription": "Traces the communication between VS Code and the SourceKit-LSP language server.",
+            "deprecationMessage": "Deprecated: Please use \"swift.sourcekit-lsp.trace.server\" instead.",
             "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.sourcekit-lsp.trace.server#` instead."
           },
           "sourcekit-lsp.disable": {
             "type": "boolean",
             "default": false,
             "markdownDescription": "Disable the running of SourceKit-LSP.",
+            "deprecationMessage": "Deprecated: Please use \"swift.sourcekit-lsp.disable\" instead.",
             "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.sourcekit-lsp.disable#` instead."
           },
           "swift.excludePathsFromActivation": {
@@ -1081,7 +1088,8 @@
           "swift.debugger.useDebugAdapterFromToolchain": {
             "type": "boolean",
             "default": false,
-            "markdownDeprecationMessage": "**Deprecated**: Use the `swift.debugger.debugAdapter` setting instead. This will be removed in future versions of the Swift extension.",
+            "deprecationMessage": "Deprecated: Please use \"swift.debugger.debugAdapter\" instead.",
+            "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.debugger.debugAdapter#` instead.",
             "markdownDescription": "Use the LLDB debug adapter packaged with the Swift toolchain as your debug adapter. Note: this is only available starting with Swift 6. The CodeLLDB extension will be used if your Swift toolchain does not contain lldb-dap.",
             "order": 4
           }
@@ -1135,7 +1143,8 @@
             "order": 4,
             "scope": "machine-overridable",
             "markdownDescription": "Disable sandboxing when running SwiftPM commands. In most cases you should keep the sandbox enabled and leave this setting set to `false`",
-            "deprecationMessage": "**Deprecated**: Please use `#swift.disableSandbox#` instead."
+            "deprecationMessage": "Deprecated: Please use \"swift.disableSandbox\" instead.",
+            "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.disableSandbox#` instead."
           },
           "swift.disableSwiftlyInstallPrompt": {
             "type": "boolean",
@@ -1155,7 +1164,8 @@
             "type": "boolean",
             "default": false,
             "markdownDescription": "Output additional diagnostics to the Swift output channel.",
-            "deprecationMessage": "**Deprecated**: Please use `#swift.outputChannelLogLevel#` instead.",
+            "deprecationMessage": "Deprecated: Please use \"swift.outputChannelLogLevel\" instead.",
+            "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.outputChannelLogLevel#` instead.",
             "order": 100,
             "scope": "machine-overridable"
           }
