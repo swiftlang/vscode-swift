@@ -97,12 +97,14 @@ export class TaskManager implements Disposable {
         reject: (reason?: Error) => void,
         token?: vscode.CancellationToken
     ) {
-        const disposable = this.onDidEndTaskProcess(event => {
-            if (event.execution.task.definition.id === task.definition.id) {
-                disposable.dispose();
-                resolve(event.exitCode);
-            }
-        });
+        const disposables = [
+            this.onDidEndTaskProcess(event => {
+                if (event.execution.task.definition.id === task.definition.id) {
+                    disposables.forEach(d => d.dispose());
+                    resolve(event.exitCode);
+                }
+            }),
+        ];
         // setup startingTaskPromise to be resolved one task has started
         if (this.startingTaskPromise !== undefined) {
             this.workspaceContext.logger.error(
@@ -118,15 +120,19 @@ export class TaskManager implements Disposable {
         });
         vscode.tasks.executeTask(task).then(
             execution => {
-                token?.onCancellationRequested(() => {
-                    execution.terminate();
-                    disposable.dispose();
-                    resolve(undefined);
-                });
+                if (token) {
+                    disposables.push(
+                        token?.onCancellationRequested(() => {
+                            execution.terminate();
+                            disposables.forEach(d => d.dispose());
+                            resolve(undefined);
+                        })
+                    );
+                }
             },
             error => {
                 this.workspaceContext.logger.error(`Error executing task: ${error}`);
-                disposable.dispose();
+                disposables.forEach(d => d.dispose());
                 this.startingTaskPromise = undefined;
                 reject(error);
             }
