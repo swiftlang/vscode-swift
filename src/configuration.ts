@@ -709,8 +709,15 @@ const configuration = {
     /** Whether or not to disable SwiftPM sandboxing */
     get disableSandbox(): boolean {
         const config = vscode.workspace.getConfiguration("swift");
-        const key = config.has("disableSandbox") ? "disableSandbox" : "disableSandox";
-        return validateBooleanSetting(config.get<boolean>(key, false), `swift.${key}`);
+        const sandbox = getExplicitSetting<boolean>(config, "disableSandbox");
+        if (sandbox !== undefined) {
+            return validateBooleanSetting(sandbox, "swift.disableSandbox");
+        }
+        const sandboxTypo = getExplicitSetting<boolean>(config, "disableSandox");
+        if (sandboxTypo !== undefined) {
+            return validateBooleanSetting(sandboxTypo, "swift.disableSandox");
+        }
+        return false;
     },
     /** Workspace folder glob patterns to exclude */
     get excludePathsFromActivation(): Record<string, boolean> {
@@ -821,6 +828,18 @@ function validateObjectSetting<T extends object>(obj: T, settingName: string): T
         );
     }
     return obj;
+}
+
+function getExplicitSetting<T>(config: vscode.WorkspaceConfiguration, key: string): T | undefined {
+    const inspect = config.inspect<T>(key);
+    if (
+        inspect?.globalValue !== undefined ||
+        inspect?.workspaceValue !== undefined ||
+        inspect?.workspaceFolderValue !== undefined
+    ) {
+        return config.get<T>(key);
+    }
+    return undefined;
 }
 
 // To avoid spamming the user with multiple error messages for the same bad setting/value
