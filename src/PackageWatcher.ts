@@ -41,6 +41,8 @@ export class PackageWatcher {
     private snippetWatcher?: vscode.FileSystemWatcher;
     private swiftVersionFileWatcher?: vscode.FileSystemWatcher;
     private currentVersion?: Version;
+    private recentResolvedHashes: Set<number> = new Set();
+    private clearRecentHashesTimer?: ReturnType<typeof setTimeout>;
 
     constructor(
         private folderContext: FolderContext,
@@ -66,6 +68,10 @@ export class PackageWatcher {
     dispose() {
         this.handlePackageSwiftChange.cancel();
         this.handlePackageResolvedChange.cancel();
+        if (this.clearRecentHashesTimer !== undefined) {
+            clearTimeout(this.clearRecentHashesTimer);
+        }
+        this.recentResolvedHashes.clear();
         this.packageFileWatcher?.dispose();
         this.resolvedChangedDisposable?.dispose();
         this.resolvedFileWatcher?.dispose();
@@ -188,15 +194,37 @@ export class PackageWatcher {
      * This will resolve any changes in the Package.resolved.
      *
      * Debounced by 500ms to coalesce rapid file system events (e.g. during rebases).
+     * Tracks recent file hashes to detect and suppress resolve oscillation loops
+     * caused by competing processes (e.g. background indexing). See #2131.
      */
     handlePackageResolvedChange = debounce(async () => {
         const packageResolvedHash = this.folderContext.swiftPackage.resolved?.fileHash;
         await this.folderContext.reloadPackageResolved();
+        const newHash = this.folderContext.swiftPackage.resolved?.fileHash;
         // if file contents has changed then send resolve updated message
-        if (this.folderContext.swiftPackage.resolved?.fileHash !== packageResolvedHash) {
+        if (newHash !== packageResolvedHash) {
+            // if this hash was recently seen, skip to prevent resolve oscillation (#2131)
+            if (newHash !== undefined && this.recentResolvedHashes.has(newHash)) {
+                this.resetRecentHashesTimer();
+                return;
+            }
+            if (newHash !== undefined) {
+                this.recentResolvedHashes.add(newHash);
+            }
+            this.resetRecentHashesTimer();
             await this.folderContext.fireEvent(FolderOperation.resolvedUpdated);
         }
     }, 500);
+
+    private resetRecentHashesTimer() {
+        if (this.clearRecentHashesTimer !== undefined) {
+            clearTimeout(this.clearRecentHashesTimer);
+        }
+        this.clearRecentHashesTimer = setTimeout(() => {
+            this.recentResolvedHashes.clear();
+            this.clearRecentHashesTimer = undefined;
+        }, 5000);
+    }
 
     /**
      * Handles a create or change event for **.build/workspace-state.json**.
