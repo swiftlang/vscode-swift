@@ -1004,8 +1004,7 @@ export class Swiftly {
         const choice = await vscode.window.showWarningMessage(
             message,
             { modal: true },
-            "Execute Script",
-            "Cancel"
+            "Execute Script"
         );
 
         return choice === "Execute Script";
