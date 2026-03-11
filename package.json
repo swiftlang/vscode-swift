@@ -2162,7 +2162,7 @@
     "prettier": "^3.8.1",
     "replace-in-file": "^8.4.0",
     "semver": "^7.7.4",
-    "simple-git": "^3.32.2",
+    "simple-git": "^3.32.3",
     "sinon": "^21.0.1",
     "sinon-chai": "^3.7.0",
     "source-map-support": "^0.5.21",
