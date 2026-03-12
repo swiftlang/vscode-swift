@@ -30,12 +30,12 @@ import {
  * @param logger Optional logger for error reporting
  * @returns A promise that resolves to true if installation succeeded, false otherwise
  */
-export async function installSwiftlyToolchainWithProgress(
+export async function installSwiftlyToolchainWithProgressAndErrorMsgs(
     version: string,
     extensionRoot: string,
     logger?: SwiftLogger,
     swiftlyPath?: string
-): Promise<boolean> {
+): Promise<{ success: boolean; errorMsg: string | null }> {
     try {
         await vscode.window.withProgress(
             {
@@ -83,19 +83,34 @@ export async function installSwiftlyToolchainWithProgress(
 
         void vscode.window.showInformationMessage(`Successfully installed Swift ${version}`);
 
-        return true;
+        return { success: true, errorMsg: null };
     } catch (error) {
         const errorMessage = (error as Error).message;
         if (errorMessage.includes(Swiftly.cancellationMessage)) {
             logger?.info(`Installation of Swift ${version} was cancelled by user`);
-            // Don't show error message for user-initiated cancellation
-            return false;
+            return { success: false, errorMsg: null };
         }
 
         logger?.error(new Error(`Failed to install Swift ${version}`, { cause: error }));
         void vscode.window.showErrorMessage(`Failed to install Swift ${version}: ${error}`);
-        return false;
+        return { success: false, errorMsg: errorMessage };
     }
+}
+
+export async function installSwiftlyToolchainWithProgress(
+    version: string,
+    extensionRoot: string,
+    logger?: SwiftLogger,
+    swiftlyPath?: string
+): Promise<boolean> {
+    return (
+        await installSwiftlyToolchainWithProgressAndErrorMsgs(
+            version,
+            extensionRoot,
+            logger,
+            swiftlyPath
+        )
+    ).success;
 }
 
 /**
