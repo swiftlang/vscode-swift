@@ -40,28 +40,28 @@ export async function switchPlatform(ctx: WorkspaceContext) {
     if (picked) {
         // show a status item as getSDKForTarget can sometimes take a long while to run xcrun to find the SDK
         const statusItemText = `Setting target platform to ${picked.label}`;
-        ctx.statusItem.start(statusItemText);
-        try {
-            if (picked.value) {
-                // verify that the SDK for the platform actually exists
-                await SwiftToolchain.getSDKForTarget(picked.value);
-            }
-            const swiftSDKTriple = picked.value ? getDarwinTargetTriple(picked.value) : "";
-            if (swiftSDKTriple !== "") {
-                // set a swiftSDK for non-macOS Darwin platforms so that SourceKit-LSP can provide syntax highlighting
-                configuration.swiftSDK = swiftSDKTriple;
-                void vscode.window.showWarningMessage(
-                    `Selecting the ${picked.label} target platform will provide code editing support, but compiling with a ${picked.label} SDK will have undefined results.`
+        await ctx.statusItem.showStatusWhileRunning(statusItemText, async () => {
+            try {
+                if (picked.value) {
+                    // verify that the SDK for the platform actually exists
+                    await SwiftToolchain.getSDKForTarget(picked.value);
+                }
+                const swiftSDKTriple = picked.value ? getDarwinTargetTriple(picked.value) : "";
+                if (swiftSDKTriple !== "") {
+                    // set a swiftSDK for non-macOS Darwin platforms so that SourceKit-LSP can provide syntax highlighting
+                    configuration.swiftSDK = swiftSDKTriple;
+                    void vscode.window.showWarningMessage(
+                        `Selecting the ${picked.label} target platform will provide code editing support, but compiling with a ${picked.label} SDK will have undefined results.`
+                    );
+                } else {
+                    // set swiftSDK to an empty string for macOS and other platforms
+                    configuration.swiftSDK = "";
+                }
+            } catch {
+                void vscode.window.showErrorMessage(
+                    `Unable set the Swift SDK setting to ${picked.label}, verify that the SDK exists`
                 );
-            } else {
-                // set swiftSDK to an empty string for macOS and other platforms
-                configuration.swiftSDK = "";
             }
-        } catch {
-            void vscode.window.showErrorMessage(
-                `Unable set the Swift SDK setting to ${picked.label}, verify that the SDK exists`
-            );
-        }
-        ctx.statusItem.end(statusItemText);
+        });
     }
 }

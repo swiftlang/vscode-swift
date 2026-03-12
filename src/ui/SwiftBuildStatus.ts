@@ -16,7 +16,7 @@ import * as vscode from "vscode";
 import configuration, { ShowBuildStatusOptions } from "../configuration";
 import { SwiftExecution } from "../tasks/SwiftExecution";
 import { checkIfBuildComplete, lineBreakRegex } from "../utilities/tasks";
-import { RunningTask, StatusItem } from "./StatusItem";
+import { StatusItem } from "./StatusItem";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
@@ -39,7 +39,7 @@ interface SwiftProgress {
 export class SwiftBuildStatus implements vscode.Disposable {
     private onDidStartTaskDisposible: vscode.Disposable;
 
-    constructor(private statusItem: StatusItem) {
+    constructor() {
         this.onDidStartTaskDisposible = vscode.tasks.onDidStartTask(event => {
             if (!configuration.showBuildStatus) {
                 return;
@@ -68,21 +68,13 @@ export class SwiftBuildStatus implements vscode.Disposable {
         const isBuildTask = task.group === vscode.TaskGroup.Build;
         const handleTaskOutput = (update: (message: string) => void) =>
             this.awaitTaskCompletion(task, execution, isBuildTask, showBuildStatus, update);
-        if (showBuildStatus === "progress" || showBuildStatus === "notification") {
-            void vscode.window.withProgress<void>(
-                {
-                    location:
-                        showBuildStatus === "progress"
-                            ? vscode.ProgressLocation.Window
-                            : vscode.ProgressLocation.Notification,
-                },
-                progress => handleTaskOutput(message => progress.report({ message }))
-            );
-        } else {
-            void this.statusItem.showStatusWhileRunning(task, () =>
-                handleTaskOutput(message => this.statusItem.update(task, message))
-            );
-        }
+        const location =
+            showBuildStatus === "notification"
+                ? vscode.ProgressLocation.Notification
+                : vscode.ProgressLocation.Window;
+        void vscode.window.withProgress<void>({ location }, progress =>
+            handleTaskOutput(message => progress.report({ message }))
+        );
     }
 
     private awaitTaskCompletion(
@@ -100,7 +92,7 @@ export class SwiftBuildStatus implements vscode.Disposable {
             };
             disposables.push(
                 this.outputParser(
-                    new RunningTask(task).name,
+                    StatusItem.statusItemTaskName(task),
                     execution,
                     isBuildTask,
                     showBuildStatus,

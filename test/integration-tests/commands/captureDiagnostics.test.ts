@@ -44,7 +44,14 @@ tag("medium").suite("captureDiagnostics Test Suite", () => {
         });
 
         setup(() => {
+            const tokenSource = new vscode.CancellationTokenSource();
             mockWindow.showInformationMessage.resolves("Capture Minimal Diagnostics" as any);
+            mockWindow.withProgress.callsFake(async (_options, task) => {
+                return await task(
+                    { report: () => {} } as vscode.Progress<{ message?: string }>,
+                    tokenSource.token
+                );
+            });
         });
 
         test("Should capture dianostics to a zip file", async () => {
