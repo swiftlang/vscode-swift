@@ -45,6 +45,7 @@ function initializationOptions(swiftVersion: Version): any {
     // (https://github.com/swiftlang/sourcekit-lsp/pull/2204)
     if (swiftVersion.isGreaterThanOrEqual(new Version(6, 3, 0))) {
         options = {
+            ...options,
             "workspace/peekDocuments": {
                 supported: true, // workaround for client capability to handle `PeekDocumentsRequest`
                 peekLocation: true, // allow SourceKit-LSP to send `Location` instead of `DocumentUri` for the locations to peek.
