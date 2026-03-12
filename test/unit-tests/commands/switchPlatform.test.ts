@@ -42,11 +42,16 @@ suite("Switch Target Platform Unit Tests", () => {
 
     setup(() => {
         mockedStatusItem = mockObject<StatusItem>({
-            showStatusWhileRunning: mockFn(),
+            showStatusWhileRunning: mockFn(s =>
+                s.callsFake(async (_message, task) =>
+                    task(new vscode.CancellationTokenSource().token)
+                )
+            ),
         });
         mockContext = mockObject<WorkspaceContext>({
             statusItem: instance(mockedStatusItem),
         });
+        windowMock.showInformationMessage.resolves("Capture Full Diagnostics" as any);
     });
 
     test("Call Switch Platform and switch to iOS", async () => {
