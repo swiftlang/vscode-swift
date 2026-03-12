@@ -202,7 +202,11 @@
         ],
         "filenamePatterns": [
           "*.tutorial"
-        ]
+        ],
+        "extensions": [
+          ".tutorial"
+        ],
+        "configuration": "./tutorial.language-configuration.json"
       },
       {
         "id": "swift-gyb",
@@ -225,6 +229,14 @@
           "meta.embedded.control.begin.gyb": "python",
           "meta.embedded.expression.gyb": "python"
         }
+      },
+      {
+        "language": "tutorial",
+        "scopeName": "text.tutorial",
+        "path": "./syntaxes/tutorial.tmLanguage.json",
+        "injectTo": [
+          "text.html.markdown"
+        ]
       }
     ],
     "snippets": [

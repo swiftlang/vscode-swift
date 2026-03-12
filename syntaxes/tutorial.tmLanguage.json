@@ -1,0 +1,51 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Tutorial",
+  "scopeName": "text.tutorial",
+  "fileTypes": ["tutorial"],
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#directives" },
+    { "include": "#backticks" },
+    { "include": "#parentheses" },
+    { "include": "#strings" },
+    { "include": "#content" }
+  ],
+  "repository": {
+    "directives": {
+      "name": "meta.directives.tutorial",
+      "begin": "(@)([A-Za-z0-9_.+]+)(\\()",
+      "beginCaptures": {
+        "1": { "name": "entity.name.function.directives.tutorial" },
+        "2": { "name": "entity.name.function.directives.tutorial" },
+        "3": { "name": "entity.name.type.class.tutorial" }
+      },
+      "end": "\\)",
+      "endCaptures": {
+        "0": { "name": "entity.name.type.class.tutorial" }
+      },
+      "patterns": [{ "include": "#arguments" }, { "include": "#strings" }]
+    },
+    "arguments": {
+      "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*(:)",
+      "captures": {
+        "1": { "name": "variable.parameter.tutorial" },
+        "2": { "name": "punctuation.section.parens.tutorial" }
+      }
+    },
+    "backticks": {
+      "name": "markup.inline.raw.tutorial",
+      "begin": "``",
+      "end": "``",
+      "contentName": "storage.type.backticks.tutorial",
+      "beginCaptures": { "0": { "name": "storage.type.backticks.tutorial" } },
+      "endCaptures": { "0": { "name": "storage.type.backticks.tutorial" } }
+    },
+    "strings": {
+      "name": "string.quoted.double.tutorial",
+      "match": "\"(\\\\.|[^\"])*?\""
+    }
+  },
+  "foldingStartMarker": "^\\s*@",
+  "foldingStopMarker": "^\\s*\\}"
+}
