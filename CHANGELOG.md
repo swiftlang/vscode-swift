@@ -35,7 +35,7 @@
 ### Fixed
 
 - Fix the wrong toolchain being shown as selected when using swiftly v1.0.1 ([#2014](https://github.com/swiftlang/vscode-swift/pull/2014))
-- Fix extension displaying SwiftPM's project view and automatic build tasks even when `disableSwiftPMIntegration` was true ([#2011](https://github.com/swiftlang/vscode-swift/pull/2011))
+- Fix extension displaying SwiftPM's project view and automatic build tasks even when `disableSwiftPackageManagerIntegration` was true ([#2011](https://github.com/swiftlang/vscode-swift/pull/2011))
 - Validate extension settings and warn if they are invalid ([#2016](https://github.com/swiftlang/vscode-swift/pull/2016))
 - Show the Test Results panel when tests fail to compile and the user has `testing.automaticallyOpenTestResults` set to `openOnTestFailure` ([#2035](https://github.com/swiftlang/vscode-swift/pull/2035))
 - Added missing icon for `macro` targets in the Project Panel ([#2043](https://github.com/swiftlang/vscode-swift/pull/2043))
@@ -52,7 +52,7 @@
 ### Fixed
 
 - Fix extension failing to activate when Swiftly was installed via Homebrew ([#1975](https://github.com/swiftlang/vscode-swift/pull/1975))
-- Fix running `swift package` commands with `swift.disableSwiftPMIntegration` enabled ([#1969](https://github.com/swiftlang/vscode-swift/pull/1969))
+- Fix running `swift package` commands with `swift.disableSwiftPackageManagerIntegration` enabled ([#1969](https://github.com/swiftlang/vscode-swift/pull/1969))
 - Fixed an issue where `lldb-dap` could not be found in Command Line Tools toolchains ([#1936](https://github.com/swiftlang/vscode-swift/pull/1936))
 
 ## 2.14.1 - 2025-11-20
