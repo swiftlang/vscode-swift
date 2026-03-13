@@ -34,6 +34,7 @@ import {
 tag("medium").suite("captureDiagnostics Test Suite", () => {
     let workspaceContext: WorkspaceContext;
     const mockWindow = mockGlobalObject(vscode, "window");
+    const progressReport = { report: () => {} } as vscode.Progress<{ message?: string }>;
 
     suite("Minimal", () => {
         activateExtensionForSuite({
@@ -45,6 +46,9 @@ tag("medium").suite("captureDiagnostics Test Suite", () => {
 
         setup(() => {
             mockWindow.showInformationMessage.resolves("Capture Minimal Diagnostics" as any);
+            mockWindow.withProgress.callsFake(async (_options, task) => {
+                return await task(progressReport, new vscode.CancellationTokenSource().token);
+            });
         });
 
         test("Should capture dianostics to a zip file", async () => {
@@ -101,6 +105,9 @@ tag("medium").suite("captureDiagnostics Test Suite", () => {
 
         setup(async () => {
             mockWindow.showInformationMessage.resolves("Capture Full Diagnostics" as any);
+            mockWindow.withProgress.callsFake(async (_options, task) => {
+                return await task(progressReport, new vscode.CancellationTokenSource().token);
+            });
             resetSettings = await updateSettings({
                 "lldb-dap.logFolder": "logs",
             });

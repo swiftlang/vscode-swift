@@ -104,7 +104,7 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
         this.testRunManager = new TestRunManager();
         this.loggerFactory = new SwiftLoggerFactory(extensionContext.logUri);
         this.statusItem = new StatusItem();
-        this.buildStatus = new SwiftBuildStatus(this.statusItem);
+        this.buildStatus = new SwiftBuildStatus();
         this.languageClientManager = new LanguageClientToolchainCoordinator(this, {
             onDocumentSymbols: (folder, document, symbols) => {
                 folder.onDocumentSymbols(document, symbols);
@@ -247,7 +247,6 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
             this.documentation,
             this.languageClientManager,
             this.logger,
-            this.statusItem,
             this.buildStatus,
             this.projectPanel,
         ];

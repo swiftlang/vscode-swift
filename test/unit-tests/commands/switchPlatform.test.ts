@@ -42,12 +42,16 @@ suite("Switch Target Platform Unit Tests", () => {
 
     setup(() => {
         mockedStatusItem = mockObject<StatusItem>({
-            start: mockFn(),
-            end: mockFn(),
+            showStatusWhileRunning: mockFn(s =>
+                s.callsFake(async (_message, task) =>
+                    task(new vscode.CancellationTokenSource().token)
+                )
+            ),
         });
         mockContext = mockObject<WorkspaceContext>({
             statusItem: instance(mockedStatusItem),
         });
+        windowMock.showInformationMessage.resolves("Capture Full Diagnostics" as any);
     });
 
     test("Call Switch Platform and switch to iOS", async () => {
@@ -62,8 +66,7 @@ suite("Switch Target Platform Unit Tests", () => {
         expect(windowMock.showWarningMessage).to.have.been.calledOnceWithExactly(
             "Selecting the iOS target platform will provide code editing support, but compiling with a iOS SDK will have undefined results."
         );
-        expect(mockedStatusItem.start).to.have.been.called;
-        expect(mockedStatusItem.end).to.have.been.called;
+        expect(mockedStatusItem.showStatusWhileRunning).to.have.been.called;
         expect(mockedConfiguration.swiftSDK).to.equal(
             getDarwinTargetTriple(DarwinCompatibleTarget.iOS)
         );
@@ -79,8 +82,7 @@ suite("Switch Target Platform Unit Tests", () => {
 
         expect(windowMock.showQuickPick).to.have.been.calledOnce;
         expect(windowMock.showWarningMessage).to.not.have.been.called;
-        expect(mockedStatusItem.start).to.have.been.called;
-        expect(mockedStatusItem.end).to.have.been.called;
+        expect(mockedStatusItem.showStatusWhileRunning).to.have.been.called;
         expect(mockedConfiguration.swiftSDK).to.equal("");
     });
 });
