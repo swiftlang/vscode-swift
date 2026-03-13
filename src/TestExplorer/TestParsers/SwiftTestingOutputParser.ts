@@ -179,11 +179,20 @@ export interface EventMessage {
     text: string;
 }
 
-export interface SourceLocation {
-    _filePath: string;
+export type SourceLocation = {
     line: number;
     column: number;
-}
+} & (
+    | {
+          // Legacy _filePath is present in 6.2.x and below.
+          _filePath: string;
+          filePath?: never;
+      }
+    | {
+          filePath: string;
+          _filePath?: never;
+      }
+);
 
 export class SwiftTestingOutputParser {
     private completionMap = new Map<number, boolean>();
@@ -328,7 +337,8 @@ export class SwiftTestingOutputParser {
                     item.payload.id,
                     testCase,
                     sourceLocationToVSCodeLocation(
-                        item.payload.sourceLocation._filePath,
+                        item.payload.sourceLocation._filePath ??
+                            item.payload.sourceLocation.filePath,
                         item.payload.sourceLocation.line,
                         item.payload.sourceLocation.column
                     ),
@@ -360,8 +370,9 @@ export class SwiftTestingOutputParser {
         const testID = this.idFromOptionalTestCase(payload.testID, payload._testCase);
         const testIndex = this.getTestCaseIndex(runState, testID);
         const { isKnown, sourceLocation } = payload.issue;
+        const filePath = sourceLocation._filePath ?? sourceLocation.filePath;
         const location = sourceLocationToVSCodeLocation(
-            sourceLocation._filePath,
+            filePath,
             sourceLocation.line,
             sourceLocation.column
         );
