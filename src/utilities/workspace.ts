@@ -16,7 +16,7 @@ import * as path from "path";
 import { basename } from "path";
 import * as vscode from "vscode";
 
-import { folderExists, globDirectory, pathExists } from "./filesystem";
+import { globDirectory, pathExists } from "./filesystem";
 import { Version } from "./version";
 
 export async function searchForPackages(
@@ -95,11 +95,14 @@ export async function isValidWorkspaceFolder(
         return true;
     }
 
-    if (await folderExists(folder, "build")) {
+    // Check for compile_commands.json inside common CMake build directories.
+    // Only match if the actual build artifact exists, not just the directory
+    // name, to avoid false positives with non-Swift projects (e.g. Flutter).
+    if (await pathExists(folder, "build", "compile_commands.json")) {
         return true;
     }
 
-    if (await folderExists(folder, "out")) {
+    if (await pathExists(folder, "out", "compile_commands.json")) {
         return true;
     }
 
