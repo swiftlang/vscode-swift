@@ -475,7 +475,11 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
             const observersReversed = [...this.observers];
             observersReversed.reverse();
             for (const observer of observersReversed) {
-                await observer({ folder, operation: FolderOperation.remove, workspace: this });
+                try {
+                    await observer({ folder, operation: FolderOperation.remove, workspace: this });
+                } catch (error) {
+                    this.logger.error(`Failed to remove folder ${folder.name}: ${error}`);
+                }
             }
             folder.dispose();
         }

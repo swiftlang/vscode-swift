@@ -73,8 +73,7 @@ class ExtensionActivationLogger implements Loggable {
     }
 
     info(message: string) {
-        const timestamp = this.formatTimestamp();
-        const timestampedMessage = `[${timestamp}] ${message}`;
+        const timestampedMessage = this.timestampedMessage(message);
 
         if (this.logger) {
             this.logger.info(timestampedMessage);
@@ -83,9 +82,24 @@ class ExtensionActivationLogger implements Loggable {
         }
     }
 
+    error(message: string) {
+        const timestampedMessage = this.timestampedMessage(message);
+
+        if (this.logger) {
+            this.logger.error(timestampedMessage);
+        } else {
+            this._logs.push(timestampedMessage);
+        }
+    }
+
     reset() {
         this._logs = [];
         this.logger = undefined;
+    }
+
+    private timestampedMessage(message: string): string {
+        const timestamp = this.formatTimestamp();
+        return `[${timestamp}] ${message}`;
     }
 }
 
@@ -426,7 +440,11 @@ const extensionBootstrapper = (() => {
                     ) ?? Promise.resolve()
             );
             activationLogger.info(`Running extension deactivation function.`);
-            await activatedAPI.deactivate();
+            try {
+                await activatedAPI.deactivate();
+            } catch (error) {
+                activationLogger.error(`Failed to deactivate extension: ${error}`);
+            }
             activationLogger.reset();
             activatedAPI = undefined;
             lastTestName = undefined;
