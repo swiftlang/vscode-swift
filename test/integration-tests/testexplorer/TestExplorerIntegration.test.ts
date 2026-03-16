@@ -741,7 +741,7 @@ tag("large").suite("Test Explorer Suite", function () {
                                 {
                                     test: "PackageTests.MixedSwiftTestingSuite/testFailing()",
                                     issues: [
-                                        `testFailing() \u{203A} ${MessageRenderer.render({ symbol: TestSymbol.fail, text: "Expectation failed: 1 == 2" })}`,
+                                        `testFailing() \u{203A} ${MessageRenderer.render({ symbol: TestSymbol.fail, text: "Expectation failed: 1 == 2" + (folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 3, 0)) ? "\n1 == 2 → false" : "") })}`,
                                     ],
                                 },
                                 {
@@ -829,7 +829,7 @@ tag("large").suite("Test Explorer Suite", function () {
                                 {
                                     test: "PackageTests.MixedSwiftTestingSuite/testFailing()",
                                     issues: [
-                                        `testFailing() \u{203A} ${MessageRenderer.render({ symbol: TestSymbol.fail, text: "Expectation failed: 1 == 2" })}`,
+                                        `testFailing() \u{203A} ${MessageRenderer.render({ symbol: TestSymbol.fail, text: "Expectation failed: 1 == 2" + (folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 3, 0)) ? "\n1 == 2 → false" : "") })}`,
                                     ],
                                 },
                                 {
@@ -858,7 +858,7 @@ tag("large").suite("Test Explorer Suite", function () {
                                 {
                                     test: "PackageTests.MixedSwiftTestingSuite/testFailing()",
                                     issues: [
-                                        `testFailing() \u{203A} ${MessageRenderer.render({ symbol: TestSymbol.fail, text: "Expectation failed: 1 == 2" })}`,
+                                        `testFailing() \u{203A} ${MessageRenderer.render({ symbol: TestSymbol.fail, text: "Expectation failed: 1 == 2" + (folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 3, 0)) ? "\n1 == 2 → false" : "") })}`,
                                     ],
                                 },
                                 {
