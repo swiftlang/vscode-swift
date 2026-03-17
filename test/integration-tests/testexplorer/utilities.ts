@@ -123,6 +123,7 @@ export function assertTestResults(
         if (endOfLine > 0) {
             return stripped.slice(0, endOfLine);
         }
+        return str;
     }
     assert.deepEqual(
         {
