@@ -779,7 +779,11 @@ tag("large").suite("Test Explorer Suite", function () {
                                     issues: [
                                         `2 \u{203A} ${MessageRenderer.render({
                                             symbol: TestSymbol.fail,
-                                            text: "Expectation failed: (arg → 2) != 2",
+                                            text: folderContext.toolchain.swiftVersion.isGreaterThanOrEqual(
+                                                new Version(6, 4, 0)
+                                            )
+                                                ? "Expectation failed: arg != 2"
+                                                : "Expectation failed: (arg → 2) != 2",
                                         })}`,
                                     ],
                                     test: failedId,
