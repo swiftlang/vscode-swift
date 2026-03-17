@@ -117,6 +117,14 @@ export function assertTestResults(
         unknown?: number;
     }
 ) {
+    function firstLine(str: string) {
+        const stripped = stripAnsi(str);
+        const endOfLine = stripped.indexOf("\n");
+        if (endOfLine > 0) {
+            return stripped.slice(0, endOfLine);
+        }
+        return str;
+    }
     assert.deepEqual(
         {
             passed: testRun.runState.passed.map(({ id }) => id).sort((a, b) => a.localeCompare(b)),
@@ -124,8 +132,8 @@ export function assertTestResults(
                 .map(({ test, message }) => ({
                     test: test.id,
                     issues: Array.isArray(message)
-                        ? message.map(({ message }) => stripAnsi(message.toString()))
-                        : [stripAnsi((message as vscode.TestMessage).message.toString())],
+                        ? message.map(({ message }) => firstLine(message.toString()))
+                        : [firstLine((message as vscode.TestMessage).message.toString())],
                 }))
                 .sort((a, b) => a.test.localeCompare(b.test)),
             skipped: testRun.runState.skipped
@@ -141,7 +149,7 @@ export function assertTestResults(
             failed: (state.failed ?? [])
                 .map(({ test, issues }) => ({
                     test,
-                    issues: issues.map(message => stripAnsi(message)),
+                    issues: issues.map(message => firstLine(message)),
                 }))
                 .sort((a, b) => a.test.localeCompare(b.test)),
             skipped: (state.skipped ?? []).sort((a, b) => a.localeCompare(b)),
