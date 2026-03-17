@@ -194,5 +194,36 @@ suite("Workspace Utilities Unit Test Suite", () => {
             expect(await isValidWorkspaceFolder("/flutter-project", false, testSwiftVersion)).to.be
                 .false;
         });
+
+        test("returns true for folder with .bsp directory containing JSON on Swift >= 6.1", async () => {
+            mockFS({
+                "/project/.bsp/server.json": "{}",
+            });
+            const swift61 = new Version(6, 1, 0);
+            expect(await isValidWorkspaceFolder("/project", false, swift61)).to.be.true;
+        });
+
+        test("returns false for folder with .bsp directory on Swift < 6.1", async () => {
+            mockFS({
+                "/project/.bsp/server.json": "{}",
+            });
+            expect(await isValidWorkspaceFolder("/project", false, testSwiftVersion)).to.be.false;
+        });
+
+        test("returns false for build/ with other files but no compile_commands.json", async () => {
+            mockFS({
+                "/project/build/output.o": "",
+                "/project/build/Makefile": "",
+            });
+            expect(await isValidWorkspaceFolder("/project", false, testSwiftVersion)).to.be.false;
+        });
+
+        test("returns true for folder with both Package.swift and build/compile_commands.json", async () => {
+            mockFS({
+                "/project/Package.swift": "",
+                "/project/build/compile_commands.json": "[]",
+            });
+            expect(await isValidWorkspaceFolder("/project", false, testSwiftVersion)).to.be.true;
+        });
     });
 });
