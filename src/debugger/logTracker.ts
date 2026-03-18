@@ -11,6 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import { DebugProtocol } from "@vscode/debugprotocol";
 import * as vscode from "vscode";
 
 import { SwiftLogger } from "../logging/SwiftLogger";
@@ -68,6 +69,7 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
     private exitHandler?: (exitCode: number) => void;
     private output: string[] = [];
     private exitCode: number | undefined;
+    private logger?: SwiftLogger;
 
     constructor(public id: string) {
         LoggingDebugAdapterTracker.debugSessionIdMap[id] = this;
@@ -86,6 +88,7 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
                 cb(o);
             }
             if (loggingDebugAdapter.exitCode) {
+                loggingDebugAdapter.logger = logger;
                 exitHandler(loggingDebugAdapter.exitCode);
             }
             loggingDebugAdapter.output = [];
@@ -110,6 +113,8 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
             return;
         }
 
+        this.handleBreakpointEvent(debugMessage);
+
         if (debugMessage.event === "exited" && debugMessage.body.exitCode) {
             this.exitCode = debugMessage.body.exitCode;
             this.exitHandler?.(debugMessage.body.exitCode);
@@ -123,6 +128,129 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
                 this.cb(output);
             } else {
                 this.output.push(output);
+            }
+        }
+    }
+
+    private handleBreakpointEvent(rawMsg: unknown): void {
+        // Narrow-bodied shapes for just the fields we use (local to this function).
+        type StoppedBodyLike = {
+            reason?: string;
+            thread?: {
+                frames?: {
+                    source?: { path?: string };
+                    line?: number;
+                }[];
+            };
+        };
+
+        try {
+            const msg = rawMsg as DebugProtocol.ProtocolMessage;
+            const eventMsg = msg as DebugProtocol.Event;
+
+            if (!msg || msg.type !== "event") {
+                return;
+            }
+
+            const normalizePath = (p: string): string => {
+                try {
+                    return vscode.Uri.parse(p, true).fsPath;
+                } catch {
+                    try {
+                        return vscode.Uri.file(p).fsPath;
+                    } catch {
+                        return p;
+                    }
+                }
+            };
+
+            // Case A: stopped event with reason = "breakpoint"
+            if (
+                eventMsg.event === "stopped" &&
+                (eventMsg.body as StoppedBodyLike)?.reason === "breakpoint"
+            ) {
+                const frames = (eventMsg.body as StoppedBodyLike)?.thread?.frames;
+                if (!Array.isArray(frames) || frames.length === 0) {
+                    return;
+                }
+
+                const top = frames[0];
+                const sourcePath = top?.source?.path;
+                const line = top?.line;
+                if (!sourcePath || typeof line !== "number") {
+                    return;
+                }
+
+                const bpLine0 = line - 1; // VS Code uses 0-based lines
+
+                const breakpoints = vscode.debug.breakpoints.filter(
+                    b => !!(b as vscode.SourceBreakpoint).location
+                ) as vscode.SourceBreakpoint[];
+
+                for (const bp of breakpoints) {
+                    const loc = bp.location;
+
+                    if (normalizePath(loc.uri.fsPath) !== normalizePath(sourcePath)) {
+                        continue;
+                    }
+                    if (loc.range.start.line !== bpLine0) {
+                        continue;
+                    }
+
+                    // Force a UI refresh so the breakpoint shows as installed.
+                    vscode.debug.removeBreakpoints([bp]);
+                    vscode.debug.addBreakpoints([bp]);
+                    break;
+                }
+                return;
+            }
+
+            // Case B: explicit "breakpoint" event that carries source+line info
+            if (eventMsg.event === "breakpoint" && eventMsg.body) {
+                const bpEvent = eventMsg as DebugProtocol.BreakpointEvent;
+                const dapBp = bpEvent.body?.breakpoint;
+                if (!dapBp) {
+                    return;
+                }
+
+                // If the adapter already marked this breakpoint as verified/resolved,
+                // there's no need to re-add it.
+                if (dapBp.verified === true) {
+                    return;
+                }
+
+                const sourcePath = dapBp.source?.path;
+                const line = dapBp.line;
+                if (!sourcePath || typeof line !== "number") {
+                    return;
+                }
+
+                const bpLine0 = line - 1;
+                const breakpoints = vscode.debug.breakpoints.filter(
+                    b => !!(b as vscode.SourceBreakpoint).location
+                ) as vscode.SourceBreakpoint[];
+
+                for (const bp of breakpoints) {
+                    const loc = bp.location;
+
+                    if (normalizePath(loc.uri.fsPath) !== normalizePath(sourcePath)) {
+                        continue;
+                    }
+                    if (loc.range.start.line !== bpLine0) {
+                        continue;
+                    }
+
+                    vscode.debug.removeBreakpoints([bp]);
+                    vscode.debug.addBreakpoints([bp]);
+                    break;
+                }
+                return;
+            }
+        } catch (err: unknown) {
+            try {
+                this.logger?.error(new Error("Breakpoint fallback error", { cause: err }));
+            } catch {
+                this.logger?.error("Breakpoint fallback error: " + String(err));
             }
         }
     }
