@@ -219,7 +219,7 @@ const extensionBootstrapper = (() => {
 
             // Make sure no running tasks before setting up
             await logOnError("Waiting for no running tasks before starting test/suite", () =>
-                waitForNoRunningTasks({ timeout: 10000 })
+                waitForNoRunningTasks()
             );
 
             // Clear build all cache before starting suite
@@ -415,10 +415,10 @@ const extensionBootstrapper = (() => {
                 throw new Error("Extension is not activated. Call activateExtension() first.");
             }
 
-            // Wait for up to 10 seconds for all tasks to complete before deactivating.
+            // Wait for all tasks to complete before deactivating.
             // Long running tasks should be avoided in tests, but this is a safety net.
             await logOnError(`Deactivating extension, waiting for no running tasks.`, () =>
-                waitForNoRunningTasks({ timeout: 10000 })
+                waitForNoRunningTasks()
             );
 
             // Close all editors before deactivating the extension.
