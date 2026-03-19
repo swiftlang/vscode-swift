@@ -2,6 +2,7 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+## 2.16.2 - 2026-03-17
 
 ### Added
 
