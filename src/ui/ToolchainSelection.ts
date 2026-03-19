@@ -16,6 +16,7 @@ import * as vscode from "vscode";
 
 import { FolderContext } from "../FolderContext";
 import { Commands } from "../commands";
+import { installSwiftlyWithProgress, promptToRestartVSCode } from "../commands/installSwiftly";
 import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { Swiftly } from "../toolchain/swiftly";
@@ -39,17 +40,32 @@ async function downloadToolchain() {
 }
 
 /**
- * Open the installation page for Swiftly
+ * Install Swiftly directly from the Select Toolchain quick pick.
+ * Shows a confirmation dialog, installs with a progress notification,
+ * then prompts the user to restart VS Code.
  */
 async function installSwiftly() {
-    if (await vscode.env.openExternal(vscode.Uri.parse("https://www.swift.org/install/"))) {
-        const selected = await showReloadExtensionNotification(
-            "The Swift extension must be reloaded once you have downloaded and installed the new toolchain.",
-            "Select Toolchain"
+    const confirmation = await vscode.window.showInformationMessage(
+        "Install Swiftly - The Swift Toolchain Version Manager",
+        {
+            modal: true,
+            detail: `The Swift extension will install the swiftly toolchain manager to allow managing Swift toolchains from VS Code.\n\nThis process involves updating your shell profile in order to add swiftly to your PATH. Alternatively, you can install swiftly yourself using the instructions at swift.org.`,
+        },
+        "Continue",
+        "Open Swiftly Documentation"
+    );
+
+    if (confirmation === "Open Swiftly Documentation") {
+        void vscode.env.openExternal(
+            vscode.Uri.parse("https://www.swift.org/swiftly/documentation/swiftly/getting-started")
         );
-        if (selected === "Select Toolchain") {
-            await selectToolchain();
-        }
+        return;
+    }
+    if (confirmation !== "Continue") {
+        return;
+    }
+    if (await installSwiftlyWithProgress()) {
+        await promptToRestartVSCode();
     }
 }
 
