@@ -163,6 +163,14 @@ suite("MockUtils Test Suite", () => {
 
             expect(() => sut.a).to.throw("Cannot access this property");
         });
+
+        test("can be used as an argument to Promise.resolve()", async () => {
+            interface TestInterface {
+                readonly a: number;
+            }
+            const test = mockObject<TestInterface>({ a: 4 });
+            await expect(Promise.resolve(test)).to.eventually.have.property("a", 4);
+        });
     });
 
     suite("mockFn()", () => {
