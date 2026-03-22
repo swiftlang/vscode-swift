@@ -123,45 +123,48 @@ export class TestRunArguments {
         );
     }
 
+    /**
+     * Merges two {@link ProcessResult} objects element-wise.
+     * @param a The first object.
+     * @param b The second object.
+     * @returns A new {@link ProcessResult} containing all items from a, then b.
+     */
+    private mergeProcessResults(a: ProcessResult, b: ProcessResult): ProcessResult {
+        return {
+            testItems: [...a.testItems, ...b.testItems],
+            xcTestArgs: [...a.xcTestArgs, ...b.xcTestArgs],
+            swiftTestArgs: [...a.swiftTestArgs, ...b.swiftTestArgs],
+        };
+    }
+
     private createTestItemReducer(
         include: readonly vscode.TestItem[],
         exclude: readonly vscode.TestItem[],
         isDebug: boolean
     ): (previousValue: ProcessResult, testItem: vscode.TestItem) => ProcessResult {
         return (previousValue, testItem) => {
-            const { testItems, swiftTestArgs, xcTestArgs } = this.processTestItem(
-                testItem,
-                include,
-                exclude,
-                isDebug
-            );
+            // Process the current test item recursively to get its contribution to the test run.
+            const processed = this.processTestItem(testItem, include, exclude, isDebug);
 
-            // If no children were added we can skip adding this parent.
-            if (xcTestArgs.length + swiftTestArgs.length === 0) {
-                return previousValue;
-            } else if (this.itemContainsAllArgs(testItem, xcTestArgs, swiftTestArgs)) {
-                // If we're including every chlid in the parent, we can simplify the
-                // arguments and just use the parent
-                const { xcTestResult, swiftTestResult } = this.simplifyTestArgs(
+            // If we're including every child in the parent, we can simplify the
+            // arguments and just use the parent ID instead of listing every child.
+            if (this.itemContainsAllArgs(testItem, processed.xcTestArgs, processed.swiftTestArgs)) {
+                const simplified = this.simplifyTestArgs(
                     testItem,
-                    xcTestArgs,
-                    swiftTestArgs,
+                    processed.xcTestArgs,
+                    processed.swiftTestArgs,
                     isDebug
                 );
 
-                return {
-                    testItems: [...previousValue.testItems, ...testItems],
-                    xcTestArgs: [...previousValue.xcTestArgs, ...xcTestResult],
-                    swiftTestArgs: [...previousValue.swiftTestArgs, ...swiftTestResult],
-                };
-            } else {
-                // If we've only added some of the children the append to our test list
-                return {
-                    testItems: [...previousValue.testItems, ...testItems],
-                    swiftTestArgs: [...previousValue.swiftTestArgs, ...swiftTestArgs],
-                    xcTestArgs: [...previousValue.xcTestArgs, ...xcTestArgs],
-                };
+                return this.mergeProcessResults(previousValue, {
+                    testItems: processed.testItems,
+                    xcTestArgs: simplified.xcTestResult,
+                    swiftTestArgs: simplified.swiftTestResult,
+                });
             }
+
+            // Otherwise, merge exactly what was found.
+            return this.mergeProcessResults(previousValue, processed);
         };
     }
 

@@ -514,7 +514,12 @@ class DarwinTestItemFinder implements TestItemFinder {
     }
 
     getIndex(id: string): number {
-        return this.testItemMap.get(id) ?? -1;
+        return (
+            this.testItemMap.get(id) ??
+            this.testItemMap.get(`${id}()`) ??
+            this.testItemMap.get(id.replace(/\(\)$/, "")) ??
+            -1
+        );
     }
 }
 
@@ -539,7 +544,9 @@ class NonDarwinTestItemFinder implements TestItemFinder {
         }
 
         if (testIndex === -1) {
-            testIndex = this.testItems.findIndex(item => item.id.endsWith(id));
+            testIndex = this.testItems.findIndex(item =>
+                item.id.replace(/\(\)$/, "").endsWith(id.replace(/\(\)$/, ""))
+            );
         }
 
         return testIndex;
@@ -560,7 +567,7 @@ class NonDarwinTestItemFinder implements TestItemFinder {
         filename: string,
         item: vscode.TestItem
     ): boolean {
-        if (!item.id.endsWith(testName)) {
+        if (!item.id.replace(/\(\)$/, "").endsWith(testName.replace(/\(\)$/, ""))) {
             return false;
         }
 
