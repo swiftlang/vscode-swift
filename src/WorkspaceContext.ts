@@ -90,6 +90,9 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
     public onDidStartBuild = this.buildStartEmitter.event;
     public onDidFinishBuild = this.buildFinishEmitter.event;
 
+    private readonly indexingFinishedEmitter = new vscode.EventEmitter<void>();
+    public onDidFinishIndexing = this.indexingFinishedEmitter.event;
+
     private observers = new Set<(listener: FolderEvent) => unknown>();
     private swiftFileObservers = new Set<(listener: SwiftFileEvent) => unknown>();
 
@@ -387,6 +390,10 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
         options: vscode.DebugSessionOptions
     ) {
         this.buildFinishEmitter.fire({ targetName, launchConfig, options });
+    }
+
+    public indexingFinished() {
+        this.indexingFinishedEmitter.fire();
     }
 
     /**
