@@ -150,7 +150,24 @@ tag("large").suite("Test Explorer Suite", function () {
                 }
             });
 
-            test("Debugs specified XCTest test", runXCTest);
+            test("Debugs specified XCTest test", async function () {
+                // This test is failing consistently on Windows with Swift 6.3 and nightly-main.
+                // The issue has been tracked down to lldb-dap setting the wrong category when
+                // reporting debugee stdout/stderr over the DAP.
+                //
+                // GitHub Issue: https://github.com/swiftlang/vscode-swift/issues/1986
+                if (
+                    workspaceContext.globalToolchain.swiftVersion.dev &&
+                    workspaceContext.globalToolchain.swiftVersion.isGreaterThanOrEqual({
+                        major: 6,
+                        minor: 3,
+                        patch: 0,
+                    })
+                ) {
+                    this.skip();
+                }
+                await runXCTest.call(this);
+            });
 
             test("Debugs specified swift-testing test", async function () {
                 await runSwiftTesting.call(this);
