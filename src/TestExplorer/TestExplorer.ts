@@ -81,6 +81,9 @@ export class TestExplorer {
             ...this.testRunProfiles,
             this.onTestItemsDidChange(() => this.updateSwiftTestContext()),
             this.discoverUpdatedTestsAfterBuild(folderContext),
+            this.folderContext.workspaceContext.onDidFinishIndexing(() => {
+                void this.discoverTestsInWorkspace(this.tokenSource.token);
+            }),
         ];
     }
 

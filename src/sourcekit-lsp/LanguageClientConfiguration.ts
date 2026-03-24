@@ -322,15 +322,19 @@ export function lspClientOptions(
                 let lastPrompted = new Date(0).getTime();
                 return async (token, params, next) => {
                     const result = next(token, params);
+                    const tokenString = token.toString();
                     const now = new Date().getTime();
                     const oneHour = 60 * 60 * 1000;
                     if (
                         now - lastPrompted > oneHour &&
-                        token.toString().startsWith("sourcekitd-crashed")
+                        tokenString.startsWith("sourcekitd-crashed")
                     ) {
                         // Only prompt once an hour in case sourcekit is in a crash loop
                         lastPrompted = now;
                         void promptForDiagnostics(workspaceContext);
+                    }
+                    if (tokenString.startsWith("indexing") && params.kind === "end") {
+                        workspaceContext.indexingFinished();
                     }
                     return result;
                 };
