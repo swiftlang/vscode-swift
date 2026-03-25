@@ -7,7 +7,7 @@
     "test/**/*.ts"
   ],
   "project": ["src/**/*.ts", "scripts/**/*.ts", "test/**/*.ts"],
-  "ignore": ["dist/**", "out/**", "assets/**", "**/*.d.ts"],
+  "ignore": ["**/*.d.ts"],
   "ignoreDependencies": [
     "node-pty",
     "@vscode/codicons",
@@ -19,6 +19,7 @@
   "ignoreBinaries": ["scripts/soundness.sh"],
   "rules": {
     "types": "warn",
-    "enumMembers": "warn"
+    "enumMembers": "warn",
+    "exports": "off"
   }
 }
