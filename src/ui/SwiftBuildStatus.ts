@@ -38,6 +38,7 @@ interface SwiftProgress {
  */
 export class SwiftBuildStatus implements vscode.Disposable {
     private onDidStartTaskDisposible: vscode.Disposable;
+    private lockedRegex = /Another instance of SwiftPM \(PID: \d+\) is already running/g;
 
     constructor() {
         this.onDidStartTaskDisposible = vscode.tasks.onDidStartTask(event => {
@@ -126,6 +127,12 @@ export class SwiftBuildStatus implements vscode.Disposable {
             // be concerned with
             const lines = sanitizedData.split(lineBreakRegex).reverse();
             for (const line of lines) {
+                const lockedFolderPID = this.checkIfBuildFolderLocked(line);
+                if (lockedFolderPID > 0) {
+                    update(
+                        `${name}: Build folder locked by pid ${lockedFolderPID}. Wait for this process to complete, or terminate it to continue.`
+                    );
+                }
                 if (checkIfBuildComplete(line)) {
                     update(name);
                     return !isBuildTask;
@@ -156,6 +163,18 @@ export class SwiftBuildStatus implements vscode.Disposable {
                 done();
             }
         });
+    }
+
+    private checkIfBuildFolderLocked(line: string): number {
+        const match = this.lockedRegex.exec(line);
+        if (match) {
+            const pidRegex = /\d+/;
+            const pidMatch = pidRegex.exec(match[0]);
+            if (pidMatch) {
+                return parseInt(pidMatch[0]);
+            }
+        }
+        return 0;
     }
 
     private checkIfFetching(line: string): boolean {
