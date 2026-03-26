@@ -102,6 +102,9 @@ export async function executeSwiftPackageCommand<T>(
         }
 
         const trimmedOutput = SwiftPackage.trimStdout(output);
+        if (trimmedOutput.length === 0) {
+            throw new Error(`No JSON output received from swift ${config.commandName} command`);
+        }
         const parsedOutput = JSON.parse(trimmedOutput);
 
         if (!parsedOutput || typeof parsedOutput !== "object") {
