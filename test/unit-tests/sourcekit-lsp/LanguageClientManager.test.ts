@@ -540,11 +540,15 @@ suite("LanguageClientManager Suite", () => {
         );
         await waitForReturnedPromises(languageClientMock.start);
 
-        const notificationCalls = languageClientMock.sendNotification.getCalls().filter(call => {
-            const params = call.args[1] as DidChangeWorkspaceFoldersParams | undefined;
-            return params?.event?.added?.some(f => f.uri === path.normalize("/folder1")) === true;
-        });
-        expect(notificationCalls).to.have.lengthOf(1);
+        const folder1Notifications = languageClientMock.sendNotification
+            .getCalls()
+            .filter(
+                call =>
+                    call.args[1]?.event?.added?.some(
+                        (f: { uri: string }) => f.uri === path.normalize("/folder1")
+                    ) === true
+            );
+        expect(folder1Notifications).to.have.lengthOf(1);
     });
 
     test("doesn't launch SourceKit-LSP if disabled by the user", async () => {
