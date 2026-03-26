@@ -2,6 +2,10 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+### Added
+
+- Warn when the build folder is locked by another SwiftPM process ([#2168](https://github.com/swiftlang/vscode-swift/pull/2168))
+
 ### Fixed
 
 - Refresh tests in the test explorer when background indexing completes ([#2164](https://github.com/swiftlang/vscode-swift/pull/2164))
