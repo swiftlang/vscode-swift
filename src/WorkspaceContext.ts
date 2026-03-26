@@ -78,7 +78,7 @@ export class WorkspaceContext implements ExternalWorkspaceContext, Disposable {
     public testRunManager: TestRunManager;
     public projectPanel: ProjectPanelProvider;
     private lastFocusUri: vscode.Uri | undefined;
-    private initialisationFinished = false;
+    private initializationFinished = false;
 
     private readonly testStartEmitter = new vscode.EventEmitter<TestEvent>();
     private readonly testFinishEmitter = new vscode.EventEmitter<TestEvent>();
@@ -326,7 +326,7 @@ export class WorkspaceContext implements ExternalWorkspaceContext, Disposable {
             }
         }
 
-        await this.initialisationComplete();
+        await this.initializationComplete();
     }
 
     /**
@@ -549,7 +549,7 @@ export class WorkspaceContext implements ExternalWorkspaceContext, Disposable {
             // clear last focus uri as we have set focus for a folder that has already loaded
             this.lastFocusUri = undefined;
         } else if (packageFolder instanceof vscode.Uri) {
-            if (this.initialisationFinished === false) {
+            if (this.initializationFinished === false) {
                 // If a package takes a long time to load during initialisation, a focus event
                 // can occur prior to the package being fully loaded. At this point because the
                 // folder for that package isn't setup it will attempt to add the package again.
@@ -571,8 +571,8 @@ export class WorkspaceContext implements ExternalWorkspaceContext, Disposable {
         }
     }
 
-    private async initialisationComplete() {
-        this.initialisationFinished = true;
+    private async initializationComplete() {
+        this.initializationFinished = true;
         if (this.lastFocusUri) {
             await this.focusUri(this.lastFocusUri);
             this.lastFocusUri = undefined;

@@ -17,7 +17,6 @@ import { FolderContext } from "../FolderContext";
 import { FolderOperation, WorkspaceContext } from "../WorkspaceContext";
 import { Disposable } from "../utilities/Disposable";
 import { isExcluded } from "../utilities/filesystem";
-import { Version } from "../utilities/version";
 import { LanguageClientFactory } from "./LanguageClientFactory";
 import { LanguageClientManager } from "./LanguageClientManager";
 
@@ -74,25 +73,16 @@ export class LanguageClientToolchainCoordinator implements Disposable {
         if (isExcluded(folder.workspaceFolder.uri)) {
             return;
         }
-        const singleServer = folder.swiftVersion.isGreaterThanOrEqual(new Version(5, 7, 0));
+
         switch (operation) {
             case FolderOperation.add: {
-                const client = await this.create(folder, singleServer, languageClientFactory);
-                await (singleServer
-                    ? client.addFolder(folder)
-                    : client.setLanguageClientFolder(folder));
+                const client = await this.create(folder, languageClientFactory);
+                await client.addFolder(folder);
                 break;
             }
             case FolderOperation.remove: {
-                const client = await this.create(folder, singleServer, languageClientFactory);
+                const client = await this.create(folder, languageClientFactory);
                 await client.removeFolder(folder);
-                break;
-            }
-            case FolderOperation.focus: {
-                if (!singleServer) {
-                    const client = await this.create(folder, singleServer, languageClientFactory);
-                    await client.setLanguageClientFolder(folder);
-                }
                 break;
             }
         }
@@ -135,19 +125,29 @@ export class LanguageClientToolchainCoordinator implements Disposable {
 
     private async create(
         folder: FolderContext,
-        singleServerSupport: boolean,
         languageClientFactory: LanguageClientFactory
     ): Promise<LanguageClientManager> {
-        const versionString = folder.swiftVersion.toString();
-        let client = this.clients.get(versionString);
-        if (!client) {
-            client = new LanguageClientManager(folder, this.options, languageClientFactory);
-            this.clients.set(versionString, client);
-            // Callers that must restart when switching folders will call setLanguageClientFolder themselves.
-            if (singleServerSupport) {
-                await client.setLanguageClientFolder(folder);
-            }
+        // A client is created for each unique toolchain version, as each toolchain has its own sourcekit-lsp
+        const client = this.getClientForFolderSwiftVersion(folder, languageClientFactory);
+
+        if (!folder.isRootFolder && client.subFolderWorkspaces.indexOf(folder) === -1) {
+            client.subFolderWorkspaces.push(folder);
         }
+
+        // Tell the LSP to switch to the target folder
+        await client.setLanguageClientFolder(folder);
+
+        return client;
+    }
+
+    private getClientForFolderSwiftVersion(
+        folder: FolderContext,
+        factory: LanguageClientFactory
+    ): LanguageClientManager {
+        const version = folder.swiftVersion.toString();
+        const client =
+            this.clients.get(version) ?? new LanguageClientManager(folder, this.options, factory);
+        this.clients.set(version, client);
         return client;
     }
 
