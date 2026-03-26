@@ -535,12 +535,8 @@ export class SwiftPackage implements ExternalSwiftPackage, vscode.Disposable {
     }
 
     static trimStdout(stdout: string): string {
-        // remove lines from `swift package describe` until we find a "{"
-        while (!stdout.startsWith("{")) {
-            const firstNewLine = stdout.indexOf("\n");
-            stdout = stdout.slice(firstNewLine + 1);
-        }
-        return stdout;
+        const index = stdout.indexOf("{");
+        return index === -1 ? "" : stdout.slice(index);
     }
 
     dispose() {
