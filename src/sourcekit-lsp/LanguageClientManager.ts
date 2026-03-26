@@ -93,7 +93,6 @@ export class LanguageClientManager implements Disposable {
     private getReferenceDocument?: Disposable;
     private didChangeActiveDocument?: Disposable;
     private restartedPromise?: Promise<void>;
-    private currentWorkspaceFolder?: FolderContext;
     private waitingOnRestartCount: number;
     private clientReadyPromise?: Promise<void>;
     public documentSymbolWatcher?: (
@@ -101,7 +100,6 @@ export class LanguageClientManager implements Disposable {
         symbols: vscode.DocumentSymbol[] | null | undefined
     ) => void;
     private subscriptions: Disposable[];
-    private singleServerSupport: boolean;
     // used by single server support to keep a record of the project folders
     // that are not at the root of their workspace
     public subFolderWorkspaces: FolderContext[] = [];
@@ -128,7 +126,6 @@ export class LanguageClientManager implements Disposable {
             new LSPOutputChannel(LanguageClientManager.indexingLogName, false, true)
         );
         this.swiftVersion = folderContext.swiftVersion;
-        this.singleServerSupport = this.swiftVersion.isGreaterThanOrEqual(new Version(5, 7, 0));
         this.subscriptions = [];
 
         // on change config restart server
@@ -224,7 +221,7 @@ export class LanguageClientManager implements Disposable {
     /** Restart language client */
     async restart() {
         // force restart of language client
-        await this.setLanguageClientFolder(this.folderContext, true);
+        await this.setLanguageClientFolder(this.folderContext);
     }
 
     get languageClientOutputChannel(): SwiftOutputChannel | undefined {
@@ -286,10 +283,8 @@ export class LanguageClientManager implements Disposable {
      * If server is already running then check if the workspace folder is the same if
      * it isn't then restart the server using the new workspace folder.
      */
-    async setLanguageClientFolder(folder: FolderContext, forceRestart = false) {
-        const uri = folder.folder;
+    async setLanguageClientFolder(folder: FolderContext) {
         if (this.languageClient === undefined) {
-            this.currentWorkspaceFolder = folder;
             this.restartedPromise = this.setupLanguageClient(folder).catch(reason => {
                 this.folderContext.workspaceContext.logger.error(
                     Error("Error starting SourceKit-LSP in setLanguageClientFolder", {
@@ -298,14 +293,6 @@ export class LanguageClientManager implements Disposable {
                 );
             });
         } else {
-            // don't check for undefined uri's or if the current workspace is the same if we are
-            // running a single server. The only way we can get here while using a single server
-            // is when restart is called.
-            if (!this.singleServerSupport) {
-                if (this.currentWorkspaceFolder?.folder === uri && !forceRestart) {
-                    return;
-                }
-            }
             await this.restartLanguageClient(folder);
         }
     }
@@ -355,7 +342,6 @@ export class LanguageClientManager implements Disposable {
         const client = this.languageClient;
         // language client is set to null while it is in the process of restarting
         this.languageClient = null;
-        this.currentWorkspaceFolder = workspaceFolder;
         this.legacyInlayHints?.dispose();
         this.legacyInlayHints = undefined;
         this.peekDocuments?.dispose();
@@ -449,20 +435,12 @@ export class LanguageClientManager implements Disposable {
         }
 
         const serverOptions: ServerOptions = sourcekit;
-        let workspaceFolder = undefined;
-        if (folder && !this.singleServerSupport) {
-            workspaceFolder = {
-                uri: folder.folder,
-                name: FolderContext.uriName(folder.folder),
-                index: 0,
-            };
-        }
 
         const errorHandler = new SourceKitLSPErrorHandler(5);
         const clientOptions: LanguageClientOptions = lspClientOptions(
             this.swiftVersion,
             this.folderContext.workspaceContext,
-            workspaceFolder,
+            undefined,
             this.activeDocumentManager,
             errorHandler,
             (document, symbols) => {

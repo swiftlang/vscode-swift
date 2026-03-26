@@ -127,14 +127,12 @@ export class LanguageClientToolchainCoordinator implements Disposable {
         folder: FolderContext,
         languageClientFactory: LanguageClientFactory
     ): Promise<LanguageClientManager> {
-        // A client is created for each unique toolchain version, as each toolchain has its own sourcekit-lsp
         const client = this.getClientForFolderSwiftVersion(folder, languageClientFactory);
 
-        if (!folder.isRootFolder && client.subFolderWorkspaces.indexOf(folder) === -1) {
+        if (!folder.isRootFolder && !client.subFolderWorkspaces.includes(folder)) {
             client.subFolderWorkspaces.push(folder);
         }
 
-        // Tell the LSP to switch to the target folder
         await client.setLanguageClientFolder(folder);
 
         return client;
@@ -145,8 +143,11 @@ export class LanguageClientToolchainCoordinator implements Disposable {
         factory: LanguageClientFactory
     ): LanguageClientManager {
         const version = folder.swiftVersion.toString();
-        const client =
-            this.clients.get(version) ?? new LanguageClientManager(folder, this.options, factory);
+        const existing = this.clients.get(version);
+        if (existing) {
+            return existing;
+        }
+        const client = new LanguageClientManager(folder, this.options, factory);
         this.clients.set(version, client);
         return client;
     }
