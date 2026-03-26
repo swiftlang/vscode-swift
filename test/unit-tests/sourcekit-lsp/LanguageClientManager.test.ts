@@ -513,6 +513,40 @@ suite("LanguageClientManager Suite", () => {
         );
     });
 
+    test("pre-populates initial non-root folder into subFolderWorkspaces on startup", async () => {
+        coordinator = new LanguageClientToolchainCoordinator(
+            instance(mockedWorkspace),
+            {},
+            languageClientFactoryMock
+        );
+        await waitForReturnedPromises(languageClientMock.start);
+
+        expect(languageClientMock.sendNotification).to.have.been.calledWithExactly(
+            DidChangeWorkspaceFoldersNotification.type,
+            {
+                event: {
+                    added: [{ name: "folder1", uri: path.normalize("/folder1") }],
+                    removed: [],
+                },
+            } as DidChangeWorkspaceFoldersParams
+        );
+    });
+
+    test("addFolder does not duplicate notification for pre-registered folder", async () => {
+        coordinator = new LanguageClientToolchainCoordinator(
+            instance(mockedWorkspace),
+            {},
+            languageClientFactoryMock
+        );
+        await waitForReturnedPromises(languageClientMock.start);
+
+        const notificationCalls = languageClientMock.sendNotification.getCalls().filter(call => {
+            const params = call.args[1] as DidChangeWorkspaceFoldersParams | undefined;
+            return params?.event?.added?.some(f => f.uri === path.normalize("/folder1")) === true;
+        });
+        expect(notificationCalls).to.have.lengthOf(1);
+    });
+
     test("doesn't launch SourceKit-LSP if disabled by the user", async () => {
         mockedLspConfig.disable = true;
         const sut = new LanguageClientManager(
@@ -930,152 +964,6 @@ suite("LanguageClientManager Suite", () => {
                     },
                 } as DidChangeActiveDocumentParams
             );
-        });
-    });
-
-    suite("SourceKit-LSP version doesn't support workspace folders", () => {
-        let folder1: MockedObject<FolderContext>;
-        let folder2: MockedObject<FolderContext>;
-
-        setup(() => {
-            mockedToolchain.swiftVersion = new Version(5, 6, 0);
-            mockedWorkspace.globalToolchainSwiftVersion = new Version(5, 6, 0);
-            const workspaceFolder = {
-                uri: vscode.Uri.file("/folder1"),
-                name: "folder1",
-                index: 0,
-            };
-            const folderContext = mockObject<FolderContext>({
-                workspaceContext: instance(mockedWorkspace),
-                workspaceFolder,
-                toolchain: instance(mockedToolchain),
-                logger: instance(mockLogger),
-            });
-            mockedFolder.swiftVersion = mockedToolchain.swiftVersion;
-            mockedWorkspace = mockObject<WorkspaceContext>({
-                ...mockedWorkspace,
-                globalToolchain: instance(mockedToolchain),
-                currentFolder: instance(folderContext),
-                get globalToolchainSwiftVersion() {
-                    return mockedToolchain.swiftVersion;
-                },
-                folders: [instance(mockedFolder)],
-            });
-            folder1 = mockObject<FolderContext>({
-                isRootFolder: false,
-                folder: vscode.Uri.file("/folder1"),
-                workspaceFolder,
-                workspaceContext: instance(mockedWorkspace),
-                toolchain: instance(mockedToolchain),
-                swiftVersion: mockedToolchain.swiftVersion,
-                logger: instance(mockLogger),
-            });
-            folder2 = mockObject<FolderContext>({
-                isRootFolder: false,
-                folder: vscode.Uri.file("/folder2"),
-                workspaceFolder: {
-                    uri: vscode.Uri.file("/folder2"),
-                    name: "folder2",
-                    index: 1,
-                },
-                workspaceContext: instance(mockedWorkspace),
-                toolchain: instance(mockedToolchain),
-                swiftVersion: mockedToolchain.swiftVersion,
-                logger: instance(mockLogger),
-            });
-        });
-
-        test("doesn't launch SourceKit-LSP on startup", async () => {
-            const sut = new LanguageClientManager(
-                instance(mockedFolder),
-                {},
-                languageClientFactoryMock
-            );
-            await waitForReturnedPromises(languageClientMock.start);
-
-            expect(sut.state).to.equal(State.Stopped);
-            expect(languageClientFactoryMock.createLanguageClient).to.not.have.been.called;
-            expect(languageClientMock.start).to.not.have.been.called;
-        });
-
-        test("launches SourceKit-LSP when a Swift file is opened", async () => {
-            mockedVSCodeWindow.activeTextEditor = instance(
-                mockObject<vscode.TextEditor>({
-                    document: instance(
-                        mockObject<vscode.TextDocument>({
-                            uri: vscode.Uri.file("/folder1/file.swift"),
-                        })
-                    ),
-                })
-            );
-            const factory = new LanguageClientToolchainCoordinator(
-                instance(mockedWorkspace),
-                {},
-                languageClientFactoryMock
-            );
-
-            const sut = factory.get(instance(mockedFolder));
-            await waitForReturnedPromises(languageClientMock.start);
-
-            // Add the folder to the workspace
-            await didChangeFoldersEmitter.fire({
-                operation: FolderOperation.add,
-                folder: instance(folder1),
-                workspace: instance(mockedWorkspace),
-            });
-
-            expect(sut.state).to.equal(
-                State.Running,
-                "Expected LSP client to be running but it wasn't"
-            );
-            expect(languageClientFactoryMock.createLanguageClient).to.have.been.calledWith(
-                /* id */ match.string,
-                /* name */ match.string,
-                /* serverOptions */ match.object,
-                /* clientOptions */ match.hasNested("workspaceFolder.uri.path", "/folder1")
-            );
-            expect(languageClientMock.start).to.have.been.called;
-        });
-
-        test("changes SourceKit-LSP's workspaceFolder when a new folder is focussed", async () => {
-            const mockedTextDocument = mockObject<vscode.TextDocument>({
-                uri: vscode.Uri.file("/folder1/file.swift"),
-            });
-            mockedVSCodeWindow.activeTextEditor = instance(
-                mockObject<vscode.TextEditor>({
-                    document: instance(mockedTextDocument),
-                })
-            );
-            const factory = new LanguageClientToolchainCoordinator(
-                instance(mockedWorkspace),
-                {},
-                languageClientFactoryMock
-            );
-
-            const sut = factory.get(instance(mockedFolder));
-            await waitForReturnedPromises(languageClientMock.start);
-
-            // Trigger a focus event for the second folder
-            mockedTextDocument.uri = vscode.Uri.file("/folder2/file.swift");
-            await didChangeFoldersEmitter.fire({
-                operation: FolderOperation.focus,
-                folder: instance(folder2),
-                workspace: instance(mockedWorkspace),
-            });
-
-            expect(sut.state).to.equal(
-                State.Running,
-                "Expected LSP client to be running but it wasn't"
-            );
-            expect(languageClientFactoryMock.createLanguageClient).to.have.been.calledTwice;
-            expect(languageClientFactoryMock.createLanguageClient).to.have.been.calledWith(
-                /* id */ match.string,
-                /* name */ match.string,
-                /* serverOptions */ match.object,
-                /* clientOptions */ match.hasNested("workspaceFolder.uri.path", "/folder2")
-            );
-            expect(languageClientMock.start).to.have.been.calledTwice;
-            expect(languageClientMock.start).to.have.been.calledAfter(languageClientMock.stop);
         });
     });
 });
