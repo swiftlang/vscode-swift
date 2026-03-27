@@ -490,18 +490,18 @@ export class LanguageClientManager implements Disposable {
         errorHandler: SourceKitLSPErrorHandler
     ): Promise<void> {
         const runningPromise = new Promise<void>((res, rej) => {
-            const disposable = client.onDidChangeState(e => {
+            const disposable = client.onDidChangeState(async e => {
                 // if state is now running add in any sub-folder workspaces that
                 // we have cached. If this is the first time we are starting then
                 // we won't have any sub folder workspaces, but if the server crashed
                 // or we forced a restart then we need to do this
                 if (e.oldState === State.Starting && e.newState === State.Running) {
+                    await this.addSubFolderWorkspaces(client);
+                    disposable.dispose();
                     res();
-                    disposable.dispose();
-                    void this.addSubFolderWorkspaces(client);
                 } else if (e.oldState === State.Starting && e.newState === State.Stopped) {
-                    rej("SourceKit-LSP failed to start");
                     disposable.dispose();
+                    rej("SourceKit-LSP failed to start");
                 }
             });
         });
