@@ -26,6 +26,7 @@
 - Avoid rapidly resolving packages during rebases ([#2125](https://github.com/swiftlang/vscode-swift/pull/2125))
 - Fix typo in Swift extension setting ([#2130](https://github.com/swiftlang/vscode-swift/pull/2130))
 - Fix icon for build progress jittering in the status bar ([#2150](https://github.com/swiftlang/vscode-swift/pull/2150))
+- Loading large projects will no longer show the extension as unresponsive ([#1932](https://github.com/swiftlang/vscode-swift/pull/1932))
 
 ## 2.16.1 - 2026-02-02
 
