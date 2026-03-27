@@ -353,12 +353,17 @@ export class LanguageClientManager implements vscode.Disposable {
             this.restartedPromise = client
                 .stop()
                 .then(async () => {
-                    await this.setupLanguageClient(workspaceFolder);
-
-                    // Now that the client has been replaced, dispose the old client's output channel.
+                    // Dispose the old client's output channel before creating the
+                    // new client. The server process may still write to stderr after
+                    // stop() resolves. Disposing here sets isDisposed on the logger,
+                    // preventing late writes from entering the winston pipeline and
+                    // reaching a destroyed transport.
                     client.outputChannel.dispose();
+
+                    await this.setupLanguageClient(workspaceFolder);
                 })
                 .catch(async reason => {
+                    client.outputChannel.dispose();
                     this.folderContext.workspaceContext.logger.error(
                         `Error starting SourceKit-LSP in restartLanguageClient: ${reason}`
                     );

@@ -970,4 +970,45 @@ suite("LanguageClientManager Suite", () => {
             );
         });
     });
+
+    test("disposes old output channel before creating new client on restart", async () => {
+        const callOrder: string[] = [];
+
+        const firstOutputChannel = mockObject<SwiftOutputChannel>({
+            dispose: mockFn(s =>
+                s.callsFake(() => {
+                    callOrder.push("dispose-old-output-channel");
+                })
+            ),
+            warn: mockFn(),
+        });
+
+        languageClientMock.outputChannel = instance(firstOutputChannel);
+
+        coordinator = new LanguageClientToolchainCoordinator(
+            instance(mockedWorkspace),
+            {},
+            languageClientFactoryMock
+        );
+        const sut = coordinator.get(instance(mockedFolder));
+        await waitForReturnedPromises(languageClientMock.start);
+
+        expect(sut.state).to.equal(State.Running);
+
+        const secondOutputChannel = mockObject<SwiftOutputChannel>({
+            dispose: mockFn(),
+            warn: mockFn(),
+        });
+
+        languageClientFactoryMock.createLanguageClient.callsFake(() => {
+            callOrder.push("create-new-client");
+            languageClientMock.outputChannel = instance(secondOutputChannel);
+            return instance(languageClientMock);
+        });
+
+        await sut.restart();
+        await waitForReturnedPromises(languageClientMock.start);
+
+        expect(callOrder).to.deep.equal(["dispose-old-output-channel", "create-new-client"]);
+    });
 });
