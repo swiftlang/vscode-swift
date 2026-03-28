@@ -296,8 +296,8 @@ export function createSwiftTask(
     options: { readOnlyTerminal: boolean } = { readOnlyTerminal: false },
     swiftProcess?: SwiftProcess
 ): SwiftTask {
-    const swift = toolchain.getToolchainExecutable("swift");
     args = toolchain.buildFlags.withAdditionalFlags(args);
+    const inv = toolchain.getToolchainInvocation("swift", args);
 
     // Add relative path current working directory
     const cwd = config.cwd.fsPath;
@@ -343,8 +343,8 @@ export function createSwiftTask(
         name,
         "swift",
         new SwiftExecution(
-            swift,
-            args,
+            inv.command,
+            inv.args,
             {
                 cwd: fullCwd,
                 env: env,
@@ -472,13 +472,13 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         // We need to create a new Task object here.
         // Reusing the task parameter doesn't seem to work.
         const toolchain = currentFolder.toolchain;
-        const swift = toolchain.getToolchainExecutable("swift");
         // platform specific
         const platform: TaskPlatformSpecificConfig | undefined = getPlatformConfig(task);
         // get args and cwd values from either platform specific block or base
         const args = (platform?.args ?? task.definition.args ?? []).map(
             substituteVariablesInString
         );
+        const inv = toolchain.getToolchainInvocation("swift", args);
         const env = platform?.env ?? task.definition.env;
         const fullCwd = resolveTaskCwd(task, platform?.cwd ?? task.definition.cwd);
         const fullEnv = {
@@ -493,7 +493,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             task.scope ?? vscode.TaskScope.Workspace,
             task.name ?? "Swift Custom Task",
             "swift",
-            new SwiftExecution(swift, args, {
+            new SwiftExecution(inv.command, inv.args, {
                 cwd: fullCwd,
                 env: fullEnv,
                 presentation,
