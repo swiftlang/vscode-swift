@@ -111,8 +111,17 @@ suite("LanguageClientManager Suite", () => {
         mockedToolchain = mockObject<SwiftToolchain>({
             swiftVersion: new Version(6, 0, 0),
             buildFlags: mockedBuildFlags as unknown as BuildFlags,
+            manager: "unknown",
             getToolchainExecutable: mockFn(s =>
                 s.withArgs("sourcekit-lsp").returns("/path/to/toolchain/bin/sourcekit-lsp")
+            ),
+            getToolchainExecutablePath: mockFn(s =>
+                s.withArgs("sourcekit-lsp").returns("/path/to/toolchain/bin/sourcekit-lsp")
+            ),
+            getToolchainInvocation: mockFn(s =>
+                s
+                    .withArgs("sourcekit-lsp", match.any)
+                    .returns({ command: "/path/to/toolchain/bin/sourcekit-lsp", args: [] })
             ),
         });
         mockLogger = mockObject<SwiftLogger>({
@@ -282,6 +291,15 @@ suite("LanguageClientManager Suite", () => {
                 getToolchainExecutable: mockFn(s =>
                     s.withArgs("sourcekit-lsp").returns("/path/to/toolchain/bin/sourcekit-lsp")
                 ),
+                getToolchainExecutablePath: mockFn(s =>
+                    s.withArgs("sourcekit-lsp").returns("/path/to/toolchain/bin/sourcekit-lsp")
+                ),
+                getToolchainInvocation: mockFn(s =>
+                    s
+                        .withArgs("sourcekit-lsp", match.any)
+                        .returns({ command: "/path/to/toolchain/bin/sourcekit-lsp", args: [] })
+                ),
+                manager: "unknown",
             });
 
             const newFolder = mockObject<FolderContext>({
@@ -333,6 +351,35 @@ suite("LanguageClientManager Suite", () => {
             /* clientOptions */ match.object
         );
         expect(languageClientMock.start).to.have.been.calledOnce;
+    });
+
+    test("launches SourceKit-LSP via swiftly run for swiftly-managed toolchains", async () => {
+        mockedToolchain.manager = "swiftly";
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (mockedToolchain as any).getToolchainInvocation = mockFn(s =>
+            s
+                .withArgs("sourcekit-lsp", match.any)
+                .returns({ command: "swiftly", args: ["run", "sourcekit-lsp"] })
+        );
+
+        const factory = new LanguageClientToolchainCoordinator(
+            instance(mockedWorkspace),
+            {},
+            languageClientFactoryMock
+        );
+
+        factory.get(instance(mockedFolder));
+        await waitForReturnedPromises(languageClientMock.start);
+
+        expect(languageClientFactoryMock.createLanguageClient).to.have.been.calledOnceWith(
+            /* id */ match.string,
+            /* name */ match.string,
+            /* serverOptions */ match
+                .has("command", "swiftly")
+                .and(match.hasNested("args[0]", "run"))
+                .and(match.hasNested("args[1]", "sourcekit-lsp")),
+            /* clientOptions */ match.object
+        );
     });
 
     test("launches SourceKit-LSP on startup with swiftSDK", async () => {

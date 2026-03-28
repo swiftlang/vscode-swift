@@ -256,20 +256,25 @@ export async function execSwift(
     options: cp.ExecFileOptions = {},
     folderContext?: FolderContext
 ): Promise<{ stdout: string; stderr: string }> {
-    let swift: string;
+    let command: string;
+    let commandArgs: string[];
     if (typeof toolchain === "object" && "swiftExecutable" in toolchain) {
-        swift = toolchain.swiftExecutable;
+        command = toolchain.swiftExecutable;
+        commandArgs = args;
     } else if (toolchain === "default") {
-        swift = getSwiftExecutable();
+        command = getSwiftExecutable();
+        commandArgs = args;
     } else {
-        swift = toolchain.getToolchainExecutable("swift");
         args = toolchain.buildFlags.withAdditionalFlags(args);
+        const inv = toolchain.getToolchainInvocation("swift", args);
+        command = inv.command;
+        commandArgs = inv.args;
     }
     options = {
         ...options,
         maxBuffer: options.maxBuffer ?? 1024 * 1024 * 64, // 64MB
     };
-    return await execFile(swift, args, options, folderContext);
+    return await execFile(command, commandArgs, options, folderContext);
 }
 
 /**
