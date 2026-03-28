@@ -29,6 +29,12 @@ suite("runSwiftScript Test Suite", () => {
     const mockTaskManager = mockObject<TaskManager>({ executeTaskAndWait: stub().resolves() });
     const mockToolchain = mockObject<SwiftToolchain>({
         getToolchainExecutable: () => "/usr/bin/swift",
+        getToolchainInvocation: mockFn(s =>
+            s.callsFake((_exe: string, args: string[]) => ({
+                command: "/usr/bin/swift",
+                args,
+            }))
+        ),
         swiftVersion: new Version(6, 0, 0),
         buildFlags: instance(
             mockObject<BuildFlags>({

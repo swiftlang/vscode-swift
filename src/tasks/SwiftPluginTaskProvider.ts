@@ -85,7 +85,6 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         }
         // We need to create a new Task object here.
         // Reusing the task parameter doesn't seem to work.
-        const swift = currentFolder.toolchain.getToolchainExecutable("swift");
         let swiftArgs = [
             "package",
             ...this.pluginArguments(task.definition as PluginPermissionConfiguration),
@@ -93,6 +92,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             ...(task.definition.args ?? []).map(substituteVariablesInString),
         ];
         swiftArgs = currentFolder.toolchain.buildFlags.withAdditionalFlags(swiftArgs);
+        const inv = currentFolder.toolchain.getToolchainInvocation("swift", swiftArgs);
 
         const cwd = resolveTaskCwd(task, task.definition.cwd);
         const newTask = new vscode.Task(
@@ -100,7 +100,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             task.scope ?? vscode.TaskScope.Workspace,
             task.name,
             "swift-plugin",
-            new SwiftExecution(swift, swiftArgs, {
+            new SwiftExecution(inv.command, inv.args, {
                 cwd,
                 env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
                 presentation: task.presentationOptions,
@@ -125,8 +125,6 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         toolchain: SwiftToolchain,
         config: TaskConfig
     ): SwiftTask {
-        const swift = toolchain.getToolchainExecutable("swift");
-
         // Add relative path current working directory
         const relativeCwd = path.relative(config.scope.uri.fsPath, config.cwd.fsPath);
         const taskDefinitionCwd = relativeCwd !== "" ? relativeCwd : undefined;
@@ -138,6 +136,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             ...definition.args,
         ];
         swiftArgs = toolchain.buildFlags.withAdditionalFlags(swiftArgs);
+        const inv = toolchain.getToolchainInvocation("swift", swiftArgs);
 
         const presentation = config?.presentationOptions ?? {};
         const task = new vscode.Task(
@@ -145,7 +144,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             config.scope ?? vscode.TaskScope.Workspace,
             plugin.name,
             "swift-plugin",
-            new SwiftExecution(swift, swiftArgs, {
+            new SwiftExecution(inv.command, inv.args, {
                 cwd: config.cwd.fsPath,
                 env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
                 presentation,

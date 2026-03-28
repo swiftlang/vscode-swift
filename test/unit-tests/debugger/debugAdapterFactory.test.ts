@@ -19,7 +19,10 @@ import { WorkspaceContext } from "@src/WorkspaceContext";
 import configuration from "@src/configuration";
 import { LaunchConfigType, SWIFT_LAUNCH_CONFIG_TYPE } from "@src/debugger/debugAdapter";
 import * as debugAdapter from "@src/debugger/debugAdapter";
-import { LLDBDebugConfigurationProvider } from "@src/debugger/debugAdapterFactory";
+import {
+    LLDBDebugConfigurationProvider,
+    SwiftDebugAdapterDescriptorFactory,
+} from "@src/debugger/debugAdapterFactory";
 import * as lldb from "@src/debugger/lldb";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { BuildFlags } from "@src/toolchain/BuildFlags";
@@ -51,6 +54,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         mockToolchain = mockObject<SwiftToolchain>({
             swiftVersion: new Version(6, 0, 0),
             buildFlags: instance(mockBuildFlags),
+            manager: "unknown",
         });
         mockLogger = mockObject<SwiftLogger>({
             info: mockFn(),
@@ -576,6 +580,91 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         });
     });
 
+    suite("swiftly-managed toolchain", () => {
+        setup(() => {
+            mockDebugAdapter.getLaunchConfigType.returns(LaunchConfigType.LLDB_DAP);
+            mockDebugAdapter.getLLDBDebugAdapterPath.resolves(
+                "/home/user/.swiftly/toolchains/6.0.0/usr/bin/lldb-dap"
+            );
+            mockFS({
+                "/home/user/.swiftly/toolchains/6.0.0/usr/bin/lldb-dap": mockFS.file({
+                    content: "",
+                    mode: 0o770,
+                }),
+            });
+            mockToolchain.manager = "swiftly";
+        });
+
+        teardown(() => {
+            mockFS.restore();
+        });
+
+        test("keeps type as swift and sets __swiftlyLLDBDap sentinel", async () => {
+            const configProvider = new LLDBDebugConfigurationProvider(
+                "linux",
+                instance(mockWorkspaceContext),
+                instance(mockLogger)
+            );
+            const launchConfig =
+                await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
+                    name: "Test Launch Config",
+                    type: SWIFT_LAUNCH_CONFIG_TYPE,
+                    request: "launch",
+                    program: "/home/user/myproject/.build/debug/MyApp",
+                });
+            expect(launchConfig).to.containSubset({
+                type: SWIFT_LAUNCH_CONFIG_TYPE,
+                __swiftlyLLDBDap: true,
+            });
+            expect(launchConfig).to.not.have.property("debugAdapterExecutable");
+        });
+
+        test("fails if lldb-dap does not exist in the swiftly toolchain", async () => {
+            mockFS({});
+            const configProvider = new LLDBDebugConfigurationProvider(
+                "linux",
+                instance(mockWorkspaceContext),
+                instance(mockLogger)
+            );
+            await expect(
+                configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
+                    name: "Test Launch Config",
+                    type: SWIFT_LAUNCH_CONFIG_TYPE,
+                    request: "launch",
+                    program: "/home/user/myproject/.build/debug/MyApp",
+                })
+            ).to.eventually.be.undefined;
+            expect(mockWindow.showErrorMessage).to.have.been.calledOnce;
+        });
+    });
+
+    suite("SwiftDebugAdapterDescriptorFactory", () => {
+        function makeSession(config: Record<string, unknown>): vscode.DebugSession {
+            return {
+                configuration: config,
+            } as unknown as vscode.DebugSession;
+        }
+
+        test("returns swiftly run lldb-dap executable when __swiftlyLLDBDap is set", () => {
+            const factory = new SwiftDebugAdapterDescriptorFactory();
+            const descriptor = factory.createDebugAdapterDescriptor(
+                makeSession({ __swiftlyLLDBDap: true }),
+                undefined
+            );
+            expect(descriptor).to.be.instanceof(vscode.DebugAdapterExecutable);
+            const exe = descriptor as vscode.DebugAdapterExecutable;
+            expect(exe.command).to.equal("swiftly");
+            expect(exe.args).to.deep.equal(["run", "lldb-dap"]);
+        });
+
+        test("returns fallback executable when __swiftlyLLDBDap is not set", () => {
+            const factory = new SwiftDebugAdapterDescriptorFactory();
+            const fallback = new vscode.DebugAdapterExecutable("/path/to/lldb-dap");
+            const descriptor = factory.createDebugAdapterDescriptor(makeSession({}), fallback);
+            expect(descriptor).to.equal(fallback);
+        });
+    });
+
     test("debugs with the toolchain of the supplied folder", async () => {
         const debugAdapterPath = "/path/to/lldb-dap";
         mockDebugAdapter.getLaunchConfigType.returns(LaunchConfigType.LLDB_DAP);
@@ -584,7 +673,10 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         mockFS({
             [debugAdapterPath]: mockFS.file({ content: "", mode: 0o770 }),
         });
-        mockToolchain = mockObject<SwiftToolchain>({ swiftVersion: new Version(5, 10, 0) });
+        mockToolchain = mockObject<SwiftToolchain>({
+            swiftVersion: new Version(5, 10, 0),
+            manager: "unknown",
+        });
         const mockFolder = mockObject<FolderContext>({
             isRootFolder: false,
             folder: vscode.Uri.file("/folder"),

@@ -102,6 +102,19 @@ export function getDarwinTargetTriple(target: DarwinCompatibleTarget): string | 
     }
 }
 
+/**
+ * The effective command and arguments needed to launch a toolchain executable.
+ *
+ * - For normal toolchains: `command` is the binary path and `args` are the
+ *   caller-supplied arguments verbatim.
+ * - For swiftly-managed toolchains: `command` is `"swiftly"` and `args` are
+ *   `["run", "<tool>", ...callerArgs]`.
+ */
+export interface ToolchainInvocation {
+    command: string;
+    args: string[];
+}
+
 export class SwiftToolchain implements ExternalSwiftToolchain {
     public swiftVersionString: string;
 
@@ -373,10 +386,37 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
     }
 
     /**
-     * Return fullpath for toolchain executable
+     * Return fullpath for toolchain executable.
+     * Use this only when a raw filesystem path is needed (diagnostics,
+     * `--toolchain` arguments, existence checks). For process spawning use
+     * {@link getToolchainInvocation} instead.
+     */
+    public getToolchainExecutablePath(executable: string): string {
+        return SwiftToolchain._getToolchainExecutable(this.toolchainPath, executable);
+    }
+
+    /**
+     * @deprecated Use {@link getToolchainExecutablePath} for path-only needs or
+     * {@link getToolchainInvocation} for process spawning.
      */
     public getToolchainExecutable(executable: string): string {
-        return SwiftToolchain._getToolchainExecutable(this.toolchainPath, executable);
+        return this.getToolchainExecutablePath(executable);
+    }
+
+    /**
+     * Returns the effective command and arguments for spawning a toolchain
+     * executable. For swiftly-managed toolchains this wraps the call as
+     * `swiftly run <tool> …`; for all other managers it uses the direct
+     * binary path.
+     *
+     * @param executable The toolchain binary name (e.g. `"swift"`, `"sourcekit-lsp"`).
+     * @param args Arguments to pass to the executable (after any manager prefix).
+     */
+    public getToolchainInvocation(executable: string, args: string[]): ToolchainInvocation {
+        if (this.manager === "swiftly") {
+            return { command: "swiftly", args: ["run", executable, ...args] };
+        }
+        return { command: this.getToolchainExecutablePath(executable), args };
     }
 
     private static _getToolchainExecutable(toolchainPath: string, executable: string): string {
