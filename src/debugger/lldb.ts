@@ -17,6 +17,7 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import * as vscode from "vscode";
 
+import { SwiftLogger } from "../logging/SwiftLogger";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import { Result } from "../utilities/result";
 import { IS_RUNNING_UNDER_TEST, execFile } from "../utilities/utilities";
@@ -45,13 +46,22 @@ export function updateLaunchConfigForCI(
  *
  * @returns Library path for LLDB
  */
-export async function getLLDBLibPath(toolchain: SwiftToolchain): Promise<Result<string>> {
+export async function getLLDBLibPath(
+    toolchain: SwiftToolchain,
+    logger?: SwiftLogger
+): Promise<Result<string>> {
     let executable: string;
     try {
         executable = await toolchain.getLLDB();
     } catch (error) {
+        logger?.error(
+            `Failed to get LLDB path from toolchain at ${toolchain.toolchainPath}, error: ${error}`
+        );
         return Result.makeFailure(error);
     }
+    logger?.info(
+        `Found LLDB executable in the toolchain ${toolchain.toolchainPath} at: ${executable}`
+    );
     let pathHint = toolchain.toolchainPath;
     try {
         const statement = `print('<!' + lldb.SBHostOS.GetLLDBPath(lldb.ePathTypeLLDBShlibDir).fullpath + '!>')`;
@@ -68,18 +78,22 @@ export async function getLLDBLibPath(toolchain: SwiftToolchain): Promise<Result<
         // should just use the version of lldb that comes with CodeLLDB. We return a failure with no message
         // to indicate we want it to fail silently.
         if (process.platform === "win32") {
+            logger?.error(`Failed to get LLDB library path for lldb on Windows, error: ${error}`);
             return Result.makeFailure(undefined);
         }
     }
-    const lldbPath = await findLibLLDB(pathHint);
+    const lldbPath = await findLibLLDB(pathHint, logger);
     if (lldbPath) {
         return Result.makeSuccess(lldbPath);
     } else {
-        return Result.makeFailure("LLDB failed to provide a library path");
+        logger?.error(`LLDB failed to provide a library path. Path hint was ${pathHint}`);
+        return Result.makeFailure(
+            `LLDB failed to provide a library path. Path hint was ${pathHint}`
+        );
     }
 }
 
-async function findLibLLDB(pathHint: string): Promise<string | undefined> {
+async function findLibLLDB(pathHint: string, logger?: SwiftLogger): Promise<string | undefined> {
     const stat = await fs.stat(pathHint);
     if (stat.isFile()) {
         return pathHint;
@@ -101,8 +115,10 @@ async function findLibLLDB(pathHint: string): Promise<string | undefined> {
     }
 
     for (const dir of [pathHint, libDir]) {
+        logger?.info(`Searching for LLDB library in: ${dir} with pattern ${pattern}`);
         const file = await findFileByPattern(dir, pattern);
         if (file) {
+            logger?.info(`Found LLDB library: ${file}`);
             return path.join(dir, file);
         }
     }
