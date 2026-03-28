@@ -79,7 +79,7 @@ This process involves updating your shell profile in order to add swiftly to you
  * @param logger Optional logger
  * @returns Promise<boolean> true if installation succeeded
  */
-async function installSwiftlyWithProgress(logger?: SwiftLogger): Promise<boolean> {
+export async function installSwiftlyWithProgress(logger?: SwiftLogger): Promise<boolean> {
     try {
         await vscode.window.withProgress(
             {
@@ -100,7 +100,7 @@ async function installSwiftlyWithProgress(logger?: SwiftLogger): Promise<boolean
     }
 }
 
-async function promptToRestartVSCode(): Promise<void> {
+export async function promptToRestartVSCode(): Promise<void> {
     const editorName = vscode.env.appName;
     const selection = await vscode.window.showInformationMessage(
         `Restart ${editorName}`,
