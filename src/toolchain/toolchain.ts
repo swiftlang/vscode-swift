@@ -110,7 +110,7 @@ export function getDarwinTargetTriple(target: DarwinCompatibleTarget): string | 
  * - For swiftly-managed toolchains: `command` is `"swiftly"` and `args` are
  *   `["run", "<tool>", ...callerArgs]`.
  */
-export interface ToolchainInvocation {
+interface ToolchainInvocation {
     command: string;
     args: string[];
 }
