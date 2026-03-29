@@ -17,5 +17,6 @@
     },
     "swift.packageArguments": [
         "--cache-path=${workspaceFolder}${pathSeparator}.spm-cache"
-    ]
+    ],
+    "swift.path": "/Users/priyaroul/Library/Developer/Toolchains/swift-latest.xctoolchain/usr/bin"
 }

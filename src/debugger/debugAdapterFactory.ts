@@ -80,24 +80,16 @@ function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): Disposabl
 /**
  * Debug adapter descriptor factory for the "swift" debug type.
  *
- * For swiftly-managed toolchains the config provider leaves the session type as
- * "swift" (instead of rewriting it to "lldb-dap") and sets a sentinel flag.
- * This factory detects that flag and returns a `DebugAdapterExecutable` that
- * launches the adapter via `swiftly run lldb-dap`.
- *
- * For all other sessions (non-swiftly, or sessions that fell through without the
- * flag) it returns `undefined`, letting VS Code use the executable defined in
- * package.json for the "swift" debug type.
+ * Only invoked for swiftly-managed toolchains, where the session type is left as
+ * "swift" (instead of being rewritten to "lldb-dap"). Launches the adapter via
+ * `swiftly run lldb-dap` so the correct toolchain version is used.
  */
 export class SwiftDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescriptorFactory {
     createDebugAdapterDescriptor(
-        session: vscode.DebugSession,
-        executable: vscode.DebugAdapterExecutable | undefined
+        _session: vscode.DebugSession,
+        _executable: vscode.DebugAdapterExecutable | undefined
     ): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
-        if (session.configuration.__swiftlyLLDBDap) {
-            return new vscode.DebugAdapterExecutable("swiftly", ["run", "lldb-dap"]);
-        }
-        return executable;
+        return new vscode.DebugAdapterExecutable("swiftly", ["run", "lldb-dap"]);
     }
 }
 
@@ -341,12 +333,11 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             return undefined;
         }
 
-        if (toolchain.manager === "swiftly") {
-            // Revert the type back to "swift" so SwiftDebugAdapterDescriptorFactory
-            // (not the lldb-dap extension's factory) handles this session and launches
-            // the adapter via `swiftly run lldb-dap`.
+        if (
+            toolchain.manager === "swiftly" &&
+            configuration.debugger.customDebugAdapterPath.length === 0
+        ) {
             launchConfig.type = SWIFT_LAUNCH_CONFIG_TYPE;
-            launchConfig.__swiftlyLLDBDap = true;
             return true;
         }
 

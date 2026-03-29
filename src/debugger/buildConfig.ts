@@ -607,7 +607,7 @@ export class TestingConfigurationFactory {
     }
 
     private get swiftProgramPath(): string {
-        return this.ctx.toolchain.getToolchainExecutable("swift");
+        return this.ctx.toolchain.getToolchainExecutablePath("swift");
     }
 
     private get artifactFolderForTestKind(): string {

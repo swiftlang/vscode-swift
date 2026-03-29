@@ -396,14 +396,6 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
     }
 
     /**
-     * @deprecated Use {@link getToolchainExecutablePath} for path-only needs or
-     * {@link getToolchainInvocation} for process spawning.
-     */
-    public getToolchainExecutable(executable: string): string {
-        return this.getToolchainExecutablePath(executable);
-    }
-
-    /**
      * Returns the effective command and arguments for spawning a toolchain
      * executable. For swiftly-managed toolchains this wraps the call as
      * `swiftly run <tool> …`; for all other managers it uses the direct

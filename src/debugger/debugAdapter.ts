@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 import configuration from "../configuration";
-import { SwiftToolchain, ToolchainInvocation } from "../toolchain/toolchain";
+import { SwiftToolchain } from "../toolchain/toolchain";
 import { Version } from "../utilities/version";
 
 /**
@@ -62,16 +62,5 @@ export class DebugAdapter {
             return customDebugAdapterPath;
         }
         return toolchain.getLLDBDebugAdapter();
-    }
-
-    public static async getLLDBDebugAdapterInvocation(
-        toolchain: SwiftToolchain
-    ): Promise<ToolchainInvocation> {
-        const customDebugAdapterPath = configuration.debugger.customDebugAdapterPath;
-        if (customDebugAdapterPath.length > 0) {
-            return { command: customDebugAdapterPath, args: [] };
-        }
-        await toolchain.getLLDBDebugAdapter();
-        return toolchain.getToolchainInvocation("lldb-dap", []);
     }
 }
