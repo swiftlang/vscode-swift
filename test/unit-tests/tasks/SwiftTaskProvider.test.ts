@@ -58,7 +58,6 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
             swiftVersion: new Version(6, 0, 0),
             buildFlags: instance(buildFlags),
             sanitizer: mockFn(),
-            getToolchainExecutable: mockFn(s => s.withArgs("swift").returns("/path/to/bin/swift")),
             getToolchainInvocation: mockFn(s =>
                 s.withArgs("swift", match.any).callsFake((_exe: string, args: string[]) => ({
                     command: "/path/to/bin/swift",

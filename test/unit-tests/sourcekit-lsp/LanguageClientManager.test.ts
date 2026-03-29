@@ -112,9 +112,6 @@ suite("LanguageClientManager Suite", () => {
             swiftVersion: new Version(6, 0, 0),
             buildFlags: mockedBuildFlags as unknown as BuildFlags,
             manager: "unknown",
-            getToolchainExecutable: mockFn(s =>
-                s.withArgs("sourcekit-lsp").returns("/path/to/toolchain/bin/sourcekit-lsp")
-            ),
             getToolchainExecutablePath: mockFn(s =>
                 s.withArgs("sourcekit-lsp").returns("/path/to/toolchain/bin/sourcekit-lsp")
             ),
@@ -288,9 +285,6 @@ suite("LanguageClientManager Suite", () => {
             const differentToolchain = mockObject<SwiftToolchain>({
                 swiftVersion: new Version(6, 1, 0),
                 buildFlags: mockedBuildFlags as unknown as BuildFlags,
-                getToolchainExecutable: mockFn(s =>
-                    s.withArgs("sourcekit-lsp").returns("/path/to/toolchain/bin/sourcekit-lsp")
-                ),
                 getToolchainExecutablePath: mockFn(s =>
                     s.withArgs("sourcekit-lsp").returns("/path/to/toolchain/bin/sourcekit-lsp")
                 ),
