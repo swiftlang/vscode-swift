@@ -95,10 +95,16 @@ export class TestCoverage {
     private async mergeProfdata(profDataFiles: string[]) {
         const filename = (await this.lcovTmpFiles()).file("merged", "profdata");
         const toolchain = this.folderContext.toolchain;
-        const llvmProfdata = toolchain.getToolchainExecutable("llvm-profdata");
+        const inv = toolchain.getToolchainInvocation("llvm-profdata", [
+            "merge",
+            "-sparse",
+            "-o",
+            filename,
+            ...profDataFiles,
+        ]);
         await execFileStreamOutput(
-            llvmProfdata,
-            ["merge", "-sparse", "-o", filename, ...profDataFiles],
+            inv.command,
+            inv.args,
             null,
             null,
             null,
@@ -171,16 +177,17 @@ export class TestCoverage {
             },
         });
 
+        const llvmCovInv = this.folderContext.toolchain.getToolchainInvocation("llvm-cov", [
+            "export",
+            "--format",
+            "lcov",
+            ...coveredBinaries,
+            `--ignore-filename-regex=${await this.ignoredFilenamesRegex()}`,
+            `--instr-profile=${mergedProfileFile}`,
+        ]);
         await execFileStreamOutput(
-            this.folderContext.toolchain.getToolchainExecutable("llvm-cov"),
-            [
-                "export",
-                "--format",
-                "lcov",
-                ...coveredBinaries,
-                `--ignore-filename-regex=${await this.ignoredFilenamesRegex()}`,
-                `--instr-profile=${mergedProfileFile}`,
-            ],
+            llvmCovInv.command,
+            llvmCovInv.args,
             writableStream,
             writableStream,
             null,
