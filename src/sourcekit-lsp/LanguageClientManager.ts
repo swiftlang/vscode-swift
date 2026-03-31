@@ -28,14 +28,17 @@ import { Executable, LanguageClient, ServerOptions } from "vscode-languageclient
 
 import { FolderContext } from "../FolderContext";
 import configuration from "../configuration";
+import { SwiftLogger } from "../logging/SwiftLogger";
 import { SwiftOutputChannel } from "../logging/SwiftOutputChannel";
 import { ArgumentFilter, BuildFlags } from "../toolchain/BuildFlags";
+import { SwiftToolchain } from "../toolchain/toolchain";
 import { Disposable } from "../utilities/Disposable";
 import { swiftRuntimeEnv } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { LSPLogger, LSPOutputChannel } from "./LSPOutputChannel";
 import { lspClientOptions } from "./LanguageClientConfiguration";
 import { LanguageClientFactory } from "./LanguageClientFactory";
+import { WorkspaceFolderGate } from "./WorkspaceFolderGate";
 import { LSPActiveDocumentManager } from "./didChangeActiveDocument";
 import { SourceKitLogMessageNotification, SourceKitLogMessageParams } from "./extensions";
 import { DidChangeActiveDocumentNotification } from "./extensions/DidChangeActiveDocumentRequest";
@@ -87,26 +90,19 @@ export class LanguageClientManager implements Disposable {
      * null means in the process of restarting
      */
     private languageClient: LanguageClient | null | undefined;
-    private cancellationToken?: vscode.CancellationTokenSource;
+    private cancellationToken: vscode.CancellationTokenSource;
     private legacyInlayHints?: Disposable;
     private peekDocuments?: Disposable;
     private getReferenceDocument?: Disposable;
     private didChangeActiveDocument?: Disposable;
-    private restartedPromise?: Promise<void>;
-    private waitingOnRestartCount: number;
-    private clientReadyPromise?: Promise<void>;
-    public documentSymbolWatcher?: (
-        document: vscode.TextDocument,
-        symbols: vscode.DocumentSymbol[] | null | undefined
-    ) => void;
-    private subscriptions: Disposable[];
-    // used by single server support to keep a record of the project folders
-    // that are not at the root of their workspace
-    public subFolderWorkspaces: FolderContext[] = [];
-    private addedFolders: FolderContext[] = [];
+    private subscriptions: Disposable[] = [];
     private namedOutputChannels: Map<string, LSPOutputChannel> = new Map();
     private swiftVersion: Version;
     private activeDocumentManager = new LSPActiveDocumentManager();
+    private logger: SwiftLogger;
+    public addedFolders: FolderContext[] = [];
+
+    public readonly folderGate: WorkspaceFolderGate;
 
     /** Get the current state of the underlying LanguageClient */
     public get state(): State {
@@ -116,7 +112,24 @@ export class LanguageClientManager implements Disposable {
         return this.languageClient.state;
     }
 
-    constructor(
+    /**
+     * Creates a new LSP client.
+     * @param folderContext
+     * @param options
+     * @param languageClientFactory
+     * @returns LanguageClientManager with the LSP client already started and ready to use
+     */
+    public static async create(
+        folderContext: FolderContext,
+        options: LanguageClientManageOptions = {},
+        languageClientFactory: LanguageClientFactory = new LanguageClientFactory()
+    ) {
+        const manager = new LanguageClientManager(folderContext, options, languageClientFactory);
+        await manager.setupLanguageClient(folderContext, folderContext.toolchain);
+        return manager;
+    }
+
+    private constructor(
         public folderContext: FolderContext,
         private options: LanguageClientManageOptions = {},
         private languageClientFactory: LanguageClientFactory = new LanguageClientFactory()
@@ -125,8 +138,10 @@ export class LanguageClientManager implements Disposable {
             LanguageClientManager.indexingLogName,
             new LSPOutputChannel(LanguageClientManager.indexingLogName, false, true)
         );
+        this.logger = folderContext.logger;
         this.swiftVersion = folderContext.swiftVersion;
-        this.subscriptions = [];
+        this.cancellationToken = new vscode.CancellationTokenSource();
+        this.folderGate = new WorkspaceFolderGate(folderContext.folder);
 
         // on change config restart server
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(event => {
@@ -167,31 +182,24 @@ export class LanguageClientManager implements Disposable {
         });
 
         this.subscriptions.push(onChangeConfig);
-
-        this.waitingOnRestartCount = 0;
-        this.documentSymbolWatcher = undefined;
-        this.cancellationToken = new vscode.CancellationTokenSource();
     }
 
-    // The language client stops asnyhronously, so we need to wait for it to stop
-    // instead of doing it in dispose, which must be synchronous.
-    async stop(dispose: boolean = true) {
-        if (this.languageClient && this.languageClient.state === State.Running) {
-            await this.languageClient.stop(15000);
-            if (dispose) {
-                await this.languageClient.dispose();
-            }
+    /**
+     * Stops the LSP client if it is running.
+     * If dispose is true then also dispose the client after stopping, otherwise leave it in a stopped state.
+     * This is useful for when we want to restart the client, as we need to stop it first but we don't want to
+     * dispose it until the extension is deactivated.
+     * @param dispose Whether to dispose the client after stopping. Defaults to true.
+     */
+    public async stop(dispose: boolean = true) {
+        if (!this.languageClient || this.languageClient.state !== State.Running) {
+            return;
         }
-    }
 
-    dispose() {
-        this.cancellationToken?.cancel();
-        this.cancellationToken?.dispose();
-        this.legacyInlayHints?.dispose();
-        this.peekDocuments?.dispose();
-        this.getReferenceDocument?.dispose();
-        this.subscriptions.forEach(item => item.dispose());
-        this.namedOutputChannels.forEach(channel => channel.dispose());
+        await this.languageClient.stop(15000);
+        if (dispose) {
+            await this.languageClient.dispose();
+        }
     }
 
     /**
@@ -201,104 +209,83 @@ export class LanguageClientManager implements Disposable {
      * @param process process using language client
      * @returns result of process
      */
-    async useLanguageClient<Return>(process: {
+    public async useLanguageClient<Return>(process: {
         (client: LanguageClient, cancellationToken: vscode.CancellationToken): Promise<Return>;
     }): Promise<Return> {
-        if (!this.languageClient || !this.clientReadyPromise) {
+        if (!this.languageClient) {
             throw new Error(LanguageClientError.LanguageClientUnavailable);
         }
-        return this.clientReadyPromise.then(
-            () => {
-                if (!this.languageClient || !this.cancellationToken) {
-                    throw new Error(LanguageClientError.LanguageClientUnavailable);
-                }
-                return process(this.languageClient, this.cancellationToken.token);
-            },
-            reason => reason
-        );
+        return process(this.languageClient, this.cancellationToken.token);
     }
 
-    /** Restart language client */
-    async restart() {
-        // force restart of language client
-        await this.setLanguageClientFolder(this.folderContext);
+    /**
+     * Restart the language client.
+     */
+    public async restart() {
+        await this.restartLanguageClient(this.folderContext, this.folderContext.toolchain);
     }
 
-    get languageClientOutputChannel(): SwiftOutputChannel | undefined {
-        return this.languageClient?.outputChannel as SwiftOutputChannel | undefined;
+    /**
+     * Returns the path to the log file for the output channel of the language client, if it exists.
+     */
+    public get languageClientOutputChannelLogFilePath(): string | undefined {
+        return this.languageClientOutputChannel?.logFilePath;
     }
 
-    async addFolder(folderContext: FolderContext) {
+    /**
+     * Add a sub-folder to the language client.
+     * For multi-root workspaces the root folder may contain several swift packages.
+     * Each of these swift package folders should be added via addFolder to ensure they are
+     * indexed by the language server.
+     * @param folderContext The folder to add
+     */
+    public async addFolder(folderContext: FolderContext) {
         if (!folderContext.isRootFolder) {
             await this.useLanguageClient(async client => {
-                this.subFolderWorkspaces.push(folderContext);
-
                 const uri = folderContext.folder;
                 const workspaceFolder = {
                     uri: client.code2ProtocolConverter.asUri(uri),
                     name: FolderContext.uriName(uri),
                 };
+                this.logger.info(`Adding folder ${uri.fsPath} to SourceKit-LSP workspace`);
                 await client.sendNotification(DidChangeWorkspaceFoldersNotification.type, {
                     event: { added: [workspaceFolder], removed: [] },
                 });
+                this.folderGate.folderAdded(folderContext.folder);
             });
         }
         this.addedFolders.push(folderContext);
     }
 
-    async removeFolder(folderContext: FolderContext) {
+    /**
+     * Remove a sub-folder from the language client.
+     * For multi-root workspaces the root folder may contain several swift packages.
+     * Each of these swift package folders should be removed via removeFolder to ensure they are
+     * no longer indexed by the language server.
+     * @param folderContext The folder to remove
+     */
+    public async removeFolder(folderContext: FolderContext) {
         if (!folderContext.isRootFolder) {
             await this.useLanguageClient(async client => {
                 const uri = folderContext.folder;
-                this.subFolderWorkspaces = this.subFolderWorkspaces.filter(
-                    item => item.folder !== uri
-                );
-
                 const workspaceFolder = {
                     uri: client.code2ProtocolConverter.asUri(uri),
                     name: FolderContext.uriName(uri),
                 };
+
+                this.logger.info(`Removing folder ${uri.fsPath} from SourceKit-LSP workspace`);
+
                 await client.sendNotification(DidChangeWorkspaceFoldersNotification.type, {
                     event: { added: [], removed: [workspaceFolder] },
                 });
+                this.folderGate.folderRemoved(folderContext.folder);
             });
         }
         this.addedFolders = this.addedFolders.filter(item => item.folder !== folderContext.folder);
     }
 
-    private async addSubFolderWorkspaces(client: LanguageClient) {
-        for (const folderContext of this.subFolderWorkspaces) {
-            const workspaceFolder = {
-                uri: client.code2ProtocolConverter.asUri(folderContext.folder),
-                name: FolderContext.uriName(folderContext.folder),
-            };
-            await client.sendNotification(DidChangeWorkspaceFoldersNotification.type, {
-                event: { added: [workspaceFolder], removed: [] },
-            });
-        }
-    }
-
     /**
-     * Set folder for LSP server.
-     * If server is already running then check if the workspace folder is the same if
-     * it isn't then restart the server using the new workspace folder.
-     */
-    async setLanguageClientFolder(folder: FolderContext) {
-        if (this.languageClient === undefined) {
-            this.restartedPromise = this.setupLanguageClient(folder).catch(reason => {
-                this.folderContext.workspaceContext.logger.error(
-                    Error("Error starting SourceKit-LSP in setLanguageClientFolder", {
-                        cause: reason,
-                    })
-                );
-            });
-        } else {
-            await this.restartLanguageClient(folder);
-        }
-    }
-
-    /**
-     * Wait for the LSP to indicate it is done indexing
+     * Wait for the LSP to indicate it is done indexing.
      */
     async waitForIndex(): Promise<void> {
         const requestType = this.swiftVersion.isGreaterThanOrEqual(new Version(6, 2, 0))
@@ -316,29 +303,30 @@ export class LanguageClientManager implements Disposable {
         );
     }
 
-    /**
-     * Restart language client using supplied workspace folder
-     * @param workspaceFolder workspace folder to send to server
-     * @returns when done
-     */
-    private async restartLanguageClient(workspaceFolder: FolderContext) {
-        // count number of setLanguageClientFolder calls waiting on startedPromise
-        this.waitingOnRestartCount += 1;
-        // if in the middle of a restart then we have to wait until that
-        // restart has finished
-        if (this.restartedPromise) {
-            try {
-                await this.restartedPromise;
-            } catch (error) {
-                //ignore error
-            }
-        }
-        this.waitingOnRestartCount -= 1;
-        // only continue if no more calls are waiting on startedPromise
-        if (this.waitingOnRestartCount !== 0) {
-            return;
+    public dispose() {
+        if (this.languageClient && this.languageClient.state === State.Running) {
+            throw new Error(
+                "LanguageClient is still running. Please call stop() and wait for it to finish before disposing."
+            );
         }
 
+        this.cancellationToken?.cancel();
+        this.cancellationToken?.dispose();
+        this.folderGate.dispose();
+        this.legacyInlayHints?.dispose();
+        this.peekDocuments?.dispose();
+        this.getReferenceDocument?.dispose();
+        this.subscriptions.forEach(item => item.dispose());
+        this.namedOutputChannels.forEach(channel => channel.dispose());
+    }
+
+    /**
+     * Restart language client using supplied workspace folder
+     * @param workspaceFolder workspace folder to use for the new language client
+     * @param toolchain toolchain to get new language client for
+     * @returns when done
+     */
+    private async restartLanguageClient(folderContext: FolderContext, toolchain: SwiftToolchain) {
         const client = this.languageClient;
         // language client is set to null while it is in the process of restarting
         this.languageClient = null;
@@ -351,53 +339,70 @@ export class LanguageClientManager implements Disposable {
         if (client) {
             this.cancellationToken?.cancel();
             this.cancellationToken?.dispose();
-            this.restartedPromise = client
-                .stop()
-                .then(async () => {
-                    // Dispose the old client's output channel before creating the
-                    // new client. The server process may still write to stderr after
-                    // stop() resolves. Disposing here sets isDisposed on the logger,
-                    // preventing late writes from entering the winston pipeline and
-                    // reaching a destroyed transport.
-                    client.outputChannel.dispose();
 
-                    await this.setupLanguageClient(workspaceFolder);
-                })
-                .catch(async reason => {
-                    client.outputChannel.dispose();
-                    this.folderContext.workspaceContext.logger.error(
-                        `Error starting SourceKit-LSP in restartLanguageClient: ${reason}`
-                    );
-                    // error message matches code here https://github.com/microsoft/vscode-languageserver-node/blob/2041784436fed53f4e77267a49396bca22a7aacf/client/src/common/client.ts#L1409C1-L1409C54
-                    if (reason.message === "Stopping the server timed out") {
-                        try {
-                            await this.setupLanguageClient(workspaceFolder);
-                        } catch (reason) {
-                            this.folderContext.workspaceContext.logger.error(
-                                `Error starting SourceKit-LSP after server timeout in restartLanguageClient: ${reason}`
-                            );
-                        }
+            try {
+                await client.stop();
+
+                // Dispose the old client's output channel before creating the
+                // new client. The server process may still write to stderr after
+                // stop() resolves. Disposing here sets isDisposed on the logger,
+                // preventing late writes from entering the winston pipeline and
+                // reaching a destroyed transport.
+                client.outputChannel.dispose();
+
+                await this.setupLanguageClient(folderContext, toolchain);
+            } catch (reason: Error | unknown) {
+                client.outputChannel.dispose();
+                this.logger.error(
+                    `Error starting SourceKit-LSP in restartLanguageClient: ${reason}`
+                );
+                // error message matches code here https://github.com/microsoft/vscode-languageserver-node/blob/2041784436fed53f4e77267a49396bca22a7aacf/client/src/common/client.ts#L1409C1-L1409C54
+                if ((reason as Error).message === "Stopping the server timed out") {
+                    try {
+                        await this.setupLanguageClient(folderContext, toolchain);
+                    } catch (reason) {
+                        this.logger.error(
+                            `Error starting SourceKit-LSP after server timeout in restartLanguageClient: ${reason}`
+                        );
                     }
-                    this.folderContext.logger.error(reason);
-                });
-            await this.restartedPromise;
+                }
+                this.logger.error(reason);
+            }
         }
     }
 
-    private async setupLanguageClient(folder: FolderContext) {
+    private async setupLanguageClient(folderContext: FolderContext, toolchain: SwiftToolchain) {
         if (configuration.lsp.disable) {
             this.languageClient = undefined;
             return;
         }
-        const { client, errorHandler } = this.createLSPClient(folder);
-        return this.startClient(client, errorHandler);
+
+        try {
+            const { client, errorHandler } = this.createLSPClient(
+                {
+                    uri: folderContext.folder,
+                    name: FolderContext.uriName(folderContext.folder),
+                    index: 0,
+                },
+                toolchain
+            );
+            return await this.startClient(client, errorHandler);
+        } catch (error) {
+            this.logger.error(
+                Error("Error starting SourceKit-LSP in initializeLanguageClient", {
+                    cause: error,
+                })
+            );
+        }
     }
 
-    private createLSPClient(folder: FolderContext): {
+    private createLSPClient(
+        workspaceFolder: vscode.WorkspaceFolder | undefined,
+        toolchain: SwiftToolchain
+    ): {
         client: LanguageClient;
         errorHandler: SourceKitLSPErrorHandler;
     } {
-        const toolchain = folder.toolchain;
         const toolchainSourceKitLSP = toolchain.getToolchainExecutable("sourcekit-lsp");
         const lspConfig = configuration.lsp;
         const serverPathConfig = lspConfig.serverPath;
@@ -445,9 +450,10 @@ export class LanguageClientManager implements Disposable {
         const clientOptions: LanguageClientOptions = lspClientOptions(
             this.swiftVersion,
             this.folderContext.workspaceContext,
-            undefined,
+            workspaceFolder,
             this.activeDocumentManager,
             errorHandler,
+            this.folderGate,
             (document, symbols) => {
                 const documentFolderContext = [this.folderContext, ...this.addedFolders].find(
                     folderContext => document.uri.fsPath.startsWith(folderContext.folder.fsPath)
@@ -485,18 +491,23 @@ export class LanguageClientManager implements Disposable {
         };
     }
 
-    private startClient(
+    private async startClient(
         client: LanguageClient,
         errorHandler: SourceKitLSPErrorHandler
     ): Promise<void> {
+        // Monitors the client's state and waits for it to enter the Running state.
+        // If the client fails to start and enters the Stopped state, the promise is rejected.
         const runningPromise = new Promise<void>((res, rej) => {
+            if (client.state === State.Running) {
+                res();
+                return;
+            }
             const disposable = client.onDidChangeState(async e => {
                 // if state is now running add in any sub-folder workspaces that
                 // we have cached. If this is the first time we are starting then
                 // we won't have any sub folder workspaces, but if the server crashed
                 // or we forced a restart then we need to do this
                 if (e.oldState === State.Starting && e.newState === State.Running) {
-                    await this.addSubFolderWorkspaces(client);
                     disposable.dispose();
                     res();
                 } else if (e.oldState === State.Starting && e.newState === State.Stopped) {
@@ -505,65 +516,62 @@ export class LanguageClientManager implements Disposable {
                 }
             });
         });
-        if (client.clientOptions.workspaceFolder) {
-            this.folderContext.logger.info(
-                `SourceKit-LSP setup for ${FolderContext.uriName(
-                    client.clientOptions.workspaceFolder.uri
-                )}`
-            );
-        } else {
-            this.folderContext.logger.info(`SourceKit-LSP setup`);
-        }
+
+        this.logger.info(
+            client.clientOptions.workspaceFolder
+                ? `SourceKit-LSP setup for ${FolderContext.uriName(
+                      client.clientOptions.workspaceFolder.uri
+                  )}`
+                : `SourceKit-LSP setup`
+        );
 
         client.onNotification(SourceKitLogMessageNotification.type, params => {
             this.logMessage(client, params as SourceKitLogMessageParams);
         });
 
-        // Create and save the client ready promise
-        this.clientReadyPromise = (async () => {
+        await client.start();
+        await runningPromise;
+
+        try {
+            // start client
+
+            // Now that we've started up correctly, start the error handler to auto-restart
+            // if sourcekit-lsp crashes during normal operation.
+            errorHandler.enable();
+
+            this.peekDocuments = activatePeekDocuments(client);
+            this.getReferenceDocument = activateGetReferenceDocument(client);
+            this.subscriptions.push(this.getReferenceDocument);
             try {
-                // start client
-                await client.start();
-                await runningPromise;
-
-                // Now that we've started up correctly, start the error handler to auto-restart
-                // if sourcekit-lsp crashes during normal operation.
-                errorHandler.enable();
-
-                this.peekDocuments = activatePeekDocuments(client);
-                this.getReferenceDocument = activateGetReferenceDocument(client);
-                this.subscriptions.push(this.getReferenceDocument);
-                try {
-                    if (
-                        checkExperimentalCapability(
-                            client,
-                            DidChangeActiveDocumentNotification.method,
-                            1
-                        )
-                    ) {
-                        this.didChangeActiveDocument =
-                            this.activeDocumentManager.activateDidChangeActiveDocument(client);
-                        this.subscriptions.push(this.didChangeActiveDocument);
-                    }
-                } catch {
-                    // do nothing, the experimental capability is not supported
+                if (
+                    checkExperimentalCapability(
+                        client,
+                        DidChangeActiveDocumentNotification.method,
+                        1
+                    )
+                ) {
+                    this.didChangeActiveDocument =
+                        this.activeDocumentManager.activateDidChangeActiveDocument(client);
+                    this.subscriptions.push(this.didChangeActiveDocument);
                 }
-            } catch (reason) {
-                this.folderContext.logger.error(
-                    `Error starting SourceKit-LSP in startClient: ${reason}`
-                );
-                if (this.languageClient?.state === State.Running) {
-                    await this.languageClient?.stop();
-                }
-                this.languageClient = undefined;
-                throw reason;
+            } catch {
+                // do nothing, the experimental capability is not supported
             }
-        })();
+        } catch (reason) {
+            this.logger.error(`Error starting SourceKit-LSP in startClient: ${reason}`);
+            if (this.languageClient?.state === State.Running) {
+                await this.languageClient?.stop();
+            }
+            this.languageClient = undefined;
+            throw reason;
+        }
 
         this.languageClient = client;
         this.cancellationToken = new vscode.CancellationTokenSource();
+    }
 
-        return this.clientReadyPromise;
+    private get languageClientOutputChannel(): SwiftOutputChannel | undefined {
+        return this.languageClient?.outputChannel as SwiftOutputChannel | undefined;
     }
 
     private logMessage(client: LanguageClient, params: SourceKitLogMessageParams) {

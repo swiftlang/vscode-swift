@@ -119,9 +119,7 @@ tag("medium").suite("Extension Activation/Deactivation Tests", () => {
             assert(folder);
 
             const languageClient = workspaceContext.languageClientManager.get(folder);
-            const lspWorkspaces = languageClient.subFolderWorkspaces.map(
-                ({ folder }) => folder.fsPath
-            );
+            const lspWorkspaces = languageClient.addedFolders.map(({ folder }) => folder.fsPath);
             assertContains(lspWorkspaces, testAssetUri("cmake").fsPath);
         });
 
@@ -130,9 +128,7 @@ tag("medium").suite("Extension Activation/Deactivation Tests", () => {
             assert(folder);
 
             const languageClient = workspaceContext.languageClientManager.get(folder);
-            const lspWorkspaces = languageClient.subFolderWorkspaces.map(
-                ({ folder }) => folder.fsPath
-            );
+            const lspWorkspaces = languageClient.addedFolders.map(({ folder }) => folder.fsPath);
             assertContains(lspWorkspaces, testAssetUri("cmake-compile-flags").fsPath);
         });
     });

@@ -30,6 +30,8 @@ import { LanguageClientManager } from "./LanguageClientManager";
 export class LanguageClientToolchainCoordinator implements Disposable {
     private subscriptions: Disposable[] = [];
     private clients: Map<string, LanguageClientManager> = new Map();
+    private clientCreationPromises: Map<string, Promise<LanguageClientManager>> = new Map();
+    public readonly initialized: Promise<void>;
 
     public constructor(
         workspaceContext: WorkspaceContext,
@@ -57,9 +59,10 @@ export class LanguageClientToolchainCoordinator implements Disposable {
         // Add any folders already in the workspace context at the time of construction.
         // This is mainly for testing purposes, as this class should be created immediately
         // when the extension is activated and the workspace context is first created.
-        for (const folder of workspaceContext.folders) {
-            void this.handleEvent(folder, FolderOperation.add, languageClientFactory);
-        }
+        const initPromises = workspaceContext.folders.map(folder =>
+            this.handleEvent(folder, FolderOperation.add, languageClientFactory)
+        );
+        this.initialized = Promise.all(initPromises).then(() => {});
     }
 
     private async handleEvent(
@@ -76,12 +79,18 @@ export class LanguageClientToolchainCoordinator implements Disposable {
 
         switch (operation) {
             case FolderOperation.add: {
-                const client = await this.create(folder, languageClientFactory);
+                const client = await this.getClientForFolderSwiftVersion(
+                    folder,
+                    languageClientFactory
+                );
                 await client.addFolder(folder);
                 break;
             }
             case FolderOperation.remove: {
-                const client = await this.create(folder, languageClientFactory);
+                const client = await this.getClientForFolderSwiftVersion(
+                    folder,
+                    languageClientFactory
+                );
                 await client.removeFolder(folder);
                 break;
             }
@@ -121,35 +130,38 @@ export class LanguageClientToolchainCoordinator implements Disposable {
             await client.stop();
         }
         this.clients.clear();
+        this.clientCreationPromises.clear();
     }
 
-    private async create(
-        folder: FolderContext,
-        languageClientFactory: LanguageClientFactory
-    ): Promise<LanguageClientManager> {
-        const client = this.getClientForFolderSwiftVersion(folder, languageClientFactory);
-
-        if (!folder.isRootFolder && !client.subFolderWorkspaces.includes(folder)) {
-            client.subFolderWorkspaces.push(folder);
-        }
-
-        await client.setLanguageClientFolder(folder);
-
-        return client;
-    }
-
-    private getClientForFolderSwiftVersion(
+    private async getClientForFolderSwiftVersion(
         folder: FolderContext,
         factory: LanguageClientFactory
-    ): LanguageClientManager {
+    ): Promise<LanguageClientManager> {
         const version = folder.swiftVersion.toString();
+
+        // Check if client already exists
         const existing = this.clients.get(version);
         if (existing) {
             return existing;
         }
-        const client = new LanguageClientManager(folder, this.options, factory);
-        this.clients.set(version, client);
-        return client;
+
+        // Check if client creation is already in progress
+        const existingPromise = this.clientCreationPromises.get(version);
+        if (existingPromise) {
+            return existingPromise;
+        }
+
+        // Create new client and track the promise to prevent race conditions
+        const clientPromise = LanguageClientManager.create(folder, this.options, factory);
+        this.clientCreationPromises.set(version, clientPromise);
+
+        try {
+            const client = await clientPromise;
+            this.clients.set(version, client);
+            return client;
+        } finally {
+            this.clientCreationPromises.delete(version);
+        }
     }
 
     dispose() {

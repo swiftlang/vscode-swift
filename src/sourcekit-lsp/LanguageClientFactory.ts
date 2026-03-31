@@ -11,7 +11,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import { LanguageClient, LanguageClientOptions, ServerOptions } from "vscode-languageclient/node";
+import {
+    InitializeParams,
+    LanguageClient,
+    LanguageClientOptions,
+    ServerOptions,
+} from "vscode-languageclient/node";
 
 /**
  * Used to create a {@link LanguageClient} for use in VS Code.
@@ -35,6 +40,12 @@ export class LanguageClientFactory {
         serverOptions: ServerOptions,
         clientOptions: LanguageClientOptions
     ): LanguageClient {
-        return new LanguageClient(id, name, serverOptions, clientOptions);
+        return new SourcekitLSPLanguageClient(id, name, serverOptions, clientOptions);
+    }
+}
+
+class SourcekitLSPLanguageClient extends LanguageClient {
+    protected fillInitializeParams(params: InitializeParams): void {
+        super.fillInitializeParams(params);
     }
 }
