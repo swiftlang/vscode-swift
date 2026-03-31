@@ -360,7 +360,7 @@ function diagnosticLogs(): string {
 
 function sourceKitLogFile(folder: FolderContext) {
     const languageClient = folder.workspaceContext.languageClientManager.get(folder);
-    return languageClient.languageClientOutputChannel?.logFilePath;
+    return languageClient.languageClientOutputChannelLogFilePath;
 }
 
 async function sourcekitDiagnose(ctx: FolderContext, dir: string) {

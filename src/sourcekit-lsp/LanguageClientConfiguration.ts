@@ -26,6 +26,7 @@ import { promptForDiagnostics } from "../commands/captureDiagnostics";
 import configuration from "../configuration";
 import { Version } from "../utilities/version";
 import { SourceKitLSPErrorHandler } from "./LanguageClientManager";
+import { WorkspaceFolderGate } from "./WorkspaceFolderGate";
 import { LSPActiveDocumentManager } from "./didChangeActiveDocument";
 import { uriConverters } from "./uriConverters";
 
@@ -212,6 +213,7 @@ export function lspClientOptions(
     workspaceFolder: vscode.WorkspaceFolder | undefined,
     activeDocumentManager: LSPActiveDocumentManager,
     errorHandler: SourceKitLSPErrorHandler,
+    folderGate: WorkspaceFolderGate,
     documentSymbolWatcher?: (
         document: vscode.TextDocument,
         symbols: vscode.DocumentSymbol[]
@@ -228,9 +230,16 @@ export function lspClientOptions(
             { outputChannel: true, logConsole: false }
         ),
         middleware: {
-            didOpen: activeDocumentManager.didOpen.bind(activeDocumentManager),
-            didClose: activeDocumentManager.didClose.bind(activeDocumentManager),
+            didOpen: async (document, next) => {
+                await folderGate.waitForFolder(document.uri);
+                await activeDocumentManager.didOpen(document, next);
+            },
+            didClose: async (document, next) => {
+                await folderGate.waitForFolder(document.uri);
+                await activeDocumentManager.didClose(document, next);
+            },
             provideCompletionItem: async (document, position, context, token, next) => {
+                await folderGate.waitForFolder(document.uri, undefined, token);
                 const result = await next(document, position, context, token);
 
                 if (!result) {
@@ -247,6 +256,7 @@ export function lspClientOptions(
                 };
             },
             provideCodeLenses: async (document, token, next) => {
+                await folderGate.waitForFolder(document.uri, undefined, token);
                 const result = await next(document, token);
                 if (documentCodeLensWatcher && result) {
                     documentCodeLensWatcher(document, result);
@@ -267,6 +277,7 @@ export function lspClientOptions(
                 });
             },
             provideDocumentSymbols: async (document, token, next) => {
+                await folderGate.waitForFolder(document.uri, undefined, token);
                 const result = await next(document, token);
                 const documentSymbols = result as vscode.DocumentSymbol[];
                 if (documentSymbolWatcher && documentSymbols) {
@@ -275,6 +286,7 @@ export function lspClientOptions(
                 return result;
             },
             provideDefinition: async (document, position, token, next) => {
+                await folderGate.waitForFolder(document.uri, undefined, token);
                 const result = await next(document, position, token);
                 const definitions = result as vscode.Location[];
                 if (
@@ -290,6 +302,7 @@ export function lspClientOptions(
             // temporarily remove text edit from Inlay hints while SourceKit-LSP
             // returns invalid replacement text
             provideInlayHints: async (document, position, token, next) => {
+                await folderGate.waitForFolder(document.uri, undefined, token);
                 const result = await next(document, position, token);
                 // remove textEdits for swift version earlier than 5.10 as it sometimes
                 // generated invalid textEdits
@@ -298,14 +311,71 @@ export function lspClientOptions(
                 }
                 return result;
             },
+            provideCodeActions: async (document, range, context, token, next) => {
+                await folderGate.waitForFolder(document.uri, undefined, token);
+                return next(document, range, context, token);
+            },
+            provideDocumentColors: async (document, token, next) => {
+                await folderGate.waitForFolder(document.uri, undefined, token);
+                return next(document, token);
+            },
+            provideDocumentSemanticTokens: async (document, token, next) => {
+                await folderGate.waitForFolder(document.uri, undefined, token);
+                return next(document, token);
+            },
+            provideDocumentRangeSemanticTokens: async (document, range, token, next) => {
+                await folderGate.waitForFolder(document.uri, undefined, token);
+                return next(document, range, token);
+            },
+            provideFoldingRanges: async (document, context, token, next) => {
+                await folderGate.waitForFolder(document.uri, undefined, token);
+                return next(document, context, token);
+            },
+            provideHover: async (document, position, token, next) => {
+                await folderGate.waitForFolder(document.uri, undefined, token);
+                return next(document, position, token);
+            },
+            provideReferences: async (document, position, options, token, next) => {
+                await folderGate.waitForFolder(document.uri, undefined, token);
+                return next(document, position, options, token);
+            },
+            provideDocumentHighlights: async (document, position, token, next) => {
+                await folderGate.waitForFolder(document.uri, undefined, token);
+                return next(document, position, token);
+            },
+            provideSignatureHelp: async (document, position, context, token, next) => {
+                await folderGate.waitForFolder(document.uri, undefined, token);
+                return next(document, position, context, token);
+            },
+            provideTypeDefinition: async (document, position, token, next) => {
+                await folderGate.waitForFolder(document.uri, undefined, token);
+                return next(document, position, token);
+            },
+            provideImplementation: async (document, position, token, next) => {
+                await folderGate.waitForFolder(document.uri, undefined, token);
+                return next(document, position, token);
+            },
+            provideDeclaration: async (document, position, token, next) => {
+                await folderGate.waitForFolder(document.uri, undefined, token);
+                return next(document, position, token);
+            },
+            provideRenameEdits: async (document, position, newName, token, next) => {
+                await folderGate.waitForFolder(document.uri, undefined, token);
+                return next(document, position, newName, token);
+            },
+            prepareRename: async (document, position, token, next) => {
+                await folderGate.waitForFolder(document.uri, undefined, token);
+                return next(document, position, token);
+            },
             provideDiagnostics: async (uri, previousResultId, token, next) => {
+                const documentUri = (uri as vscode.TextDocument).uri ?? uri;
+                await folderGate.waitForFolder(documentUri, undefined, token);
                 const result = await next(uri, previousResultId, token);
                 if (result?.kind === vsdiag.DocumentDiagnosticReportKind.unChanged) {
                     return undefined;
                 }
-                const document = uri as vscode.TextDocument;
                 workspaceContext.diagnostics.handleDiagnostics(
-                    document.uri ?? uri,
+                    documentUri,
                     DiagnosticsManager.isSourcekit,
                     result?.items ?? []
                 );
