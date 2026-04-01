@@ -11,9 +11,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import { randomUUID } from "crypto";
 import * as vscode from "vscode";
 
 import { WorkspaceContext } from "../WorkspaceContext";
+import { SwiftExecution } from "./SwiftExecution";
 
 /** Manage task execution and completion handlers */
 export class TaskManager implements vscode.Disposable {
@@ -117,7 +119,7 @@ export class TaskManager implements vscode.Disposable {
                 resolve();
             };
         });
-        vscode.tasks.executeTask(task).then(
+        vscode.tasks.executeTask(makeTaskUnique(task)).then(
             execution => {
                 if (token) {
                     disposables.push(
@@ -171,3 +173,47 @@ export class TaskManager implements vscode.Disposable {
 /** Workspace Folder observer function */
 type TaskStartObserver = (event: vscode.TaskStartEvent) => unknown;
 type TaskEndObserver = (execution: vscode.TaskProcessEndEvent) => unknown;
+
+/**
+ * Ensures that this task definition is unique in the eyes of VS Code by appending a random UUID to the
+ * task definition's argument list.
+ *
+ * There's an intermittent bug in VS Code that happens when running multiple tasks simulatneously. So far,
+ * I've been able to reproduce it when two tasks with the same arguments list are run at the same time. If
+ * the timing is just right then VS Code will never launch the process for one of the tasks and it will spin
+ * indefinitely. Adding a UUID to the arguments list resolves the issue.
+ *
+ * This tends to happen with multi-root workspaces where we run "swift package describe" for each open
+ * workspace.
+ *
+ * @param task the task to modify
+ * @returns a new task that VS Code should see as unique to all other running tasks
+ */
+function makeTaskUnique(task: vscode.Task): vscode.Task {
+    // Only modify tasks that we have full control over. The only reason this workaround works is because
+    // the SwiftExecution handles process spawning and it has the real arguments list. Otherwise, we'd be
+    // sending the spawned process a UUID which would most likely cause it to fail.
+    if (!(task.execution instanceof SwiftExecution)) {
+        return task;
+    }
+    // Clone the task definition and return a completely new task so that other parts of the code base
+    // don't have to deal with the argument list being modified unexpectedly.
+    const clonedDefinition = structuredClone(task.definition);
+    if (!clonedDefinition.args) {
+        clonedDefinition.args = [];
+    }
+    clonedDefinition.args.push(randomUUID());
+    if (!task.scope) {
+        throw Error(
+            `Attempted to run a deprecated task without a scope: ${JSON.stringify(task.definition, undefined, 2)}`
+        );
+    }
+    return new vscode.Task(
+        clonedDefinition,
+        task.scope,
+        task.name,
+        task.source,
+        task.execution,
+        task.problemMatchers
+    );
+}
