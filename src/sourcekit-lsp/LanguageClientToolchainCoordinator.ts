@@ -15,6 +15,7 @@ import * as vscode from "vscode";
 
 import { FolderContext } from "../FolderContext";
 import { FolderOperation, WorkspaceContext } from "../WorkspaceContext";
+import { SwiftLogger } from "../logging/SwiftLogger";
 import { isExcluded } from "../utilities/filesystem";
 import { LanguageClientFactory } from "./LanguageClientFactory";
 import { LanguageClientManager } from "./LanguageClientManager";
@@ -31,6 +32,7 @@ export class LanguageClientToolchainCoordinator implements vscode.Disposable {
     private clients: Map<string, LanguageClientManager> = new Map();
     private clientCreationPromises: Map<string, Promise<LanguageClientManager>> = new Map();
     public readonly initialized: Promise<void>;
+    private readonly logger: SwiftLogger;
 
     public constructor(
         workspaceContext: WorkspaceContext,
@@ -48,6 +50,7 @@ export class LanguageClientToolchainCoordinator implements vscode.Disposable {
         } = {},
         languageClientFactory: LanguageClientFactory = new LanguageClientFactory() // used for testing only
     ) {
+        this.logger = workspaceContext.logger;
         this.subscriptions.push(
             // stop and start server for each folder based on which file I am looking at
             workspaceContext.onDidChangeFolders(async ({ folder, operation }) => {
@@ -78,6 +81,9 @@ export class LanguageClientToolchainCoordinator implements vscode.Disposable {
 
         switch (operation) {
             case FolderOperation.add: {
+                this.logger.info(
+                    `Coordinator: Adding folder ${FolderContext.uriName(folder.folder)} (Swift ${folder.swiftVersion})`
+                );
                 const client = await this.getClientForFolderSwiftVersion(
                     folder,
                     languageClientFactory
@@ -86,6 +92,9 @@ export class LanguageClientToolchainCoordinator implements vscode.Disposable {
                 break;
             }
             case FolderOperation.remove: {
+                this.logger.info(
+                    `Coordinator: Removing folder ${FolderContext.uriName(folder.folder)} (Swift ${folder.swiftVersion})`
+                );
                 const client = await this.getClientForFolderSwiftVersion(
                     folder,
                     languageClientFactory
@@ -125,6 +134,7 @@ export class LanguageClientToolchainCoordinator implements vscode.Disposable {
      * This should be called when the extension is deactivated.
      */
     public async stop() {
+        this.logger.info(`Coordinator: Stopping ${this.clients.size} SourceKit-LSP client(s)`);
         for (const client of this.clients.values()) {
             await client.stop();
         }
@@ -141,16 +151,23 @@ export class LanguageClientToolchainCoordinator implements vscode.Disposable {
         // Check if client already exists
         const existing = this.clients.get(version);
         if (existing) {
+            this.logger.info(
+                `Coordinator: Reusing existing SourceKit-LSP client for Swift ${version}`
+            );
             return existing;
         }
 
         // Check if client creation is already in progress
         const existingPromise = this.clientCreationPromises.get(version);
         if (existingPromise) {
+            this.logger.info(
+                `Coordinator: Waiting for in-progress SourceKit-LSP client creation for Swift ${version}`
+            );
             return existingPromise;
         }
 
         // Create new client and track the promise to prevent race conditions
+        this.logger.info(`Coordinator: Creating new SourceKit-LSP client for Swift ${version}`);
         const clientPromise = LanguageClientManager.create(folder, this.options, factory);
         this.clientCreationPromises.set(version, clientPromise);
 
