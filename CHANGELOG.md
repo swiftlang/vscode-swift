@@ -10,6 +10,7 @@
 
 - Refresh tests in the test explorer when background indexing completes ([#2164](https://github.com/swiftlang/vscode-swift/pull/2164))
 - Fix infinite loop on startup when swift-package-manager has a lock on the package being opened ([#2174](https://github.com/swiftlang/vscode-swift/pull/2174))
+- Loading large projects will no longer show the extension as unresponsive ([#1932](https://github.com/swiftlang/vscode-swift/pull/1932))
 
 ## 2.16.2 - 2026-03-17
 
