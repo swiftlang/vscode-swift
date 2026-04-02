@@ -69,7 +69,12 @@ export class LSPTestDiscovery {
             // workspace/tests method, and is at least version 2.
             if (checkExperimentalCapability(client, WorkspaceTestsRequest.method, 2)) {
                 const tests = await client.sendRequest(WorkspaceTestsRequest.type, token);
-                return await this.transformToTestClass(client, swiftPackage, tests);
+                const transformedTests = await this.transformToTestClass(
+                    client,
+                    swiftPackage,
+                    tests
+                );
+                return transformedTests;
             } else {
                 throw new Error(`${WorkspaceTestsRequest.method} requests not supported`);
             }
@@ -85,8 +90,12 @@ export class LSPTestDiscovery {
         swiftPackage: SwiftPackage,
         input: LSPTestItem[]
     ): Promise<TestDiscovery.TestClass[]> {
+        // Due to a bug in sourcekit-lsp (fixed in https://github.com/swiftlang/sourcekit-lsp/pull/2575)
+        // when we get tests from the LSP via semantic discovery instead of syntatic discovery
+        // we can get duplicate test items with the same ID.
+        const deduplicated = this.deduplicateTestItems(input);
         return Promise.all(
-            input.map(async item => {
+            deduplicated.map(async item => {
                 const location = client.protocol2CodeConverter.asLocation(item.location);
                 return {
                     ...item,
@@ -96,6 +105,25 @@ export class LSPTestDiscovery {
                 };
             })
         );
+    }
+
+    private deduplicateTestItems(items: readonly LSPTestItem[]): LSPTestItem[] {
+        const idCounts = new Map<string, number>();
+        for (const item of items) {
+            idCounts.set(item.id, (idCounts.get(item.id) ?? 0) + 1);
+        }
+
+        const seen = new Set<string>();
+        return items.reduce<LSPTestItem[]>((acc, item) => {
+            if (seen.has(item.id)) {
+                return acc;
+            }
+            seen.add(item.id);
+
+            const isDuplicate = (idCounts.get(item.id) ?? 0) > 1;
+            const id = isDuplicate ? item.id.replace(/\/[^/]+\.\w+:\d+:\d+$/, "") : item.id;
+            return [...acc, { ...item, id }];
+        }, []);
     }
 
     /**

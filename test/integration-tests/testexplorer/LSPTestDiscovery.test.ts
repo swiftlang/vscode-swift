@@ -231,6 +231,143 @@ suite("LSPTestDiscovery Suite", () => {
             assertEqual(testClasses, expected);
         });
 
+        test("deduplicates items with identical IDs", async () => {
+            const location = Location.create(
+                file.fsPath,
+                Range.create(Position.create(1, 0), Position.create(2, 0))
+            );
+            items = [
+                {
+                    id: "topLevelTest()/File.swift:12:3",
+                    label: "topLevelTest()",
+                    disabled: false,
+                    style: "swift-testing",
+                    tags: [],
+                    location,
+                    children: [],
+                },
+                {
+                    id: "topLevelTest()/File.swift:12:3",
+                    label: "topLevelTest()",
+                    disabled: false,
+                    style: "swift-testing",
+                    tags: [],
+                    location,
+                    children: [],
+                },
+            ];
+            expected = [
+                {
+                    id: "topLevelTest()",
+                    label: "topLevelTest()",
+                    disabled: false,
+                    style: "swift-testing",
+                    tags: [],
+                    location: client.languageClient.protocol2CodeConverter.asLocation(location),
+                    children: [],
+                },
+            ];
+
+            client.setResponse(WorkspaceTestsRequest.type, items);
+
+            const testClasses = await discoverer.getWorkspaceTests(pkg);
+            assertEqual(testClasses, expected);
+        });
+
+        test("does not modify items without duplicates", async () => {
+            const location = Location.create(
+                file.fsPath,
+                Range.create(Position.create(1, 0), Position.create(2, 0))
+            );
+            items = [
+                {
+                    id: "topLevelTest()",
+                    label: "topLevelTest()",
+                    disabled: false,
+                    style: "swift-testing",
+                    tags: [],
+                    location,
+                    children: [],
+                },
+            ];
+            expected = [
+                {
+                    id: "topLevelTest()",
+                    label: "topLevelTest()",
+                    disabled: false,
+                    style: "swift-testing",
+                    tags: [],
+                    location: client.languageClient.protocol2CodeConverter.asLocation(location),
+                    children: [],
+                },
+            ];
+
+            client.setResponse(WorkspaceTestsRequest.type, items);
+
+            const testClasses = await discoverer.getWorkspaceTests(pkg);
+            assertEqual(testClasses, expected);
+        });
+
+        test("deduplicates children with identical IDs", async () => {
+            const location = Location.create(
+                file.fsPath,
+                Range.create(Position.create(1, 0), Position.create(2, 0))
+            );
+            const childLocation = Location.create(
+                file.fsPath,
+                Range.create(Position.create(3, 0), Position.create(4, 0))
+            );
+            const duplicateChild: LSPTestItem = {
+                id: "childTest()/File.swift:3:0",
+                label: "childTest()",
+                disabled: false,
+                style: "swift-testing",
+                tags: [],
+                location: childLocation,
+                children: [],
+            };
+            items = [
+                {
+                    id: "TestSuite",
+                    label: "TestSuite",
+                    disabled: false,
+                    style: "swift-testing",
+                    tags: [],
+                    location,
+                    children: [duplicateChild, duplicateChild],
+                },
+            ];
+            expected = [
+                {
+                    id: "TestSuite",
+                    label: "TestSuite",
+                    disabled: false,
+                    style: "swift-testing",
+                    tags: [],
+                    location: client.languageClient.protocol2CodeConverter.asLocation(location),
+                    children: [
+                        {
+                            id: "childTest()",
+                            label: "childTest()",
+                            disabled: false,
+                            style: "swift-testing",
+                            tags: [],
+                            location:
+                                client.languageClient.protocol2CodeConverter.asLocation(
+                                    childLocation
+                                ),
+                            children: [],
+                        },
+                    ],
+                },
+            ];
+
+            client.setResponse(WorkspaceTestsRequest.type, items);
+
+            const testClasses = await discoverer.getWorkspaceTests(pkg);
+            assertEqual(testClasses, expected);
+        });
+
         test("Prepends test target to ID", async () => {
             const testTargetName = "TestTargetC99Name";
             expected = expected.map(item => ({
