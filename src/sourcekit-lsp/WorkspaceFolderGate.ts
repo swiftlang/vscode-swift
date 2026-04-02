@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
 
+import { SwiftLogger } from "../logging/SwiftLogger";
 import { isPathInsidePath } from "../utilities/filesystem";
 
 const DEFAULT_TIMEOUT_MS = 5000;
@@ -27,7 +28,10 @@ export class WorkspaceFolderGate implements vscode.Disposable {
     private knownFolders: Set<string>;
     private pendingRequests: Set<PendingRequest>;
 
-    constructor(rootUri: vscode.Uri) {
+    constructor(
+        rootUri: vscode.Uri,
+        private logger?: SwiftLogger
+    ) {
         this.knownFolders = new Set([rootUri.fsPath]);
         this.pendingRequests = new Set();
     }
@@ -41,8 +45,15 @@ export class WorkspaceFolderGate implements vscode.Disposable {
             return Promise.resolve();
         }
 
+        this.logger?.info(
+            `WorkspaceFolderGate: Deferring request for ${documentUri.fsPath} until its workspace folder is registered`
+        );
+
         return new Promise<void>(resolve => {
             const timeoutHandle = setTimeout(() => {
+                this.logger?.info(
+                    `WorkspaceFolderGate: Timed out waiting for folder containing ${documentUri.fsPath}`
+                );
                 this.removePendingRequest(request);
                 resolve();
             }, timeoutMs);
@@ -66,17 +77,24 @@ export class WorkspaceFolderGate implements vscode.Disposable {
     }
 
     folderAdded(folderUri: vscode.Uri): void {
+        this.logger?.info(`WorkspaceFolderGate: Registering folder ${folderUri.fsPath}`);
         this.knownFolders = new Set([...this.knownFolders, folderUri.fsPath]);
         this.resolveMatchingRequests(folderUri);
     }
 
     folderRemoved(folderUri: vscode.Uri): void {
+        this.logger?.info(`WorkspaceFolderGate: Unregistering folder ${folderUri.fsPath}`);
         const updated = new Set(this.knownFolders);
         updated.delete(folderUri.fsPath);
         this.knownFolders = updated;
     }
 
     dispose(): void {
+        if (this.pendingRequests.size > 0) {
+            this.logger?.info(
+                `WorkspaceFolderGate: Disposing with ${this.pendingRequests.size} pending request(s)`
+            );
+        }
         for (const request of this.pendingRequests) {
             request.cleanup();
             request.resolve();
