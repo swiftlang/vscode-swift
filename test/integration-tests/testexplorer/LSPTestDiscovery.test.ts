@@ -184,21 +184,20 @@ suite("LSPTestDiscovery Suite", () => {
             }));
         });
 
+        function convertForComparison(items: TestClass[]): unknown[] {
+            return items.map(item => ({
+                ...item,
+                location: item.location?.uri.path,
+                range: item.location?.range,
+                children: convertForComparison(item.children),
+            }));
+        }
+
         function assertEqual(items: TestClass[], expected: TestClass[]) {
             // There is an issue comparing vscode.Uris directly.
             // The internal `_fsPath` is not initialized immediately, and so
             // could be undefined, or maybe not.
-            const convertedItems = items.map(item => ({
-                ...item,
-                location: item.location?.uri.path,
-                range: item.location?.range,
-            }));
-            const convertedExpected = expected.map(item => ({
-                ...item,
-                location: item.location?.uri.path,
-                range: item.location?.range,
-            }));
-            assert.deepStrictEqual(convertedItems, convertedExpected);
+            assert.deepStrictEqual(convertForComparison(items), convertForComparison(expected));
         }
 
         test(TextDocumentTestsRequest.method, async () => {
