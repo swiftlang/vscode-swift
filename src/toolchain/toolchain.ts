@@ -333,7 +333,7 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
      */
     public async getProjectTemplates(): Promise<SwiftProjectTemplate[]> {
         // Parse the output from `swift package init --help`
-        const { stdout } = await execSwift(["package", "init", "--help"], "default");
+        const { stdout } = await execSwift(["package", "init", "--help"], this);
         const lines = stdout.split(/\r?\n/g);
         // Determine where the `--type` option is documented
         let position = lines.findIndex(line => line.trim().startsWith("--type"));

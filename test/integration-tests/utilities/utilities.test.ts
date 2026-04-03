@@ -31,7 +31,7 @@ suite("Utilities Test Suite", () => {
             writeStream.end();
         });
 
-        const { stdout } = await execSwift(["--version"], "default");
+        const { stdout } = await execSwift(["--version"], { swiftExecutable: swift });
         await execFileStreamOutput(swift, ["--version"], writeStream, null, null);
         assert(result.length > 0);
         assert(result.includes("Swift version"));
