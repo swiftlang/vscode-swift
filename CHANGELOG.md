@@ -28,6 +28,7 @@
 
 - Refresh tests in the test explorer when background indexing completes ([#2164](https://github.com/swiftlang/vscode-swift/pull/2164))
 - Fix infinite loop on startup when swift-package-manager has a lock on the package being opened ([#2174](https://github.com/swiftlang/vscode-swift/pull/2174))
+- Run toolchain executables via `swiftly run <tool>` when the active toolchain is managed by swiftly ([#2177](https://github.com/swiftlang/vscode-swift/pull/2177))
 
 ## 2.16.2 - 2026-03-17
 
@@ -98,7 +99,7 @@
 - Syntax highlighting for `*.swift.gyb` files ([#1515](https://github.com/swiftlang/vscode-swift/pull/1515))
 - Activate the extension if a workspace folder contains a `.bsp` folder ([#1865](https://github.com/swiftlang/vscode-swift/pull/1865))
 
-### Fixed 
+### Fixed
 
 - Fixed an issue where the activation of the extension was held up while waiting on the debug configuration to update ([#1914](https://github.com/swiftlang/vscode-swift/pull/1914))
 

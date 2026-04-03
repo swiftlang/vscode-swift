@@ -253,7 +253,7 @@ export async function execFileStreamOutput(
  */
 export async function execSwift(
     args: string[],
-    toolchain: SwiftToolchain | "default" | { swiftExecutable: string },
+    toolchain: SwiftToolchain | { swiftExecutable: string },
     options: cp.ExecFileOptions = {},
     folderContext?: FolderContext
 ): Promise<{ stdout: string; stderr: string }> {
@@ -262,12 +262,11 @@ export async function execSwift(
     if (typeof toolchain === "object" && "swiftExecutable" in toolchain) {
         command = toolchain.swiftExecutable;
         commandArgs = args;
-    } else if (toolchain === "default") {
-        command = getSwiftExecutable();
-        commandArgs = args;
     } else {
-        args = toolchain.buildFlags.withAdditionalFlags(args);
-        const inv = toolchain.getToolchainInvocation("swift", args);
+        const inv = toolchain.getToolchainInvocation(
+            "swift",
+            toolchain.buildFlags.withAdditionalFlags(args)
+        );
         command = inv.command;
         commandArgs = inv.args;
     }
