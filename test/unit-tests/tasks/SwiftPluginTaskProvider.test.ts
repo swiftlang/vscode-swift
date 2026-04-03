@@ -41,7 +41,12 @@ suite("SwiftPluginTaskProvider Unit Test Suite", () => {
         toolchain = mockObject<SwiftToolchain>({
             swiftVersion: new Version(6, 0, 0),
             buildFlags: instance(buildFlags),
-            getToolchainExecutable: mockFn(s => s.withArgs("swift").returns("/path/to/bin/swift")),
+            getToolchainInvocation: mockFn(s =>
+                s.withArgs("swift", match.any).callsFake((_exe: string, args: string[]) => ({
+                    command: "/path/to/bin/swift",
+                    args,
+                }))
+            ),
         });
         const folderContext = mockObject<FolderContext>({
             workspaceContext: instance(workspaceContext),
