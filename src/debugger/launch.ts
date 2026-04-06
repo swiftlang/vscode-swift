@@ -149,19 +149,30 @@ export async function getTargetBinaryPath(
     folderCtx: FolderContext,
     extraArgs: string[] = []
 ): Promise<string> {
+    const logger = folderCtx.workspaceContext.logger;
     try {
         // Use dynamic path resolution with --show-bin-path
         const binPath = await folderCtx.toolchain.buildFlags.getBuildBinaryPath(
             folderCtx.folder.fsPath,
             buildConfiguration,
-            folderCtx.workspaceContext.logger,
+            logger,
             "",
             extraArgs
         );
-        return path.join(binPath, targetName);
+        const result = path.join(binPath, targetName);
+        logger.debug(
+            `getTargetBinaryPath: target="${targetName}", config="${buildConfiguration}", binPath="${binPath}", result="${result}"`,
+            "LaunchConfig"
+        );
+        return result;
     } catch (error) {
         // Fallback to traditional path construction if dynamic resolution fails
-        return getLegacyTargetBinaryPath(targetName, buildConfiguration, folderCtx);
+        const result = getLegacyTargetBinaryPath(targetName, buildConfiguration, folderCtx);
+        logger.debug(
+            `getTargetBinaryPath: FALLBACK to legacy path for target="${targetName}", config="${buildConfiguration}", result="${result}", error=${error}`,
+            "LaunchConfig"
+        );
+        return result;
     }
 }
 
@@ -207,6 +218,7 @@ export async function getLaunchConfiguration(
     buildConfiguration: "debug" | "release",
     folderCtx: FolderContext
 ): Promise<vscode.DebugConfiguration | undefined> {
+    const logger = folderCtx.workspaceContext.logger;
     const wsLaunchSection = vscode.workspace.workspaceFile
         ? vscode.workspace.getConfiguration("launch")
         : vscode.workspace.getConfiguration("launch", folderCtx.workspaceFolder);
@@ -215,11 +227,27 @@ export async function getLaunchConfiguration(
     const legacyTargetPath = getLegacyTargetBinaryPath(target, buildConfiguration, folderCtx);
     const buildDir = BuildFlags.buildDirectoryFromWorkspacePath(folderCtx.folder.fsPath, true);
     const relativeBinPath = path.relative(buildDir, path.dirname(targetPath));
-    return launchConfigs.find(config => {
+
+    logger.debug(
+        `getLaunchConfiguration: target="${target}", config="${buildConfiguration}", targetPath="${targetPath}", legacyTargetPath="${legacyTargetPath}", buildDir="${buildDir}", relativeBinPath="${relativeBinPath}", numConfigs=${launchConfigs.length}`,
+        "LaunchConfig"
+    );
+    logger.debug(
+        `getLaunchConfiguration: available configs=${JSON.stringify(launchConfigs.map(c => ({ name: c.name, target: c.target, program: c.program, configuration: c.configuration })))}`,
+        "LaunchConfig"
+    );
+
+    const found = launchConfigs.find(config => {
         // Newer launch configs use "target" and "configuration" properties which are easier to query.
         if (config.target) {
             const configBuildConfiguration = config.configuration ?? "debug";
-            return config.target === target && configBuildConfiguration === buildConfiguration;
+            const matches =
+                config.target === target && configBuildConfiguration === buildConfiguration;
+            logger.debug(
+                `getLaunchConfiguration: checking config "${config.name}" (target-based): config.target="${config.target}" vs "${target}", configBuildConfiguration="${configBuildConfiguration}" vs "${buildConfiguration}" => ${matches}`,
+                "LaunchConfig"
+            );
+            return matches;
         }
         // Users could be on different platforms with different path annotations, so normalize before we compare.
         const normalizedConfigPath = path.normalize(
@@ -233,11 +261,21 @@ export async function getLaunchConfiguration(
         const pathMatches = [normalizedTargetPath, normalizedLegacyTargetPath].includes(
             normalizedConfigPath
         );
+        logger.debug(
+            `getLaunchConfiguration: checking config "${config.name}" (program-based): normalizedConfigPath="${normalizedConfigPath}", normalizedTargetPath="${normalizedTargetPath}", normalizedLegacyTargetPath="${normalizedLegacyTargetPath}" => pathMatches=${pathMatches}`,
+            "LaunchConfig"
+        );
         if (pathMatches && config.configuration) {
             return config.configuration === buildConfiguration;
         }
         return pathMatches;
     });
+
+    logger.debug(
+        `getLaunchConfiguration: result=${found ? '"' + found.name + '"' : "undefined"}`,
+        "LaunchConfig"
+    );
+    return found;
 }
 
 // Return array of DebugConfigurations for executables based on what is in Package.swift

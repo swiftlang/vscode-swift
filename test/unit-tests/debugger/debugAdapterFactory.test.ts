@@ -52,6 +52,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             buildFlags: instance(mockBuildFlags),
         });
         mockLogger = mockObject<SwiftLogger>({
+            debug: mockFn(),
             info: mockFn(),
         });
         mockWorkspaceContext = mockObject<WorkspaceContext>({

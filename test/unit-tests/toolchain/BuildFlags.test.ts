@@ -570,6 +570,7 @@ suite("BuildFlags Test Suite", () => {
         const buildArgsConfig = mockGlobalValue(configuration, "buildArguments");
         let execSwiftSpy: sinon.SinonSpy;
         const logger: MockedObject<SwiftLogger> = mockObject<SwiftLogger>({
+            debug: sinon.spy(),
             warn: sinon.spy(),
         });
 
