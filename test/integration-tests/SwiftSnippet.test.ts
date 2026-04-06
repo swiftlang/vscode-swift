@@ -15,6 +15,7 @@ import { expect } from "chai";
 import { realpathSync } from "fs";
 import * as vscode from "vscode";
 
+import { FolderContext } from "@src/FolderContext";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { Commands } from "@src/commands";
 import { Version } from "@src/utilities/version";
@@ -39,14 +40,15 @@ tag("large").suite("SwiftSnippet Test Suite", function () {
         new vscode.SourceBreakpoint(new vscode.Location(uri, new vscode.Position(2, 0))),
     ];
     let workspaceContext: WorkspaceContext;
+    let folderContext: FolderContext;
     let resetSettings: (() => Promise<void>) | undefined;
 
     activateExtensionForSuite({
         async setup(ctx) {
             workspaceContext = ctx;
 
-            const folder = await folderInRootWorkspace("defaultPackage", workspaceContext);
-            if (folder.toolchain.swiftVersion.isLessThan(new Version(5, 10, 0))) {
+            folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
+            if (folderContext.toolchain.swiftVersion.isLessThan(new Version(5, 10, 0))) {
                 this.skip();
             }
             resetSettings = await updateSettings({
@@ -54,7 +56,7 @@ tag("large").suite("SwiftSnippet Test Suite", function () {
             });
 
             // File needs to be open for command to be enabled
-            await workspaceContext.focusFolder(folder);
+            await workspaceContext.focusFolder(folderContext);
             await vscode.window.showTextDocument(uri);
 
             // Set a breakpoint
@@ -75,14 +77,16 @@ tag("large").suite("SwiftSnippet Test Suite", function () {
         const sessionPromise = waitUntilDebugSessionTerminates("Run hello");
 
         const succeeded = await vscode.commands.executeCommand(Commands.RUN_SNIPPET, "hello");
+        const binPath = folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 4, 0))
+            ? ".build/out/Products/Debug/hello"
+            : ".build/debug/hello";
 
         expect(succeeded).to.be.true;
         const session = await sessionPromise;
         expect(session.configuration.program).to.equalPath(
             realpathSync(
                 testAssetUri(
-                    "defaultPackage/.build/debug/hello" +
-                        (process.platform === "win32" ? ".exe" : "")
+                    `defaultPackage/${binPath}` + (process.platform === "win32" ? ".exe" : "")
                 ).fsPath
             )
         );
@@ -118,11 +122,13 @@ tag("large").suite("SwiftSnippet Test Suite", function () {
         expect(succeeded).to.be.true;
 
         const session = await sessionPromise;
+        const binPath = folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 4, 0))
+            ? ".build/out/Products/Debug/hello"
+            : ".build/debug/hello";
         expect(session.configuration.program).to.equalPath(
             realpathSync(
                 testAssetUri(
-                    "defaultPackage/.build/debug/hello" +
-                        (process.platform === "win32" ? ".exe" : "")
+                    `defaultPackage/${binPath}` + (process.platform === "win32" ? ".exe" : "")
                 ).fsPath
             )
         );
