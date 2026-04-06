@@ -340,7 +340,7 @@ tag("large").suite("Test Explorer Suite", function () {
                     name: folder,
                     time: fs.statSync(path.join(attachments, folder)).mtime.getTime(),
                 }));
-                assert(attachmentFolders.length > 0, "Attachments directory is empty");
+                assert.equal(attachmentFolders.length > 0, true, "Attachments directory is empty");
 
                 attachmentFolders.sort((a, b) => b.time - a.time);
                 const latestFolder = attachmentFolders[0];
