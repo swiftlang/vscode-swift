@@ -179,6 +179,44 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             );
     });
 
+    test("resolves ${binPath} in program path", async () => {
+        mockBuildFlags.getBuildBinaryPath.resolves(
+            "/path/to/swift-executable/.build/arm64-apple-macosx/debug/"
+        );
+        const folder: vscode.WorkspaceFolder = {
+            index: 0,
+            name: "swift-executable",
+            uri: vscode.Uri.file("/path/to/swift-executable"),
+        };
+        const mockedFolderCtx = mockObject<FolderContext>({
+            workspaceContext: instance(mockWorkspaceContext),
+            workspaceFolder: folder,
+            folder: folder.uri,
+            toolchain: instance(mockToolchain),
+            relativePath: "./",
+        });
+        mockWorkspaceContext.folders = [instance(mockedFolderCtx)];
+        const configProvider = new LLDBDebugConfigurationProvider(
+            "darwin",
+            instance(mockWorkspaceContext),
+            instance(mockLogger)
+        );
+        const launchConfig = await configProvider.resolveDebugConfigurationWithSubstitutedVariables(
+            folder,
+            {
+                name: "Test Launch Config",
+                type: SWIFT_LAUNCH_CONFIG_TYPE,
+                request: "launch",
+                program: "/path/to/swift-executable/.build/${binPath}/executable",
+            }
+        );
+        expect(launchConfig)
+            .to.have.property("program")
+            .that.equalsPath(
+                "/path/to/swift-executable/.build/arm64-apple-macosx/debug/executable"
+            );
+    });
+
     test("uses 'cwd' to find folder context when folder is undefined in multi-root workspace", async () => {
         mockBuildFlags.getBuildBinaryPath.resolves(
             "/path/to/swift-executable/.build/arm64-apple-macosx/debug/"

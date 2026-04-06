@@ -178,8 +178,11 @@ function getLegacyTargetBinaryPath(
 }
 
 /** Expands VS Code variables such as ${workspaceFolder} in the given string. */
-function expandVariables(str: string): string {
+function expandVariables(str: string, binPath?: string): string {
     let expandedStr = str;
+    if (binPath !== undefined) {
+        expandedStr = expandedStr.replaceAll("${binPath}", binPath);
+    }
     const availableWorkspaceFolders = vscode.workspace.workspaceFolders ?? [];
     // Expand the top level VS Code workspace folder.
     if (availableWorkspaceFolders.length > 0) {
@@ -210,6 +213,8 @@ export async function getLaunchConfiguration(
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
     const targetPath = await getTargetBinaryPath(target, buildConfiguration, folderCtx);
     const legacyTargetPath = getLegacyTargetBinaryPath(target, buildConfiguration, folderCtx);
+    const buildDir = BuildFlags.buildDirectoryFromWorkspacePath(folderCtx.folder.fsPath, true);
+    const relativeBinPath = path.relative(buildDir, path.dirname(targetPath));
     return launchConfigs.find(config => {
         // Newer launch configs use "target" and "configuration" properties which are easier to query.
         if (config.target) {
@@ -217,13 +222,21 @@ export async function getLaunchConfiguration(
             return config.target === target && configBuildConfiguration === buildConfiguration;
         }
         // Users could be on different platforms with different path annotations, so normalize before we compare.
-        const normalizedConfigPath = path.normalize(expandVariables(config.program));
+        const normalizedConfigPath = path.normalize(
+            expandVariables(config.program, relativeBinPath)
+        );
         const normalizedTargetPath = path.normalize(targetPath);
         const normalizedLegacyTargetPath = path.normalize(legacyTargetPath);
         // Old launch configs had program paths that looked like "${workspaceFolder:test}/defaultPackage/.build/debug",
         // where `debug` was a symlink to the <host-triple-folder>/debug. We want to support both old and new, so we're
         // comparing against both to find a match.
-        return [normalizedTargetPath, normalizedLegacyTargetPath].includes(normalizedConfigPath);
+        const pathMatches = [normalizedTargetPath, normalizedLegacyTargetPath].includes(
+            normalizedConfigPath
+        );
+        if (pathMatches && config.configuration) {
+            return config.configuration === buildConfiguration;
+        }
+        return pathMatches;
     });
 }
 

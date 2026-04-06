@@ -4,7 +4,8 @@
             "type": "swift",
             "request": "launch",
             "name": "Debug package1",
-            "program": "${workspaceFolder:defaultPackage}/.build/debug/package1",
+            "program": "${workspaceFolder:defaultPackage}/.build/${binPath}/package1",
+            "configuration": "debug",
             "args": [],
             "cwd": "${workspaceFolder:defaultPackage}",
             "preLaunchTask": "swift: Build Debug package1"
@@ -13,7 +14,8 @@
             "type": "swift",
             "request": "launch",
             "name": "Release package1",
-            "program": "${workspaceFolder:defaultPackage}/.build/release/package1",
+            "program": "${workspaceFolder:defaultPackage}/.build/${binPath}/package1",
+            "configuration": "release",
             "args": [],
             "cwd": "${workspaceFolder:defaultPackage}",
             "preLaunchTask": "swift: Build Release package1"
