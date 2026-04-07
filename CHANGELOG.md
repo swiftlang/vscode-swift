@@ -2,6 +2,10 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+### Fixed
+
+- Fix false positive workspace detection for non-Swift projects with `build/` or `out/` directories ([#2156](https://github.com/swiftlang/vscode-swift/pull/2156))
+
 ## 2.16.3 - 2026-04-02
 
 ### Added

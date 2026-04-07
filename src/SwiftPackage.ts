@@ -33,7 +33,7 @@ import { showPackageDependencies } from "./commands/dependencies/show";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { BuildFlags } from "./toolchain/BuildFlags";
 import { SwiftToolchain } from "./toolchain/toolchain";
-import { isPathInsidePath } from "./utilities/filesystem";
+import { fileExists, isPathInsidePath } from "./utilities/filesystem";
 import { lineBreakRegex } from "./utilities/tasks";
 import { execSwift, getErrorDescription, hashString, unwrapPromise } from "./utilities/utilities";
 
@@ -239,6 +239,14 @@ export class SwiftPackage implements ExternalSwiftPackage, vscode.Disposable {
     ): Promise<SwiftPackageState> {
         // When SwiftPM integration is disabled, return undefined to disable all features
         if (disableSwiftPMIntegration) {
+            return undefined;
+        }
+
+        // Check for Package.swift existence upfront to avoid running
+        // `swift package describe` unnecessarily in non-SwiftPM projects
+        // (e.g. projects with only compile_commands.json or BSP config).
+        const packageSwiftPath = path.join(folderContext.folder.fsPath, "Package.swift");
+        if (!(await fileExists(packageSwiftPath))) {
             return undefined;
         }
 
