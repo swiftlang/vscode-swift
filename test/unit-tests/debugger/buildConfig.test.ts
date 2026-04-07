@@ -18,7 +18,11 @@ import { FolderContext } from "@src/FolderContext";
 import { LinuxMain } from "@src/LinuxMain";
 import { SwiftPackage } from "@src/SwiftPackage";
 import configuration, { FolderConfiguration } from "@src/configuration";
-import { BuildConfigurationFactory } from "@src/debugger/buildConfig";
+import {
+    BuildConfigurationFactory,
+    effectiveBuildSystem,
+    groupTestsByTarget,
+} from "@src/debugger/buildConfig";
 import { BuildFlags } from "@src/toolchain/BuildFlags";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
 import { Version } from "@src/utilities/version";
@@ -264,6 +268,94 @@ suite("BuildConfig Test Suite", () => {
             expect(filter.some((f: any) => f.argument === "--sdk")).to.be.false;
             expect(filter.some((f: any) => f.argument === "--verbose")).to.be.false;
             expect(filter.some((f: any) => f.argument === "--configuration")).to.be.false;
+        });
+    });
+
+    suite("effectiveBuildSystem", () => {
+        test("returns native for Swift < 6.4.0", () => {
+            expect(effectiveBuildSystem(new Version(6, 3, 0), [])).to.equal("native");
+        });
+
+        test("returns swiftbuild for Swift >= 6.4.0", () => {
+            expect(effectiveBuildSystem(new Version(6, 4, 0), [])).to.equal("swiftbuild");
+        });
+
+        test("returns swiftbuild for Swift > 6.4.0", () => {
+            expect(effectiveBuildSystem(new Version(7, 0, 0), [])).to.equal("swiftbuild");
+        });
+
+        test("explicit --build-system native overrides 6.4.0+ default", () => {
+            expect(
+                effectiveBuildSystem(new Version(6, 4, 0), ["--build-system", "native"])
+            ).to.equal("native");
+        });
+
+        test("explicit --build-system swiftbuild overrides < 6.4.0 default", () => {
+            expect(
+                effectiveBuildSystem(new Version(6, 3, 0), ["--build-system", "swiftbuild"])
+            ).to.equal("swiftbuild");
+        });
+
+        test("last --build-system wins when duplicated", () => {
+            expect(
+                effectiveBuildSystem(new Version(6, 4, 0), [
+                    "--build-system",
+                    "swiftbuild",
+                    "--build-system",
+                    "native",
+                ])
+            ).to.equal("native");
+        });
+
+        test("ignores --build-system with no following value", () => {
+            expect(
+                effectiveBuildSystem(new Version(6, 4, 0), ["--build-system"])
+            ).to.equal("swiftbuild");
+        });
+
+        test("ignores --build-system with unrecognized value", () => {
+            expect(
+                effectiveBuildSystem(new Version(6, 4, 0), ["--build-system", "xcodebuild"])
+            ).to.equal("swiftbuild");
+        });
+    });
+
+    suite("groupTestsByTarget", () => {
+        test("empty array returns empty map", () => {
+            const result = groupTestsByTarget([]);
+            expect(result.size).to.equal(0);
+        });
+
+        test("single target, single test", () => {
+            const result = groupTestsByTarget(["FooTests.Bar.baz"]);
+            expect(result.size).to.equal(1);
+            expect(result.get("FooTests")).to.deep.equal(["FooTests.Bar.baz"]);
+        });
+
+        test("multiple targets grouped correctly", () => {
+            const result = groupTestsByTarget([
+                "FooTests.Bar.baz",
+                "BarTests.Qux.quux",
+                "FooTests.Other.test",
+            ]);
+            expect(result.size).to.equal(2);
+            expect(result.get("FooTests")).to.deep.equal([
+                "FooTests.Bar.baz",
+                "FooTests.Other.test",
+            ]);
+            expect(result.get("BarTests")).to.deep.equal(["BarTests.Qux.quux"]);
+        });
+
+        test("target-level wildcard", () => {
+            const result = groupTestsByTarget(["FooTests.*"]);
+            expect(result.size).to.equal(1);
+            expect(result.get("FooTests")).to.deep.equal(["FooTests.*"]);
+        });
+
+        test("bare target name without dot", () => {
+            const result = groupTestsByTarget(["FooTests"]);
+            expect(result.size).to.equal(1);
+            expect(result.get("FooTests")).to.deep.equal(["FooTests"]);
         });
     });
 });

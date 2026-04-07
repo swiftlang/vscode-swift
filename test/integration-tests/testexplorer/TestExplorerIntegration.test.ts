@@ -130,16 +130,11 @@ tag("large").suite("Test Explorer Suite", function () {
             });
         }
 
-        suite("lldb-dap", () => {
+        suite.only("lldb-dap", () => {
             let resetSettings: (() => Promise<void>) | undefined;
             beforeEach(async function () {
                 // lldb-dap is only present/functional in the toolchain in 6.0.2 and up.
                 if (folderContext.swiftVersion.isLessThan(new Version(6, 0, 2))) {
-                    this.skip();
-                }
-
-                // Temporarily disable this test until debugging is fixed for --build-sytem swiftbuild
-                if (folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 4, 0))) {
                     this.skip();
                 }
 

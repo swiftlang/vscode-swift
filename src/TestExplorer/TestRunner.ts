@@ -18,6 +18,7 @@ import * as stream from "stream";
 import * as vscode from "vscode";
 
 import { FolderContext } from "../FolderContext";
+import { TargetType } from "../SwiftPackage";
 import { WorkspaceContext } from "../WorkspaceContext";
 import configuration from "../configuration";
 import {
@@ -25,6 +26,8 @@ import {
     SwiftTestingBuildAguments,
     SwiftTestingConfigurationSetup,
     TestingConfigurationFactory,
+    effectiveBuildSystem,
+    groupTestsByTarget,
 } from "../debugger/buildConfig";
 import { LoggingDebugAdapterTracker } from "../debugger/logTracker";
 import { createSwiftTask } from "../tasks/SwiftTaskProvider";
@@ -701,13 +704,19 @@ export class TestRunner {
         const fifoPipePath = this.generateFifoPipePath(testRunTime);
 
         await TemporaryFolder.withNamedTemporaryFiles([fifoPipePath], async () => {
+            const allBuildArgs = [
+                ...configuration.buildArguments,
+                ...configuration.folder(this.folderContext.workspaceFolder).additionalTestArguments,
+            ];
+            const buildSystem = effectiveBuildSystem(this.folderContext.swiftVersion, allBuildArgs);
+
             if (this.testArgs.hasSwiftTestingTests) {
                 // macOS/Linux require us to create the named pipe before we use it.
                 // Windows just lets us communicate by specifying a pipe path without any ceremony.
                 if (process.platform !== "win32") {
                     await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
                 }
-                // Create the swift-testing configuration JSON file, peparing any
+                // Create the swift-testing configuration JSON file, preparing any
                 // directories the configuration may require.
                 const attachmentFolder = await SwiftTestingConfigurationSetup.setupAttachmentFolder(
                     this.folderContext,
@@ -718,63 +727,20 @@ export class TestRunner {
                     attachmentFolder
                 );
 
-                const swiftTestBuildConfig = await TestingConfigurationFactory.swiftTestingConfig(
-                    this.folderContext,
-                    swiftTestingArgs,
-                    this.testKind,
-                    this.testArgs.swiftTestArgs,
-                    true
-                );
-
-                if (swiftTestBuildConfig !== null) {
-                    swiftTestBuildConfig.testType = TestLibrary.swiftTesting;
-                    swiftTestBuildConfig.preLaunchTask = null;
-
-                    // If we're testing in both frameworks we're going to start more than one debugging
-                    // session. If both build configurations have the same name LLDB will replace the
-                    // output of the first one in the Debug Console with the output of the second one.
-                    // If they each have a unique name the Debug Console gets a nice dropdown the user
-                    // can switch between to see the output for both sessions.
-                    swiftTestBuildConfig.name = `Swift Testing: ${swiftTestBuildConfig.name}`;
-
-                    // output test build configuration
-                    if (configuration.diagnostics) {
-                        const configJSON = JSON.stringify(swiftTestBuildConfig);
-                        this.workspaceContext.logger.debug(
-                            `swift-testing Debug Config: ${configJSON}`,
-                            this.folderContext.name
-                        );
-                    }
-
-                    buildConfigs.push(swiftTestBuildConfig);
-                }
+                const configs =
+                    buildSystem === "swiftbuild"
+                        ? await this.swiftbuildSwiftTestingConfigs(swiftTestingArgs)
+                        : await this.nativeSwiftTestingConfigs(swiftTestingArgs);
+                buildConfigs.push(...configs);
             }
 
             // create launch config for testing
             if (this.testArgs.hasXCTests) {
-                const xcTestBuildConfig = await TestingConfigurationFactory.xcTestConfig(
-                    this.folderContext,
-                    this.testKind,
-                    this.testArgs.xcTestArgs,
-                    true
-                );
-
-                if (xcTestBuildConfig !== null) {
-                    xcTestBuildConfig.testType = TestLibrary.xctest;
-                    xcTestBuildConfig.preLaunchTask = null;
-                    xcTestBuildConfig.name = `XCTest: ${xcTestBuildConfig.name}`;
-
-                    // output test build configuration
-                    if (configuration.diagnostics) {
-                        const configJSON = JSON.stringify(xcTestBuildConfig);
-                        this.workspaceContext.logger.debug(
-                            `XCTest Debug Config: ${configJSON}`,
-                            this.folderContext.name
-                        );
-                    }
-
-                    buildConfigs.push(xcTestBuildConfig);
-                }
+                const configs =
+                    buildSystem === "swiftbuild"
+                        ? await this.swiftbuildXCTestConfigs()
+                        : await this.nativeXCTestConfigs();
+                buildConfigs.push(...configs);
             }
 
             const validBuildConfigs = buildConfigs.filter(
@@ -797,6 +763,157 @@ export class TestRunner {
         });
 
         return this.testRun.runState;
+    }
+
+    // Creates one swift-testing debug configuration per test target for the swiftbuild build system.
+    private async swiftbuildSwiftTestingConfigs(
+        swiftTestingArgs: SwiftTestingBuildAguments
+    ): Promise<vscode.DebugConfiguration[]> {
+        const targets = await this.targetNamesForBuildSystem(this.testArgs.swiftTestArgs);
+        const pkgName = await this.folderContext.swiftPackage.name;
+        const configs: vscode.DebugConfiguration[] = [];
+
+        for (const [targetName, testSubset] of targets) {
+            const config = await TestingConfigurationFactory.swiftTestingConfig(
+                this.folderContext,
+                swiftTestingArgs,
+                this.testKind,
+                testSubset,
+                true,
+                targetName
+            );
+
+            if (config !== null) {
+                config.testType = TestLibrary.swiftTesting;
+                config.preLaunchTask = null;
+                config.name = `Swift Testing (${targetName}): Test ${pkgName}`;
+
+                if (configuration.diagnostics) {
+                    const configJSON = JSON.stringify(config);
+                    this.workspaceContext.logger.debug(
+                        `swift-testing Debug Config: ${configJSON}`,
+                        this.folderContext.name
+                    );
+                }
+
+                configs.push(config);
+            }
+        }
+
+        return configs;
+    }
+
+    // Creates one XCTest debug configuration per test target for the swiftbuild build system.
+    private async swiftbuildXCTestConfigs(): Promise<vscode.DebugConfiguration[]> {
+        const targets = await this.targetNamesForBuildSystem(this.testArgs.xcTestArgs);
+        const pkgName = await this.folderContext.swiftPackage.name;
+        const configs: vscode.DebugConfiguration[] = [];
+
+        for (const [targetName, testSubset] of targets) {
+            const config = await TestingConfigurationFactory.xcTestConfig(
+                this.folderContext,
+                this.testKind,
+                testSubset,
+                true,
+                targetName
+            );
+
+            if (config !== null) {
+                config.testType = TestLibrary.xctest;
+                config.preLaunchTask = null;
+                config.name = `XCTest (${targetName}): Test ${pkgName}`;
+
+                if (configuration.diagnostics) {
+                    const configJSON = JSON.stringify(config);
+                    this.workspaceContext.logger.debug(
+                        `XCTest Debug Config: ${configJSON}`,
+                        this.folderContext.name
+                    );
+                }
+
+                configs.push(config);
+            }
+        }
+
+        return configs;
+    }
+
+    // Creates a single swift-testing debug configuration for the native build system.
+    private async nativeSwiftTestingConfigs(
+        swiftTestingArgs: SwiftTestingBuildAguments
+    ): Promise<vscode.DebugConfiguration[]> {
+        const swiftTestBuildConfig = await TestingConfigurationFactory.swiftTestingConfig(
+            this.folderContext,
+            swiftTestingArgs,
+            this.testKind,
+            this.testArgs.swiftTestArgs,
+            true
+        );
+
+        if (swiftTestBuildConfig === null) {
+            return [];
+        }
+
+        swiftTestBuildConfig.testType = TestLibrary.swiftTesting;
+        swiftTestBuildConfig.preLaunchTask = null;
+
+        // If we're testing in both frameworks we're going to start more than one debugging
+        // session. If both build configurations have the same name LLDB will replace the
+        // output of the first one in the Debug Console with the output of the second one.
+        // If they each have a unique name the Debug Console gets a nice dropdown the user
+        // can switch between to see the output for both sessions.
+        swiftTestBuildConfig.name = `Swift Testing: ${swiftTestBuildConfig.name}`;
+
+        // output test build configuration
+        if (configuration.diagnostics) {
+            const configJSON = JSON.stringify(swiftTestBuildConfig);
+            this.workspaceContext.logger.debug(
+                `swift-testing Debug Config: ${configJSON}`,
+                this.folderContext.name
+            );
+        }
+
+        return [swiftTestBuildConfig];
+    }
+
+    // Creates a single XCTest debug configuration for the native build system.
+    private async nativeXCTestConfigs(): Promise<vscode.DebugConfiguration[]> {
+        const xcTestBuildConfig = await TestingConfigurationFactory.xcTestConfig(
+            this.folderContext,
+            this.testKind,
+            this.testArgs.xcTestArgs,
+            true
+        );
+
+        if (xcTestBuildConfig === null) {
+            return [];
+        }
+
+        xcTestBuildConfig.testType = TestLibrary.xctest;
+        xcTestBuildConfig.preLaunchTask = null;
+        xcTestBuildConfig.name = `XCTest: ${xcTestBuildConfig.name}`;
+
+        // output test build configuration
+        if (configuration.diagnostics) {
+            const configJSON = JSON.stringify(xcTestBuildConfig);
+            this.workspaceContext.logger.debug(
+                `XCTest Debug Config: ${configJSON}`,
+                this.folderContext.name
+            );
+        }
+
+        return [xcTestBuildConfig];
+    }
+
+    // Groups test args by target, or enumerates all test targets for the "run all" case.
+    private async targetNamesForBuildSystem(
+        testArgs: readonly string[]
+    ): Promise<ReadonlyMap<string, string[]>> {
+        if (testArgs.length === 0) {
+            const testTargets = await this.folderContext.swiftPackage.getTargets(TargetType.test);
+            return new Map(testTargets.map(t => [t.name, []]));
+        }
+        return groupTestsByTarget(testArgs) as Map<string, string[]>;
     }
 
     private startDebugSession(
