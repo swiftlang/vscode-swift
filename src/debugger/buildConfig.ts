@@ -277,7 +277,8 @@ export class TestingConfigurationFactory {
     public static testExecutableOutputPath(
         ctx: FolderContext,
         testKind: TestKind,
-        testLibrary: TestLibrary
+        testLibrary: TestLibrary,
+        targetName?: string
     ): Promise<string> {
         return new TestingConfigurationFactory(
             ctx,
@@ -285,7 +286,8 @@ export class TestingConfigurationFactory {
             testLibrary,
             [],
             undefined,
-            true
+            true,
+            targetName
         ).testExecutableOutputPath();
     }
 
