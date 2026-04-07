@@ -448,10 +448,15 @@ export class TestingConfigurationFactory {
             args = [...args, "--disable-xctest"];
         }
 
+        const inv = this.ctx.toolchain.getToolchainInvocation(
+            "swift",
+            this.addBuildOptionsToArgs(this.addTestsToArgs(args))
+        );
+
         return {
             ...baseConfig,
-            program: this.swiftProgramPath,
-            args: this.addBuildOptionsToArgs(this.addTestsToArgs(args)),
+            program: inv.command,
+            args: inv.args,
             env: {
                 ...this.testEnv,
                 ...this.sanitizerRuntimeEnvironment,
@@ -507,10 +512,15 @@ export class TestingConfigurationFactory {
             xcTestArgs = [...xcTestArgs, "--parallel"];
         }
 
+        const inv = this.ctx.toolchain.getToolchainInvocation(
+            "swift",
+            this.addBuildOptionsToArgs(this.addTestsToArgs(xcTestArgs))
+        );
+
         return {
             ...baseConfig,
-            program: this.swiftProgramPath,
-            args: this.addBuildOptionsToArgs(this.addTestsToArgs(xcTestArgs)),
+            program: inv.command,
+            args: inv.args,
             env: {
                 ...this.testEnv,
                 ...this.sanitizerRuntimeEnvironment,
@@ -604,10 +614,6 @@ export class TestingConfigurationFactory {
 
     private swiftVersionGreaterOrEqual(major: number, minor: number, patch: number): boolean {
         return this.ctx.swiftVersion.isGreaterThanOrEqual(new Version(major, minor, patch));
-    }
-
-    private get swiftProgramPath(): string {
-        return this.ctx.toolchain.getToolchainExecutablePath("swift");
     }
 
     private get artifactFolderForTestKind(): string {
