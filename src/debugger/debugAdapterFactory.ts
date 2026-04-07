@@ -17,7 +17,6 @@ import * as vscode from "vscode";
 import { WorkspaceContext } from "../WorkspaceContext";
 import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
-import { BuildFlags } from "../toolchain/BuildFlags";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import { fileExists } from "../utilities/filesystem";
 import { getErrorDescription, swiftRuntimeEnv } from "../utilities/utilities";
@@ -201,11 +200,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             buildConfiguration,
             folderContext.workspaceContext.logger
         );
-        const buildDir = BuildFlags.buildDirectoryFromWorkspacePath(
-            folderContext.folder.fsPath,
-            true
-        );
-        const relativeBinPath = path.relative(buildDir, binPath);
+        const relativeBinPath = path.relative(folderContext.folder.fsPath, binPath);
         launchConfig.program = launchConfig.program.replaceAll("${binPath}", relativeBinPath);
     }
 

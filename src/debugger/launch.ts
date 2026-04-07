@@ -213,8 +213,7 @@ export async function getLaunchConfiguration(
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
     const targetPath = await getTargetBinaryPath(target, buildConfiguration, folderCtx);
     const legacyTargetPath = getLegacyTargetBinaryPath(target, buildConfiguration, folderCtx);
-    const buildDir = BuildFlags.buildDirectoryFromWorkspacePath(folderCtx.folder.fsPath, true);
-    const relativeBinPath = path.relative(buildDir, path.dirname(targetPath));
+    const relativeBinPath = path.relative(folderCtx.folder.fsPath, path.dirname(targetPath));
 
     return launchConfigs.find(config => {
         // Newer launch configs use "target" and "configuration" properties which are easier to query.

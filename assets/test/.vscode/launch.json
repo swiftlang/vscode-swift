@@ -5,7 +5,7 @@
             "request": "launch",
             "name": "Debug PackageExe (defaultPackage)",
             // Explicitly use "program" to test searching for launch configs by program.
-            "program": "${workspaceFolder:test}/defaultPackage/.build/${binPath}/PackageExe",
+            "program": "${workspaceFolder:test}/defaultPackage/${binPath}/PackageExe",
             "args": [],
             "cwd": "${workspaceFolder:test}/defaultPackage",
             "preLaunchTask": "swift: Build Debug PackageExe (defaultPackage)",

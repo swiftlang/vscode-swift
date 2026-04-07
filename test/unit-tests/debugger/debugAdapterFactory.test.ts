@@ -207,7 +207,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 name: "Test Launch Config",
                 type: SWIFT_LAUNCH_CONFIG_TYPE,
                 request: "launch",
-                program: "/path/to/swift-executable/.build/${binPath}/executable",
+                program: "/path/to/swift-executable/${binPath}/executable",
             }
         );
         expect(launchConfig)
