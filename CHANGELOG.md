@@ -2,6 +2,10 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+### Fixed
+
+- Fix false positive workspace detection for non-Swift projects with `build/` or `out/` directories ([#2156](https://github.com/swiftlang/vscode-swift/pull/2156))
+
 ## 2.16.3 - 2026-04-02
 
 ### Added
@@ -28,7 +32,6 @@
 - Avoid rapidly resolving packages during rebases ([#2125](https://github.com/swiftlang/vscode-swift/pull/2125))
 - Fix typo in Swift extension setting ([#2130](https://github.com/swiftlang/vscode-swift/pull/2130))
 - Fix icon for build progress jittering in the status bar ([#2150](https://github.com/swiftlang/vscode-swift/pull/2150))
-- Fix false positive workspace detection for non-Swift projects with `build/` or `out/` directories ([#2156](https://github.com/swiftlang/vscode-swift/pull/2156))
 
 ## 2.16.1 - 2026-02-02
 
