@@ -2,12 +2,15 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+### Added
+
+- Add `${binPath}` variable substitution for launch configuration program paths ([#2184](https://github.com/swiftlang/vscode-swift/pull/2184))
+
 ## 2.16.3 - 2026-04-02
 
 ### Added
 
 - Warn when the build folder is locked by another SwiftPM process ([#2168](https://github.com/swiftlang/vscode-swift/pull/2168))
-- Add `${binPath}` variable substitution for launch configuration program paths ([#2184](https://github.com/swiftlang/vscode-swift/pull/2184))
 
 ### Fixed
 
