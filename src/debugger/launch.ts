@@ -258,9 +258,15 @@ export async function getLaunchConfiguration(
         // Old launch configs had program paths that looked like "${workspaceFolder:test}/defaultPackage/.build/debug",
         // where `debug` was a symlink to the <host-triple-folder>/debug. We want to support both old and new, so we're
         // comparing against both to find a match.
-        const pathMatches = [normalizedTargetPath, normalizedLegacyTargetPath].includes(
-            normalizedConfigPath
-        );
+        const pathMatches =
+            process.platform === "win32"
+                ? [normalizedTargetPath, normalizedLegacyTargetPath].some(
+                      p =>
+                          p.localeCompare(normalizedConfigPath, undefined, {
+                              sensitivity: "accent",
+                          }) === 0
+                  )
+                : [normalizedTargetPath, normalizedLegacyTargetPath].includes(normalizedConfigPath);
         logger.debug(
             `getLaunchConfiguration: checking config "${config.name}" (program-based): normalizedConfigPath="${normalizedConfigPath}", normalizedTargetPath="${normalizedTargetPath}", normalizedLegacyTargetPath="${normalizedLegacyTargetPath}" => pathMatches=${pathMatches}`,
             "LaunchConfig"
