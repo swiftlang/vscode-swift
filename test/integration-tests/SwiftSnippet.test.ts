@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
-import { realpathSync } from "fs";
+import * as path from "path";
 import * as vscode from "vscode";
 
 import { FolderContext } from "@src/FolderContext";
@@ -77,19 +77,18 @@ tag("large").suite("SwiftSnippet Test Suite", function () {
         const sessionPromise = waitUntilDebugSessionTerminates("Run hello");
 
         const succeeded = await vscode.commands.executeCommand(Commands.RUN_SNIPPET, "hello");
-        const binPath = folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 4, 0))
-            ? ".build/out/Products/Debug/hello"
-            : ".build/debug/hello";
+        const binDir = await folderContext.toolchain.buildFlags.getBuildBinaryPath(
+            folderContext.folder.fsPath,
+            "debug",
+            workspaceContext.logger,
+            "snippet"
+        );
+        const expectedProgram =
+            path.join(binDir, "hello") + (process.platform === "win32" ? ".exe" : "");
 
         expect(succeeded).to.be.true;
         const session = await sessionPromise;
-        expect(session.configuration.program).to.equalPath(
-            realpathSync(
-                testAssetUri(
-                    `defaultPackage/${binPath}` + (process.platform === "win32" ? ".exe" : "")
-                ).fsPath
-            )
-        );
+        expect(session.configuration.program).to.equalPath(expectedProgram);
         expect(session.configuration).to.have.property("noDebug", true);
     });
 
@@ -122,16 +121,15 @@ tag("large").suite("SwiftSnippet Test Suite", function () {
         expect(succeeded).to.be.true;
 
         const session = await sessionPromise;
-        const binPath = folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 4, 0))
-            ? ".build/out/Products/Debug/hello"
-            : ".build/debug/hello";
-        expect(session.configuration.program).to.equalPath(
-            realpathSync(
-                testAssetUri(
-                    `defaultPackage/${binPath}` + (process.platform === "win32" ? ".exe" : "")
-                ).fsPath
-            )
+        const binDir = await folderContext.toolchain.buildFlags.getBuildBinaryPath(
+            folderContext.folder.fsPath,
+            "debug",
+            workspaceContext.logger,
+            "snippet"
         );
+        const expectedProgram =
+            path.join(binDir, "hello") + (process.platform === "win32" ? ".exe" : "");
+        expect(session.configuration.program).to.equalPath(expectedProgram);
         expect(session.configuration).to.not.have.property("noDebug");
     });
 });
