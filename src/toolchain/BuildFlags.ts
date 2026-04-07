@@ -296,12 +296,7 @@ export class BuildFlags {
         const cacheKey = `${workspacePath}:${buildConfiguration}:${buildArgsHash}${idSuffix}`;
 
         if (BuildFlags.buildPathCache.has(cacheKey)) {
-            const cached = BuildFlags.buildPathCache.get(cacheKey)!;
-            logger.debug(
-                `getBuildBinaryPath: cache hit for key="${cacheKey}", path="${cached}"`,
-                "BuildFlags"
-            );
-            return cached;
+            return BuildFlags.buildPathCache.get(cacheKey)!;
         }
 
         // Filters down build arguments to those affecting the bin path
@@ -317,22 +312,12 @@ export class BuildFlags {
             ...binPathAffectingArgs([...configuration.buildArguments, ...extraArgs]),
         ];
 
-        logger.debug(
-            `getBuildBinaryPath: workspacePath="${workspacePath}", buildConfiguration="${buildConfiguration}", cacheKey="${cacheKey}", fullArgs=${JSON.stringify(fullArgs)}`,
-            "BuildFlags"
-        );
-
         try {
             // Execute swift build --show-bin-path
             const result = await execSwift(fullArgs, this.toolchain, {
                 cwd: workspacePath,
             });
             const binPath = result.stdout.trim();
-
-            logger.debug(
-                `getBuildBinaryPath: resolved binPath="${binPath}" (stdout="${result.stdout.replace(/\n/g, "\\n")}")`,
-                "BuildFlags"
-            );
 
             // Cache the result
             BuildFlags.buildPathCache.set(cacheKey, binPath);
@@ -346,7 +331,6 @@ export class BuildFlags {
                 BuildFlags.buildDirectoryFromWorkspacePath(workspacePath, true),
                 buildConfiguration
             );
-            logger.debug(`getBuildBinaryPath: FALLBACK path="${fallbackPath}"`, "BuildFlags");
             return fallbackPath;
         }
     }

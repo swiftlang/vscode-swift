@@ -480,7 +480,6 @@ suite("getLaunchConfiguration Tests", () => {
             buildFlags: instance(mockBuildFlags),
         });
         const mockLogger = mockObject<SwiftLogger>({
-            debug: mockFn(),
             info: mockFn(),
         });
         const mockWorkspaceCtx = mockObject<WorkspaceContext>({

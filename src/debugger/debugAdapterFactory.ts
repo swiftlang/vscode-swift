@@ -91,11 +91,6 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         folder: vscode.WorkspaceFolder | undefined,
         launchConfig: vscode.DebugConfiguration
     ): Promise<vscode.DebugConfiguration | undefined | null> {
-        this.logger.debug(
-            `Resolving debug configuration: ${JSON.stringify({ name: launchConfig.name, target: launchConfig.target, program: launchConfig.program, configuration: launchConfig.configuration, cwd: launchConfig.cwd })}`,
-            "LaunchConfig"
-        );
-
         // First attempt to find a folder context that matches the provided "folder".
         let folderContext = this.workspaceContext.folders.find(
             f => f.workspaceFolder.uri.fsPath === folder?.uri.fsPath
@@ -112,11 +107,6 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
                     : folderPath === cwdPath;
             });
         }
-
-        this.logger.debug(
-            `Folder context resolved: ${folderContext ? folderContext.workspaceFolder.uri.fsPath : "none"}, folder arg: ${folder?.uri.fsPath ?? "none"}`,
-            "LaunchConfig"
-        );
 
         this.validateLaunchRequest(launchConfig);
 
@@ -184,23 +174,11 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             );
         }
 
-        const prelaunchArgs = await swiftPrelaunchBuildTaskArguments(
-            launchConfig,
-            folderContext.workspaceFolder
-        );
-        this.logger.debug(
-            `Resolving target "${targetName}" with buildConfiguration="${buildConfiguration}", prelaunchArgs=${JSON.stringify(prelaunchArgs)}`,
-            "LaunchConfig"
-        );
         launchConfig.program = await getTargetBinaryPath(
             targetName,
             buildConfiguration,
             folderContext,
-            prelaunchArgs
-        );
-        this.logger.debug(
-            `Resolved target "${targetName}" to program="${launchConfig.program}"`,
-            "LaunchConfig"
+            await swiftPrelaunchBuildTaskArguments(launchConfig, folderContext.workspaceFolder)
         );
         delete launchConfig.target;
     }
@@ -214,10 +192,6 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             !launchConfig.program.includes("${binPath}") ||
             !folderContext
         ) {
-            this.logger.debug(
-                `Skipping binPath variable substitution: program="${launchConfig.program}", hasBinPathVar=${typeof launchConfig.program === "string" && launchConfig.program.includes("${binPath}")}, hasFolderContext=${!!folderContext}`,
-                "LaunchConfig"
-            );
             return;
         }
 
@@ -232,15 +206,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             true
         );
         const relativeBinPath = path.relative(buildDir, binPath);
-        this.logger.debug(
-            `binPath variable substitution: binPath="${binPath}", buildDir="${buildDir}", relativeBinPath="${relativeBinPath}", program before="${launchConfig.program}"`,
-            "LaunchConfig"
-        );
         launchConfig.program = launchConfig.program.replaceAll("${binPath}", relativeBinPath);
-        this.logger.debug(
-            `binPath variable substitution complete: program after="${launchConfig.program}"`,
-            "LaunchConfig"
-        );
     }
 
     private fixWindowsProgramPath(launchConfig: vscode.DebugConfiguration): void {
