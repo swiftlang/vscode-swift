@@ -182,7 +182,6 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
             return [];
         }
         const parameters: string[] = [];
-        // eslint-disable-next-line no-constant-condition
         while (true) {
             // eslint-disable-next-line sonarjs/empty-string-repetition
             const parameter = parser.match(/(\S*)(?:\s*)?:/);
@@ -203,7 +202,6 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
 
     private parseFunctionMarkers(parser: DocumentParser): boolean {
         let throws = false;
-        // eslint-disable-next-line no-constant-condition
         while (true) {
             const mark = parser.match(/^\s*([a-z]+)/);
             if (!mark || mark.length === 0) {

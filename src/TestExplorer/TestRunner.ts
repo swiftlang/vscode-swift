@@ -690,6 +690,7 @@ export class TestRunner {
                 runState.recordOutput(undefined, buildOutput);
                 // Check if we should open test results panel on compiler error
                 this.openTestResultsPanel();
+                // eslint-disable-next-line preserve-caught-error
                 throw new Error(`Build failed with exit code ${buildExitCode}`);
             }
         }

@@ -62,9 +62,7 @@ export class TestXUnitParser {
         }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async parseXUnit(xUnit: XUnit, runState: ITestRunState): Promise<TestResults> {
-        // eslint-disable-next-line no-console
         let tests = 0;
         let failures = 0;
         let errors = 0;

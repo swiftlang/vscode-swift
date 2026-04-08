@@ -11,6 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+/* eslint-disable mocha/no-exclusive-tests */
 import type { AsyncFunc, Func, Suite, Test } from "mocha";
 
 /** The set of all available test sizes that can be applied to a test or suite. */
@@ -144,13 +145,11 @@ export function tag(size: TestSize): MochaFunctions {
     };
     wrappedSuite.only = (title: string, fn?: (this: Suite) => void): Suite => {
         if (fn) {
-            // eslint-disable-next-line sonarjs/no-exclusive-tests
             return suite.only(title, function () {
                 applyTags(this);
                 fn.call(this);
             });
         }
-        // eslint-disable-next-line sonarjs/no-exclusive-tests
         return suite.only(title);
     };
     wrappedSuite.skip = (title: string, fn: (this: Suite) => void): Suite | void => {

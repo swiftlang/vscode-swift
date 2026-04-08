@@ -1,19 +1,19 @@
 # Build Outputs
-*.vsix
-out
-dist
-coverage
-test-results
-userdocs/userdocs.docc/.docc-build
+/*.vsix
+/out
+/dist
+/coverage
+/test-results
+/userdocs/userdocs.docc/.docc-build
 
 # SwiftPM cache for tests
 .spm-cache
 
 # Generated Assets
-assets/documentation-webview
-assets/icons
-assets/swift-docc-render
-assets/test/**/Package.resolved
+/assets/documentation-webview
+/assets/icons
+/assets/swift-docc-render
+/assets/test/**/Package.resolved
 
 # Node
 node_modules

@@ -69,7 +69,7 @@ if (vsixPath) {
     installExtensions.push(vsixPath);
 
     // Determine version to use
-    const match = /swift-vscode-(\d+.\d+.\d+(-dev)?)(-\d+)?.vsix/g.exec(path.basename(vsixPath));
+    const match = /swift-vscode-(\d+\.\d+\.\d+(-dev)?)(-\d+)?\.vsix/g.exec(path.basename(vsixPath));
     if (match) {
         versionStr = match[1];
     }

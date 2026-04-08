@@ -31,7 +31,6 @@ import {
     waitForReturnedPromises,
 } from "../MockUtils";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function emptyFunction(..._: any): any {
     // Intentionally empty
 }

@@ -423,7 +423,7 @@ export async function showToolchainSelectionQuickPick(
     }
     if (selectedToolchain?.type === "toolchain") {
         // Select an Xcode to build with
-        let developerDir: string | undefined = undefined;
+        let developerDir: string | undefined;
         if (selectedToolchain.category === "xcode") {
             developerDir = await SwiftToolchain.getXcodeDeveloperDir({
                 ...process.env,

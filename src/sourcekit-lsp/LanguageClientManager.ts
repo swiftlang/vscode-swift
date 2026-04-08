@@ -439,7 +439,6 @@ export class LanguageClientManager implements vscode.Disposable {
             configuration.path.length > 0 &&
             serverPathConfig !== toolchainSourceKitLSP
         ) {
-            // eslint-disable-next-line @typescript-eslint/naming-convention
             sourcekit.options = {
                 env: {
                     ...sourcekit.options?.env,
