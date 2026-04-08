@@ -14,9 +14,10 @@
 import * as vscode from "vscode";
 
 import { WorkspaceContext } from "../WorkspaceContext";
+import { Disposable } from "../utilities/Disposable";
 
 /** Manage task execution and completion handlers */
-export class TaskManager implements vscode.Disposable {
+export class TaskManager implements Disposable {
     constructor(private workspaceContext: WorkspaceContext) {
         this.onDidEndTaskProcessDisposible = vscode.tasks.onDidEndTaskProcess(event => {
             this.taskEndObservers.forEach(observer => observer(event));
@@ -51,7 +52,7 @@ export class TaskManager implements vscode.Disposable {
      * @param observer function called when task completes
      * @returns disposable handle. Once you have finished with the observer call dispose on this
      */
-    onDidEndTaskProcess(observer: TaskEndObserver): vscode.Disposable {
+    onDidEndTaskProcess(observer: TaskEndObserver): Disposable {
         this.taskEndObservers.add(observer);
         return {
             dispose: () => {
@@ -154,9 +155,9 @@ export class TaskManager implements vscode.Disposable {
     }
 
     private taskEndObservers: Set<TaskEndObserver> = new Set();
-    private onDidEndTaskProcessDisposible: vscode.Disposable;
-    private onDidEndTaskDisposible: vscode.Disposable;
-    private onDidStartTaskDisposible: vscode.Disposable;
+    private onDidEndTaskProcessDisposible: Disposable;
+    private onDidEndTaskDisposible: Disposable;
+    private onDidStartTaskDisposible: Disposable;
     private taskStartObserver: TaskStartObserver | undefined;
     private taskId = 0;
     private startingTaskPromise: Promise<void> | undefined;

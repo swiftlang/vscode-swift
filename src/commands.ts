@@ -52,6 +52,7 @@ import { extractTestItemsAndCount, runTestMultipleTimes } from "./commands/testM
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { PackageNode, PlaygroundNode } from "./ui/ProjectPanelProvider";
 import { showToolchainSelectionQuickPick } from "./ui/ToolchainSelection";
+import { Disposable } from "./utilities/Disposable";
 
 /**
  * References:
@@ -65,7 +66,7 @@ import { showToolchainSelectionQuickPick } from "./ui/ToolchainSelection";
 export function registerToolchainCommands(
     ctx: WorkspaceContext | undefined,
     logger: SwiftLogger
-): vscode.Disposable[] {
+): Disposable[] {
     return [
         vscode.commands.registerCommand("swift.createNewProject", () =>
             createNewProject(ctx?.globalToolchain)
@@ -122,7 +123,7 @@ export enum Commands {
 /**
  * Registers this extension's commands in the given {@link vscode.ExtensionContext context}.
  */
-export function register(ctx: WorkspaceContext): vscode.Disposable[] {
+export function register(ctx: WorkspaceContext): Disposable[] {
     return [
         vscode.commands.registerCommand(
             "swift.generateLaunchConfigurations",

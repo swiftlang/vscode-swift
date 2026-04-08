@@ -29,9 +29,10 @@ import { PlaygroundProvider } from "./playgrounds/PlaygroundProvider";
 import { TaskQueue } from "./tasks/TaskQueue";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { showToolchainError } from "./ui/ToolchainSelection";
+import { Disposable } from "./utilities/Disposable";
 import { isPathInsidePath } from "./utilities/filesystem";
 
-export class FolderContext implements ExternalFolderContext, vscode.Disposable {
+export class FolderContext implements ExternalFolderContext, Disposable {
     public backgroundCompilation: BackgroundCompilation;
     public hasResolveErrors = false;
     public taskQueue: TaskQueue;

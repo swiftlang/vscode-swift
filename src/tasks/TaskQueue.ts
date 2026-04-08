@@ -15,6 +15,7 @@ import * as vscode from "vscode";
 
 import { FolderContext } from "../FolderContext";
 import { WorkspaceContext } from "../WorkspaceContext";
+import { Disposable } from "../utilities/Disposable";
 import { execSwift, poll } from "../utilities/utilities";
 
 interface SwiftOperationOptions {
@@ -163,7 +164,7 @@ class QueuedOperation {
  *
  * Queue swift task operations to be executed serially
  */
-export class TaskQueue implements vscode.Disposable {
+export class TaskQueue implements Disposable {
     queue: QueuedOperation[];
     activeOperation?: QueuedOperation;
     workspaceContext: WorkspaceContext;

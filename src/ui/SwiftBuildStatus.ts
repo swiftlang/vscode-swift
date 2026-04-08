@@ -15,6 +15,7 @@ import * as vscode from "vscode";
 
 import configuration, { ShowBuildStatusOptions } from "../configuration";
 import { SwiftExecution } from "../tasks/SwiftExecution";
+import { Disposable } from "../utilities/Disposable";
 import { checkIfBuildComplete, lineBreakRegex } from "../utilities/tasks";
 import { StatusItem } from "./StatusItem";
 
@@ -36,8 +37,8 @@ interface SwiftProgress {
  *
  * @see {@link SwiftExecution} to see what and where the events come from
  */
-export class SwiftBuildStatus implements vscode.Disposable {
-    private onDidStartTaskDisposible: vscode.Disposable;
+export class SwiftBuildStatus implements Disposable {
+    private onDidStartTaskDisposible: Disposable;
     private lockedRegex = /Another instance of SwiftPM \(PID: \d+\) is already running/g;
     private debt = 0;
 
@@ -87,7 +88,7 @@ export class SwiftBuildStatus implements vscode.Disposable {
         showBuildStatus: ShowBuildStatusOptions,
         update: (report: { message: string; increment?: number }) => void
     ): Promise<void> {
-        const disposables: vscode.Disposable[] = [];
+        const disposables: Disposable[] = [];
         return new Promise<void>(res => {
             const done = () => {
                 disposables.forEach(d => d.dispose());
@@ -119,7 +120,7 @@ export class SwiftBuildStatus implements vscode.Disposable {
         showBuildStatus: ShowBuildStatusOptions,
         update: (report: { message: string; increment?: number }) => void,
         done: () => void
-    ): vscode.Disposable {
+    ): Disposable {
         let started = false;
         let lastPercentage = 0;
 

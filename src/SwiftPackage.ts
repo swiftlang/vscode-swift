@@ -33,6 +33,7 @@ import { showPackageDependencies } from "./commands/dependencies/show";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { BuildFlags } from "./toolchain/BuildFlags";
 import { SwiftToolchain } from "./toolchain/toolchain";
+import { Disposable } from "./utilities/Disposable";
 import { fileExists, isPathInsidePath } from "./utilities/filesystem";
 import { lineBreakRegex } from "./utilities/tasks";
 import { execSwift, getErrorDescription, hashString, unwrapPromise } from "./utilities/utilities";
@@ -162,7 +163,7 @@ function isError(state: SwiftPackageState): state is Error {
 /**
  * Class holding Swift Package Manager Package
  */
-export class SwiftPackage implements ExternalSwiftPackage, vscode.Disposable {
+export class SwiftPackage implements ExternalSwiftPackage, Disposable {
     public plugins: PackagePlugin[] = [];
     private _contents: SwiftPackageState | undefined;
     private contentsPromise: Promise<SwiftPackageState>;

@@ -18,8 +18,9 @@ import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { showReloadExtensionNotification } from "../ui/ReloadExtension";
 import { removeToolchainPath, selectToolchain } from "../ui/ToolchainSelection";
+import { Disposable } from "../utilities/Disposable";
 
-export class SelectedXcodeWatcher implements vscode.Disposable {
+export class SelectedXcodeWatcher implements Disposable {
     private xcodePath: string | undefined;
     private disposed: boolean = false;
     private interval: NodeJS.Timeout | undefined;

@@ -13,13 +13,15 @@
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
 
+import { Disposable } from "./Disposable";
+
 /**
  * An implementation of `vscode.CancellationToken` that monitors multiple child
  * tokens and emits on the `onCancellationRequested` event when any of them are cancelled.
  */
-export class CompositeCancellationToken implements vscode.CancellationToken, vscode.Disposable {
+export class CompositeCancellationToken implements vscode.CancellationToken, Disposable {
     private tokens: vscode.CancellationToken[] = [];
-    private disposables: vscode.Disposable[] = [];
+    private disposables: Disposable[] = [];
     private cancellationRequestedEmitter: vscode.EventEmitter<unknown> = new vscode.EventEmitter();
     private cancelled: boolean = false;
 
@@ -57,10 +59,10 @@ export class CompositeCancellationToken implements vscode.CancellationToken, vsc
  * child tokens for cancellation, and cancels the token sources token when any of the child tokens are cancelled.
  */
 export class CompositeCancellationTokenSource
-    implements vscode.CancellationTokenSource, vscode.Disposable
+    implements vscode.CancellationTokenSource, Disposable
 {
     private tokenSource: vscode.CancellationTokenSource;
-    private disposables: vscode.Disposable[] = [];
+    private disposables: Disposable[] = [];
 
     /**
      * Creates a new cancellation token source that is cancelled when any of the provided tokens are cancelled

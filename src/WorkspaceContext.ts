@@ -42,6 +42,7 @@ import { SwiftToolchain } from "./toolchain/toolchain";
 import { ProjectPanelProvider } from "./ui/ProjectPanelProvider";
 import { StatusItem } from "./ui/StatusItem";
 import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
+import { Disposable } from "./utilities/Disposable";
 import { isExcluded, isPathInsidePath } from "./utilities/filesystem";
 import { swiftLibraryPathKey } from "./utilities/utilities";
 import { isValidWorkspaceFolder, searchForPackages } from "./utilities/workspace";
@@ -59,7 +60,7 @@ export interface FolderEvent extends ExternalFolderEvent {
  * Context for whole workspace. Holds array of contexts for each workspace folder
  * and the ExtensionContext
  */
-export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Disposable {
+export class WorkspaceContext implements ExternalWorkspaceContext, Disposable {
     public folders: FolderContext[] = [];
     public currentFolder: FolderContext | null | undefined;
     public currentDocument: vscode.Uri | null;
@@ -71,7 +72,7 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
     public taskProvider: SwiftTaskProvider;
     public pluginProvider: SwiftPluginTaskProvider;
     public launchProvider: LLDBDebugConfigurationProvider;
-    public subscriptions: vscode.Disposable[];
+    public subscriptions: Disposable[];
     public commentCompletionProvider: CommentCompletionProviders;
     public documentation: DocumentationManager;
     public testRunManager: TestRunManager;
@@ -493,7 +494,7 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
         this.folders = this.folders.filter(folder => folder.workspaceFolder !== workspaceFolder);
     }
 
-    onDidChangeFolders(listener: (event: FolderEvent) => unknown): vscode.Disposable {
+    onDidChangeFolders(listener: (event: FolderEvent) => unknown): Disposable {
         this.observers.add(listener);
 
         // https://github.com/swiftlang/vscode-swift/issues/1944
@@ -512,7 +513,7 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
         return { dispose: () => this.observers.delete(listener) };
     }
 
-    onDidChangeSwiftFiles(listener: (event: SwiftFileEvent) => unknown): vscode.Disposable {
+    onDidChangeSwiftFiles(listener: (event: SwiftFileEvent) => unknown): Disposable {
         this.swiftFileObservers.add(listener);
         return { dispose: () => this.swiftFileObservers.delete(listener) };
     }

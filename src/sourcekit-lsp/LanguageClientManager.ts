@@ -30,6 +30,7 @@ import { FolderContext } from "../FolderContext";
 import configuration from "../configuration";
 import { SwiftOutputChannel } from "../logging/SwiftOutputChannel";
 import { ArgumentFilter, BuildFlags } from "../toolchain/BuildFlags";
+import { Disposable } from "../utilities/Disposable";
 import { swiftRuntimeEnv } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { LSPLogger, LSPOutputChannel } from "./LSPOutputChannel";
@@ -63,7 +64,7 @@ interface LanguageClientManageOptions {
  * Manages the creation and destruction of Language clients as we move between
  * workspace folders
  */
-export class LanguageClientManager implements vscode.Disposable {
+export class LanguageClientManager implements Disposable {
     // known log names
     static readonly indexingLogName = "SourceKit-LSP: Indexing";
 
@@ -87,10 +88,10 @@ export class LanguageClientManager implements vscode.Disposable {
      */
     private languageClient: LanguageClient | null | undefined;
     private cancellationToken?: vscode.CancellationTokenSource;
-    private legacyInlayHints?: vscode.Disposable;
-    private peekDocuments?: vscode.Disposable;
-    private getReferenceDocument?: vscode.Disposable;
-    private didChangeActiveDocument?: vscode.Disposable;
+    private legacyInlayHints?: Disposable;
+    private peekDocuments?: Disposable;
+    private getReferenceDocument?: Disposable;
+    private didChangeActiveDocument?: Disposable;
     private restartedPromise?: Promise<void>;
     private currentWorkspaceFolder?: FolderContext;
     private waitingOnRestartCount: number;
@@ -99,7 +100,7 @@ export class LanguageClientManager implements vscode.Disposable {
         document: vscode.TextDocument,
         symbols: vscode.DocumentSymbol[] | null | undefined
     ) => void;
-    private subscriptions: vscode.Disposable[];
+    private subscriptions: Disposable[];
     private singleServerSupport: boolean;
     // used by single server support to keep a record of the project folders
     // that are not at the root of their workspace

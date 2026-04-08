@@ -113,7 +113,7 @@ suite("Generate SourceKit-LSP configuration Command", function () {
         );
     });
 
-    suite("handleSchemaUpdate", async () => {
+    suite("handleSchemaUpdate", () => {
         const mockWindow = mockGlobalObject(vscode, "window");
         const mockRestartLSPServerModule = mockGlobalModule(restartLSPServerModule);
 

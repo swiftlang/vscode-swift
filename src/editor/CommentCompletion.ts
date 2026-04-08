@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
 
+import { Disposable } from "../utilities/Disposable";
 import { DocumentParser } from "./DocumentParser";
 
 function isLineComment(document: vscode.TextDocument, line: number): boolean {
@@ -252,11 +253,11 @@ class FunctionDocumentationCompletionProvider implements vscode.CompletionItemPr
 /**
  * Interface to comment completion providers
  */
-export class CommentCompletionProviders implements vscode.Disposable {
+export class CommentCompletionProviders implements Disposable {
     functionCommentCompletion: FunctionDocumentationCompletionProvider;
     docCommentCompletion: DocCommentCompletionProvider;
-    functionCommentCompletionProvider: vscode.Disposable;
-    docCommentCompletionProvider: vscode.Disposable;
+    functionCommentCompletionProvider: Disposable;
+    docCommentCompletionProvider: Disposable;
 
     constructor() {
         this.functionCommentCompletion = new FunctionDocumentationCompletionProvider();

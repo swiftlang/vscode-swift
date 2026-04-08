@@ -18,6 +18,7 @@ import { BackgroundCompilation } from "@src/BackgroundCompilation";
 import { FolderContext } from "@src/FolderContext";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { createSwiftTask, getBuildAllTask } from "@src/tasks/SwiftTaskProvider";
+import { Disposable } from "@src/utilities/Disposable";
 
 import { mockGlobalObject } from "../MockUtils";
 import { testAssetUri } from "../fixtures";
@@ -42,7 +43,7 @@ tag("large").suite("BackgroundCompilation Test Suite", () => {
     }
 
     suite("build all on save", () => {
-        let subscriptions: vscode.Disposable[];
+        let subscriptions: Disposable[];
 
         activateExtensionForSuite({
             async setup(ctx) {

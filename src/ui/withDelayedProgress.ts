@@ -13,6 +13,8 @@
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
 
+import { Disposable } from "../utilities/Disposable";
+
 /**
  * A wrapper around {@link vscode.Progress} that allows for delaying progress reporting.
  */
@@ -52,7 +54,7 @@ export async function withDelayedProgress<R>(
 ): Promise<R> {
     const cancellationTokenSource = new vscode.CancellationTokenSource();
     const progressWrapper = new ProgressWrapper<{ message?: string; increment?: number }>();
-    const disposables: vscode.Disposable[] = [cancellationTokenSource];
+    const disposables: Disposable[] = [cancellationTokenSource];
     const taskPromise = task(progressWrapper, cancellationTokenSource.token);
     // Trigger vscode.window.withProgress() after a delay
     const nodeTimeout = setTimeout(() => {

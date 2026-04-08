@@ -16,6 +16,7 @@ import * as winston from "winston";
 import type * as Transport from "winston-transport";
 
 import configuration from "../configuration";
+import { Disposable } from "../utilities/Disposable";
 import { IS_RUNNING_UNDER_DEBUGGER, IS_RUNNING_UNDER_TEST } from "../utilities/utilities";
 import { FileTransport } from "./FileTransport";
 import { OutputChannelTransport } from "./OutputChannelTransport";
@@ -25,8 +26,8 @@ import { RollingLogTransport } from "./RollingLogTransport";
 type LogMessageOptions = { append: boolean };
 type SwiftLoggerOptions = { logConsole?: boolean };
 
-export class SwiftLogger implements vscode.Disposable {
-    private subscriptions: vscode.Disposable[] = [];
+export class SwiftLogger implements Disposable {
+    private subscriptions: Disposable[] = [];
     private logger: winston.Logger;
     protected rollingLog: RollingLog;
     protected outputChannel: vscode.OutputChannel;

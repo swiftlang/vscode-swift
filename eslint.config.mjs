@@ -20,6 +20,8 @@ import sonarjs from "eslint-plugin-sonarjs";
 import { defineConfig, globalIgnores } from "eslint/config";
 import globals from "globals";
 
+import vscodeSwiftPlugin from "./eslint-plugin-vscode-swift/index.mjs";
+
 const baseLanguageOptions = {
     ecmaVersion: 2022,
     sourceType: "module",
@@ -49,6 +51,7 @@ export default defineConfig([
             tsESLint.configs["flat/recommended"],
             sonarjs.configs.recommended,
             eslintPluginPrettierRecommended,
+            vscodeSwiftPlugin.configs.recommended,
         ],
         plugins: {
             "@typescript-eslint": tsESLint,
@@ -117,6 +120,12 @@ export default defineConfig([
             // These should be progressively enabled over time as we fix the underlying issues
             "sonarjs/no-ignored-exceptions": "off",
             "sonarjs/no-async-constructor": "off",
+        },
+    },
+    {
+        files: ["src/documentation/webview/**/*.ts"],
+        rules: {
+            "vscode-swift/use-custom-disposable": "off",
         },
     },
     {

@@ -18,6 +18,7 @@ import { WorkspaceContext } from "../WorkspaceContext";
 import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { SwiftToolchain } from "../toolchain/toolchain";
+import { Disposable } from "../utilities/Disposable";
 import { fileExists } from "../utilities/filesystem";
 import { getErrorDescription, swiftRuntimeEnv } from "../utilities/utilities";
 import { DebugAdapter, LaunchConfigType, SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
@@ -31,8 +32,8 @@ import { registerLoggingDebugAdapterTracker } from "./logTracker";
  * @param workspaceContext  The workspace context
  * @returns A disposable to be disposed when the extension is deactivated
  */
-export function registerDebugger(workspaceContext: WorkspaceContext): vscode.Disposable {
-    let subscriptions: vscode.Disposable[] = [];
+export function registerDebugger(workspaceContext: WorkspaceContext): Disposable {
+    let subscriptions: Disposable[] = [];
 
     // Monitor the swift.debugger.disable setting and register automatically
     // when the setting is changed to enable.
@@ -55,7 +56,7 @@ export function registerDebugger(workspaceContext: WorkspaceContext): vscode.Dis
         register();
     }
 
-    return vscode.Disposable.from(configurationEvent, ...subscriptions);
+    return Disposable.from(configurationEvent, ...subscriptions);
 }
 
 /**
@@ -63,7 +64,7 @@ export function registerDebugger(workspaceContext: WorkspaceContext): vscode.Dis
  * @param workspaceContext The workspace context
  * @returns A disposable to be disposed when the extension is deactivated
  */
-function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vscode.Disposable {
+function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): Disposable {
     return vscode.debug.registerDebugConfigurationProvider(
         SWIFT_LAUNCH_CONFIG_TYPE,
         workspaceContext.launchProvider
