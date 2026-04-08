@@ -5,6 +5,7 @@
 ### Fixed
 
 - Fix false positive workspace detection for non-Swift projects with `build/` or `out/` directories ([#2156](https://github.com/swiftlang/vscode-swift/pull/2156))
+- Run toolchain executables via `swiftly run <tool>` when the active toolchain is managed by swiftly ([#2177](https://github.com/swiftlang/vscode-swift/pull/2177))
 
 ## 2.16.3 - 2026-04-02
 
@@ -16,7 +17,6 @@
 
 - Refresh tests in the test explorer when background indexing completes ([#2164](https://github.com/swiftlang/vscode-swift/pull/2164))
 - Fix infinite loop on startup when swift-package-manager has a lock on the package being opened ([#2174](https://github.com/swiftlang/vscode-swift/pull/2174))
-- Run toolchain executables via `swiftly run <tool>` when the active toolchain is managed by swiftly ([#2177](https://github.com/swiftlang/vscode-swift/pull/2177))
 
 ## 2.16.2 - 2026-03-17
 
