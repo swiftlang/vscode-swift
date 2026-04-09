@@ -286,6 +286,7 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                     const is64OrLater = swiftVersion.isGreaterThanOrEqual(new Version(6, 4, 0));
                     return {
                         [mainUri.fsPath]: [
+                            // expectedMacroDiagnostic still checks "warning" is parsed
                             ...(is64OrLater ? [] : [expectedWarningDiagnostic]),
                             expectedMainErrorDiagnostic,
                             expectedMainDictErrorDiagnostic,
