@@ -11,6 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+// @ts-check
 import { ESLintUtils } from "@typescript-eslint/utils";
 
 import { createRule, isDeclaredIn } from "./utilities.mjs";

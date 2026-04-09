@@ -11,6 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+// @ts-check
 import { ESLintUtils } from "@typescript-eslint/utils";
 import { dirname } from "path";
 import * as ts from "typescript";
@@ -53,11 +54,12 @@ export function isDeclaredIn(symbol, predicate) {
  * @returns {string | undefined} The name of the source file if found.
  */
 function findNameOfSourceFile(decl) {
-    while (!!decl && decl.kind !== ts.SyntaxKind.SourceFile) {
-        decl = decl.parent;
+    let currentNode = decl.parent;
+    while (!!currentNode && !ts.isSourceFile(currentNode)) {
+        currentNode = currentNode.parent;
     }
-    if (!decl) {
+    if (!currentNode) {
         return undefined;
     }
-    return decl.fileName;
+    return currentNode.fileName;
 }

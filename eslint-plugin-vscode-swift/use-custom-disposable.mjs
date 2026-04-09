@@ -11,6 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+// @ts-check
 import { ESLintUtils } from "@typescript-eslint/utils";
 
 import { createRule, isDeclaredIn } from "./utilities.mjs";
@@ -24,7 +25,7 @@ export default createRule({
                 }
 
                 const services = ESLintUtils.getParserServices(context);
-                const type = services.getTypeFromTypeNode(node);
+                const type = services.getTypeAtLocation(node);
                 if (!type.symbol || type.symbol.name !== "Disposable") {
                     return;
                 }
