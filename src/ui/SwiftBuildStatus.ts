@@ -39,6 +39,7 @@ interface SwiftProgress {
 export class SwiftBuildStatus implements vscode.Disposable {
     private onDidStartTaskDisposible: vscode.Disposable;
     private lockedRegex = /Another instance of SwiftPM \(PID: \d+\) is already running/g;
+    private debt = 0;
 
     constructor() {
         this.onDidStartTaskDisposible = vscode.tasks.onDidStartTask(event => {
@@ -67,14 +68,15 @@ export class SwiftBuildStatus implements vscode.Disposable {
 
         const execution = task.execution as SwiftExecution;
         const isBuildTask = task.group === vscode.TaskGroup.Build;
-        const handleTaskOutput = (update: (message: string) => void) =>
-            this.awaitTaskCompletion(task, execution, isBuildTask, showBuildStatus, update);
+        const handleTaskOutput = (
+            update: (report: { message: string; increment?: number }) => void
+        ) => this.awaitTaskCompletion(task, execution, isBuildTask, showBuildStatus, update);
         const location =
             showBuildStatus === "notification"
                 ? vscode.ProgressLocation.Notification
                 : vscode.ProgressLocation.Window;
         void vscode.window.withProgress<void>({ location }, progress =>
-            handleTaskOutput(message => progress.report({ message }))
+            handleTaskOutput(report => progress.report(report))
         );
     }
 
@@ -83,7 +85,7 @@ export class SwiftBuildStatus implements vscode.Disposable {
         execution: SwiftExecution,
         isBuildTask: boolean,
         showBuildStatus: ShowBuildStatusOptions,
-        update: (message: string) => void
+        update: (report: { message: string; increment?: number }) => void
     ): Promise<void> {
         const disposables: vscode.Disposable[] = [];
         return new Promise<void>(res => {
@@ -115,10 +117,11 @@ export class SwiftBuildStatus implements vscode.Disposable {
         execution: SwiftExecution,
         isBuildTask: boolean,
         showBuildStatus: ShowBuildStatusOptions,
-        update: (message: string) => void,
+        update: (report: { message: string; increment?: number }) => void,
         done: () => void
     ): vscode.Disposable {
         let started = false;
+        let lastPercentage = 0;
 
         const parseEvents = (data: string) => {
             const sanitizedData = stripAnsi(data);
@@ -129,22 +132,31 @@ export class SwiftBuildStatus implements vscode.Disposable {
             for (const line of lines) {
                 const lockedFolderPID = this.checkIfBuildFolderLocked(line);
                 if (lockedFolderPID > 0) {
-                    update(
-                        `${name}: Build folder locked by pid ${lockedFolderPID}. Wait for this process to complete, or terminate it to continue.`
-                    );
+                    update({
+                        message: `${name}: Build folder locked by pid ${lockedFolderPID}. Wait for this process to complete, or terminate it to continue.`,
+                    });
                 }
                 if (checkIfBuildComplete(line)) {
-                    update(name);
+                    update({ message: name });
                     return !isBuildTask;
                 }
                 const progress = this.findBuildProgress(line);
                 if (progress) {
-                    update(`${name}: [${progress.completed}/${progress.total}]`);
                     started = true;
+
+                    const percentage = Math.floor((progress.completed / progress.total) * 100);
+                    const increment = percentage - lastPercentage;
+                    const reportedIncrement = this.applyDebt(increment);
+
+                    lastPercentage = percentage;
+                    update({
+                        message: `${name}: [${progress.completed}/${progress.total}]`,
+                        increment: reportedIncrement,
+                    });
                     return false;
                 }
                 if (this.checkIfFetching(line)) {
-                    update(`${name}: Fetching Dependencies`);
+                    update({ message: `${name}: Fetching Dependencies` });
                     started = true;
                     return false;
                 }
@@ -155,7 +167,7 @@ export class SwiftBuildStatus implements vscode.Disposable {
         // Begin by showing a message that the build is preparing, as there is sometimes
         // a delay before building starts, especially in large projects.
         if (!started && showBuildStatus !== "never") {
-            update(`${name}: Preparing...`);
+            update({ message: `${name}: Preparing...` });
         }
 
         return execution.onDidWrite(data => {
@@ -188,5 +200,22 @@ export class SwiftBuildStatus implements vscode.Disposable {
         if (match) {
             return { completed: parseInt(match[1]), total: parseInt(match[2]) };
         }
+    }
+
+    private applyDebt(increment: number): number {
+        if (increment < 0) {
+            this.debt += Math.abs(increment);
+            return 0;
+        }
+        if (this.debt <= 0) {
+            return increment;
+        }
+        if (increment <= this.debt) {
+            this.debt -= increment;
+            return 0;
+        }
+        const result = increment - this.debt;
+        this.debt = 0;
+        return result;
     }
 }

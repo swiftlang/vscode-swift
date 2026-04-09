@@ -163,13 +163,86 @@ suite("SwiftBuildStatus Unit Test Suite", function () {
         );
 
         const expected = "My Task: [7/7]";
-        expect(mockedProgress.report).to.have.been.calledWith({ message: expected });
+        expect(mockedProgress.report).to.have.been.calledWith({
+            message: expected,
+            increment: 100,
+        });
 
         // Ignore old stuff
         expect(mockedProgress.report).to.not.have.been.calledWith({
             message: "My Task: Fetching Dependencies",
         });
         expect(mockedProgress.report).to.not.have.been.calledWith({ message: "My Task: [6/7]" });
+    });
+
+    test("Reports incremental progress across multiple writes", async () => {
+        configurationMock.setValue("progress");
+        buildStatus = new SwiftBuildStatus();
+        await didStartTaskMock.fire({ execution: mockedTaskExecution });
+
+        testSwiftProcess.write("[1/4] Compiling A.swift\n");
+        expect(mockedProgress.report).to.have.been.calledWith({
+            message: "My Task: [1/4]",
+            increment: 25,
+        });
+
+        testSwiftProcess.write("[3/4] Compiling C.swift\n");
+        expect(mockedProgress.report).to.have.been.calledWith({
+            message: "My Task: [3/4]",
+            increment: 50,
+        });
+
+        testSwiftProcess.write("[4/4] Applying MyCLI\n");
+        expect(mockedProgress.report).to.have.been.calledWith({
+            message: "My Task: [4/4]",
+            increment: 25,
+        });
+    });
+
+    test("Reports zero increment when total increases and progress goes backwards", async () => {
+        configurationMock.setValue("progress");
+        buildStatus = new SwiftBuildStatus();
+        await didStartTaskMock.fire({ execution: mockedTaskExecution });
+
+        // [5/10] = 50%
+        testSwiftProcess.write("[5/10] Compiling\n");
+        expect(mockedProgress.report).to.have.been.calledWith({
+            message: "My Task: [5/10]",
+            increment: 50,
+        });
+
+        // New targets discovered: [5/20] = 25%, a backwards step of -25%.
+        // Reported increment should be 0, not negative.
+        testSwiftProcess.write("[5/20] Compiling\n");
+        expect(mockedProgress.report).to.have.been.calledWith({
+            message: "My Task: [5/20]",
+            increment: 0,
+        });
+
+        // [10/20] = 50%, which matches the last reported percentage.
+        // Debt of 25 absorbs this entire +25 increment, so reported is still 0.
+        testSwiftProcess.write("[10/20] Compiling\n");
+        expect(mockedProgress.report).to.have.been.calledWith({
+            message: "My Task: [10/20]",
+            increment: 0,
+        });
+
+        // [15/20] = 75%, a +25 gain. Debt is fully repaid, so reported increment resumes.
+        testSwiftProcess.write("[15/20] Compiling\n");
+        expect(mockedProgress.report).to.have.been.calledWith({
+            message: "My Task: [15/20]",
+            increment: 25,
+        });
+    });
+
+    test("Preparing phase reports no increment", async () => {
+        configurationMock.setValue("progress");
+        buildStatus = new SwiftBuildStatus();
+        await didStartTaskMock.fire({ execution: mockedTaskExecution });
+
+        expect(mockedProgress.report).to.have.been.calledWith({
+            message: "My Task: Preparing...",
+        });
     });
 
     test("Build complete", async () => {
