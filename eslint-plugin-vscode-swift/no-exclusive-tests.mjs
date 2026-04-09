@@ -18,26 +18,26 @@ import { createRule, isDeclaredIn } from "./utilities.mjs";
 export default createRule({
     create(context) {
         return {
-            Identifier(node) {
-                if (node.name !== "Disposable") {
-                    return;
-                }
-
+            CallExpression(node) {
                 const services = ESLintUtils.getParserServices(context);
-                const type = services.getTypeFromTypeNode(node);
-                if (!type.symbol || type.symbol.name !== "Disposable") {
+                const type = services.getTypeAtLocation(node.callee);
+
+                if (!isDeclaredIn(type.symbol, sourceFile => sourceFile.includes("@types/mocha"))) {
                     return;
                 }
 
-                if (
-                    isDeclaredIn(
-                        type.symbol,
-                        sourceFile => !sourceFile.includes("src/utilities/Disposable")
-                    )
-                ) {
+                if (type.symbol.name === "ExclusiveSuiteFunction") {
                     context.report({
-                        messageId: "useCustomDisposable",
-                        node,
+                        messageId: "noExclusiveSuites",
+                        node: node.callee,
+                    });
+                    return;
+                }
+
+                if (type.symbol.name === "ExclusiveTestFunction") {
+                    context.report({
+                        messageId: "noExclusiveTests",
+                        node: node.callee,
                     });
                 }
             },
@@ -45,15 +45,15 @@ export default createRule({
     },
     meta: {
         docs: {
-            description: "Prefer using vscode-swift's custom disposable types.",
+            description: "Prohibit the use of suite.only() and test.only().",
         },
         messages: {
-            useCustomDisposable:
-                "Use one of the disposable types from `src/utilities/Disposable.ts`.",
+            noExclusiveTests: "Remove .only() from your test case.",
+            noExclusiveSuites: "Remove .only() from your test suite.",
         },
         type: "suggestion",
         schema: [],
         defaultOptions: [],
     },
-    name: "use-custom-disposable",
+    name: "no-exclusive-tests",
 });

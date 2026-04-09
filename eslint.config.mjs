@@ -14,7 +14,6 @@
 import js from "@eslint/js";
 import tsESLint from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
-import mocha from "eslint-plugin-mocha";
 import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
 import sonarjs from "eslint-plugin-sonarjs";
 import { defineConfig, globalIgnores } from "eslint/config";
@@ -71,12 +70,6 @@ export default defineConfig([
             "no-restricted-syntax": [
                 "error",
                 {
-                    selector:
-                        "CallExpression[callee.object.object.callee.name='tag'][callee.property.name='only']",
-                    message:
-                        "Unexpected exclusive mocha test with tag().suite.only() or tag().test.only()",
-                },
-                {
                     selector: "ImportExpression",
                     message:
                         "Dynamic imports using 'import()' are not allowed. Use static imports at the top of the file instead.",
@@ -120,6 +113,9 @@ export default defineConfig([
             // These should be progressively enabled over time as we fix the underlying issues
             "sonarjs/no-ignored-exceptions": "off",
             "sonarjs/no-async-constructor": "off",
+
+            // We have our own rule that uses type information from TypeScript to properly detect .only() in tests
+            "sonarjs/no-exclusive-tests": "off",
         },
     },
     {
@@ -130,11 +126,8 @@ export default defineConfig([
     },
     {
         files: ["./test/**/*.ts"],
-        plugins: { mocha },
         rules: {
             "no-console": "off",
-
-            "mocha/no-exclusive-tests": "error",
 
             "@typescript-eslint/no-explicit-any": "off",
             "@typescript-eslint/no-unused-expressions": "off",

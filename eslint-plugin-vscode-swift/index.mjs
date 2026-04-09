@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 import { defineConfig } from "eslint/config";
 
+import noExclusiveTests from "./no-exclusive-tests.mjs";
 import useCustomDisposable from "./use-custom-disposable.mjs";
 
 const plugin = {
@@ -23,6 +24,7 @@ const plugin = {
     },
     rules: {
         "use-custom-disposable": useCustomDisposable,
+        "no-exclusive-tests": noExclusiveTests,
     },
 };
 
@@ -33,6 +35,7 @@ export default {
             plugins: { "vscode-swift": plugin },
             rules: {
                 "vscode-swift/use-custom-disposable": "error",
+                "vscode-swift/no-exclusive-tests": "error",
             },
         }),
     },
