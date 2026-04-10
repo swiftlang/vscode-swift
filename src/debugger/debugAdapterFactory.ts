@@ -276,6 +276,15 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             launchConfig.env = this.convertEnvironmentVariables(launchConfig.env);
         }
 
+        if (
+            toolchain.manager === "swiftly" &&
+            configuration.debugger.customDebugAdapterPath.length === 0
+        ) {
+            launchConfig.debugAdapterExecutable = "swiftly";
+            launchConfig.debugAdapterArgs = ["run", "lldb-dap"];
+            return true;
+        }
+
         const lldbDapPath = await DebugAdapter.getLLDBDebugAdapterPath(toolchain);
         if (!(await fileExists(lldbDapPath))) {
             void vscode.window.showErrorMessage(
