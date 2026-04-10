@@ -130,7 +130,7 @@ tag("large").suite("Test Explorer Suite", function () {
             });
         }
 
-        suite.only("lldb-dap", () => {
+        suite("lldb-dap", () => {
             let resetSettings: (() => Promise<void>) | undefined;
             beforeEach(async function () {
                 // lldb-dap is only present/functional in the toolchain in 6.0.2 and up.

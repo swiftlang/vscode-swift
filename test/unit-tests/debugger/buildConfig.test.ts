@@ -308,9 +308,9 @@ suite("BuildConfig Test Suite", () => {
         });
 
         test("ignores --build-system with no following value", () => {
-            expect(
-                effectiveBuildSystem(new Version(6, 4, 0), ["--build-system"])
-            ).to.equal("swiftbuild");
+            expect(effectiveBuildSystem(new Version(6, 4, 0), ["--build-system"])).to.equal(
+                "swiftbuild"
+            );
         });
 
         test("ignores --build-system with unrecognized value", () => {
