@@ -64,32 +64,10 @@ export function registerDebugger(workspaceContext: WorkspaceContext): vscode.Dis
  * @returns A disposable to be disposed when the extension is deactivated
  */
 function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vscode.Disposable {
-    return vscode.Disposable.from(
-        vscode.debug.registerDebugConfigurationProvider(
-            SWIFT_LAUNCH_CONFIG_TYPE,
-            workspaceContext.launchProvider
-        ),
-        vscode.debug.registerDebugAdapterDescriptorFactory(
-            SWIFT_LAUNCH_CONFIG_TYPE,
-            new SwiftDebugAdapterDescriptorFactory()
-        )
+    return vscode.debug.registerDebugConfigurationProvider(
+        SWIFT_LAUNCH_CONFIG_TYPE,
+        workspaceContext.launchProvider
     );
-}
-
-/**
- * Debug adapter descriptor factory for the "swift" debug type.
- *
- * Only invoked for swiftly-managed toolchains, where the session type is left as
- * "swift" (instead of being rewritten to "lldb-dap"). Launches the adapter via
- * `swiftly run lldb-dap` so the correct toolchain version is used.
- */
-export class SwiftDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescriptorFactory {
-    createDebugAdapterDescriptor(
-        _session: vscode.DebugSession,
-        _executable: vscode.DebugAdapterExecutable | undefined
-    ): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
-        return new vscode.DebugAdapterExecutable("swiftly", ["run", "lldb-dap"]);
-    }
 }
 
 /** Provide configurations for lldb-vscode/lldb-dap
@@ -298,20 +276,21 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             launchConfig.env = this.convertEnvironmentVariables(launchConfig.env);
         }
 
+        if (
+            toolchain.manager === "swiftly" &&
+            configuration.debugger.customDebugAdapterPath.length === 0
+        ) {
+            launchConfig.debugAdapterExecutable = "swiftly";
+            launchConfig.debugAdapterArgs = ["run", "lldb-dap"];
+            return true;
+        }
+
         const lldbDapPath = await DebugAdapter.getLLDBDebugAdapterPath(toolchain);
         if (!(await fileExists(lldbDapPath))) {
             void vscode.window.showErrorMessage(
                 `Cannot find the LLDB debug adapter in your Swift toolchain: No such file or directory "${lldbDapPath}"`
             );
             return undefined;
-        }
-
-        if (
-            toolchain.manager === "swiftly" &&
-            configuration.debugger.customDebugAdapterPath.length === 0
-        ) {
-            launchConfig.type = SWIFT_LAUNCH_CONFIG_TYPE;
-            return true;
         }
 
         launchConfig.debugAdapterExecutable = lldbDapPath;
