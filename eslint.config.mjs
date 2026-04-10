@@ -14,11 +14,12 @@
 import js from "@eslint/js";
 import tsESLint from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
-import mocha from "eslint-plugin-mocha";
 import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended";
 import sonarjs from "eslint-plugin-sonarjs";
 import { defineConfig, globalIgnores } from "eslint/config";
 import globals from "globals";
+
+import vscodeSwiftPlugin from "./eslint-plugin-vscode-swift/index.mjs";
 
 const baseLanguageOptions = {
     ecmaVersion: 2022,
@@ -49,6 +50,7 @@ export default defineConfig([
             tsESLint.configs["flat/recommended"],
             sonarjs.configs.recommended,
             eslintPluginPrettierRecommended,
+            vscodeSwiftPlugin.configs.recommended,
         ],
         plugins: {
             "@typescript-eslint": tsESLint,
@@ -67,12 +69,6 @@ export default defineConfig([
             "no-console": "warn",
             "no-restricted-syntax": [
                 "error",
-                {
-                    selector:
-                        "CallExpression[callee.object.object.callee.name='tag'][callee.property.name='only']",
-                    message:
-                        "Unexpected exclusive mocha test with tag().suite.only() or tag().test.only()",
-                },
                 {
                     selector: "ImportExpression",
                     message:
@@ -117,15 +113,21 @@ export default defineConfig([
             // These should be progressively enabled over time as we fix the underlying issues
             "sonarjs/no-ignored-exceptions": "off",
             "sonarjs/no-async-constructor": "off",
+
+            // We have our own rule that uses type information from TypeScript to properly detect .only() in tests
+            "sonarjs/no-exclusive-tests": "off",
+        },
+    },
+    {
+        files: ["src/documentation/webview/**/*.ts"],
+        rules: {
+            "vscode-swift/use-custom-disposable": "off",
         },
     },
     {
         files: ["./test/**/*.ts"],
-        plugins: { mocha },
         rules: {
             "no-console": "off",
-
-            "mocha/no-exclusive-tests": "error",
 
             "@typescript-eslint/no-explicit-any": "off",
             "@typescript-eslint/no-unused-expressions": "off",

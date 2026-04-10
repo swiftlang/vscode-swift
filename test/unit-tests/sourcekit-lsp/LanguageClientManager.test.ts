@@ -206,7 +206,7 @@ suite("LanguageClientManager Suite", () => {
             ),
             onRequest: mockFn(),
             sendNotification: mockFn(s => s.resolves()),
-            onNotification: mockFn(s => s.returns(new vscode.Disposable(() => {}))),
+            onNotification: mockFn(s => s.returns({ dispose() {} })),
             onDidChangeState: mockFn(s => s.callsFake(changeStateEmitter.event)),
         });
         // `new LanguageClient()` will always return the mocked LanguageClient

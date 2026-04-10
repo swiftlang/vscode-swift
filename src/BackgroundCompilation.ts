@@ -17,15 +17,16 @@ import { FolderContext } from "./FolderContext";
 import configuration from "./configuration";
 import { getBuildAllTask } from "./tasks/SwiftTaskProvider";
 import { TaskOperation } from "./tasks/TaskQueue";
+import { Disposable } from "./utilities/Disposable";
 import { validFileTypes } from "./utilities/filesystem";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import debounce = require("lodash.debounce");
 
-export class BackgroundCompilation implements vscode.Disposable {
+export class BackgroundCompilation implements Disposable {
     private workspaceFileWatcher?: vscode.FileSystemWatcher;
-    private configurationEventDisposable?: vscode.Disposable;
-    private disposables: vscode.Disposable[] = [];
+    private configurationEventDisposable?: Disposable;
+    private disposables: Disposable[] = [];
     private _disposed = false;
 
     constructor(private folderContext: FolderContext) {

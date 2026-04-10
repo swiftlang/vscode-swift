@@ -14,6 +14,7 @@
 import * as vscode from "vscode";
 
 import { SwiftLogger } from "../logging/SwiftLogger";
+import { Disposable } from "../utilities/Disposable";
 import { LaunchConfigType } from "./debugAdapter";
 
 /**
@@ -44,17 +45,17 @@ interface DebugMessage {
  * Register the LoggingDebugAdapterTrackerFactory with the VS Code debug adapter tracker
  * @returns A disposable to be disposed when the extension is deactivated
  */
-export function registerLoggingDebugAdapterTracker(): vscode.Disposable {
+export function registerLoggingDebugAdapterTracker(): Disposable {
     // Register the factory for both lldb-dap and CodeLLDB since either could be used when
     // resolving a Swift launch configuration.
     const trackerFactory = new LoggingDebugAdapterTrackerFactory();
-    const subscriptions: vscode.Disposable[] = [
+    const subscriptions: Disposable[] = [
         vscode.debug.registerDebugAdapterTrackerFactory(LaunchConfigType.CODE_LLDB, trackerFactory),
         vscode.debug.registerDebugAdapterTrackerFactory(LaunchConfigType.LLDB_DAP, trackerFactory),
     ];
 
     // Return a disposable that cleans everything up.
-    return vscode.Disposable.from(...subscriptions);
+    return Disposable.from(...subscriptions);
 }
 
 /**

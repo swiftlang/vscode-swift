@@ -21,6 +21,7 @@ import { WorkspaceContext } from "@src/WorkspaceContext";
 import { DiagnosticStyle } from "@src/configuration";
 import { createBuildAllTask, resetBuildAllTaskCache } from "@src/tasks/SwiftTaskProvider";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { Disposable } from "@src/utilities/Disposable";
 import { Version } from "@src/utilities/version";
 
 import { testAssetUri, testSwiftTask } from "../fixtures";
@@ -80,7 +81,7 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
     let cUri: vscode.Uri;
     let cppUri: vscode.Uri;
     let cppHeaderUri: vscode.Uri;
-    let diagnosticWaiterDisposable: vscode.Disposable | undefined;
+    let diagnosticWaiterDisposable: Disposable | undefined;
     let remainingExpectedDiagnostics: {
         [uri: string]: vscode.Diagnostic[];
     };
@@ -224,7 +225,7 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                 expected: () => ExpectedDiagnostics,
                 callback?: () => void
             ) {
-                suite(`${style} diagnosticsStyle`, async function () {
+                suite(`${style} diagnosticsStyle`, function () {
                     let resetSettings: (() => Promise<void>) | undefined;
                     suiteTeardown(async () => {
                         if (resetSettings) {

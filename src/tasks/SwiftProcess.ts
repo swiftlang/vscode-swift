@@ -15,11 +15,12 @@ import * as child_process from "child_process";
 import type * as nodePty from "node-pty";
 import * as vscode from "vscode";
 
+import { Disposable } from "../utilities/Disposable";
 import { requireNativeModule } from "../utilities/native";
 
 const { spawn } = requireNativeModule<typeof nodePty>("node-pty");
 
-export interface SwiftProcess extends vscode.Disposable {
+export interface SwiftProcess extends Disposable {
     /**
      * Resolved path to the `swift` executable
      */
@@ -73,7 +74,7 @@ export interface SwiftProcess extends vscode.Disposable {
     setDimensions(dimensions: vscode.TerminalDimensions): void;
 }
 
-class CloseHandler implements vscode.Disposable {
+class CloseHandler implements Disposable {
     private readonly closeEmitter: vscode.EventEmitter<number | void> = new vscode.EventEmitter<
         number | void
     >();
@@ -114,7 +115,7 @@ export class SwiftPtyProcess implements SwiftProcess {
     private readonly writeEmitter: vscode.EventEmitter<string> = new vscode.EventEmitter<string>();
     private readonly errorEmitter: vscode.EventEmitter<Error> = new vscode.EventEmitter<Error>();
     private readonly closeHandler: CloseHandler = new CloseHandler();
-    private disposables: vscode.Disposable[] = [];
+    private disposables: Disposable[] = [];
 
     private spawnedProcess?: nodePty.IPty;
 
@@ -218,7 +219,7 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
     private readonly writeEmitter: vscode.EventEmitter<string> = new vscode.EventEmitter<string>();
     private readonly errorEmitter: vscode.EventEmitter<Error> = new vscode.EventEmitter<Error>();
     private readonly closeHandler: CloseHandler = new CloseHandler();
-    private disposables: vscode.Disposable[] = [];
+    private disposables: Disposable[] = [];
 
     private spawnedProcess: child_process.ChildProcessWithoutNullStreams | undefined;
 

@@ -16,6 +16,7 @@ import * as vscode from "vscode";
 
 import configuration from "@src/configuration";
 import { SwiftEnvironmentVariablesManager, SwiftTerminalProfileProvider } from "@src/terminal";
+import { Disposable } from "@src/utilities/Disposable";
 
 import {
     MockedObject,
@@ -51,7 +52,7 @@ suite("Terminal", () => {
         let manager: SwiftEnvironmentVariablesManager;
         let mockedExtensionContext: MockedObject<vscode.ExtensionContext>;
         let mockedEnvironmentVariableCollection: MockedObject<vscode.GlobalEnvironmentVariableCollection>;
-        let mockedDisposable: MockedObject<vscode.Disposable>;
+        let mockedDisposable: MockedObject<Disposable>;
 
         const mockedWorkspace = mockGlobalObject(vscode, "workspace");
 
@@ -72,7 +73,7 @@ suite("Terminal", () => {
                 environmentVariableCollection: instance(mockedEnvironmentVariableCollection),
             });
 
-            mockedDisposable = mockObject<vscode.Disposable>({
+            mockedDisposable = mockObject<Disposable>({
                 dispose: () => {},
             });
 
@@ -204,7 +205,7 @@ suite("Terminal", () => {
         // Mock configuration values
         const mockedWindow = mockGlobalObject(vscode, "window");
         let mockedTerminal: MockedObject<vscode.Terminal>;
-        let mockedDisposable: MockedObject<vscode.Disposable>;
+        let mockedDisposable: MockedObject<Disposable>;
 
         setup(() => {
             // Create mocks
@@ -212,7 +213,7 @@ suite("Terminal", () => {
                 sendText: () => {},
             });
 
-            mockedDisposable = mockObject<vscode.Disposable>({
+            mockedDisposable = mockObject<Disposable>({
                 dispose: () => {},
             });
 

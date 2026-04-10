@@ -19,6 +19,7 @@ import { FolderContext } from "@src/FolderContext";
 import { FolderOperation, WorkspaceContext } from "@src/WorkspaceContext";
 import { SwiftExecution } from "@src/tasks/SwiftExecution";
 import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
+import { Disposable } from "@src/utilities/Disposable";
 import { resolveScope } from "@src/utilities/tasks";
 import { Version } from "@src/utilities/version";
 
@@ -53,7 +54,7 @@ tag("medium").suite("WorkspaceContext Test Suite", () => {
         });
 
         test("Add", async () => {
-            let observer: vscode.Disposable | undefined;
+            let observer: Disposable | undefined;
             let recordedFolders: {
                 folder: FolderContext | null;
                 operation: FolderOperation;

@@ -29,6 +29,7 @@ import {
 import { LoggingDebugAdapterTracker } from "../debugger/logTracker";
 import { createSwiftTask } from "../tasks/SwiftTaskProvider";
 import { TaskOperation } from "../tasks/TaskQueue";
+import { Disposable } from "../utilities/Disposable";
 import {
     CompositeCancellationToken,
     CompositeCancellationTokenSource,
@@ -696,7 +697,7 @@ export class TestRunner {
         }
 
         const testRunTime = Date.now();
-        const subscriptions: vscode.Disposable[] = [];
+        const subscriptions: Disposable[] = [];
         const buildConfigs: Array<vscode.DebugConfiguration | undefined> = [];
         const fifoPipePath = this.generateFifoPipePath(testRunTime);
 
@@ -802,7 +803,7 @@ export class TestRunner {
     private startDebugSession(
         config: vscode.DebugConfiguration,
         runState: TestRunnerTestRunState,
-        subscriptions: vscode.Disposable[],
+        subscriptions: Disposable[],
         fifoPipePath: string
     ): Promise<void> {
         return new Promise<void>((resolve, reject) => {

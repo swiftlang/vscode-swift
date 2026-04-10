@@ -16,6 +16,7 @@ import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
 import { FolderOperation, WorkspaceContext } from "../WorkspaceContext";
 import { SwiftLogger } from "../logging/SwiftLogger";
+import { Disposable } from "../utilities/Disposable";
 import { LSPPlaygroundsDiscovery, Playground } from "./LSPPlaygroundsDiscovery";
 
 export { Playground };
@@ -31,7 +32,7 @@ interface PlaygroundChangeEvent {
  * added, or if any methods have been removed and edits the test items based on
  * these results.
  */
-export class PlaygroundProvider implements vscode.Disposable {
+export class PlaygroundProvider implements Disposable {
     private hasFetched: boolean = false;
     private fetchPromise: Promise<Playground[]> | undefined;
     private documentPlaygrounds: Map<string, Playground[]> = new Map();
@@ -54,7 +55,7 @@ export class PlaygroundProvider implements vscode.Disposable {
      * @param workspaceContext Workspace context for extension
      * @returns Observer disposable
      */
-    public static observeFolders(workspaceContext: WorkspaceContext): vscode.Disposable {
+    public static observeFolders(workspaceContext: WorkspaceContext): Disposable {
         return workspaceContext.onDidChangeFolders(({ folder, operation }) => {
             switch (operation) {
                 case FolderOperation.add:

@@ -18,6 +18,7 @@ import * as vscode from "vscode";
 import { WorkspaceContext } from "./WorkspaceContext";
 import configuration from "./configuration";
 import { SwiftExecution } from "./tasks/SwiftExecution";
+import { Disposable } from "./utilities/Disposable";
 import { validFileTypes } from "./utilities/filesystem";
 import { checkIfBuildComplete, lineBreakRegex } from "./utilities/tasks";
 
@@ -55,7 +56,7 @@ const isSourceKit: DiagnosticPredicate = diagnostic =>
  * external clients to call {@link handleDiagnostics} to provide
  * thier own diagnostics.
  */
-export class DiagnosticsManager implements vscode.Disposable {
+export class DiagnosticsManager implements Disposable {
     private static readonly swiftc: string = "swiftc";
     static readonly isSourcekit: SourcePredicate = source => this.swiftc !== source;
     static readonly isSwiftc: SourcePredicate = source => this.swiftc === source;
@@ -298,7 +299,7 @@ export class DiagnosticsManager implements vscode.Disposable {
     private parseDiagnostics(swiftExecution: SwiftExecution): Promise<DiagnosticsMap> {
         return new Promise<DiagnosticsMap>(res => {
             const diagnostics = new Map();
-            const disposables: vscode.Disposable[] = [];
+            const disposables: Disposable[] = [];
             const done = () => {
                 disposables.forEach(d => d.dispose());
                 res(diagnostics);
@@ -481,8 +482,8 @@ export class DiagnosticsManager implements vscode.Disposable {
         return diagnostic;
     };
 
-    private onDidStartTaskDisposible: vscode.Disposable;
-    private onDidChangeConfigurationDisposible: vscode.Disposable;
-    private onDidDeleteDisposible: vscode.Disposable;
+    private onDidStartTaskDisposible: Disposable;
+    private onDidChangeConfigurationDisposible: Disposable;
+    private onDidDeleteDisposible: Disposable;
     private workspaceFileWatcher: vscode.FileSystemWatcher;
 }

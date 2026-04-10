@@ -21,6 +21,7 @@ import configuration from "./configuration";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { BuildFlags } from "./toolchain/BuildFlags";
 import { showReloadExtensionNotification } from "./ui/ReloadExtension";
+import { Disposable } from "./utilities/Disposable";
 import { fileExists } from "./utilities/filesystem";
 import { Version } from "./utilities/version";
 
@@ -35,7 +36,7 @@ import debounce = require("lodash.debounce");
  */
 export class PackageWatcher {
     private packageFileWatcher?: vscode.FileSystemWatcher;
-    private resolvedChangedDisposable?: vscode.Disposable;
+    private resolvedChangedDisposable?: Disposable;
     private resolvedFileWatcher?: vscode.FileSystemWatcher;
     private workspaceStateFileWatcher?: vscode.FileSystemWatcher;
     private snippetWatcher?: vscode.FileSystemWatcher;

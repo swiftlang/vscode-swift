@@ -13,13 +13,14 @@
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
 
+import { Disposable } from "../utilities/Disposable";
 import { SwiftProcess } from "./SwiftProcess";
 
 /**
  * Implements {@link vscode.Pseudoterminal} to spawn a {@link SwiftProcess} for tasks
  * that provide a custom {@link vscode.CustomExecution}
  */
-export class SwiftPseudoterminal implements vscode.Pseudoterminal, vscode.Disposable {
+export class SwiftPseudoterminal implements vscode.Pseudoterminal, Disposable {
     private readonly writeEmitter: vscode.EventEmitter<string> = new vscode.EventEmitter<string>();
     private readonly closeEmitter: vscode.EventEmitter<number | void> = new vscode.EventEmitter<
         number | void
@@ -31,7 +32,7 @@ export class SwiftPseudoterminal implements vscode.Pseudoterminal, vscode.Dispos
         private options: vscode.TaskPresentationOptions
     ) {}
 
-    private disposables: vscode.Disposable[] = [];
+    private disposables: Disposable[] = [];
 
     open(initialDimensions: vscode.TerminalDimensions | undefined): void {
         this.swiftProcess = this.createSwiftProcess();

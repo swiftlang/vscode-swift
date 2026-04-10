@@ -19,6 +19,7 @@ import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
 import configuration from "../configuration";
 import { SwiftToolchain } from "../toolchain/toolchain";
+import { Disposable } from "./Disposable";
 
 /**
  * Whether or not this is a production build.
@@ -217,7 +218,7 @@ export async function execFileStreamOutput(
         }
     }
     return new Promise<void>((resolve, reject) => {
-        let cancellation: vscode.Disposable;
+        let cancellation: Disposable;
         const p = cp.execFile(executable, args, options, error => {
             if (error) {
                 reject(error);

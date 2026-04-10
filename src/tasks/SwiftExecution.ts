@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
 
+import { Disposable } from "../utilities/Disposable";
 import { ReadOnlySwiftProcess, SwiftProcess, SwiftPtyProcess } from "./SwiftProcess";
 import { SwiftPseudoterminal } from "./SwiftPseudoterminal";
 
@@ -26,12 +27,12 @@ interface SwiftExecutionOptions extends vscode.ProcessExecutionOptions {
  * control over how the task and `swift` process is executed and allows
  * us to capture and process the output of the `swift` process
  */
-export class SwiftExecution extends vscode.CustomExecution implements vscode.Disposable {
+export class SwiftExecution extends vscode.CustomExecution implements Disposable {
     private readonly writeEmitter: vscode.EventEmitter<string> = new vscode.EventEmitter<string>();
     private readonly closeEmitter: vscode.EventEmitter<number | void> = new vscode.EventEmitter<
         number | void
     >();
-    private disposables: vscode.Disposable[] = [];
+    private disposables: Disposable[] = [];
 
     constructor(
         public readonly command: string,

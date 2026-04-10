@@ -17,8 +17,9 @@ import { Command } from "vscode-languageclient";
 import { FolderOperation, WorkspaceContext } from "../WorkspaceContext";
 import { Commands } from "../commands";
 import { LanguagerClientDocumentSelectors } from "../sourcekit-lsp/LanguageClientConfiguration";
+import { Disposable } from "../utilities/Disposable";
 
-export class LanguageStatusItems implements vscode.Disposable {
+export class LanguageStatusItems implements Disposable {
     constructor(workspaceContext: WorkspaceContext) {
         // Swift language version item
         const swiftVersionItem = vscode.languages.createLanguageStatusItem(

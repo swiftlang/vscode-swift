@@ -15,6 +15,7 @@ import { AssertionError } from "chai";
 import * as vscode from "vscode";
 
 import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
+import { Disposable } from "@src/utilities/Disposable";
 
 import { SwiftTaskFixture } from "../fixtures";
 
@@ -128,10 +129,10 @@ export function waitForNoRunningTasks(options?: { timeout: number }): Promise<vo
  * **Note:** Use {@link withTaskWatcher} to limit the scope to the duration of a test and clean up
  * listeners upon test completion.
  */
-export class TaskWatcher implements vscode.Disposable {
+export class TaskWatcher implements Disposable {
     /** An array containing all of the tasks that have already completed. */
     public completedTasks: vscode.Task[] = [];
-    private subscriptions: vscode.Disposable[];
+    private subscriptions: Disposable[];
 
     constructor() {
         this.subscriptions = [
@@ -184,7 +185,7 @@ export async function withTaskWatcher(
  */
 export function waitForEndTaskProcess(task: vscode.Task): Promise<number | undefined> {
     return new Promise<number | undefined>(res => {
-        const disposables: vscode.Disposable[] = [];
+        const disposables: Disposable[] = [];
         disposables.push(
             vscode.tasks.onDidEndTaskProcess(e => {
                 if (task.detail !== e.execution.task.detail) {
@@ -207,7 +208,7 @@ export function waitForEndTaskProcess(task: vscode.Task): Promise<number | undef
  */
 export function waitForStartTaskProcess(task: vscode.Task): Promise<void> {
     return new Promise<void>(res => {
-        const disposables: vscode.Disposable[] = [];
+        const disposables: Disposable[] = [];
         disposables.push(
             vscode.tasks.onDidStartTaskProcess(e => {
                 if (task.detail !== e.execution.task.detail) {

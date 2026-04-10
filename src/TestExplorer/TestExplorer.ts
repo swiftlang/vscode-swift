@@ -21,6 +21,7 @@ import { SwiftLogger } from "../logging/SwiftLogger";
 import { buildOptions, getBuildAllTask } from "../tasks/SwiftTaskProvider";
 import { TaskManager } from "../tasks/TaskManager";
 import { SwiftExecOperation, TaskOperation } from "../tasks/TaskQueue";
+import { Disposable } from "../utilities/Disposable";
 import { getErrorDescription } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { parseTestsFromDocumentSymbols } from "./DocumentSymbolTestDiscovery";
@@ -39,7 +40,7 @@ export class TestExplorer {
     public testRunProfiles: vscode.TestRunProfile[];
 
     private lspTestDiscovery: LSPTestDiscovery;
-    private subscriptions: vscode.Disposable[];
+    private subscriptions: Disposable[];
     private tokenSource = new vscode.CancellationTokenSource();
 
     // Emits after the `vscode.TestController` has been updated.
@@ -55,9 +56,7 @@ export class TestExplorer {
         public folderContext: FolderContext,
         private tasks: TaskManager,
         private logger: SwiftLogger,
-        private onDidChangeSwiftFiles: (
-            listener: (event: SwiftFileEvent) => void
-        ) => vscode.Disposable
+        private onDidChangeSwiftFiles: (listener: (event: SwiftFileEvent) => void) => Disposable
     ) {
         this.onTestItemsDidChange = this.onTestItemsDidChangeEmitter.event;
         this.onCreateTestRun = this.onDidCreateTestRunEmitter.event;
@@ -177,7 +176,7 @@ export class TestExplorer {
     /**
      * Configure test discovery for updated tests after a build task has completed.
      */
-    private discoverUpdatedTestsAfterBuild(folderContext: FolderContext): vscode.Disposable {
+    private discoverUpdatedTestsAfterBuild(folderContext: FolderContext): Disposable {
         let testFileEdited = true;
         const endProcessDisposable = this.tasks.onDidEndTaskProcess(event => {
             const task = event.execution.task;
@@ -212,7 +211,7 @@ export class TestExplorer {
             }
         });
 
-        return vscode.Disposable.from(endProcessDisposable, didChangeSwiftFileDisposable);
+        return Disposable.from(endProcessDisposable, didChangeSwiftFileDisposable);
     }
 
     /**
@@ -221,7 +220,7 @@ export class TestExplorer {
      * @param workspaceContext Workspace context for extension
      * @returns Observer disposable
      */
-    public static observeFolders(workspaceContext: WorkspaceContext): vscode.Disposable {
+    public static observeFolders(workspaceContext: WorkspaceContext): Disposable {
         const tokenSource = new vscode.CancellationTokenSource();
         const disposable = workspaceContext.onDidChangeFolders(({ folder, operation }) => {
             switch (operation) {
@@ -233,7 +232,7 @@ export class TestExplorer {
                     break;
             }
         });
-        return vscode.Disposable.from(tokenSource, disposable);
+        return Disposable.from(tokenSource, disposable);
     }
 
     /**

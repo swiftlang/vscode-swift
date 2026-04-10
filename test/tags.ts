@@ -11,7 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-/* eslint-disable mocha/no-exclusive-tests */
+/* eslint-disable vscode-swift/no-exclusive-tests */
 import type { AsyncFunc, Func, Suite, Test } from "mocha";
 
 /** The set of all available test sizes that can be applied to a test or suite. */
@@ -165,7 +165,6 @@ export function tag(size: TestSize): MochaFunctions {
     };
     wrappedTest.only = (titleOrFn: string | AsyncFunc | Func, fn?: AsyncFunc | Func): Test => {
         return applyTags(
-            // eslint-disable-next-line sonarjs/no-exclusive-tests
             typeof titleOrFn === "string" ? test.only(titleOrFn, fn) : test.only(titleOrFn)
         );
     };

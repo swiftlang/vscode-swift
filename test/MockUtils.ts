@@ -14,6 +14,8 @@
 import { SinonStub, stub } from "sinon";
 import * as vscode from "vscode";
 
+import { Disposable } from "@src/utilities/Disposable";
+
 /**
  * Waits for all promises returned by a MockedFunction to resolve. Useful when
  * the code you're testing doesn't await the function being mocked, but instead
@@ -500,9 +502,9 @@ export function mockGlobalEvent<T, K extends EventsOf<T>>(
 export class AsyncEventEmitter<T> {
     private listeners: Set<(event: T) => any> = new Set();
 
-    event: vscode.Event<T> = (listener: (event: T) => unknown): vscode.Disposable => {
+    event: vscode.Event<T> = (listener: (event: T) => unknown): Disposable => {
         this.listeners.add(listener);
-        return new vscode.Disposable(() => this.listeners.delete(listener));
+        return new Disposable(() => this.listeners.delete(listener));
     };
 
     async fire(event: T): Promise<void> {

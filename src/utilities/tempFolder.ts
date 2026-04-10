@@ -14,8 +14,8 @@
 import * as fs from "fs/promises";
 import { tmpdir } from "os";
 import * as path from "path";
-import { Disposable } from "vscode";
 
+import { Disposable } from "./Disposable";
 import { randomString } from "./utilities";
 
 export class TemporaryFolder {

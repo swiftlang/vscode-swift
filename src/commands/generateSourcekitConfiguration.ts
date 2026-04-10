@@ -18,6 +18,7 @@ import { FolderContext } from "../FolderContext";
 import { WorkspaceContext } from "../WorkspaceContext";
 import configuration from "../configuration";
 import { selectFolder } from "../ui/SelectFolderQuickPick";
+import { Disposable } from "../utilities/Disposable";
 import restartLSPServer from "./restartLSPServer";
 
 const sourcekitDotFolder: string = ".sourcekit-lsp";
@@ -219,9 +220,7 @@ export async function handleSchemaUpdate(
     await checkDocumentSchema(doc, workspaceContext);
 }
 
-export function registerSourceKitSchemaWatcher(
-    workspaceContext: WorkspaceContext
-): vscode.Disposable {
+export function registerSourceKitSchemaWatcher(workspaceContext: WorkspaceContext): Disposable {
     const onDidOpenDisposable = vscode.workspace.onDidOpenTextDocument(doc => {
         void handleSchemaUpdate(doc, workspaceContext);
     });
@@ -237,7 +236,7 @@ export function registerSourceKitSchemaWatcher(
     const onDidCreateDisposable = configFileWatcher.onDidCreate(async uri => {
         await handleConfigFileChange(uri, workspaceContext);
     });
-    return vscode.Disposable.from(
+    return Disposable.from(
         onDidOpenDisposable,
         configFileWatcher,
         onDidChangeDisposable,
