@@ -860,7 +860,8 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
         } catch (error) {
             logger?.warn(`Error while running 'swift --version': ${error}`);
             throw Error(
-                "Failed to get swift version from either '-print-target-info' or '--version'."
+                "Failed to get swift version from either '-print-target-info' or '--version'.",
+                { cause: error }
             );
         }
     }

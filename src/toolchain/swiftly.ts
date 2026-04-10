@@ -251,7 +251,7 @@ export class Swiftly {
             logger?.info("Swiftly installation and initialization completed successfully");
         } catch (error) {
             logger?.error(`Failed to install Swiftly: ${error}`);
-            throw new Error(`Failed to install Swiftly on macOS: ${(error as Error).message}`);
+            throw new Error("Failed to install Swiftly on macOS", { cause: error });
         } finally {
             try {
                 await fs.unlink(downloadedPkgPath);
@@ -299,7 +299,7 @@ export class Swiftly {
             logger?.info("Swiftly installation completed successfully on Linux");
         } catch (error) {
             logger?.error(`Failed to install Swiftly on Linux: ${error}`);
-            throw new Error(`Failed to install Swiftly on Linux: ${(error as Error).message}`);
+            throw new Error("Failed to install Swiftly on Linux.", { cause: error });
         } finally {
             if (tmpDir) {
                 try {
@@ -321,7 +321,6 @@ export class Swiftly {
         let lastReportedPercent = 0;
 
         try {
-            // eslint-disable-next-line no-constant-condition
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) {
@@ -532,9 +531,9 @@ export class Swiftly {
             );
         } catch (error) {
             logger?.error(`Failed to retrieve Swiftly installations: ${error}`);
-            throw new Error(
-                `Failed to retrieve Swiftly installations from disk: ${(error as Error).message}`
-            );
+            throw new Error("Failed to retrieve Swiftly installations from disk.", {
+                cause: error,
+            });
         }
     }
 
@@ -834,6 +833,7 @@ export class Swiftly {
                 (error as Error).message.includes(Swiftly.cancellationMessage)
             ) {
                 logger?.info(`Installation of ${version} was cancelled by user`);
+                // eslint-disable-next-line preserve-caught-error
                 throw new Error(Swiftly.cancellationMessage);
             }
             throw error;

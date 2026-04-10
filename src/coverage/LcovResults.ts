@@ -11,22 +11,22 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
-import * as lcov from "lcov-parse";
 import * as asyncfs from "fs/promises";
+import * as lcov from "lcov-parse";
 import * as path from "path";
 import { Writable } from "stream";
 import { promisify } from "util";
-import configuration from "../configuration";
+import * as vscode from "vscode";
+
 import { FolderContext } from "../FolderContext";
-import { execFileStreamOutput } from "../utilities/utilities";
-import { BuildFlags } from "../toolchain/BuildFlags";
-import { TestLibrary } from "../TestExplorer/TestRunner";
-import { DisposableFileCollection, TemporaryFolder } from "../utilities/tempFolder";
 import { TargetType } from "../SwiftPackage";
-import { TestingConfigurationFactory } from "../debugger/buildConfig";
 import { TestKind } from "../TestExplorer/TestKind";
+import { TestLibrary } from "../TestExplorer/TestRunner";
+import configuration from "../configuration";
+import { TestingConfigurationFactory } from "../debugger/buildConfig";
+import { BuildFlags } from "../toolchain/BuildFlags";
+import { DisposableFileCollection, TemporaryFolder } from "../utilities/tempFolder";
+import { execFileStreamOutput } from "../utilities/utilities";
 
 interface CodeCovFile {
     testLibrary: TestLibrary;

@@ -34,7 +34,7 @@ import { waitForNoRunningTasks } from "../../utilities/tasks";
 
 export function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     const result = vscode.workspace.workspaceFolders?.at(0);
-    assert(result, "No workspace folders were opened for the tests to use");
+    assert.ok(result, "No workspace folders were opened for the tests to use");
     return result;
 }
 
@@ -140,7 +140,6 @@ const extensionBootstrapper = (() => {
     ) {
         let workspaceContext: WorkspaceContext | undefined;
         let autoTeardown: void | (() => Promise<void>);
-        let restoreSettings: (() => Promise<void>) | undefined;
         activationLogger = new ExtensionActivationLogger();
         asyncLogWrapper = withLogging(activationLogger);
         const SETUP_TIMEOUT_MS = 300_000;
@@ -290,11 +289,6 @@ const extensionBootstrapper = (() => {
                 userTeardownError = error;
             }
 
-            if (restoreSettings) {
-                await asyncLogWrapper("Running restore settings function...", () =>
-                    restoreSettings!()
-                );
-            }
             activationLogger.info("Deactivation complete, calling deactivateExtension()");
             await extensionBootstrapper.deactivateExtension();
             activationLogger.reset();

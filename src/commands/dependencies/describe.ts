@@ -113,9 +113,7 @@ export async function executeSwiftPackageCommand<T>(
 
         return parsedOutput as T;
     } catch (parseError) {
-        throw new Error(
-            `Failed to parse ${config.commandName} output: ${parseError instanceof Error ? parseError.message : "Unknown error"}`
-        );
+        throw new Error(`Failed to parse ${config.commandName} output`, { cause: parseError });
     } finally {
         writeDisposable.dispose();
     }
