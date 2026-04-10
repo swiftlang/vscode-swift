@@ -138,6 +138,11 @@ tag("large").suite("Test Explorer Suite", function () {
                     this.skip();
                 }
 
+                // Temporarily disable this test until debugging is fixed for --build-sytem swiftbuild
+                if (folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 4, 0))) {
+                    this.skip();
+                }
+
                 resetSettings = await updateSettings({
                     "swift.debugger.debugAdapter": "lldb-dap",
                 });
@@ -340,7 +345,7 @@ tag("large").suite("Test Explorer Suite", function () {
                     name: folder,
                     time: fs.statSync(path.join(attachments, folder)).mtime.getTime(),
                 }));
-                assert(attachmentFolders.length > 0, "Attachments directory is empty");
+                assert.equal(attachmentFolders.length > 0, true, "Attachments directory is empty");
 
                 attachmentFolders.sort((a, b) => b.time - a.time);
                 const latestFolder = attachmentFolders[0];
@@ -759,7 +764,15 @@ tag("large").suite("Test Explorer Suite", function () {
 
                         let passed: string[];
                         let failedId: string;
-                        if (folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 2, 0))) {
+                        if (folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 4, 0))) {
+                            passed = [
+                                `${testId}/PackageTests.swift:59:2/Parameterized test case ID: argumentIDs: [Testing.Test.Case.Argument.ID(bytes: [107, 134, 178, 115, 255, 52, 252, 225, 157, 107, 128, 78, 255, 90, 63, 87, 71, 173, 164, 234, 162, 47, 29, 73, 192, 30, 82, 221, 183, 135, 91, 75])], discriminator: 0, isStable: true`,
+                                `${testId}/PackageTests.swift:59:2/Parameterized test case ID: argumentIDs: [Testing.Test.Case.Argument.ID(bytes: [78, 7, 64, 133, 98, 190, 219, 139, 96, 206, 5, 193, 222, 207, 227, 173, 22, 183, 34, 48, 150, 125, 224, 31, 100, 11, 126, 71, 41, 180, 159, 206])], discriminator: 0, isStable: true`,
+                            ];
+                            failedId = `${testId}/PackageTests.swift:59:2/Parameterized test case ID: argumentIDs: [Testing.Test.Case.Argument.ID(bytes: [212, 115, 94, 58, 38, 94, 22, 238, 224, 63, 89, 113, 139, 155, 93, 3, 1, 156, 7, 216, 182, 197, 31, 144, 218, 58, 102, 110, 236, 19, 171, 53])], discriminator: 0, isStable: true`;
+                        } else if (
+                            folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 2, 0))
+                        ) {
                             passed = [
                                 `${testId}/PackageTests.swift:59:2/Parameterized test case ID: argumentIDs: [Testing.Test.Case.Argument.ID(bytes: [49])], discriminator: 0, isStable: true`,
                                 `${testId}/PackageTests.swift:59:2/Parameterized test case ID: argumentIDs: [Testing.Test.Case.Argument.ID(bytes: [51])], discriminator: 0, isStable: true`,

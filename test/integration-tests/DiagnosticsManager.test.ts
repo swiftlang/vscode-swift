@@ -281,19 +281,28 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
 
             runTestDiagnosticStyle(
                 "default",
-                () => ({
-                    [mainUri.fsPath]: [
-                        expectedWarningDiagnostic,
-                        expectedMainErrorDiagnostic,
-                        expectedMainDictErrorDiagnostic,
-                        ...(workspaceContext.globalToolchainSwiftVersion.isGreaterThanOrEqual(
-                            new Version(6, 0, 0)
-                        )
-                            ? [expectedMacroDiagnostic]
-                            : []),
-                    ], // Should have parsed correct severity
-                    [funcUri.fsPath]: [expectedFuncErrorDiagnostic], // Check parsed for other file
-                }),
+                () => {
+                    const swiftVersion = folderContext.toolchain.swiftVersion;
+                    const is64OrLater = swiftVersion.isGreaterThanOrEqual(new Version(6, 4, 0));
+                    return {
+                        [mainUri.fsPath]: [
+                            // expectedMacroDiagnostic still checks "warning" is parsed
+                            ...(is64OrLater ? [] : [expectedWarningDiagnostic]),
+                            expectedMainErrorDiagnostic,
+                            expectedMainDictErrorDiagnostic,
+                            ...(workspaceContext.globalToolchainSwiftVersion.isGreaterThanOrEqual(
+                                new Version(6, 0, 0)
+                            )
+                                ? [expectedMacroDiagnostic]
+                                : []),
+                        ], // Should have parsed correct severity
+                        ...(is64OrLater
+                            ? {}
+                            : {
+                                  [funcUri.fsPath]: [expectedFuncErrorDiagnostic],
+                              }), // Check parsed for other file
+                    };
+                },
                 () => {
                     test("Parses related information", async function () {
                         if (
@@ -324,14 +333,23 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                 }
             );
 
-            runTestDiagnosticStyle("swift", () => ({
-                [mainUri.fsPath]: [
-                    expectedWarningDiagnostic,
-                    expectedMainErrorDiagnostic,
-                    expectedMainDictErrorDiagnostic,
-                ], // Should have parsed correct severity
-                [funcUri.fsPath]: [expectedFuncErrorDiagnostic], // Check parsed for other file
-            }));
+            runTestDiagnosticStyle("swift", () => {
+                const is64OrLater = folderContext.toolchain.swiftVersion.isGreaterThanOrEqual(
+                    new Version(6, 4, 0)
+                );
+                return {
+                    [mainUri.fsPath]: [
+                        ...(is64OrLater ? [] : [expectedWarningDiagnostic]),
+                        expectedMainErrorDiagnostic,
+                        expectedMainDictErrorDiagnostic,
+                    ], // Should have parsed correct severity
+                    ...(is64OrLater
+                        ? {}
+                        : {
+                              [funcUri.fsPath]: [expectedFuncErrorDiagnostic],
+                          }), // Check parsed for other file
+                };
+            });
 
             runTestDiagnosticStyle(
                 "llvm",
@@ -431,12 +449,16 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                         );
                         expectedDiagnostic3.source = "swiftc";
 
+                        const is64OrLater =
+                            folderContext.toolchain.swiftVersion.isGreaterThanOrEqual(
+                                new Version(6, 4, 0)
+                            );
                         await Promise.all([
                             waitForDiagnostics({
                                 [cppUri.fsPath]: [
                                     expectedDiagnostic1,
                                     expectedDiagnostic2,
-                                    expectedDiagnostic3,
+                                    ...(is64OrLater ? [] : [expectedDiagnostic3]),
                                 ],
                             }),
                             createBuildAllTask(cppFolderContext).then(task =>

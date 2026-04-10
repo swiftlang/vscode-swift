@@ -29,6 +29,18 @@ The most basic launch configuration uses the `"launch"` request and provides a p
 }
 ```
 
+The `program` property supports a `${binPath}` variable that resolves to the relative path from the build directory to the binary output directory. This is useful because the binary output location can vary depending on the Swift build system in use (e.g. `.build/debug` vs `.build/out/Products/Debug`):
+
+```javascript
+{
+    "label": "Debug my-executable",
+    "type": "swift",
+    "request": "launch",
+    "program": "${workspaceFolder}/.build/${binPath}/my-executable",
+    "configuration": "debug"
+}
+```
+
 For SwiftPM based projects, you may specify a `target` and `configuration` instead of a `program` to make your debug configurations shareable between different developers on different platforms:
 
 ```javascript

@@ -98,16 +98,20 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         // If we can't find it we're likely in a multi-root workspace and we should
         // attempt to find a folder context that matches the "cwd" in the launch configuration.
         if (!folderContext && launchConfig.cwd) {
-            folderContext = this.workspaceContext.folders.find(
-                f =>
-                    path.normalize(f.workspaceFolder.uri.fsPath) ===
-                    path.normalize(launchConfig.cwd)
-            );
+            folderContext = this.workspaceContext.folders.find(f => {
+                const folderPath = path.normalize(f.workspaceFolder.uri.fsPath);
+                const cwdPath = path.normalize(launchConfig.cwd);
+                return this.platform === "win32"
+                    ? folderPath.localeCompare(cwdPath, undefined, { sensitivity: "accent" }) === 0
+                    : folderPath === cwdPath;
+            });
         }
 
         this.validateLaunchRequest(launchConfig);
 
         await this.resolveTargetToProgram(launchConfig, folderContext);
+
+        await this.resolveBinPathVariable(launchConfig, folderContext);
 
         this.fixWindowsProgramPath(launchConfig);
 
@@ -176,6 +180,28 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             await swiftPrelaunchBuildTaskArguments(launchConfig, folderContext.workspaceFolder)
         );
         delete launchConfig.target;
+    }
+
+    private async resolveBinPathVariable(
+        launchConfig: vscode.DebugConfiguration,
+        folderContext: ReturnType<typeof this.workspaceContext.folders.find>
+    ): Promise<void> {
+        if (
+            typeof launchConfig.program !== "string" ||
+            !launchConfig.program.includes("${binPath}") ||
+            !folderContext
+        ) {
+            return;
+        }
+
+        const buildConfiguration = launchConfig.configuration ?? "debug";
+        const binPath = await folderContext.toolchain.buildFlags.getBuildBinaryPath(
+            folderContext.folder.fsPath,
+            buildConfiguration,
+            folderContext.workspaceContext.logger
+        );
+        const relativeBinPath = path.relative(folderContext.folder.fsPath, binPath);
+        launchConfig.program = launchConfig.program.replaceAll("${binPath}", relativeBinPath);
     }
 
     private fixWindowsProgramPath(launchConfig: vscode.DebugConfiguration): void {

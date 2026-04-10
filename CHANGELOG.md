@@ -2,6 +2,10 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+### Added
+
+- Add `${binPath}` variable substitution for launch configuration program paths ([#2184](https://github.com/swiftlang/vscode-swift/pull/2184))
+
 ### Fixed
 
 - Fix false positive workspace detection for non-Swift projects with `build/` or `out/` directories ([#2156](https://github.com/swiftlang/vscode-swift/pull/2156))
