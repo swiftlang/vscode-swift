@@ -14,7 +14,7 @@
 // @ts-check
 import { ESLintUtils } from "@typescript-eslint/utils";
 
-import { createRule, isDeclaredIn } from "./utilities.mjs";
+import { createRule, isSymbolDeclaredIn } from "./utilities.mjs";
 
 export default createRule({
     create(context) {
@@ -31,7 +31,7 @@ export default createRule({
                 }
 
                 if (
-                    isDeclaredIn(
+                    isSymbolDeclaredIn(
                         type.symbol,
                         sourceFile => !sourceFile.includes("src/utilities/Disposable")
                     )

@@ -14,7 +14,7 @@
 // @ts-check
 import { ESLintUtils } from "@typescript-eslint/utils";
 
-import { createRule, isDeclaredIn } from "./utilities.mjs";
+import { createRule, isSymbolDeclaredIn } from "./utilities.mjs";
 
 export default createRule({
     create(context) {
@@ -23,7 +23,11 @@ export default createRule({
                 const services = ESLintUtils.getParserServices(context);
                 const type = services.getTypeAtLocation(node.callee);
 
-                if (!isDeclaredIn(type.symbol, sourceFile => sourceFile.includes("@types/mocha"))) {
+                if (
+                    !isSymbolDeclaredIn(type.symbol, sourceFile =>
+                        sourceFile.includes("@types/mocha")
+                    )
+                ) {
                     return;
                 }
 

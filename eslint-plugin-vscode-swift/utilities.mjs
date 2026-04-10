@@ -31,7 +31,7 @@ export const createRule = ESLintUtils.RuleCreator(
  * @param {(fileName: string) => boolean} predicate A function that returns true if the source file matches some criteria.
  * @returns {boolean} True if the symbol is declared in a source file that matches the predicate.
  */
-export function isDeclaredIn(symbol, predicate) {
+export function isSymbolDeclaredIn(symbol, predicate) {
     if (!symbol?.declarations) {
         return false;
     }
