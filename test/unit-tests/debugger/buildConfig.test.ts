@@ -17,9 +17,13 @@ import * as sinon from "sinon";
 import { FolderContext } from "@src/FolderContext";
 import { LinuxMain } from "@src/LinuxMain";
 import { SwiftPackage } from "@src/SwiftPackage";
+import { TestKind } from "@src/TestExplorer/TestKind";
+import { TestLibrary } from "@src/TestExplorer/TestRunner";
+import { WorkspaceContext } from "@src/WorkspaceContext";
 import configuration, { FolderConfiguration } from "@src/configuration";
 import {
     BuildConfigurationFactory,
+    TestingConfigurationFactory,
     effectiveBuildSystem,
     groupTestsByTarget,
 } from "@src/debugger/buildConfig";
@@ -356,6 +360,202 @@ suite("BuildConfig Test Suite", () => {
             const result = groupTestsByTarget(["FooTests"]);
             expect(result.size).to.equal(1);
             expect(result.get("FooTests")).to.deep.equal(["FooTests"]);
+        });
+    });
+
+    suite("testExecutableOutputPath", () => {
+        const platformMock = mockGlobalValue(process, "platform");
+        const buildArgumentsConfig = mockGlobalValue(configuration, "buildArguments");
+        let mockedLogger: MockedObject<Pick<WorkspaceContext["logger"], "warn">>;
+
+        function createTestFolderContext(
+            swiftVersion: Version,
+            binPath: string
+        ): MockedObject<FolderContext> {
+            mockedLogger = mockObject<Pick<WorkspaceContext["logger"], "warn">>({
+                warn: () => {},
+            });
+            const testBuildFlags = mockObject<BuildFlags>({
+                getBuildBinaryPath: sinon.stub().resolves(binPath),
+            });
+            const testToolchain = mockObject<SwiftToolchain>({
+                buildFlags: instance(testBuildFlags),
+                swiftVersion: swiftVersion,
+                unversionedTriple: undefined,
+            });
+            const testSwiftPackage = mockObject<SwiftPackage>({
+                getTargets: sinon.stub().resolves([{ name: "PackageTests" }]),
+                name: Promise.resolve("MyPackage"),
+            });
+            return mockObject<FolderContext>({
+                toolchain: instance(testToolchain),
+                swiftPackage: instance(testSwiftPackage),
+                workspaceFolder: {
+                    uri: { fsPath: "/test/workspace" },
+                    name: "TestWorkspace",
+                } as any,
+                workspaceContext: { logger: instance(mockedLogger) } as any,
+                folder: { fsPath: "/test/workspace" } as any,
+                swiftVersion: swiftVersion,
+                relativePath: "",
+                linuxMain: { exists: true } as any as LinuxMain,
+            });
+        }
+
+        setup(() => {
+            additionalTestArgumentsConfig.setValue(() => createMockFolderConfig([]));
+            buildArgumentsConfig.setValue([]);
+        });
+
+        suite("with native build system (Swift < 6.4)", () => {
+            const swiftVersion = new Version(6, 3, 0);
+
+            test("uses .xctest on linux with targetName", async () => {
+                platformMock.setValue("linux" as NodeJS.Platform);
+                const ctx = createTestFolderContext(swiftVersion, "/build/debug");
+
+                const result = await TestingConfigurationFactory.testExecutableOutputPath(
+                    instance(ctx),
+                    TestKind.debug,
+                    TestLibrary.xctest,
+                    "PackageTests"
+                );
+
+                expect(result).to.match(/PackageTests\.xctest$/);
+            });
+
+            test("uses .xctest on windows with targetName", async () => {
+                platformMock.setValue("win32" as NodeJS.Platform);
+                const ctx = createTestFolderContext(swiftVersion, "/build/debug");
+
+                const result = await TestingConfigurationFactory.testExecutableOutputPath(
+                    instance(ctx),
+                    TestKind.debug,
+                    TestLibrary.xctest,
+                    "PackageTests"
+                );
+
+                expect(result).to.match(/PackageTests\.xctest$/);
+            });
+
+            test("uses .xctest on darwin with targetName", async () => {
+                platformMock.setValue("darwin" as NodeJS.Platform);
+                const ctx = createTestFolderContext(swiftVersion, "/build/debug");
+
+                const result = await TestingConfigurationFactory.testExecutableOutputPath(
+                    instance(ctx),
+                    TestKind.debug,
+                    TestLibrary.xctest,
+                    "PackageTests"
+                );
+
+                expect(result).to.match(/PackageTests\.xctest$/);
+            });
+        });
+
+        suite("with swiftbuild build system (Swift >= 6.4)", () => {
+            const swiftVersion = new Version(6, 4, 0);
+
+            test("uses -test-runner on linux with targetName", async () => {
+                platformMock.setValue("linux" as NodeJS.Platform);
+                const ctx = createTestFolderContext(swiftVersion, "/build/debug");
+
+                const result = await TestingConfigurationFactory.testExecutableOutputPath(
+                    instance(ctx),
+                    TestKind.debug,
+                    TestLibrary.xctest,
+                    "PackageTests"
+                );
+
+                expect(result).to.match(/PackageTests-test-runner$/);
+            });
+
+            test("uses -test-runner.exe on windows with targetName", async () => {
+                platformMock.setValue("win32" as NodeJS.Platform);
+                const ctx = createTestFolderContext(swiftVersion, "/build/debug");
+
+                const result = await TestingConfigurationFactory.testExecutableOutputPath(
+                    instance(ctx),
+                    TestKind.debug,
+                    TestLibrary.xctest,
+                    "PackageTests"
+                );
+
+                expect(result).to.match(/PackageTests-test-runner\.exe$/);
+            });
+
+            test("uses .xctest on darwin with targetName", async () => {
+                platformMock.setValue("darwin" as NodeJS.Platform);
+                const ctx = createTestFolderContext(swiftVersion, "/build/debug");
+
+                const result = await TestingConfigurationFactory.testExecutableOutputPath(
+                    instance(ctx),
+                    TestKind.debug,
+                    TestLibrary.xctest,
+                    "PackageTests"
+                );
+
+                expect(result).to.match(/PackageTests\.xctest$/);
+            });
+
+            test("uses -test-runner on linux without targetName", async () => {
+                platformMock.setValue("linux" as NodeJS.Platform);
+                const ctx = createTestFolderContext(swiftVersion, "/build/debug");
+
+                const result = await TestingConfigurationFactory.testExecutableOutputPath(
+                    instance(ctx),
+                    TestKind.debug,
+                    TestLibrary.xctest
+                );
+
+                expect(result).to.match(/MyPackagePackageTests-test-runner$/);
+            });
+
+            test("uses -test-runner on linux for swift-testing", async () => {
+                platformMock.setValue("linux" as NodeJS.Platform);
+                const ctx = createTestFolderContext(swiftVersion, "/build/debug");
+
+                const result = await TestingConfigurationFactory.testExecutableOutputPath(
+                    instance(ctx),
+                    TestKind.debug,
+                    TestLibrary.swiftTesting,
+                    "PackageTests"
+                );
+
+                expect(result).to.match(/PackageTests-test-runner$/);
+            });
+        });
+
+        suite("with explicit --build-system override", () => {
+            test("uses -test-runner when --build-system swiftbuild on old Swift", async () => {
+                platformMock.setValue("linux" as NodeJS.Platform);
+                buildArgumentsConfig.setValue(["--build-system", "swiftbuild"]);
+                const ctx = createTestFolderContext(new Version(6, 3, 0), "/build/debug");
+
+                const result = await TestingConfigurationFactory.testExecutableOutputPath(
+                    instance(ctx),
+                    TestKind.debug,
+                    TestLibrary.xctest,
+                    "PackageTests"
+                );
+
+                expect(result).to.match(/PackageTests-test-runner$/);
+            });
+
+            test("uses .xctest when --build-system native on new Swift", async () => {
+                platformMock.setValue("linux" as NodeJS.Platform);
+                buildArgumentsConfig.setValue(["--build-system", "native"]);
+                const ctx = createTestFolderContext(new Version(6, 4, 0), "/build/debug");
+
+                const result = await TestingConfigurationFactory.testExecutableOutputPath(
+                    instance(ctx),
+                    TestKind.debug,
+                    TestLibrary.xctest,
+                    "PackageTests"
+                );
+
+                expect(result).to.match(/PackageTests\.xctest$/);
+            });
         });
     });
 });

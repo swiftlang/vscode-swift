@@ -625,13 +625,29 @@ export class TestingConfigurationFactory {
         }
     }
 
+    private get buildSystem(): "native" | "swiftbuild" {
+        const allBuildArgs = [
+            ...configuration.buildArguments,
+            ...configuration.folder(this.ctx.workspaceFolder).additionalTestArguments,
+        ];
+        return effectiveBuildSystem(this.ctx.swiftVersion, allBuildArgs);
+    }
+
+    private testProductBinaryName(baseName: string): string {
+        if (this.buildSystem === "native" || process.platform === "darwin") {
+            return `${baseName}.xctest`;
+        }
+        const suffix = process.platform === "win32" ? ".exe" : "";
+        return `${baseName}-test-runner${suffix}`;
+    }
+
     private async xcTestOutputPath(): Promise<string> {
         const binPath = await this.getBuildBinaryPath();
         if (this.targetName) {
-            return path.join(binPath, `${this.targetName}.xctest`);
+            return path.join(binPath, this.testProductBinaryName(this.targetName));
         }
-        const packageName = await this.ctx.swiftPackage.name;
-        return path.join(binPath, `${packageName}PackageTests.xctest`);
+        const name = await this.ctx.swiftPackage.name;
+        return path.join(binPath, this.testProductBinaryName(`${name}PackageTests`));
     }
 
     private async unifiedTestingOutputPath(): Promise<string> {
