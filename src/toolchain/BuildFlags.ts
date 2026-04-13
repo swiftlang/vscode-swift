@@ -392,4 +392,38 @@ export class BuildFlags {
     private static isCombinedArgMatch(arg: string, filter: ArgumentFilter[]): boolean {
         return filter.some(item => item.include === 1 && arg.startsWith(item.argument + "="));
     }
+
+    /**
+     * Find the value of the last occurrence of a flag in an argument list,
+     * supporting both `--flag value` and `--flag=value` formats.
+     *
+     * @param args The argument list to search
+     * @param flag The flag name to look for (e.g. `"--build-system"`)
+     * @param validate Optional type guard to restrict which values are accepted.
+     *                 When provided, occurrences whose value fails validation are
+     *                 skipped and the search continues to the next match.
+     * @returns The value of the last valid occurrence, or `undefined` if none match
+     */
+    static lastFlagValue<T extends string = string>(
+        args: readonly string[],
+        flag: string,
+        validate?: (value: string) => value is T
+    ): T | undefined {
+        for (let i = args.length - 1; i >= 0; i--) {
+            const arg = args[i];
+            const prefix = `${flag}=`;
+            if (arg.startsWith(prefix)) {
+                const value = arg.substring(prefix.length);
+                if (!validate || validate(value)) {
+                    return value as T;
+                }
+            } else if (arg === flag && i + 1 < args.length) {
+                const value = args[i + 1];
+                if (!validate || validate(value)) {
+                    return value as T;
+                }
+            }
+        }
+        return undefined;
+    }
 }

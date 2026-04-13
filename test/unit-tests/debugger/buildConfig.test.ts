@@ -300,6 +300,35 @@ suite("BuildConfig Test Suite", () => {
             ).to.equal("swiftbuild");
         });
 
+        test("equals format --build-system=swiftbuild overrides < 6.4.0 default", () => {
+            expect(
+                effectiveBuildSystem(new Version(6, 3, 0), ["--build-system=swiftbuild"])
+            ).to.equal("swiftbuild");
+        });
+
+        test("equals format --build-system=native overrides 6.4.0+ default", () => {
+            expect(effectiveBuildSystem(new Version(6, 4, 0), ["--build-system=native"])).to.equal(
+                "native"
+            );
+        });
+
+        test("last --build-system wins across mixed formats", () => {
+            expect(
+                effectiveBuildSystem(new Version(6, 4, 0), [
+                    "--build-system=swiftbuild",
+                    "--build-system",
+                    "native",
+                ])
+            ).to.equal("native");
+            expect(
+                effectiveBuildSystem(new Version(6, 4, 0), [
+                    "--build-system",
+                    "native",
+                    "--build-system=swiftbuild",
+                ])
+            ).to.equal("swiftbuild");
+        });
+
         test("last --build-system wins when duplicated", () => {
             expect(
                 effectiveBuildSystem(new Version(6, 4, 0), [

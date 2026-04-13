@@ -788,13 +788,11 @@ export class TestRunner {
                 config.preLaunchTask = null;
                 config.name = `Swift Testing (${targetName}): Test ${pkgName}`;
 
-                if (configuration.diagnostics) {
-                    const configJSON = JSON.stringify(config);
-                    this.workspaceContext.logger.debug(
-                        `swift-testing Debug Config: ${configJSON}`,
-                        this.folderContext.name
-                    );
-                }
+                const configJSON = JSON.stringify(config);
+                this.workspaceContext.logger.debug(
+                    `swift-testing Debug Config: ${configJSON}`,
+                    this.folderContext.name
+                );
 
                 configs.push(config);
             }
@@ -823,13 +821,11 @@ export class TestRunner {
                 config.preLaunchTask = null;
                 config.name = `XCTest (${targetName}): Test ${pkgName}`;
 
-                if (configuration.diagnostics) {
-                    const configJSON = JSON.stringify(config);
-                    this.workspaceContext.logger.debug(
-                        `XCTest Debug Config: ${configJSON}`,
-                        this.folderContext.name
-                    );
-                }
+                const configJSON = JSON.stringify(config);
+                this.workspaceContext.logger.debug(
+                    `XCTest Debug Config: ${configJSON}`,
+                    this.folderContext.name
+                );
 
                 configs.push(config);
             }
@@ -865,13 +861,11 @@ export class TestRunner {
         swiftTestBuildConfig.name = `Swift Testing: ${swiftTestBuildConfig.name}`;
 
         // output test build configuration
-        if (configuration.diagnostics) {
-            const configJSON = JSON.stringify(swiftTestBuildConfig);
-            this.workspaceContext.logger.debug(
-                `swift-testing Debug Config: ${configJSON}`,
-                this.folderContext.name
-            );
-        }
+        const configJSON = JSON.stringify(swiftTestBuildConfig);
+        this.workspaceContext.logger.debug(
+            `swift-testing Debug Config: ${configJSON}`,
+            this.folderContext.name
+        );
 
         return [swiftTestBuildConfig];
     }
@@ -894,13 +888,11 @@ export class TestRunner {
         xcTestBuildConfig.name = `XCTest: ${xcTestBuildConfig.name}`;
 
         // output test build configuration
-        if (configuration.diagnostics) {
-            const configJSON = JSON.stringify(xcTestBuildConfig);
-            this.workspaceContext.logger.debug(
-                `XCTest Debug Config: ${configJSON}`,
-                this.folderContext.name
-            );
-        }
+        const configJSON = JSON.stringify(xcTestBuildConfig);
+        this.workspaceContext.logger.debug(
+            `XCTest Debug Config: ${configJSON}`,
+            this.folderContext.name
+        );
 
         return [xcTestBuildConfig];
     }

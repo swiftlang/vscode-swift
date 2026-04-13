@@ -31,18 +31,25 @@ import { updateLaunchConfigForCI } from "./lldb";
 
 type BuildSystem = "native" | "swiftbuild";
 
+const validBuildSystems: readonly BuildSystem[] = ["native", "swiftbuild"];
+
+const isValidBuildSystem = (value: string): value is BuildSystem =>
+    validBuildSystems.includes(value as BuildSystem);
+
+/**
+ * Determine which build system to use based on explicit `--build-system` arguments
+ * and the Swift toolchain version. If the build arguments specify a build system, use
+ * that, otherwise Swift >= 6.4.0 defaults to `"swiftbuild"` and earlier
+ * versions default to `"native"`.
+ */
 export function effectiveBuildSystem(
     swiftVersion: Version,
     buildArgs: readonly string[]
 ): BuildSystem {
-    const buildSystemIndex = buildArgs.lastIndexOf("--build-system");
-    if (buildSystemIndex !== -1 && buildSystemIndex + 1 < buildArgs.length) {
-        const explicit = buildArgs[buildSystemIndex + 1];
-        if (explicit === "native" || explicit === "swiftbuild") {
-            return explicit;
-        }
-    }
-    return swiftVersion.isGreaterThanOrEqual(new Version(6, 4, 0)) ? "swiftbuild" : "native";
+    return (
+        BuildFlags.lastFlagValue(buildArgs, "--build-system", isValidBuildSystem) ??
+        (swiftVersion.isGreaterThanOrEqual(new Version(6, 4, 0)) ? "swiftbuild" : "native")
+    );
 }
 
 export function groupTestsByTarget(
