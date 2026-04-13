@@ -901,11 +901,12 @@ export class TestRunner {
     private async targetNamesForBuildSystem(
         testArgs: readonly string[]
     ): Promise<ReadonlyMap<string, string[]>> {
+        const testTargets = await this.folderContext.swiftPackage.getTargets(TargetType.test);
         if (testArgs.length === 0) {
-            const testTargets = await this.folderContext.swiftPackage.getTargets(TargetType.test);
             return new Map(testTargets.map(t => [t.name, []]));
         }
-        return groupTestsByTarget(testArgs) as Map<string, string[]>;
+        const c99ToName = new Map(testTargets.map(t => [t.c99name, t.name]));
+        return groupTestsByTarget(testArgs, c99ToName) as Map<string, string[]>;
     }
 
     private startDebugSession(

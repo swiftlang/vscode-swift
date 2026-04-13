@@ -53,11 +53,13 @@ export function effectiveBuildSystem(
 }
 
 export function groupTestsByTarget(
-    testArgs: readonly string[]
+    testArgs: readonly string[],
+    c99ToName?: ReadonlyMap<string, string>
 ): ReadonlyMap<string, readonly string[]> {
     return testArgs.reduce((map, arg) => {
         const dotIndex = arg.indexOf(".");
-        const target = dotIndex === -1 ? arg : arg.substring(0, dotIndex);
+        const c99Target = dotIndex === -1 ? arg : arg.substring(0, dotIndex);
+        const target = c99ToName?.get(c99Target) ?? c99Target;
         const existing = map.get(target) ?? [];
         return new Map([...map, [target, [...existing, arg]]]);
     }, new Map<string, readonly string[]>());

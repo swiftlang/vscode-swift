@@ -390,6 +390,26 @@ suite("BuildConfig Test Suite", () => {
             expect(result.size).to.equal(1);
             expect(result.get("FooTests")).to.deep.equal(["FooTests"]);
         });
+
+        test("remaps c99 target name to original target name", () => {
+            const c99ToName = new Map([["My_Target", "My-Target"]]);
+            const result = groupTestsByTarget(["My_Target.SomeTests.test"], c99ToName);
+            expect(result.size).to.equal(1);
+            expect(result.get("My-Target")).to.deep.equal(["My_Target.SomeTests.test"]);
+        });
+
+        test("uses c99 name as-is when no mapping provided", () => {
+            const result = groupTestsByTarget(["My_Target.SomeTests.test"]);
+            expect(result.size).to.equal(1);
+            expect(result.get("My_Target")).to.deep.equal(["My_Target.SomeTests.test"]);
+        });
+
+        test("falls back to c99 name when not present in map", () => {
+            const c99ToName = new Map([["Other_Target", "Other-Target"]]);
+            const result = groupTestsByTarget(["My_Target.SomeTests.test"], c99ToName);
+            expect(result.size).to.equal(1);
+            expect(result.get("My_Target")).to.deep.equal(["My_Target.SomeTests.test"]);
+        });
     });
 
     suite("testExecutableOutputPath", () => {
