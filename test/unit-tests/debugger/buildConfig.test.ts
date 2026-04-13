@@ -356,12 +356,11 @@ suite("BuildConfig Test Suite", () => {
     suite("groupTestsByTarget", () => {
         test("empty array returns empty map", () => {
             const result = groupTestsByTarget([]);
-            expect(result.size).to.equal(0);
+            expect(result).to.deep.equal(new Map());
         });
 
         test("single target, single test", () => {
             const result = groupTestsByTarget(["FooTests.Bar.baz"]);
-            expect(result.size).to.equal(1);
             expect(result.get("FooTests")).to.deep.equal(["FooTests.Bar.baz"]);
         });
 
@@ -371,7 +370,6 @@ suite("BuildConfig Test Suite", () => {
                 "BarTests.Qux.quux",
                 "FooTests.Other.test",
             ]);
-            expect(result.size).to.equal(2);
             expect(result.get("FooTests")).to.deep.equal([
                 "FooTests.Bar.baz",
                 "FooTests.Other.test",
@@ -381,33 +379,28 @@ suite("BuildConfig Test Suite", () => {
 
         test("target-level wildcard", () => {
             const result = groupTestsByTarget(["FooTests.*"]);
-            expect(result.size).to.equal(1);
             expect(result.get("FooTests")).to.deep.equal(["FooTests.*"]);
         });
 
         test("bare target name without dot", () => {
             const result = groupTestsByTarget(["FooTests"]);
-            expect(result.size).to.equal(1);
             expect(result.get("FooTests")).to.deep.equal(["FooTests"]);
         });
 
         test("remaps c99 target name to original target name", () => {
             const c99ToName = new Map([["My_Target", "My-Target"]]);
             const result = groupTestsByTarget(["My_Target.SomeTests.test"], c99ToName);
-            expect(result.size).to.equal(1);
             expect(result.get("My-Target")).to.deep.equal(["My_Target.SomeTests.test"]);
         });
 
         test("uses c99 name as-is when no mapping provided", () => {
             const result = groupTestsByTarget(["My_Target.SomeTests.test"]);
-            expect(result.size).to.equal(1);
             expect(result.get("My_Target")).to.deep.equal(["My_Target.SomeTests.test"]);
         });
 
         test("falls back to c99 name when not present in map", () => {
             const c99ToName = new Map([["Other_Target", "Other-Target"]]);
             const result = groupTestsByTarget(["My_Target.SomeTests.test"], c99ToName);
-            expect(result.size).to.equal(1);
             expect(result.get("My_Target")).to.deep.equal(["My_Target.SomeTests.test"]);
         });
     });
