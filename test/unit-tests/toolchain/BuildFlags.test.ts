@@ -704,4 +704,92 @@ suite("BuildFlags Test Suite", () => {
             expect(execSwiftSpy).to.have.been.calledThrice;
         });
     });
+
+    suite("lastFlagValue", () => {
+        test("returns undefined for empty args", () => {
+            expect(BuildFlags.lastFlagValue([], "--build-system")).to.be.undefined;
+        });
+
+        test("returns undefined when flag is not present", () => {
+            expect(BuildFlags.lastFlagValue(["--other-flag", "value"], "--build-system")).to.be
+                .undefined;
+        });
+
+        test("finds value in --flag value format", () => {
+            expect(
+                BuildFlags.lastFlagValue(["--build-system", "native"], "--build-system")
+            ).to.equal("native");
+        });
+
+        test("finds value in --flag=value format", () => {
+            expect(BuildFlags.lastFlagValue(["--build-system=native"], "--build-system")).to.equal(
+                "native"
+            );
+        });
+
+        test("returns last occurrence when flag appears multiple times (--flag value)", () => {
+            expect(
+                BuildFlags.lastFlagValue(
+                    ["--build-system", "xcode", "--build-system", "native"],
+                    "--build-system"
+                )
+            ).to.equal("native");
+        });
+
+        test("returns last occurrence when flag appears multiple times (--flag=value)", () => {
+            expect(
+                BuildFlags.lastFlagValue(
+                    ["--build-system=xcode", "--build-system=native"],
+                    "--build-system"
+                )
+            ).to.equal("native");
+        });
+
+        test("returns last valid occurrence when validate skips invalid values", () => {
+            const isNative = (v: string): v is "native" => v === "native";
+            expect(
+                BuildFlags.lastFlagValue(
+                    ["--build-system", "native", "--build-system", "unknown"],
+                    "--build-system",
+                    isNative
+                )
+            ).to.equal("native");
+        });
+
+        test("returns undefined when all occurrences fail validation", () => {
+            const isNative = (v: string): v is "native" => v === "native";
+            expect(
+                BuildFlags.lastFlagValue(["--build-system", "xcode"], "--build-system", isNative)
+            ).to.be.undefined;
+        });
+
+        test("validate skips invalid --flag=value occurrences and returns last valid", () => {
+            const isNative = (v: string): v is "native" => v === "native";
+            expect(
+                BuildFlags.lastFlagValue(
+                    ["--build-system=native", "--build-system=xcode"],
+                    "--build-system",
+                    isNative
+                )
+            ).to.equal("native");
+        });
+
+        test("returns undefined when flag is last argument with no following value", () => {
+            expect(BuildFlags.lastFlagValue(["--build-system"], "--build-system")).to.be.undefined;
+        });
+
+        test("handles mixed --flag value and --flag=value formats, returns last", () => {
+            expect(
+                BuildFlags.lastFlagValue(
+                    ["--build-system=xcode", "--build-system", "native"],
+                    "--build-system"
+                )
+            ).to.equal("native");
+        });
+
+        test("does not match flags that share a prefix", () => {
+            expect(BuildFlags.lastFlagValue(["--build-system-extra", "value"], "--build-system")).to
+                .be.undefined;
+        });
+    });
 });
