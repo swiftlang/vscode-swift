@@ -3,6 +3,7 @@
 /out
 /dist
 /coverage
+!src/coverage
 /test-results
 /userdocs/userdocs.docc/.docc-build
 

@@ -29,6 +29,42 @@ import { Version } from "../utilities/version";
 import { SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
 import { updateLaunchConfigForCI } from "./lldb";
 
+type BuildSystem = "native" | "swiftbuild";
+
+const validBuildSystems: readonly BuildSystem[] = ["native", "swiftbuild"];
+
+const isValidBuildSystem = (value: string): value is BuildSystem =>
+    validBuildSystems.includes(value as BuildSystem);
+
+/**
+ * Determine which build system to use based on explicit `--build-system` arguments
+ * and the Swift toolchain version. If the build arguments specify a build system, use
+ * that, otherwise Swift >= 6.4.0 defaults to `"swiftbuild"` and earlier
+ * versions default to `"native"`.
+ */
+export function effectiveBuildSystem(
+    swiftVersion: Version,
+    buildArgs: readonly string[]
+): BuildSystem {
+    return (
+        BuildFlags.lastFlagValue(buildArgs, "--build-system", isValidBuildSystem) ??
+        (swiftVersion.isGreaterThanOrEqual(new Version(6, 4, 0)) ? "swiftbuild" : "native")
+    );
+}
+
+export function groupTestsByTarget(
+    testArgs: readonly string[],
+    c99ToName?: ReadonlyMap<string, string>
+): ReadonlyMap<string, readonly string[]> {
+    return testArgs.reduce((map, arg) => {
+        const dotIndex = arg.indexOf(".");
+        const c99Target = dotIndex === -1 ? arg : arg.substring(0, dotIndex);
+        const target = c99ToName?.get(c99Target) ?? c99Target;
+        const existing = map.get(target) ?? [];
+        return new Map([...map, [target, [...existing, arg]]]);
+    }, new Map<string, readonly string[]>());
+}
+
 export class BuildConfigurationFactory {
     public static buildAll(
         ctx: FolderContext,
@@ -215,7 +251,8 @@ export class TestingConfigurationFactory {
         buildArguments: SwiftTestingBuildAguments,
         testKind: TestKind,
         testList: string[],
-        expandEnvVariables = false
+        expandEnvVariables = false,
+        targetName?: string
     ): Promise<vscode.DebugConfiguration | null> {
         return new TestingConfigurationFactory(
             ctx,
@@ -223,7 +260,8 @@ export class TestingConfigurationFactory {
             TestLibrary.swiftTesting,
             testList,
             buildArguments,
-            expandEnvVariables
+            expandEnvVariables,
+            targetName
         ).build();
     }
 
@@ -231,7 +269,8 @@ export class TestingConfigurationFactory {
         ctx: FolderContext,
         testKind: TestKind,
         testList: string[],
-        expandEnvVariables = false
+        expandEnvVariables = false,
+        targetName?: string
     ): Promise<vscode.DebugConfiguration | null> {
         return new TestingConfigurationFactory(
             ctx,
@@ -239,14 +278,16 @@ export class TestingConfigurationFactory {
             TestLibrary.xctest,
             testList,
             undefined,
-            expandEnvVariables
+            expandEnvVariables,
+            targetName
         ).build();
     }
 
     public static testExecutableOutputPath(
         ctx: FolderContext,
         testKind: TestKind,
-        testLibrary: TestLibrary
+        testLibrary: TestLibrary,
+        targetName?: string
     ): Promise<string> {
         return new TestingConfigurationFactory(
             ctx,
@@ -254,7 +295,8 @@ export class TestingConfigurationFactory {
             testLibrary,
             [],
             undefined,
-            true
+            true,
+            targetName
         ).testExecutableOutputPath();
     }
 
@@ -264,7 +306,8 @@ export class TestingConfigurationFactory {
         private testLibrary: TestLibrary,
         private testList: string[],
         private swiftTestingArguments?: SwiftTestingBuildAguments,
-        private expandEnvVariables = false
+        private expandEnvVariables = false,
+        private targetName?: string
     ) {}
 
     /**
@@ -591,10 +634,29 @@ export class TestingConfigurationFactory {
         }
     }
 
+    private get buildSystem(): "native" | "swiftbuild" {
+        const allBuildArgs = [
+            ...configuration.buildArguments,
+            ...configuration.folder(this.ctx.workspaceFolder).additionalTestArguments,
+        ];
+        return effectiveBuildSystem(this.ctx.swiftVersion, allBuildArgs);
+    }
+
+    private testProductBinaryName(baseName: string): string {
+        if (this.buildSystem === "native" || process.platform === "darwin") {
+            return `${baseName}.xctest`;
+        }
+        const suffix = process.platform === "win32" ? ".exe" : "";
+        return `${baseName}-test-runner${suffix}`;
+    }
+
     private async xcTestOutputPath(): Promise<string> {
-        const packageName = await this.ctx.swiftPackage.name;
         const binPath = await this.getBuildBinaryPath();
-        return path.join(binPath, `${packageName}PackageTests.xctest`);
+        if (this.targetName) {
+            return path.join(binPath, this.testProductBinaryName(this.targetName));
+        }
+        const name = await this.ctx.swiftPackage.name;
+        return path.join(binPath, this.testProductBinaryName(`${name}PackageTests`));
     }
 
     private async unifiedTestingOutputPath(): Promise<string> {
@@ -602,13 +664,8 @@ export class TestingConfigurationFactory {
         // is named the same as the old style .xctest binary. The swiftpm-testing-helper
         // requires the full path to the binary.
         if (process.platform === "darwin") {
-            const packageName = await this.ctx.swiftPackage.name;
-            return path.join(
-                await this.xcTestOutputPath(),
-                "Contents",
-                "MacOS",
-                `${packageName}PackageTests`
-            );
+            const binaryName = this.targetName ?? `${await this.ctx.swiftPackage.name}PackageTests`;
+            return path.join(await this.xcTestOutputPath(), "Contents", "MacOS", binaryName);
         } else {
             return this.xcTestOutputPath();
         }

@@ -138,11 +138,6 @@ tag("large").suite("Test Explorer Suite", function () {
                     this.skip();
                 }
 
-                // Temporarily disable this test until debugging is fixed for --build-sytem swiftbuild
-                if (folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 4, 0))) {
-                    this.skip();
-                }
-
                 resetSettings = await updateSettings({
                     "swift.debugger.debugAdapter": "lldb-dap",
                 });

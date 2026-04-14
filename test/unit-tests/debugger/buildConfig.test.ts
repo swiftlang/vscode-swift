@@ -17,8 +17,16 @@ import * as sinon from "sinon";
 import { FolderContext } from "@src/FolderContext";
 import { LinuxMain } from "@src/LinuxMain";
 import { SwiftPackage } from "@src/SwiftPackage";
+import { TestKind } from "@src/TestExplorer/TestKind";
+import { TestLibrary } from "@src/TestExplorer/TestRunner";
+import { WorkspaceContext } from "@src/WorkspaceContext";
 import configuration, { FolderConfiguration } from "@src/configuration";
-import { BuildConfigurationFactory } from "@src/debugger/buildConfig";
+import {
+    BuildConfigurationFactory,
+    TestingConfigurationFactory,
+    effectiveBuildSystem,
+    groupTestsByTarget,
+} from "@src/debugger/buildConfig";
 import { BuildFlags } from "@src/toolchain/BuildFlags";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
 import { Version } from "@src/utilities/version";
@@ -264,6 +272,332 @@ suite("BuildConfig Test Suite", () => {
             expect(filter.some((f: any) => f.argument === "--sdk")).to.be.false;
             expect(filter.some((f: any) => f.argument === "--verbose")).to.be.false;
             expect(filter.some((f: any) => f.argument === "--configuration")).to.be.false;
+        });
+    });
+
+    suite("effectiveBuildSystem", () => {
+        test("returns native for Swift < 6.4.0", () => {
+            expect(effectiveBuildSystem(new Version(6, 3, 0), [])).to.equal("native");
+        });
+
+        test("returns swiftbuild for Swift >= 6.4.0", () => {
+            expect(effectiveBuildSystem(new Version(6, 4, 0), [])).to.equal("swiftbuild");
+        });
+
+        test("returns swiftbuild for Swift > 6.4.0", () => {
+            expect(effectiveBuildSystem(new Version(7, 0, 0), [])).to.equal("swiftbuild");
+        });
+
+        test("explicit --build-system native overrides 6.4.0+ default", () => {
+            expect(
+                effectiveBuildSystem(new Version(6, 4, 0), ["--build-system", "native"])
+            ).to.equal("native");
+        });
+
+        test("explicit --build-system swiftbuild overrides < 6.4.0 default", () => {
+            expect(
+                effectiveBuildSystem(new Version(6, 3, 0), ["--build-system", "swiftbuild"])
+            ).to.equal("swiftbuild");
+        });
+
+        test("equals format --build-system=swiftbuild overrides < 6.4.0 default", () => {
+            expect(
+                effectiveBuildSystem(new Version(6, 3, 0), ["--build-system=swiftbuild"])
+            ).to.equal("swiftbuild");
+        });
+
+        test("equals format --build-system=native overrides 6.4.0+ default", () => {
+            expect(effectiveBuildSystem(new Version(6, 4, 0), ["--build-system=native"])).to.equal(
+                "native"
+            );
+        });
+
+        test("last --build-system wins across mixed formats", () => {
+            expect(
+                effectiveBuildSystem(new Version(6, 4, 0), [
+                    "--build-system=swiftbuild",
+                    "--build-system",
+                    "native",
+                ])
+            ).to.equal("native");
+            expect(
+                effectiveBuildSystem(new Version(6, 4, 0), [
+                    "--build-system",
+                    "native",
+                    "--build-system=swiftbuild",
+                ])
+            ).to.equal("swiftbuild");
+        });
+
+        test("last --build-system wins when duplicated", () => {
+            expect(
+                effectiveBuildSystem(new Version(6, 4, 0), [
+                    "--build-system",
+                    "swiftbuild",
+                    "--build-system",
+                    "native",
+                ])
+            ).to.equal("native");
+        });
+
+        test("ignores --build-system with no following value", () => {
+            expect(effectiveBuildSystem(new Version(6, 4, 0), ["--build-system"])).to.equal(
+                "swiftbuild"
+            );
+        });
+
+        test("ignores --build-system with unrecognized value", () => {
+            expect(
+                effectiveBuildSystem(new Version(6, 4, 0), ["--build-system", "xcodebuild"])
+            ).to.equal("swiftbuild");
+        });
+    });
+
+    suite("groupTestsByTarget", () => {
+        test("empty array returns empty map", () => {
+            const result = groupTestsByTarget([]);
+            expect(result).to.deep.equal(new Map());
+        });
+
+        test("single target, single test", () => {
+            const result = groupTestsByTarget(["FooTests.Bar.baz"]);
+            expect(result.get("FooTests")).to.deep.equal(["FooTests.Bar.baz"]);
+        });
+
+        test("multiple targets grouped correctly", () => {
+            const result = groupTestsByTarget([
+                "FooTests.Bar.baz",
+                "BarTests.Qux.quux",
+                "FooTests.Other.test",
+            ]);
+            expect(result.get("FooTests")).to.deep.equal([
+                "FooTests.Bar.baz",
+                "FooTests.Other.test",
+            ]);
+            expect(result.get("BarTests")).to.deep.equal(["BarTests.Qux.quux"]);
+        });
+
+        test("target-level wildcard", () => {
+            const result = groupTestsByTarget(["FooTests.*"]);
+            expect(result.get("FooTests")).to.deep.equal(["FooTests.*"]);
+        });
+
+        test("bare target name without dot", () => {
+            const result = groupTestsByTarget(["FooTests"]);
+            expect(result.get("FooTests")).to.deep.equal(["FooTests"]);
+        });
+
+        test("remaps c99 target name to original target name", () => {
+            const c99ToName = new Map([["My_Target", "My-Target"]]);
+            const result = groupTestsByTarget(["My_Target.SomeTests.test"], c99ToName);
+            expect(result.get("My-Target")).to.deep.equal(["My_Target.SomeTests.test"]);
+        });
+
+        test("uses c99 name as-is when no mapping provided", () => {
+            const result = groupTestsByTarget(["My_Target.SomeTests.test"]);
+            expect(result.get("My_Target")).to.deep.equal(["My_Target.SomeTests.test"]);
+        });
+
+        test("falls back to c99 name when not present in map", () => {
+            const c99ToName = new Map([["Other_Target", "Other-Target"]]);
+            const result = groupTestsByTarget(["My_Target.SomeTests.test"], c99ToName);
+            expect(result.get("My_Target")).to.deep.equal(["My_Target.SomeTests.test"]);
+        });
+    });
+
+    suite("testExecutableOutputPath", () => {
+        const platformMock = mockGlobalValue(process, "platform");
+        const buildArgumentsConfig = mockGlobalValue(configuration, "buildArguments");
+        let mockedLogger: MockedObject<Pick<WorkspaceContext["logger"], "warn">>;
+
+        function createTestFolderContext(
+            swiftVersion: Version,
+            binPath: string
+        ): MockedObject<FolderContext> {
+            mockedLogger = mockObject<Pick<WorkspaceContext["logger"], "warn">>({
+                warn: () => {},
+            });
+            const testBuildFlags = mockObject<BuildFlags>({
+                getBuildBinaryPath: sinon.stub().resolves(binPath),
+            });
+            const testToolchain = mockObject<SwiftToolchain>({
+                buildFlags: instance(testBuildFlags),
+                swiftVersion: swiftVersion,
+                unversionedTriple: undefined,
+            });
+            const testSwiftPackage = mockObject<SwiftPackage>({
+                getTargets: sinon.stub().resolves([{ name: "PackageTests" }]),
+                name: Promise.resolve("MyPackage"),
+            });
+            return mockObject<FolderContext>({
+                toolchain: instance(testToolchain),
+                swiftPackage: instance(testSwiftPackage),
+                workspaceFolder: {
+                    uri: { fsPath: "/test/workspace" },
+                    name: "TestWorkspace",
+                } as any,
+                workspaceContext: { logger: instance(mockedLogger) } as any,
+                folder: { fsPath: "/test/workspace" } as any,
+                swiftVersion: swiftVersion,
+                relativePath: "",
+                linuxMain: { exists: true } as any as LinuxMain,
+            });
+        }
+
+        setup(() => {
+            additionalTestArgumentsConfig.setValue(() => createMockFolderConfig([]));
+            buildArgumentsConfig.setValue([]);
+        });
+
+        suite("with native build system (Swift < 6.4)", () => {
+            const swiftVersion = new Version(6, 3, 0);
+
+            test("uses .xctest on linux with targetName", async () => {
+                platformMock.setValue("linux" as NodeJS.Platform);
+                const ctx = createTestFolderContext(swiftVersion, "/build/debug");
+
+                const result = await TestingConfigurationFactory.testExecutableOutputPath(
+                    instance(ctx),
+                    TestKind.debug,
+                    TestLibrary.xctest,
+                    "PackageTests"
+                );
+
+                expect(result).to.match(/PackageTests\.xctest$/);
+            });
+
+            test("uses .xctest on windows with targetName", async () => {
+                platformMock.setValue("win32" as NodeJS.Platform);
+                const ctx = createTestFolderContext(swiftVersion, "/build/debug");
+
+                const result = await TestingConfigurationFactory.testExecutableOutputPath(
+                    instance(ctx),
+                    TestKind.debug,
+                    TestLibrary.xctest,
+                    "PackageTests"
+                );
+
+                expect(result).to.match(/PackageTests\.xctest$/);
+            });
+
+            test("uses .xctest on darwin with targetName", async () => {
+                platformMock.setValue("darwin" as NodeJS.Platform);
+                const ctx = createTestFolderContext(swiftVersion, "/build/debug");
+
+                const result = await TestingConfigurationFactory.testExecutableOutputPath(
+                    instance(ctx),
+                    TestKind.debug,
+                    TestLibrary.xctest,
+                    "PackageTests"
+                );
+
+                expect(result).to.match(/PackageTests\.xctest$/);
+            });
+        });
+
+        suite("with swiftbuild build system (Swift >= 6.4)", () => {
+            const swiftVersion = new Version(6, 4, 0);
+
+            test("uses -test-runner on linux with targetName", async () => {
+                platformMock.setValue("linux" as NodeJS.Platform);
+                const ctx = createTestFolderContext(swiftVersion, "/build/debug");
+
+                const result = await TestingConfigurationFactory.testExecutableOutputPath(
+                    instance(ctx),
+                    TestKind.debug,
+                    TestLibrary.xctest,
+                    "PackageTests"
+                );
+
+                expect(result).to.match(/PackageTests-test-runner$/);
+            });
+
+            test("uses -test-runner.exe on windows with targetName", async () => {
+                platformMock.setValue("win32" as NodeJS.Platform);
+                const ctx = createTestFolderContext(swiftVersion, "/build/debug");
+
+                const result = await TestingConfigurationFactory.testExecutableOutputPath(
+                    instance(ctx),
+                    TestKind.debug,
+                    TestLibrary.xctest,
+                    "PackageTests"
+                );
+
+                expect(result).to.match(/PackageTests-test-runner\.exe$/);
+            });
+
+            test("uses .xctest on darwin with targetName", async () => {
+                platformMock.setValue("darwin" as NodeJS.Platform);
+                const ctx = createTestFolderContext(swiftVersion, "/build/debug");
+
+                const result = await TestingConfigurationFactory.testExecutableOutputPath(
+                    instance(ctx),
+                    TestKind.debug,
+                    TestLibrary.xctest,
+                    "PackageTests"
+                );
+
+                expect(result).to.match(/PackageTests\.xctest$/);
+            });
+
+            test("uses -test-runner on linux without targetName", async () => {
+                platformMock.setValue("linux" as NodeJS.Platform);
+                const ctx = createTestFolderContext(swiftVersion, "/build/debug");
+
+                const result = await TestingConfigurationFactory.testExecutableOutputPath(
+                    instance(ctx),
+                    TestKind.debug,
+                    TestLibrary.xctest
+                );
+
+                expect(result).to.match(/MyPackagePackageTests-test-runner$/);
+            });
+
+            test("uses -test-runner on linux for swift-testing", async () => {
+                platformMock.setValue("linux" as NodeJS.Platform);
+                const ctx = createTestFolderContext(swiftVersion, "/build/debug");
+
+                const result = await TestingConfigurationFactory.testExecutableOutputPath(
+                    instance(ctx),
+                    TestKind.debug,
+                    TestLibrary.swiftTesting,
+                    "PackageTests"
+                );
+
+                expect(result).to.match(/PackageTests-test-runner$/);
+            });
+        });
+
+        suite("with explicit --build-system override", () => {
+            test("uses -test-runner when --build-system swiftbuild on old Swift", async () => {
+                platformMock.setValue("linux" as NodeJS.Platform);
+                buildArgumentsConfig.setValue(["--build-system", "swiftbuild"]);
+                const ctx = createTestFolderContext(new Version(6, 3, 0), "/build/debug");
+
+                const result = await TestingConfigurationFactory.testExecutableOutputPath(
+                    instance(ctx),
+                    TestKind.debug,
+                    TestLibrary.xctest,
+                    "PackageTests"
+                );
+
+                expect(result).to.match(/PackageTests-test-runner$/);
+            });
+
+            test("uses .xctest when --build-system native on new Swift", async () => {
+                platformMock.setValue("linux" as NodeJS.Platform);
+                buildArgumentsConfig.setValue(["--build-system", "native"]);
+                const ctx = createTestFolderContext(new Version(6, 4, 0), "/build/debug");
+
+                const result = await TestingConfigurationFactory.testExecutableOutputPath(
+                    instance(ctx),
+                    TestKind.debug,
+                    TestLibrary.xctest,
+                    "PackageTests"
+                );
+
+                expect(result).to.match(/PackageTests\.xctest$/);
+            });
         });
     });
 });
