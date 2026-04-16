@@ -17,7 +17,7 @@ import * as vscode from "vscode";
 import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { Swiftly } from "../toolchain/swiftly";
-import { Workbench } from "../utilities/commands";
+import { promptToRestartAfterInstallation } from "../ui/RestartEditor";
 import { installSwiftlyToolchainWithProgress } from "./installSwiftlyToolchain";
 
 /**
@@ -100,21 +100,6 @@ async function installSwiftlyWithProgress(logger?: SwiftLogger): Promise<boolean
     }
 }
 
-async function promptToRestartVSCode(): Promise<void> {
-    const editorName = vscode.env.appName;
-    const selection = await vscode.window.showInformationMessage(
-        `Restart ${editorName}`,
-        {
-            modal: true,
-            detail: `You must restart ${editorName} in order for the Swiftly installation to take effect.`,
-        },
-        `Quit ${editorName}`
-    );
-    if (selection === `Quit ${editorName}`) {
-        await vscode.commands.executeCommand(Workbench.ACTION_QUIT);
-    }
-}
-
 /**
  * Main function to handle missing Swiftly detection and installation
  * @param swiftVersionFiles A list of swift version files that will need to be installed
@@ -148,6 +133,6 @@ export async function handleMissingSwiftly(
     }
 
     // VS Code needs to be restarted after installing swiftly
-    await promptToRestartVSCode();
+    await promptToRestartAfterInstallation("Swiftly");
     return true;
 }

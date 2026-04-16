@@ -75,6 +75,13 @@ export interface SwiftExtensionApi {
      * @since 1.0.0
      */
     withWorkspaceContext<T>(task: (ctx: WorkspaceContext) => T | Promise<T>): Promise<T>;
+
+    /**
+     * An event that fires when the workspace context changes.
+     *
+     * @since 1.0.0
+     */
+    onDidChangeWorkspaceContext: vscode.Event<WorkspaceContext>;
 }
 
 /** Context containing the state of the Swift extension for the entire workspace. */

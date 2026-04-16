@@ -45,7 +45,15 @@ export class LanguageStatusItems implements Disposable {
 
         // Update Package.swift item based on current focus
         const onFocus = workspaceContext.onDidChangeFolders(async ({ folder, operation }) => {
-            if (operation === FolderOperation.focus) {
+            if (operation === FolderOperation.swiftVersionUpdated) {
+                if (!folder || folder !== workspaceContext.currentFolder) {
+                    return;
+                }
+                swiftVersionItem.text = folder.toolchain.swiftVersion.toString();
+                swiftVersionItem.accessibilityInformation = {
+                    label: `Swift Version ${workspaceContext.globalToolchain.swiftVersion.toString()}`,
+                };
+            } else if (operation === FolderOperation.focus) {
                 if (folder && (await folder.swiftPackage.foundPackage)) {
                     packageSwiftItem.text = "Package.swift";
                     packageSwiftItem.command = Command.create("Open Package", "swift.openPackage");
