@@ -21,36 +21,14 @@ import { SwiftLogger } from "../logging/SwiftLogger";
 import { Swiftly } from "../toolchain/swiftly";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import { isEmptyObject } from "../utilities/utilities";
-import { showReloadExtensionNotification } from "./ReloadExtension";
+import { promptToRestartAfterInstallation } from "./RestartEditor";
 
 /**
  * Open the installation page on Swift.org
  */
 async function downloadToolchain() {
-    if (await vscode.env.openExternal(vscode.Uri.parse("https://www.swift.org/install"))) {
-        const selected = await showReloadExtensionNotification(
-            "The Swift extension must be reloaded once you have downloaded and installed the new toolchain.",
-            "Select Toolchain"
-        );
-        if (selected === "Select Toolchain") {
-            await selectToolchain();
-        }
-    }
-}
-
-/**
- * Open the installation page for Swiftly
- */
-async function installSwiftly() {
-    if (await vscode.env.openExternal(vscode.Uri.parse("https://www.swift.org/install/"))) {
-        const selected = await showReloadExtensionNotification(
-            "The Swift extension must be reloaded once you have downloaded and installed the new toolchain.",
-            "Select Toolchain"
-        );
-        if (selected === "Select Toolchain") {
-            await selectToolchain();
-        }
-    }
+    await vscode.env.openExternal(vscode.Uri.parse("https://www.swift.org/install"));
+    await promptToRestartAfterInstallation("toolchain");
 }
 
 /**
@@ -244,9 +222,6 @@ async function getQuickPickItems(
                         }) ?? []
                     );
                 }
-                void showReloadExtensionNotification(
-                    "Changing the Swift path requires Visual Studio Code be reloaded."
-                );
             } catch (error) {
                 logger.error(error);
                 void vscode.window.showErrorMessage(`Failed to switch Swiftly toolchain: ${error}`);
@@ -354,17 +329,6 @@ async function getQuickPickItems(
 async function getSwiftlyActions(): Promise<ActionItem[]> {
     if (!Swiftly.isSupported()) {
         return [];
-    }
-    if (!(await Swiftly.isInstalled())) {
-        const platformName = process.platform === "linux" ? "Linux" : "macOS";
-        return [
-            {
-                type: "action",
-                label: "$(swift-icon) Install Swiftly for toolchain management...",
-                detail: `Install https://swiftlang.github.io/swiftly to manage your toolchains on ${platformName}`,
-                run: installSwiftly,
-            },
-        ];
     }
     // We only support installing toolchains via Swiftly starting in Swiftly 1.1.0
     const swiftlyVersion = await Swiftly.version();
