@@ -13,6 +13,7 @@
 ### Added
 
 - Add `${binPath}` variable substitution for launch configuration program paths ([#2184](https://github.com/swiftlang/vscode-swift/pull/2184))
+- Toolchain changes will now automatically reload the workspace ([#2196](https://github.com/swiftlang/vscode-swift/pull/2196))
 
 ### Fixed
 
