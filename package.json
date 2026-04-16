@@ -78,6 +78,14 @@
             }
           },
           {
+            "id": "creating-docc-catalog",
+            "title": "Create a DocC Documentation Catalog",
+            "description": "You can create a new Swift DocC documentation catalog with \n``Swift: Create DocC Documentation Catalog``\n in the Command Palette. \n[Try it out](command:swift.createDocumentationCatalog)",
+            "media": {
+              "markdown": "assets/walkthrough/createDocumentationCatalog.md"
+            }
+          },
+          {
             "id": "run-and-debug-executable",
             "title": "Run and debug an executable",
             "description": "You can run an executable from the Swift file, Command Palette or the Project Panel.",
@@ -489,6 +497,11 @@
       {
         "command": "swift.generateSourcekitConfiguration",
         "title": "Generate SourceKit-LSP Configuration",
+        "category": "Swift"
+      },
+      {
+        "command": "swift.createDocumentationCatalog",
+        "title": "Swift: Create DocC Documentation Catalog",
         "category": "Swift"
       }
     ],
@@ -1415,6 +1428,10 @@
         {
           "command": "swift.play",
           "when": "false"
+        },
+        {
+          "command": "swift.createDocumentationCatalog",
+          "when": "workspaceFolderCount > 0"
         }
       ],
       "editor/context": [
