@@ -12,13 +12,14 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
-import * as mockFS from "mock-fs";
 import * as vscode from "vscode";
 
 import { Version } from "@src/utilities/version";
 import { isValidWorkspaceFolder, searchForPackages } from "@src/utilities/workspace";
 
 import { testAssetUri } from "../../fixtures";
+
+import mockFS = require("mock-fs");
 
 suite("Workspace Utilities Unit Test Suite", () => {
     suite("searchForPackages", () => {

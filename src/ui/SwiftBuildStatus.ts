@@ -19,7 +19,6 @@ import { Disposable } from "../utilities/Disposable";
 import { checkIfBuildComplete, lineBreakRegex } from "../utilities/tasks";
 import { StatusItem } from "./StatusItem";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
 
 /**

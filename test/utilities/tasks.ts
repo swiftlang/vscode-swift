@@ -19,7 +19,6 @@ import { Disposable } from "@src/utilities/Disposable";
 
 import { SwiftTaskFixture } from "../fixtures";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
 
 export type Mutable<T> = {

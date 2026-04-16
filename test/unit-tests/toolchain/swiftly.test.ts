@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
 import * as fs from "fs/promises";
-import * as mockFS from "mock-fs";
 import * as os from "os";
 import { match } from "sinon";
 import * as vscode from "vscode";
@@ -41,6 +40,8 @@ import {
     mockGlobalValue,
     mockObject,
 } from "../../MockUtils";
+
+import mockFS = require("mock-fs");
 
 suite("Swiftly Unit Tests", () => {
     const mockAskpass = mockGlobalModule(askpass);

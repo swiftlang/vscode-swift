@@ -25,7 +25,6 @@ import { Disposable } from "./utilities/Disposable";
 import { fileExists } from "./utilities/filesystem";
 import { Version } from "./utilities/version";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 import debounce = require("lodash.debounce");
 
 /**

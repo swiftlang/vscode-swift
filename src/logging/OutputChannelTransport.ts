@@ -12,13 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
-import * as TransportType from "winston-transport";
 
-// Compile error if don't use "require": https://github.com/swiftlang/vscode-swift/actions/runs/16529946578/job/46752753379?pr=1746
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const Transport: typeof TransportType = require("winston-transport");
+import TransportStream = require("winston-transport");
 
-export class OutputChannelTransport extends Transport {
+export class OutputChannelTransport extends TransportStream {
     private appending: boolean = false;
 
     constructor(private readonly ouptutChannel: vscode.OutputChannel) {

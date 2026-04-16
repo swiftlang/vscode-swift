@@ -21,7 +21,6 @@ import { DocCDocumentationRequest, DocCDocumentationResponse } from "../sourceki
 import { Disposable } from "../utilities/Disposable";
 import { RenderNode, WebviewContent, WebviewMessage } from "./webview/WebviewMessage";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 import throttle = require("lodash.throttle");
 
 export enum PreviewEditorConstant {

@@ -11,7 +11,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import * as assert from "assert";
 import { afterEach } from "mocha";
 import * as vscode from "vscode";
 
@@ -26,6 +25,8 @@ import {
     activateExtensionForTest,
     deactivateExtension,
 } from "./utilities/testutilities";
+
+import assert = require("assert");
 
 tag("medium").suite("Extension Activation/Deactivation Tests", () => {
     suite("Extension Activation", () => {

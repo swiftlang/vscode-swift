@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
-import * as mockFS from "mock-fs";
 import * as path from "path";
 import { match } from "sinon";
 import * as vscode from "vscode";
@@ -32,6 +31,8 @@ import {
     mockGlobalValue,
     mockObject,
 } from "../../MockUtils";
+
+import mockFS = require("mock-fs");
 
 suite("ToolchainSelection Unit Test Suite", () => {
     const mockedUtilities = mockGlobalModule(utilities);

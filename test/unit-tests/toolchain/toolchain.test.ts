@@ -12,13 +12,14 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
-import * as mockFS from "mock-fs";
 
 import { SwiftToolchain } from "@src/toolchain/toolchain";
 import * as utilities from "@src/utilities/utilities";
 import { Version } from "@src/utilities/version";
 
 import { mockGlobalModule, mockGlobalValue } from "../../MockUtils";
+
+import mockFS = require("mock-fs");
 
 suite("SwiftToolchain Unit Test Suite", () => {
     const mockedUtilities = mockGlobalModule(utilities);

@@ -17,6 +17,9 @@
     "@types/ttf2woff"
   ],
   "ignoreBinaries": ["scripts/soundness.sh"],
+  "ignoreIssues": {
+    "src/sourcekit-lsp/**": ["namespaceMembers"]
+  },
   "rules": {
     "types": "warn",
     "enumMembers": "warn",
