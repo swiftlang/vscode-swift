@@ -15,9 +15,7 @@ import * as os from "os";
 import * as path from "path";
 import * as vscode from "vscode";
 
-import { WorkspaceContext } from "./WorkspaceContext";
 import { SwiftToolchain } from "./toolchain/toolchain";
-import { showReloadExtensionNotification } from "./ui/ReloadExtension";
 
 /**
  * Custom error type for configuration validation errors that includes the setting name
@@ -908,40 +906,6 @@ function computeVscodeVar(varName: string): string | null {
     };
 
     return varName in supportedVariables ? supportedVariables[varName]() : null;
-}
-
-/**
- * Handler for configuration change events that triggers a reload of the extension
- * if the setting changed requires one.
- * @param ctx The workspace context.
- * @returns A disposable that unregisters the provider when disposed.
- */
-export function handleConfigurationChangeEvent(
-    ctx: WorkspaceContext
-): (event: vscode.ConfigurationChangeEvent) => void {
-    return (event: vscode.ConfigurationChangeEvent) => {
-        // on toolchain config change, reload window
-        if (
-            event.affectsConfiguration("swift.path") &&
-            configuration.path !== ctx.currentFolder?.toolchain.swiftFolderPath
-        ) {
-            void showReloadExtensionNotification(
-                "Changing the Swift path requires Visual Studio Code be reloaded."
-            );
-        } else if (
-            // on sdk config change, restart sourcekit-lsp
-            event.affectsConfiguration("swift.SDK") ||
-            event.affectsConfiguration("swift.swiftSDK")
-        ) {
-            void vscode.commands.executeCommand("swift.restartLSPServer").then(() => {
-                /* Put in worker queue */
-            });
-        } else if (event.affectsConfiguration("swift.swiftEnvironmentVariables")) {
-            void showReloadExtensionNotification(
-                "Changing environment variables requires the project be reloaded."
-            );
-        }
-    };
 }
 
 /**
