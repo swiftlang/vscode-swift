@@ -12,19 +12,24 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
+import * as mockFS from "mock-fs";
+import type * as FileSystem from "mock-fs/lib/filesystem";
+import { SinonFakeTimers, match, useFakeTimers } from "sinon";
 import * as vscode from "vscode";
 
-import { Commands } from "@src/commands";
+import { InternalSwiftExtensionApi } from "@src/InternalSwiftExtensionApi";
+import { ToolchainManager } from "@src/SwiftExtensionApi";
+import { WorkspaceContext } from "@src/WorkspaceContext";
 import configuration from "@src/configuration";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { SelectedXcodeWatcher } from "@src/toolchain/SelectedXcodeWatcher";
-import * as ReloadExtension from "@src/ui/ReloadExtension";
+import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { captitalizeFirstLetter } from "@src/utilities/utilities";
 
 import {
     MockedObject,
     instance,
     mockFn,
-    mockGlobalModule,
     mockGlobalObject,
     mockGlobalValue,
     mockObject,
@@ -32,23 +37,30 @@ import {
 
 suite("Selected Xcode Watcher", () => {
     const mockedVSCodeWindow = mockGlobalObject(vscode, "window");
+    let mockSwiftExtensionApi: MockedObject<InternalSwiftExtensionApi>;
+    let mockToolchain: MockedObject<SwiftToolchain>;
     let mockLogger: MockedObject<SwiftLogger>;
     const pathConfig = mockGlobalValue(configuration, "path");
     const envConfig = mockGlobalValue(configuration, "swiftEnvironmentVariables");
     const mockWorkspace = mockGlobalObject(vscode, "workspace");
-    const mockCommands = mockGlobalObject(vscode, "commands");
     let mockSwiftConfig: MockedObject<vscode.WorkspaceConfiguration>;
-    const mockReloadExtension = mockGlobalModule(ReloadExtension);
+    let timers: SinonFakeTimers;
 
     setup(function () {
-        // Xcode only exists on macOS, so the SelectedXcodeWatcher is macOS-only.
-        if (process.platform !== "darwin") {
-            this.skip();
-        }
+        mockFS();
 
         mockLogger = mockObject<SwiftLogger>({
             debug: mockFn(),
             info: mockFn(),
+        });
+        mockToolchain = mockObject<SwiftToolchain>({ manager: "unknown" });
+        const mockWorkspaceContext = mockObject<WorkspaceContext>({
+            globalToolchain: instance(mockToolchain),
+        });
+        mockSwiftExtensionApi = mockObject<InternalSwiftExtensionApi>({
+            logger: instance(mockLogger),
+            reloadWorkspaceContext: mockFn(),
+            workspaceContext: instance(mockWorkspaceContext),
         });
 
         pathConfig.setValue("");
@@ -60,146 +72,282 @@ suite("Selected Xcode Watcher", () => {
         });
         mockWorkspace.getConfiguration.returns(instance(mockSwiftConfig));
 
-        mockReloadExtension.showReloadExtensionNotification.callsFake(async (message: string) => {
-            return vscode.window.showWarningMessage(message, "Reload Extensions");
+        timers = useFakeTimers();
+    });
+
+    teardown(() => {
+        mockFS.restore();
+        timers.restore();
+    });
+
+    async function run(platform: NodeJS.Platform, symLinksOnCallback: (string | undefined)[]) {
+        const watcher = new SelectedXcodeWatcher(instance(mockSwiftExtensionApi), platform);
+        async function runUntilNextCheck(): Promise<void> {
+            // Allow some time for any Promises to complete.
+            await timers.tickAsync(1);
+            await timers.tickAsync(1);
+            await timers.tickAsync(1);
+            // Advance time to the next check
+            await timers.nextAsync();
+            // Allow some time for any Promises to complete.
+            await timers.tickAsync(1);
+            await timers.tickAsync(1);
+            await timers.tickAsync(1);
+        }
+
+        try {
+            for (const symlinkPath of symLinksOnCallback) {
+                const mockFSConfig: FileSystem.DirectoryItems = {};
+                if (symlinkPath) {
+                    mockFSConfig[SelectedXcodeWatcher.XCODE_SYMLINK_PATH] = mockFS.symlink({
+                        path: symlinkPath,
+                    });
+                }
+                mockFS(mockFSConfig);
+                await runUntilNextCheck();
+            }
+        } finally {
+            watcher.dispose();
+            expect(timers.countTimers()).to.equal(0, "No timers should be present after dispose()");
+        }
+    }
+
+    test("ignores all events on Windows", async () => {
+        await run("win32", [
+            "C:\\Program Files\\Xcode\\Contents\\Developer",
+            "C:\\Program Files\\Xcode-2\\Contents\\Developer",
+        ]);
+
+        expect(mockSwiftExtensionApi.reloadWorkspaceContext).to.not.have.been.called;
+        expect(mockedVSCodeWindow.showWarningMessage).to.not.have.been.called;
+    });
+
+    test("ignores all events on Linux", async () => {
+        await run("linux", ["/opt/Xcode/Contents/Developer", "/opt/Xcode-2/Contents/Developer"]);
+
+        expect(mockSwiftExtensionApi.reloadWorkspaceContext).to.not.have.been.called;
+        expect(mockedVSCodeWindow.showWarningMessage).to.not.have.been.called;
+    });
+
+    test("does nothing when the symlink changes from undefined to defined", async () => {
+        await run("darwin", [undefined, "/Applications/Xcode.app/Contents/Developer"]);
+
+        expect(mockSwiftExtensionApi.reloadWorkspaceContext).to.have.not.been.called;
+        expect(mockedVSCodeWindow.showWarningMessage).to.not.have.been.called;
+    });
+
+    test("does nothing when the symlink switches between undefined and defined", async () => {
+        await run("darwin", [
+            "/Applications/Xcode.app/Contents/Developer",
+            undefined,
+            "/Applications/Xcode.app/Contents/Developer",
+            undefined,
+            "/Applications/Xcode.app/Contents/Developer",
+        ]);
+
+        expect(mockSwiftExtensionApi.reloadWorkspaceContext).to.have.not.been.called;
+        expect(mockedVSCodeWindow.showWarningMessage).to.not.have.been.called;
+    });
+
+    test("does nothing when the symlink remains the same", async () => {
+        await run("darwin", [
+            "/Applications/Xcode.app/Contents/Developer",
+            "/Applications/Xcode.app/Contents/Developer",
+            "/Applications/Xcode.app/Contents/Developer",
+        ]);
+
+        expect(mockSwiftExtensionApi.reloadWorkspaceContext).to.have.not.been.called;
+        expect(mockedVSCodeWindow.showWarningMessage).to.not.have.been.called;
+    });
+
+    suite("No Active Toolchain", () => {
+        setup(() => {
+            mockSwiftExtensionApi.workspaceContext = undefined;
+        });
+
+        test("detects when the path to Xcode changes", async () => {
+            await run("darwin", [
+                "/Applications/Xcode.app/Contents/Developer",
+                "/Applications/Xcode-2.app/Contents/Developer",
+            ]);
+
+            expect(mockSwiftExtensionApi.reloadWorkspaceContext).to.have.been.calledOnce;
+            expect(mockedVSCodeWindow.showWarningMessage).to.not.have.been.called;
+        });
+
+        test("detects when the path to Xcode changes and DEVELOPER_DIR is set", async () => {
+            envConfig.setValue({
+                DEVELOPER_DIR: "/Applications/Xcode.app/Contents/Developer",
+            });
+            await run("darwin", [
+                "/Applications/Xcode.app/Contents/Developer",
+                "/Applications/Xcode-2.app/Contents/Developer",
+            ]);
+
+            expect(mockSwiftExtensionApi.reloadWorkspaceContext).to.not.have.been.called;
+            expect(mockedVSCodeWindow.showWarningMessage).to.have.been.calledOnceWith(
+                match(
+                    "The Swift Extension has detected a change in the selected Xcode which does not match the value of your DEVELOPER_DIR"
+                )
+            );
+        });
+
+        test("detects when the path to Xcode changes to the same value as DEVELOPER_DIR", async () => {
+            envConfig.setValue({
+                DEVELOPER_DIR: "/Applications/Xcode-2.app/Contents/Developer",
+            });
+            await run("darwin", [
+                "/Applications/Xcode.app/Contents/Developer",
+                "/Applications/Xcode-2.app/Contents/Developer",
+            ]);
+
+            expect(mockSwiftExtensionApi.reloadWorkspaceContext).to.not.have.been.called;
+            expect(mockedVSCodeWindow.showWarningMessage).to.not.have.been.called;
+        });
+
+        test("detects when the path to Xcode changes and swift.path is set", async () => {
+            pathConfig.setValue(
+                "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin"
+            );
+            await run("darwin", [
+                "/Applications/Xcode.app/Contents/Developer",
+                "/Applications/Xcode-2.app/Contents/Developer",
+            ]);
+
+            expect(mockSwiftExtensionApi.reloadWorkspaceContext).to.have.been.calledOnce;
+            expect(mockedVSCodeWindow.showWarningMessage).to.have.been.calledOnceWith(
+                match(
+                    'The Swift Extension has detected a change in the selected Xcode which does not match the value of your "swift.path" setting.'
+                )
+            );
+        });
+
+        test("detects when the path to Xcode changes to the same value as swift.path", async () => {
+            pathConfig.setValue(
+                "/Applications/Xcode-2.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin"
+            );
+            await run("darwin", [
+                "/Applications/Xcode.app/Contents/Developer",
+                "/Applications/Xcode-2.app/Contents/Developer",
+            ]);
+
+            expect(mockSwiftExtensionApi.reloadWorkspaceContext).to.have.been.calledOnce;
+            expect(mockedVSCodeWindow.showWarningMessage).to.not.have.been.called;
         });
     });
 
-    async function run(symLinksOnCallback: (string | undefined)[]) {
-        return new Promise<void>(resolve => {
-            let ctr = 0;
-            const watcher = new SelectedXcodeWatcher(instance(mockLogger), {
-                checkIntervalMs: 1,
-                xcodeSymlink: async () => {
-                    if (ctr >= symLinksOnCallback.length) {
-                        watcher.dispose();
-                        resolve();
-                        return;
-                    }
-                    const response = symLinksOnCallback[ctr];
-                    ctr += 1;
-                    return response;
-                },
+    function createSuiteForXcrunManagedToolchain(options: { swiftPath: string }): void {
+        suite(`Xcrun Managed Toolchain - "swift.path": "${options.swiftPath}"`, () => {
+            setup(() => {
+                pathConfig.setValue(options.swiftPath);
+                mockToolchain.manager = "xcrun";
+            });
+
+            test("detects when the path to Xcode changes", async () => {
+                await run("darwin", [
+                    "/Applications/Xcode.app/Contents/Developer",
+                    "/Applications/Xcode-2.app/Contents/Developer",
+                ]);
+
+                expect(mockSwiftExtensionApi.reloadWorkspaceContext).to.have.been.calledOnce;
+                expect(mockedVSCodeWindow.showWarningMessage).to.not.have.been.called;
+            });
+
+            test("detects when the path to Xcode changes and DEVELOPER_DIR is set", async () => {
+                envConfig.setValue({
+                    DEVELOPER_DIR: "/Applications/Xcode.app/Contents/Developer",
+                });
+                await run("darwin", [
+                    "/Applications/Xcode.app/Contents/Developer",
+                    "/Applications/Xcode-2.app/Contents/Developer",
+                ]);
+
+                expect(mockSwiftExtensionApi.reloadWorkspaceContext).to.not.have.been.called;
+                expect(mockedVSCodeWindow.showWarningMessage).to.have.been.calledOnceWith(
+                    match(
+                        "The Swift Extension has detected a change in the selected Xcode which does not match the value of your DEVELOPER_DIR"
+                    )
+                );
+            });
+
+            test("detects when the path to Xcode changes to the same value as DEVELOPER_DIR", async () => {
+                envConfig.setValue({
+                    DEVELOPER_DIR: "/Applications/Xcode-2.app/Contents/Developer",
+                });
+                await run("darwin", [
+                    "/Applications/Xcode.app/Contents/Developer",
+                    "/Applications/Xcode-2.app/Contents/Developer",
+                ]);
+
+                expect(mockSwiftExtensionApi.reloadWorkspaceContext).to.not.have.been.called;
+                expect(mockedVSCodeWindow.showWarningMessage).to.not.have.been.called;
             });
         });
     }
+    createSuiteForXcrunManagedToolchain({ swiftPath: "" });
+    createSuiteForXcrunManagedToolchain({ swiftPath: "/usr/bin" });
 
-    test("Does nothing when the symlink is undefined", async () => {
-        await run([undefined, undefined]);
+    // Toolchain managers like swiftly and swiftenv only use Xcode for its SDK via the DEVELOPER_DIR setting
+    function createSuiteForNonXcrunToolchain(manager: ToolchainManager): void {
+        suite(`${captitalizeFirstLetter(manager)} Managed Toolchain`, () => {
+            setup(() => {
+                mockToolchain.manager = manager;
+            });
 
-        expect(mockedVSCodeWindow.showWarningMessage).to.have.not.been.called;
-    });
+            test("does nothing when the path to Xcode changes", async () => {
+                await run("darwin", [
+                    "/Applications/Xcode.app/Contents/Developer",
+                    "/Applications/Xcode-2.app/Contents/Developer",
+                ]);
 
-    test("Does nothing when the symlink is identical", async () => {
-        await run(["/foo", "/foo"]);
+                expect(mockSwiftExtensionApi.reloadWorkspaceContext).to.not.have.been.called;
+                expect(mockedVSCodeWindow.showWarningMessage).to.not.have.been.called;
+            });
 
-        expect(mockedVSCodeWindow.showWarningMessage).to.have.not.been.called;
-    });
+            test("detects when the path to Xcode changes and DEVELOPER_DIR is set", async () => {
+                envConfig.setValue({
+                    DEVELOPER_DIR: "/Applications/Xcode.app/Contents/Developer",
+                });
+                await run("darwin", [
+                    "/Applications/Xcode.app/Contents/Developer",
+                    "/Applications/Xcode-2.app/Contents/Developer",
+                ]);
 
-    test("Prompts to restart when the symlink changes", async () => {
-        await run(["/foo", "/bar"]);
+                expect(mockSwiftExtensionApi.reloadWorkspaceContext).to.not.have.been.called;
+                expect(mockedVSCodeWindow.showWarningMessage).to.have.been.calledOnceWith(
+                    match(
+                        "The Swift Extension has detected a change in the selected Xcode which does not match the value of your DEVELOPER_DIR"
+                    )
+                );
+            });
 
-        expect(mockedVSCodeWindow.showWarningMessage).to.have.been.calledOnceWithExactly(
-            "The Swift Extension has detected a change in the selected Xcode. Please reload the extension to apply the changes.",
-            "Reload Extensions"
-        );
-    });
+            test("detects when the path to Xcode changes to the same value as DEVELOPER_DIR", async () => {
+                envConfig.setValue({
+                    DEVELOPER_DIR: "/Applications/Xcode-2.app/Contents/Developer",
+                });
+                await run("darwin", [
+                    "/Applications/Xcode.app/Contents/Developer",
+                    "/Applications/Xcode-2.app/Contents/Developer",
+                ]);
 
-    suite('"swift.path" is out of date', () => {
-        setup(() => {
-            pathConfig.setValue("/path/to/swift/bin");
+                expect(mockSwiftExtensionApi.reloadWorkspaceContext).to.not.have.been.called;
+                expect(mockedVSCodeWindow.showWarningMessage).to.not.have.been.called;
+            });
+
+            test("does nothing when the path to Xcode changes and swift.path is set", async () => {
+                pathConfig.setValue(
+                    "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin"
+                );
+                await run("darwin", [
+                    "/Applications/Xcode.app/Contents/Developer",
+                    "/Applications/Xcode-2.app/Contents/Developer",
+                ]);
+
+                expect(mockSwiftExtensionApi.reloadWorkspaceContext).to.not.have.been.called;
+                expect(mockedVSCodeWindow.showWarningMessage).to.not.have.been.called;
+            });
         });
-
-        test("Warns that setting is out of date on startup", async () => {
-            await run(["/foo", "/foo"]);
-
-            expect(mockedVSCodeWindow.showWarningMessage).to.have.been.calledOnceWithExactly(
-                'The Swift Extension has detected a change in the selected Xcode which does not match the value of your "swift.path" setting. Would you like to update your configured "swift.path" setting?',
-                "Remove From Settings",
-                "Select Toolchain"
-            );
-        });
-
-        test("Remove setting", async () => {
-            mockedVSCodeWindow.showWarningMessage.resolves("Remove From Settings" as any);
-
-            await run(["/foo", "/foo"]);
-
-            expect(mockSwiftConfig.update.args).to.deep.equal([
-                ["path", undefined, vscode.ConfigurationTarget.Global],
-                ["path", undefined, vscode.ConfigurationTarget.Workspace],
-            ]);
-        });
-
-        test("Select toolchain", async () => {
-            mockedVSCodeWindow.showWarningMessage.resolves("Select Toolchain" as any);
-
-            await run(["/foo", "/foo"]);
-
-            expect(mockCommands.executeCommand).to.have.been.calledOnceWith(
-                Commands.SELECT_TOOLCHAIN
-            );
-        });
-
-        test("Warns that setting is out of date", async () => {
-            envConfig.setValue({ DEVELOPER_DIR: "/bar" });
-            await run([undefined, "/bar", "/bar"]);
-
-            expect(mockedVSCodeWindow.showWarningMessage).to.have.been.calledOnceWithExactly(
-                'The Swift Extension has detected a change in the selected Xcode which does not match the value of your "swift.path" setting. Would you like to update your configured "swift.path" setting?',
-                "Remove From Settings",
-                "Select Toolchain"
-            );
-        });
-    });
-
-    suite("DEVELOPER_DIR is out of date", () => {
-        setup(() => {
-            pathConfig.setValue("/path/to/swift/bin");
-            envConfig.setValue({ DEVELOPER_DIR: "/bar" });
-        });
-
-        test("Warns that environment is out of date on startup", async () => {
-            pathConfig.setValue("/path/to/swift/bin");
-
-            await run(["/foo", "/foo"]);
-
-            expect(mockedVSCodeWindow.showWarningMessage).to.have.been.calledOnceWithExactly(
-                'The Swift Extension has detected a change in the selected Xcode which does not match the value of your DEVELOPER_DIR in the "swift.swiftEnvironmentVariables" setting. Would you like to update your configured "swift.swiftEnvironmentVariables" setting?',
-                "Remove From Settings",
-                "Select Toolchain"
-            );
-        });
-
-        test("Remove setting", async () => {
-            mockedVSCodeWindow.showWarningMessage.resolves("Remove From Settings" as any);
-
-            await run(["/foo", "/foo"]);
-
-            expect(mockSwiftConfig.update.args).to.deep.equal([
-                ["path", undefined, vscode.ConfigurationTarget.Global],
-                ["path", undefined, vscode.ConfigurationTarget.Workspace],
-            ]);
-        });
-
-        test("Select toolchain", async () => {
-            mockedVSCodeWindow.showWarningMessage.resolves("Select Toolchain" as any);
-
-            await run(["/foo", "/foo"]);
-
-            expect(mockCommands.executeCommand).to.have.been.calledOnceWith(
-                Commands.SELECT_TOOLCHAIN
-            );
-        });
-
-        test("Warns that setting is out of date", async () => {
-            await run(["/bar", "/foo", "/foo"]);
-
-            expect(mockedVSCodeWindow.showWarningMessage).to.have.been.calledOnceWithExactly(
-                'The Swift Extension has detected a change in the selected Xcode which does not match the value of your DEVELOPER_DIR in the "swift.swiftEnvironmentVariables" setting. Would you like to update your configured "swift.swiftEnvironmentVariables" setting?',
-                "Remove From Settings",
-                "Select Toolchain"
-            );
-        });
-    });
+    }
+    createSuiteForNonXcrunToolchain("swiftly");
+    createSuiteForNonXcrunToolchain("swiftenv");
 });

@@ -11,19 +11,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import * as fs from "fs/promises";
-import * as path from "path";
 import * as vscode from "vscode";
 
 import { FolderContext } from "./FolderContext";
 import { FolderOperation } from "./WorkspaceContext";
-import configuration from "./configuration";
-import { SwiftLogger } from "./logging/SwiftLogger";
 import { BuildFlags } from "./toolchain/BuildFlags";
-import { showReloadExtensionNotification } from "./ui/ReloadExtension";
 import { Disposable } from "./utilities/Disposable";
 import { fileExists } from "./utilities/filesystem";
-import { Version } from "./utilities/version";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import debounce = require("lodash.debounce");
@@ -40,13 +34,8 @@ export class PackageWatcher {
     private resolvedFileWatcher?: vscode.FileSystemWatcher;
     private workspaceStateFileWatcher?: vscode.FileSystemWatcher;
     private snippetWatcher?: vscode.FileSystemWatcher;
-    private swiftVersionFileWatcher?: vscode.FileSystemWatcher;
-    private currentVersion?: Version;
 
-    constructor(
-        private folderContext: FolderContext,
-        private logger: SwiftLogger
-    ) {}
+    constructor(private folderContext: FolderContext) {}
 
     /**
      * Creates and installs {@link vscode.FileSystemWatcher file system watchers} for
@@ -57,7 +46,6 @@ export class PackageWatcher {
         this.resolvedFileWatcher = this.createResolvedFileWatcher();
         this.workspaceStateFileWatcher = await this.createWorkspaceStateFileWatcher();
         this.snippetWatcher = this.createSnippetFileWatcher();
-        this.swiftVersionFileWatcher = await this.createSwiftVersionFileWatcher();
     }
 
     /**
@@ -72,7 +60,6 @@ export class PackageWatcher {
         this.resolvedFileWatcher?.dispose();
         this.workspaceStateFileWatcher?.dispose();
         this.snippetWatcher?.dispose();
-        this.swiftVersionFileWatcher?.dispose();
     }
 
     private createPackageFileWatcher(): vscode.FileSystemWatcher {
@@ -128,45 +115,6 @@ export class PackageWatcher {
         watcher.onDidCreate(async () => await this.handlePackageSwiftChange());
         watcher.onDidDelete(async () => await this.handlePackageSwiftChange());
         return watcher;
-    }
-
-    private async createSwiftVersionFileWatcher(): Promise<vscode.FileSystemWatcher> {
-        const watcher = vscode.workspace.createFileSystemWatcher(
-            new vscode.RelativePattern(this.folderContext.folder, ".swift-version")
-        );
-        watcher.onDidCreate(async () => await this.handleSwiftVersionFileChange());
-        watcher.onDidChange(async () => await this.handleSwiftVersionFileChange());
-        watcher.onDidDelete(async () => await this.handleSwiftVersionFileChange());
-        this.currentVersion =
-            (await this.readSwiftVersionFile()) ?? this.folderContext.toolchain.swiftVersion;
-        return watcher;
-    }
-
-    async handleSwiftVersionFileChange() {
-        const version = await this.readSwiftVersionFile();
-        if (
-            version?.toString() !== this.currentVersion?.toString() &&
-            !configuration.folder(this.folderContext.workspaceFolder).ignoreSwiftVersionFile
-        ) {
-            await this.folderContext.fireEvent(FolderOperation.swiftVersionUpdated);
-            await showReloadExtensionNotification(
-                "Changing the swift toolchain version requires the extension to be reloaded"
-            );
-        }
-        this.currentVersion = version ?? this.folderContext.toolchain.swiftVersion;
-    }
-
-    private async readSwiftVersionFile() {
-        const versionFile = path.join(this.folderContext.folder.fsPath, ".swift-version");
-        try {
-            const contents = await fs.readFile(versionFile);
-            return Version.fromString(contents.toString().trim());
-        } catch (error) {
-            if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-                this.logger.error(`Failed to read .swift-version file at ${versionFile}: ${error}`);
-            }
-        }
-        return undefined;
     }
 
     /**

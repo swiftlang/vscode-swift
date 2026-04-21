@@ -14,115 +14,91 @@
 import * as fs from "fs/promises";
 import * as vscode from "vscode";
 
+import { InternalSwiftExtensionApi } from "../InternalSwiftExtensionApi";
 import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
-import { showReloadExtensionNotification } from "../ui/ReloadExtension";
 import { removeToolchainPath, selectToolchain } from "../ui/ToolchainSelection";
 import { Disposable } from "../utilities/Disposable";
 
 export class SelectedXcodeWatcher implements Disposable {
-    private xcodePath: string | undefined;
-    private disposed: boolean = false;
-    private interval: NodeJS.Timeout | undefined;
-    private checkIntervalMs: number;
-    private xcodeSymlink: () => Promise<string | undefined>;
+    public static readonly CHECK_INTERVAL = 2000;
+    public static readonly XCODE_SYMLINK_PATH = "/var/select/developer_dir";
 
-    private static DEFAULT_CHECK_INTERVAL_MS = 2000;
-    private static XCODE_SYMLINK_LOCATION = "/var/select/developer_dir";
+    private xcodePath: string | undefined;
+    private interval: NodeJS.Timeout | undefined;
+
+    private get logger(): SwiftLogger {
+        return this.api.logger;
+    }
 
     constructor(
-        private logger: SwiftLogger,
-        testDependencies?: {
-            checkIntervalMs?: number;
-            xcodeSymlink?: () => Promise<string | undefined>;
-        }
+        private api: InternalSwiftExtensionApi,
+        platform: NodeJS.Platform
     ) {
-        this.checkIntervalMs =
-            testDependencies?.checkIntervalMs || SelectedXcodeWatcher.DEFAULT_CHECK_INTERVAL_MS;
-        this.xcodeSymlink =
-            testDependencies?.xcodeSymlink ||
-            (async () => {
-                try {
-                    return await fs.readlink(SelectedXcodeWatcher.XCODE_SYMLINK_LOCATION);
-                } catch (e) {
-                    return undefined;
-                }
-            });
-
-        if (!this.isValidXcodePlatform()) {
+        // Xcode is only available on macOS
+        if (platform !== "darwin") {
             return;
         }
 
         // Deliberately not awaiting this, as we don't want to block the extension activation.
-        void this.setup();
+        this.setup().catch(error => {
+            this.logger.error(Error("Failed to initialize SelectedXcodeWatcher", { cause: error }));
+        });
     }
 
     dispose() {
-        this.disposed = true;
         clearInterval(this.interval);
     }
 
     /**
      * Polls the Xcode symlink location checking if it has changed.
-     * If the user has `swift.path` set in their settings this check is skipped.
      */
-    private async setup() {
-        this.xcodePath = await this.xcodeSymlink();
+    private async setup(): Promise<void> {
+        this.xcodePath = await this.resolveXcodeSymlink();
         this.logger.debug(`Initial Xcode symlink path ${this.xcodePath}`);
-        const developerDir = () => configuration.swiftEnvironmentVariables["DEVELOPER_DIR"];
-        const matchesPath = (xcodePath: string): boolean =>
-            !!configuration.path && configuration.path.startsWith(xcodePath);
-        const matchesDeveloperDir = (xcodePath: string): boolean =>
-            !!developerDir()?.startsWith(xcodePath);
-        if (
-            this.xcodePath &&
-            (configuration.path || developerDir()) &&
-            !(matchesPath(this.xcodePath) || matchesDeveloperDir(this.xcodePath))
-        ) {
-            this.xcodePath = undefined; // Notify user when initially launching that xcode changed since last session
-        }
-        this.interval = setInterval(async () => {
-            if (this.disposed) {
-                return clearInterval(this.interval);
-            }
-
-            const newXcodePath = await this.xcodeSymlink();
-            if (newXcodePath && this.xcodePath !== newXcodePath) {
-                this.logger.info(
-                    `Selected Xcode changed from ${this.xcodePath} to ${newXcodePath}`
-                );
-                this.xcodePath = newXcodePath;
-                await this.notifyXcodeChange(
-                    this.xcodePath,
-                    developerDir(),
-                    matchesPath,
-                    matchesDeveloperDir
-                );
-            }
-        }, this.checkIntervalMs);
+        this.interval = setInterval(() => {
+            void this.checkSelectedXcode();
+        }, SelectedXcodeWatcher.CHECK_INTERVAL);
     }
 
-    private async notifyXcodeChange(
-        xcodePath: string,
-        developerDir: string | undefined,
-        matchesPath: (xcodePath: string) => boolean,
-        matchesDeveloperDir: (xcodePath: string) => boolean
-    ): Promise<void> {
-        if (!configuration.path) {
-            await showReloadExtensionNotification(
-                "The Swift Extension has detected a change in the selected Xcode. Please reload the extension to apply the changes."
-            );
+    private async resolveXcodeSymlink(): Promise<string | undefined> {
+        try {
+            return await fs.readlink(SelectedXcodeWatcher.XCODE_SYMLINK_PATH);
+        } catch (e) {
+            return undefined;
+        }
+    }
+
+    public async checkSelectedXcode(): Promise<void> {
+        const oldXcodePath = this.xcodePath;
+        const newXcodePath = await this.resolveXcodeSymlink();
+        if (!newXcodePath) {
             return;
         }
-
-        if (developerDir && !matchesDeveloperDir(xcodePath)) {
+        // Check if this is a valid change in the Xcode path
+        this.xcodePath = newXcodePath;
+        if (!oldXcodePath || newXcodePath === oldXcodePath) {
+            return;
+        }
+        this.logger.info(`Selected Xcode changed from "${this.xcodePath}" to "${newXcodePath}"`);
+        const toolchainManager = this.api.workspaceContext?.globalToolchain.manager ?? "unknown";
+        const developerDir = configuration.swiftEnvironmentVariables["DEVELOPER_DIR"];
+        if (!developerDir && !["swiftly", "swiftenv"].includes(toolchainManager)) {
+            this.api.reloadWorkspaceContext();
+        }
+        // Warn about potential DEVELOPER_DIR issues
+        if (developerDir && !developerDir.startsWith(newXcodePath)) {
             await this.promptToolchainUpdate(
                 'The Swift Extension has detected a change in the selected Xcode which does not match the value of your DEVELOPER_DIR in the "swift.swiftEnvironmentVariables" setting. Would you like to update your configured "swift.swiftEnvironmentVariables" setting?'
             );
             return;
         }
-
-        if (!matchesPath(xcodePath)) {
+        // Warn about potential "swift.path" issues
+        if (["xcrun", "swiftly", "swiftenv"].includes(toolchainManager)) {
+            return;
+        }
+        const swiftPath = configuration.path;
+        if (swiftPath && !swiftPath.startsWith(newXcodePath)) {
             await this.promptToolchainUpdate(
                 'The Swift Extension has detected a change in the selected Xcode which does not match the value of your "swift.path" setting. Would you like to update your configured "swift.path" setting?'
             );
@@ -140,12 +116,5 @@ export class SelectedXcodeWatcher implements Disposable {
         } else if (selected === "Select Toolchain") {
             await selectToolchain();
         }
-    }
-
-    /**
-     * Xcode selection is a macOS only concept.
-     */
-    private isValidXcodePlatform() {
-        return process.platform === "darwin";
     }
 }

@@ -37,7 +37,8 @@ suite("SwiftTaskProvider Test Suite", () => {
     let folderContext: FolderContext;
 
     activateExtensionForSuite({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             workspaceContext = ctx;
             expect(workspaceContext.folders).to.not.have.lengthOf(0);
             workspaceFolder = workspaceContext.folders[0].workspaceFolder;
@@ -49,7 +50,7 @@ suite("SwiftTaskProvider Test Suite", () => {
     });
 
     suite("createSwiftTask", () => {
-        test("Exit code on success", async () => {
+        tag("medium").test("Exit code on success", async () => {
             const task = createSwiftTask(
                 ["--help"],
                 "help",
@@ -60,7 +61,7 @@ suite("SwiftTaskProvider Test Suite", () => {
             expect(exitCode).to.equal(0);
         });
 
-        test("Exit code on failure", async () => {
+        tag("medium").test("Exit code on failure", async () => {
             const task = createSwiftTask(
                 ["invalid_swift_command"],
                 "invalid",
@@ -71,7 +72,7 @@ suite("SwiftTaskProvider Test Suite", () => {
             expect(exitCode).to.not.equal(0);
         });
 
-        test("Exit code on failure to launch", async () => {
+        tag("medium").test("Exit code on failure to launch", async () => {
             const task = createSwiftTask(
                 ["--help"],
                 "help",

@@ -15,7 +15,7 @@ import * as vscode from "vscode";
 
 import { FolderContext } from "../FolderContext";
 import { FolderOperation, WorkspaceContext } from "../WorkspaceContext";
-import { Disposable } from "../utilities/Disposable";
+import { AsyncDisposable, Disposable } from "../utilities/Disposable";
 import { isExcluded } from "../utilities/filesystem";
 import { Version } from "../utilities/version";
 import { LanguageClientFactory } from "./LanguageClientFactory";
@@ -28,9 +28,10 @@ import { LanguageClientManager } from "./LanguageClientManager";
  * folders share the same toolchain version then they will share the same LanguageClient.
  * This ensures that a folder always uses the LanguageClient bundled with its desired toolchain.
  */
-export class LanguageClientToolchainCoordinator implements Disposable {
+export class LanguageClientToolchainCoordinator implements AsyncDisposable {
     private subscriptions: Disposable[] = [];
     private clients: Map<string, LanguageClientManager> = new Map();
+    private foldersToClient: Map<string, LanguageClientManager> = new Map();
 
     public constructor(
         workspaceContext: WorkspaceContext,
@@ -67,7 +68,7 @@ export class LanguageClientToolchainCoordinator implements Disposable {
         folder: FolderContext | null,
         operation: FolderOperation,
         languageClientFactory: LanguageClientFactory
-    ) {
+    ): Promise<void> {
         if (!folder) {
             return;
         }
@@ -76,16 +77,28 @@ export class LanguageClientToolchainCoordinator implements Disposable {
         }
         const singleServer = folder.swiftVersion.isGreaterThanOrEqual(new Version(5, 7, 0));
         switch (operation) {
+            case FolderOperation.swiftVersionUpdated: {
+                const existingClient = this.foldersToClient.get(folder.folder.toString());
+                await existingClient?.removeFolder(folder);
+                const client = await this.create(folder, singleServer, languageClientFactory);
+                await (singleServer
+                    ? client.addFolder(folder)
+                    : client.setLanguageClientFolder(folder));
+                this.foldersToClient.set(folder.folder.toString(), client);
+                break;
+            }
             case FolderOperation.add: {
                 const client = await this.create(folder, singleServer, languageClientFactory);
                 await (singleServer
                     ? client.addFolder(folder)
                     : client.setLanguageClientFolder(folder));
+                this.foldersToClient.set(folder.folder.toString(), client);
                 break;
             }
             case FolderOperation.remove: {
                 const client = await this.create(folder, singleServer, languageClientFactory);
                 await client.removeFolder(folder);
+                this.foldersToClient.delete(folder.folder.toString());
                 break;
             }
             case FolderOperation.focus: {
@@ -151,7 +164,13 @@ export class LanguageClientToolchainCoordinator implements Disposable {
         return client;
     }
 
-    dispose() {
+    async dispose(): Promise<void> {
         this.subscriptions.forEach(item => item.dispose());
+        const disposeClients: Promise<void>[] = [];
+        for (const client of this.clients.values()) {
+            disposeClients.push(client.dispose());
+        }
+        await Promise.all(disposeClients);
+        this.clients.clear();
     }
 }

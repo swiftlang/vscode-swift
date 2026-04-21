@@ -18,7 +18,6 @@ import { FolderContext } from "@src/FolderContext";
 import { PackageWatcher } from "@src/PackageWatcher";
 import { SwiftPackage } from "@src/SwiftPackage";
 import { FolderOperation } from "@src/WorkspaceContext";
-import { SwiftLogger } from "@src/logging/SwiftLogger";
 
 import { instance, mockFn, mockObject } from "../MockUtils";
 
@@ -42,8 +41,7 @@ suite("PackageWatcher Suite", () => {
     setup(() => {
         clock = sinon.useFakeTimers();
         folderContext = createMockFolderContext();
-        const logger = mockObject<SwiftLogger>({});
-        watcher = new PackageWatcher(instance(folderContext), instance(logger));
+        watcher = new PackageWatcher(instance(folderContext));
     });
 
     teardown(() => {

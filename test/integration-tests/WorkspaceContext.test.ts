@@ -15,7 +15,6 @@ import { expect } from "chai";
 import { afterEach } from "mocha";
 import * as vscode from "vscode";
 
-import { FolderContext } from "@src/FolderContext";
 import { FolderOperation, WorkspaceContext } from "@src/WorkspaceContext";
 import { SwiftExecution } from "@src/tasks/SwiftExecution";
 import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
@@ -23,11 +22,11 @@ import { Disposable } from "@src/utilities/Disposable";
 import { resolveScope } from "@src/utilities/tasks";
 import { Version } from "@src/utilities/version";
 
-import { testAssetPath, testAssetUri } from "../fixtures";
+import { testAssetUri } from "../fixtures";
 import { tag } from "../tags";
-import { assertContains } from "./testexplorer/utilities";
 import {
     activateExtensionForSuite,
+    activateExtensionForTest,
     getRootWorkspaceFolder,
     updateSettings,
 } from "./utilities/testutilities";
@@ -40,77 +39,74 @@ function assertNotContainsArg(execution: SwiftExecution, arg: string) {
     expect(execution?.args.find(a => a.includes(arg))).to.be.undefined;
 }
 
+function waitForAddedFolders(
+    workspaceContext: WorkspaceContext,
+    ...expectedFolderNames: string[]
+): Promise<void> {
+    const subscriptions: Disposable[] = [];
+    return new Promise<void>(resolve => {
+        const addedFolders: string[] = [];
+        subscriptions.push(
+            workspaceContext.onDidChangeFolders(event => {
+                if (!event.folder || event.operation !== FolderOperation.add) {
+                    return;
+                }
+                addedFolders.push(event.folder.name);
+                // Check if we've seen all the expected folders
+                for (const folderName of expectedFolderNames) {
+                    if (!addedFolders.find(name => name.includes(folderName))) {
+                        return;
+                    }
+                }
+                resolve();
+            })
+        );
+    }).finally(() => subscriptions.forEach(s => s.dispose()));
+}
+
 tag("medium").suite("WorkspaceContext Test Suite", () => {
     let workspaceContext: WorkspaceContext;
     const packageFolder: vscode.Uri = testAssetUri("defaultPackage");
 
     suite("Folder Events", () => {
-        activateExtensionForSuite({
-            async setup(ctx) {
-                workspaceContext = ctx;
+        activateExtensionForTest({
+            async setup(api) {
+                workspaceContext = await api.waitForWorkspaceContext();
             },
-            // No default assets as we want to verify against a clean workspace.
-            testAssets: ["defaultPackage"],
+            testAssets: [],
         });
 
-        test("Add", async () => {
-            let observer: Disposable | undefined;
-            let recordedFolders: {
-                folder: FolderContext | null;
-                operation: FolderOperation;
-            }[] = [];
+        test("onDidChangeFolders() triggers when folders are added to the workspace", async () => {
+            const workspaceFolder = getRootWorkspaceFolder();
+            const waitingPromise = waitForAddedFolders(workspaceContext, "package2");
 
-            try {
-                observer = workspaceContext.onDidChangeFolders(changedFolderRecord => {
-                    recordedFolders.push(changedFolderRecord);
-                });
+            const folder = await workspaceContext.addPackageFolder(
+                testAssetUri("package2"),
+                workspaceFolder
+            );
+            expect(await folder.swiftPackage.isValid).to.be.true;
 
-                // https://github.com/swiftlang/vscode-swift/issues/1944
-                // make sure get existing folder(s)
-                const addedFolders = recordedFolders.filter(
-                    ({ operation }) => operation === FolderOperation.add
-                );
-                let addedCount = addedFolders.length;
-                expect(
-                    addedCount,
-                    `Expected at least one add folder operation, instead got folders: ${addedFolders.map(folder => folder.folder?.name)}`
-                ).to.be.greaterThanOrEqual(1);
-                console.log(addedFolders.map(folder => folder.folder?.name));
-                expect(
-                    addedFolders.find(
-                        folder => folder?.folder?.folder.fsPath === testAssetPath("defaultPackage")
-                    )
-                ).to.not.be.undefined;
+            await waitingPromise;
+        });
 
-                const workspaceFolder = getRootWorkspaceFolder();
+        test("onDidChangeFolders() triggers for folders that were already in the workspace", async () => {
+            const workspaceFolder = getRootWorkspaceFolder();
+            await workspaceContext.addPackageFolder(
+                testAssetUri("defaultPackage"),
+                workspaceFolder
+            );
+            await workspaceContext.addPackageFolder(testAssetUri("package2"), workspaceFolder);
 
-                expect(workspaceFolder).to.not.be.undefined;
-
-                recordedFolders = [];
-                await workspaceContext.addPackageFolder(testAssetUri("package2"), workspaceFolder);
-
-                const foldersNamePromises = recordedFolders
-                    .map(({ folder }) => folder?.swiftPackage.name)
-                    .filter(f => !!f);
-                const foldersNames = await Promise.all(foldersNamePromises);
-                assertContains(foldersNames, "package2");
-
-                addedCount = recordedFolders.filter(
-                    ({ operation }) => operation === FolderOperation.add
-                ).length;
-                expect(
-                    addedCount,
-                    `Expected only one add folder operation, instead got folders: ${recordedFolders.map(folder => folder.folder?.name)}`
-                ).to.equal(1);
-            } finally {
-                observer?.dispose();
-            }
+            // Calling onDidChangeFolders should trigger the listener for already added folders.
+            // This is a regression test for https://github.com/swiftlang/vscode-swift/issues/1944
+            await waitForAddedFolders(workspaceContext, "defaultPackage", "package2");
         });
     });
 
     suite("Tasks", function () {
         activateExtensionForSuite({
-            async setup(ctx) {
+            async setup(api) {
+                const ctx = await api.waitForWorkspaceContext();
                 workspaceContext = ctx;
             },
         });
@@ -208,7 +204,8 @@ tag("medium").suite("WorkspaceContext Test Suite", () => {
 
     suite("Toolchain", function () {
         activateExtensionForSuite({
-            async setup(ctx) {
+            async setup(api) {
+                const ctx = await api.waitForWorkspaceContext();
                 workspaceContext = ctx;
             },
         });

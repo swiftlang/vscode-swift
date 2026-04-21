@@ -27,7 +27,6 @@ import {
 import { TestKind } from "./TestExplorer/TestKind";
 import { TestRunManager } from "./TestExplorer/TestRunManager";
 import configuration from "./configuration";
-import { LLDBDebugConfigurationProvider } from "./debugger/debugAdapterFactory";
 import { makeDebugConfigurations } from "./debugger/launch";
 import { DocumentationManager } from "./documentation/DocumentationManager";
 import { CommentCompletionProviders } from "./editor/CommentCompletion";
@@ -42,7 +41,7 @@ import { SwiftToolchain } from "./toolchain/toolchain";
 import { ProjectPanelProvider } from "./ui/ProjectPanelProvider";
 import { StatusItem } from "./ui/StatusItem";
 import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
-import { Disposable } from "./utilities/Disposable";
+import { AsyncDisposable, Disposable } from "./utilities/Disposable";
 import { isExcluded, isPathInsidePath } from "./utilities/filesystem";
 import { swiftLibraryPathKey } from "./utilities/utilities";
 import { isValidWorkspaceFolder, searchForPackages } from "./utilities/workspace";
@@ -60,7 +59,7 @@ export interface FolderEvent extends ExternalFolderEvent {
  * Context for whole workspace. Holds array of contexts for each workspace folder
  * and the ExtensionContext
  */
-export class WorkspaceContext implements ExternalWorkspaceContext, Disposable {
+export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposable {
     public folders: FolderContext[] = [];
     public currentFolder: FolderContext | null | undefined;
     public currentDocument: vscode.Uri | null;
@@ -71,7 +70,6 @@ export class WorkspaceContext implements ExternalWorkspaceContext, Disposable {
     public diagnostics: DiagnosticsManager;
     public taskProvider: SwiftTaskProvider;
     public pluginProvider: SwiftPluginTaskProvider;
-    public launchProvider: LLDBDebugConfigurationProvider;
     public subscriptions: Disposable[];
     public commentCompletionProvider: CommentCompletionProviders;
     public documentation: DocumentationManager;
@@ -121,7 +119,6 @@ export class WorkspaceContext implements ExternalWorkspaceContext, Disposable {
         this.diagnostics = new DiagnosticsManager(this);
         this.taskProvider = new SwiftTaskProvider(this);
         this.pluginProvider = new SwiftPluginTaskProvider(this);
-        this.launchProvider = new LLDBDebugConfigurationProvider(process.platform, this, logger);
         this.documentation = new DocumentationManager(extensionContext, this);
         this.currentDocument = null;
         this.commentCompletionProvider = new CommentCompletionProviders();
@@ -152,8 +149,8 @@ export class WorkspaceContext implements ExternalWorkspaceContext, Disposable {
                     )
                     .then(async selected => {
                         if (selected === "Update") {
-                            this.folders.forEach(ctx =>
-                                makeDebugConfigurations(ctx, { yes: true })
+                            await Promise.all(
+                                this.folders.map(ctx => makeDebugConfigurations(ctx, { yes: true }))
                             );
                         }
                     });
@@ -175,10 +172,10 @@ export class WorkspaceContext implements ExternalWorkspaceContext, Disposable {
                         "Update",
                         "Cancel"
                     )
-                    .then(selected => {
+                    .then(async selected => {
                         if (selected === "Update") {
-                            this.folders.forEach(ctx =>
-                                makeDebugConfigurations(ctx, { yes: true })
+                            await Promise.all(
+                                this.folders.map(ctx => makeDebugConfigurations(ctx, { yes: true }))
                             );
                         }
                     });
@@ -249,8 +246,6 @@ export class WorkspaceContext implements ExternalWorkspaceContext, Disposable {
             this.tasks,
             this.diagnostics,
             this.documentation,
-            this.languageClientManager,
-            this.logger,
             this.buildStatus,
             this.projectPanel,
         ];
@@ -259,19 +254,12 @@ export class WorkspaceContext implements ExternalWorkspaceContext, Disposable {
         this.setupEventListeners();
     }
 
-    async stop() {
-        try {
-            await this.languageClientManager.stop();
-        } catch {
-            // ignore
-        }
-    }
-
-    dispose() {
+    async dispose(): Promise<void> {
         this.folders.forEach(f => f.dispose());
         this.folders.length = 0;
         this.subscriptions.forEach(item => item.dispose());
         this.subscriptions.length = 0;
+        await this.languageClientManager.dispose();
     }
 
     get globalToolchainSwiftVersion() {
