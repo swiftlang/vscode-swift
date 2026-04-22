@@ -44,8 +44,8 @@ jobs:
             *.vsix
             vscode-swift-sha.txt
 
-  tests_insiders:
-    name: Test VS Code Insiders
+  tests:
+    name: Tests
     needs: package
     uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.10
     with:

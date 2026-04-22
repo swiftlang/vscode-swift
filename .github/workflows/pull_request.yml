@@ -45,7 +45,7 @@ jobs:
             vscode-swift-sha.txt
 
   tests:
-    name: ${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && 'Full Test Run' || 'Test'}}
+    name: ${{ contains(github.event.pull_request.labels.*.name, 'full-test-run') && 'Full Test Run' || 'Fast Test Run'}}
     needs: package
     uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.10
     with:
