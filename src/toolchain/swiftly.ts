@@ -892,9 +892,14 @@ export class Swiftly {
             return;
         }
 
-        const shouldExecute = await this.showPostInstallConfirmation(version, validation, logger);
+        let choice = await this.showPostInstallConfirmation(version, validation, logger);
 
-        if (shouldExecute) {
+        while (choice === "Review Script") {
+            await this.showPostInstallScript(postInstallFilePath);
+            choice = await this.showPostInstallConfirmation(version, validation, logger);
+        }
+
+        if (choice === "Execute Script") {
             await this.executePostInstallScript(
                 postInstallFilePath,
                 version,
@@ -982,13 +987,13 @@ export class Swiftly {
      * @param version The toolchain version being installed
      * @param validation The validation result
      * @param logger
-     * @returns Promise resolving to user's decision
+     * @returns Promise resolving to the user's choice
      */
     private static async showPostInstallConfirmation(
         version: string,
         validation: PostInstallValidationResult,
         logger?: SwiftLogger
-    ): Promise<boolean> {
+    ): Promise<string | undefined> {
         const summaryLines = validation.summary.split("\n");
         const firstTwoLines = summaryLines.slice(0, 2).join("\n");
 
@@ -1004,10 +1009,25 @@ export class Swiftly {
         const choice = await vscode.window.showWarningMessage(
             message,
             { modal: true },
-            "Execute Script"
+            "Execute Script",
+            "Review Script"
         );
 
-        return choice === "Execute Script";
+        return choice;
+    }
+
+    /**
+     * Opens the post-install script in a read-only editor for the user to review.
+     *
+     * @param postInstallFilePath Path to the post-install script
+     */
+    private static async showPostInstallScript(postInstallFilePath: string): Promise<void> {
+        const scriptContent = await fs.readFile(postInstallFilePath, "utf-8");
+        const document = await vscode.workspace.openTextDocument({
+            content: scriptContent,
+            language: "shellscript",
+        });
+        await vscode.window.showTextDocument(document, { preview: true });
     }
 
     /**

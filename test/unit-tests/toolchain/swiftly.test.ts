@@ -995,6 +995,7 @@ suite("Swiftly Unit Tests", () => {
 
     suite("Post-Install File Handling", () => {
         const mockVscodeWindow = mockGlobalObject(vscode, "window");
+        const mockVscodeWorkspace = mockGlobalObject(vscode, "workspace");
 
         setup(() => {
             mockedPlatform.setValue("linux");
@@ -1002,6 +1003,12 @@ suite("Swiftly Unit Tests", () => {
             mockVscodeWindow.showInformationMessage.reset();
             mockVscodeWindow.showErrorMessage.reset();
             mockVscodeWindow.createOutputChannel.reset();
+            mockVscodeWorkspace.openTextDocument.reset();
+            mockVscodeWindow.showTextDocument.reset();
+
+            // Mock openTextDocument for review script tests
+            mockVscodeWorkspace.openTextDocument.resolves({} as vscode.TextDocument);
+            mockVscodeWindow.showTextDocument.resolves(undefined as any);
 
             // Mock createOutputChannel to return a basic output channel mock
             mockVscodeWindow.createOutputChannel.returns({
@@ -1089,8 +1096,7 @@ apt-get -y install build-essential`;
                     await fs.writeFile(postInstallPath, validScript);
                 });
 
-            // @ts-expect-error mocking vscode window methods makes type checking difficult
-            mockVscodeWindow.showWarningMessage.resolves("Cancel");
+            mockVscodeWindow.showWarningMessage.resolves(undefined);
 
             await Swiftly.installToolchain("6.0.0", "/path/to/extension");
 
@@ -1338,6 +1344,129 @@ apt-get -y install libncurses5-dev
                     "Swift 6.0.0 installation requires additional system packages to be installed"
                 )
             );
+            expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
+                "sudo",
+                match.array,
+                match.any,
+                match.any,
+                null,
+                match.object
+            );
+        });
+
+        test("should open script for review and execute after user confirms", async () => {
+            const validScript = `#!/bin/bash
+apt-get -y install build-essential`;
+
+            mockUtilities.execFileStreamOutput
+                .withArgs("swiftly", [
+                    "install",
+                    "6.0.0",
+                    "--assume-yes",
+                    "--post-install-file",
+                    match.string,
+                ])
+                .callsFake(async (_command, args) => {
+                    const postInstallPath = args[4];
+                    await fs.writeFile(postInstallPath, validScript);
+                });
+            mockUtilities.execFile
+                .withArgs("chmod", match.array)
+                .resolves({ stdout: "", stderr: "" });
+
+            // Mock execFileStreamOutput for sudo
+            mockUtilities.execFileStreamOutput.withArgs("sudo").resolves();
+
+            // First dialog: user clicks "Review Script", second dialog: user clicks "Execute Script"
+            // @ts-expect-error mocking vscode window methods makes type checking difficult
+            mockVscodeWindow.showWarningMessage.onFirstCall().resolves("Review Script");
+            // @ts-expect-error mocking vscode window methods makes type checking difficult
+            mockVscodeWindow.showWarningMessage.onSecondCall().resolves("Execute Script");
+
+            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
+
+            expect(mockVscodeWorkspace.openTextDocument).to.have.been.calledOnce;
+            expect(mockVscodeWindow.showTextDocument).to.have.been.calledOnce;
+            expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
+                "sudo",
+                match.array,
+                match.any,
+                match.any,
+                null,
+                match.object
+            );
+        });
+
+        test("should open script for review and cancel after user declines", async () => {
+            const validScript = `#!/bin/bash
+apt-get -y install build-essential`;
+
+            mockUtilities.execFileStreamOutput
+                .withArgs("swiftly", [
+                    "install",
+                    "6.0.0",
+                    "--assume-yes",
+                    "--post-install-file",
+                    match.string,
+                ])
+                .callsFake(async (_command, args) => {
+                    const postInstallPath = args[4];
+                    await fs.writeFile(postInstallPath, validScript);
+                });
+
+            // First dialog: user clicks "Review Script", second dialog: user dismisses
+            // @ts-expect-error mocking vscode window methods makes type checking difficult
+            mockVscodeWindow.showWarningMessage.onFirstCall().resolves("Review Script");
+            mockVscodeWindow.showWarningMessage.onSecondCall().resolves(undefined);
+
+            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
+
+            expect(mockVscodeWorkspace.openTextDocument).to.have.been.calledOnce;
+            expect(mockVscodeWindow.showTextDocument).to.have.been.calledOnce;
+            expect(mockUtilities.execFileStreamOutput).to.not.have.been.calledWith(
+                "sudo",
+                match.array
+            );
+            expect(mockVscodeWindow.showWarningMessage).to.have.been.calledWith(
+                match("Swift 6.0.0 installation is incomplete")
+            );
+        });
+
+        test("should allow multiple reviews before executing", async () => {
+            const validScript = `#!/bin/bash
+apt-get -y install build-essential`;
+
+            mockUtilities.execFileStreamOutput
+                .withArgs("swiftly", [
+                    "install",
+                    "6.0.0",
+                    "--assume-yes",
+                    "--post-install-file",
+                    match.string,
+                ])
+                .callsFake(async (_command, args) => {
+                    const postInstallPath = args[4];
+                    await fs.writeFile(postInstallPath, validScript);
+                });
+            mockUtilities.execFile
+                .withArgs("chmod", match.array)
+                .resolves({ stdout: "", stderr: "" });
+
+            // Mock execFileStreamOutput for sudo
+            mockUtilities.execFileStreamOutput.withArgs("sudo").resolves();
+
+            // Review twice, then execute
+            // @ts-expect-error mocking vscode window methods makes type checking difficult
+            mockVscodeWindow.showWarningMessage.onFirstCall().resolves("Review Script");
+            // @ts-expect-error mocking vscode window methods makes type checking difficult
+            mockVscodeWindow.showWarningMessage.onSecondCall().resolves("Review Script");
+            // @ts-expect-error mocking vscode window methods makes type checking difficult
+            mockVscodeWindow.showWarningMessage.onThirdCall().resolves("Execute Script");
+
+            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
+
+            expect(mockVscodeWorkspace.openTextDocument).to.have.been.calledTwice;
+            expect(mockVscodeWindow.showTextDocument).to.have.been.calledTwice;
             expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
                 "sudo",
                 match.array,
