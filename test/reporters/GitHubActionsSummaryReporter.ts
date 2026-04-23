@@ -15,6 +15,7 @@ import { diffLines } from "diff";
 import * as fs from "fs";
 import * as mocha from "mocha";
 
+const EOL = "\r\n";
 const SUMMARY_ENV_VAR = "GITHUB_STEP_SUMMARY";
 
 interface AssertionError extends Error {
@@ -73,7 +74,7 @@ module.exports = class GitHubActionsSummaryReporter extends mocha.reporters.Base
 
 function fullTitle(test: Mocha.Test | Mocha.Suite): string {
     if (test.parent && test.parent.title) {
-        return fullTitle(test.parent) + " | " + test.title;
+        return fullTitle(test.parent) + " → " + test.title;
     }
     return test.title;
 }
@@ -82,23 +83,38 @@ function generateErrorMessage(failure: Mocha.Test): string {
     if (!failure.err) {
         return "The test did not report what the error was.";
     }
+    return convertErrorToString(failure.err);
+}
 
+function convertErrorToString(error: Error): string {
     const stackTraceFilter = mocha.utils.stackTraceFilter();
-    if (isAssertionError(failure.err) && failure.err.showDiff) {
-        const { message, stack } = splitStackTrace(failure.err);
-        return (
+    let result: string;
+    if (isAssertionError(error) && error.showDiff) {
+        const stackTraceFilter = mocha.utils.stackTraceFilter();
+        const { message, stack } = splitStackTrace(error);
+        result =
             message +
-            eol() +
-            generateDiff(failure.err.actual, failure.err.expected) +
-            eol() +
-            eol() +
-            stackTraceFilter(stack)
-        );
+            EOL +
+            generateDiff(error.actual, error.expected) +
+            EOL +
+            EOL +
+            stackTraceFilter(stack);
+    } else if (error.stack) {
+        result = stackTraceFilter(error.stack);
+    } else {
+        result = mocha.utils.stringify(error);
     }
-    if (failure.err.stack) {
-        return stackTraceFilter(failure.err.stack);
+
+    if (!error.cause) {
+        return result;
     }
-    return mocha.utils.stringify(failure.err);
+    let causedByString = "Caused By: ";
+    if (error.cause instanceof Error) {
+        causedByString += convertErrorToString(error.cause);
+    } else {
+        causedByString += mocha.utils.stringify(error.cause);
+    }
+    return result + EOL + causedByString;
 }
 
 function splitStackTrace(error: Error): { message: string; stack: string } {
@@ -116,7 +132,7 @@ function splitStackTrace(error: Error): { message: string; stack: string } {
 
 function generateDiff(actual: string, expected: string) {
     return [
-        "🟩 expected 🟥 actual\n\n",
+        "🟩 expected 🟥 actual" + EOL + EOL,
         ...diffLines(expected, actual).map(part => {
             if (part.added) {
                 return "🟩" + part.value;
@@ -138,43 +154,44 @@ function details(summary: string, open: boolean, content: string): string {
     return tag(
         "details",
         open ? ["open"] : [],
-        eol() + tag("summary", [], summary) + eol() + content + eol()
+        EOL + tag("summary", [], summary) + EOL + content + EOL
     );
 }
 
 function list(lines: string[]): string {
-    return tag("ul", [], eol() + lines.map(line => tag("li", [], line)).join(eol()) + eol());
+    return tag("ul", [], EOL + lines.map(line => tag("li", [], line)).join(EOL) + EOL);
 }
 
-function eol(): string {
-    if (process.platform === "win32") {
-        return "\r\n";
-    }
-    return "\n";
+function fixLineEndings(str: string): string {
+    return str.replace(/\r?\n/g, EOL);
 }
 
 function createMarkdownSummary(title: string, stats: Mocha.Stats, failures: Mocha.Test[]): string {
     const isFailedRun = stats.failures > 0;
-    let summary = tag("h3", [], "Summary") + eol();
+    let summary = tag("h3", [], "Summary");
+    summary += EOL;
     summary += list([
         ...(stats.passes > 0 ? [`✅ ${stats.passes} passing test(s)`] : []),
         ...(stats.failures > 0 ? [`❌ ${stats.failures} failing test(s)`] : []),
         ...(stats.pending > 0 ? [`⚠️ ${stats.pending} pending test(s)`] : []),
     ]);
+    summary += EOL;
     if (isFailedRun) {
         summary += tag("h3", [], "Test Failures");
+        summary += EOL;
         summary += list(
             failures.map(failure => {
                 const errorMessage = generateErrorMessage(failure);
                 return (
-                    eol() +
+                    EOL +
                     tag("h5", [], fullTitle(failure)) +
-                    eol() +
-                    tag("pre", [], eol() + errorMessage + eol()) +
-                    eol()
+                    EOL +
+                    tag("pre", [], fixLineEndings(errorMessage)) +
+                    EOL
                 );
             })
         );
+        summary += EOL;
     }
-    return details(`${isFailedRun ? "❌" : "✅"} ${title}`, isFailedRun, summary) + eol();
+    return details(`${isFailedRun ? "❌" : "✅"} ${title}`, isFailedRun, summary) + EOL;
 }
