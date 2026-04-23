@@ -21,53 +21,24 @@ import { WorkspaceContext } from "@src/WorkspaceContext";
 import { DiagnosticStyle } from "@src/configuration";
 import { createBuildAllTask, resetBuildAllTaskCache } from "@src/tasks/SwiftTaskProvider";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
-import { Disposable } from "@src/utilities/Disposable";
 import { Version } from "@src/utilities/version";
 
 import { testAssetUri, testSwiftTask } from "../fixtures";
 import { tag } from "../tags";
 import {
-    executeTaskAndWaitForResult,
-    waitForNoRunningTasks,
-    waitForStartTaskProcess,
-} from "../utilities/tasks";
+    ExpectedDiagnostics,
+    assertHasDiagnostic,
+    assertWithoutDiagnostic,
+    diagnosticMatcher,
+    executeTaskAndWaitForDiagnostics,
+    waitForDiagnosticsCleared,
+} from "../utilities/diagnostics";
+import { waitForNoRunningTasks, waitForStartTaskProcess } from "../utilities/tasks";
 import {
     activateExtensionForSuite,
     folderInRootWorkspace,
     updateSettings,
 } from "./utilities/testutilities";
-
-const isEqual = (d1: vscode.Diagnostic, d2: vscode.Diagnostic) => {
-    return (
-        d1.severity === d2.severity &&
-        d1.source === d2.source &&
-        d1.message === d2.message &&
-        d1.range.isEqual(d2.range)
-    );
-};
-
-const findDiagnostic = (expected: vscode.Diagnostic) => (d: vscode.Diagnostic) =>
-    isEqual(d, expected);
-
-function assertHasDiagnostic(uri: vscode.Uri, expected: vscode.Diagnostic): vscode.Diagnostic {
-    const diagnostics = vscode.languages.getDiagnostics(uri);
-    const diagnostic = diagnostics.find(findDiagnostic(expected));
-    assert.notEqual(
-        diagnostic,
-        undefined,
-        `Could not find diagnostic matching:\n${JSON.stringify(expected)}\nDiagnostics found:\n${JSON.stringify(diagnostics)}`
-    );
-    return diagnostic!;
-}
-
-function assertWithoutDiagnostic(uri: vscode.Uri, expected: vscode.Diagnostic) {
-    const diagnostics = vscode.languages.getDiagnostics(uri);
-    assert.equal(
-        diagnostics.find(findDiagnostic(expected)),
-        undefined,
-        `Unexpected diagnostic matching:\n${JSON.stringify(expected)}\nDiagnostics:\n${JSON.stringify(diagnostics)}`
-    );
-}
 
 tag("medium").suite("DiagnosticsManager Test Suite", function () {
     let workspaceContext: WorkspaceContext;
@@ -81,67 +52,6 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
     let cUri: vscode.Uri;
     let cppUri: vscode.Uri;
     let cppHeaderUri: vscode.Uri;
-    let diagnosticWaiterDisposable: Disposable | undefined;
-    let remainingExpectedDiagnostics: {
-        [uri: string]: vscode.Diagnostic[];
-    };
-
-    // Wait for all the expected diagnostics to be recieved. This may happen over several `onChangeDiagnostics` events.
-    type ExpectedDiagnostics = { [uri: string]: vscode.Diagnostic[] };
-
-    function filterRemainingDiagnostics(
-        expectedDiagnostics: ExpectedDiagnostics,
-        changedUris: readonly vscode.Uri[]
-    ) {
-        const matchingPaths = Object.keys(expectedDiagnostics).filter(uri =>
-            changedUris.some(u => u.fsPath === uri)
-        );
-        for (const uri of matchingPaths) {
-            const actualDiagnostics = vscode.languages.getDiagnostics(vscode.Uri.file(uri));
-            for (const actualDiagnostic of actualDiagnostics) {
-                remainingExpectedDiagnostics[uri] = remainingExpectedDiagnostics[uri].filter(
-                    expectedDiagnostic => !isEqual(actualDiagnostic, expectedDiagnostic)
-                );
-            }
-        }
-    }
-
-    function allDiagnosticsFulfilled(): boolean {
-        return Object.values(remainingExpectedDiagnostics).every(
-            diagnostics => diagnostics.length === 0
-        );
-    }
-
-    function waitForDiagnosticsCleared(uri: vscode.Uri): Promise<void> {
-        return new Promise<void>(resolve => {
-            const diagnosticDisposable = vscode.languages.onDidChangeDiagnostics(() => {
-                if (vscode.languages.getDiagnostics(uri).length === 0) {
-                    diagnosticDisposable?.dispose();
-                    resolve();
-                }
-            });
-        });
-    }
-
-    const waitForDiagnostics = (expectedDiagnostics: ExpectedDiagnostics) => {
-        return new Promise<void>(resolve => {
-            if (diagnosticWaiterDisposable) {
-                console.warn(
-                    "Wait for diagnostics was called before the previous wait was resolved. Only one waitForDiagnostics should run per test."
-                );
-                diagnosticWaiterDisposable?.dispose();
-            }
-            remainingExpectedDiagnostics = { ...expectedDiagnostics };
-            diagnosticWaiterDisposable = vscode.languages.onDidChangeDiagnostics(e => {
-                filterRemainingDiagnostics(expectedDiagnostics, e.uris);
-                if (allDiagnosticsFulfilled()) {
-                    diagnosticWaiterDisposable?.dispose();
-                    diagnosticWaiterDisposable = undefined;
-                    resolve();
-                }
-            });
-        });
-    };
 
     activateExtensionForSuite({
         async setup(ctx) {
@@ -156,21 +66,6 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
             cppUri = testAssetUri("diagnosticsCpp/Sources/MyPoint/MyPoint.cpp");
             cppHeaderUri = testAssetUri("diagnosticsCpp/Sources/MyPoint/include/MyPoint.h");
         },
-    });
-
-    teardown(function () {
-        diagnosticWaiterDisposable?.dispose();
-        diagnosticWaiterDisposable = undefined;
-        if (remainingExpectedDiagnostics && !allDiagnosticsFulfilled()) {
-            const title = this.currentTest?.fullTitle() ?? "<unknown test>";
-            const remainingDiagnostics = Object.entries(remainingExpectedDiagnostics ?? {}).filter(
-                ([_uri, diagnostics]) => diagnostics.length > 0
-            );
-            console.error(
-                `${title} - Not all diagnostics were fulfilled. Remaining:`,
-                JSON.stringify(remainingDiagnostics, undefined, " ")
-            );
-        }
     });
 
     suite("Parse diagnostics", function () {
@@ -222,7 +117,7 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
 
             function runTestDiagnosticStyle(
                 style: DiagnosticStyle,
-                expected: () => ExpectedDiagnostics,
+                createExpectedDiagnostics: () => ExpectedDiagnostics,
                 callback?: () => void
             ) {
                 suite(`${style} diagnosticsStyle`, function () {
@@ -268,12 +163,10 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                     });
 
                     test("succeeds", async function () {
-                        await Promise.all([
-                            waitForDiagnostics(expected()),
-                            createBuildAllTask(folderContext).then(task =>
-                                executeTaskAndWaitForResult(task)
-                            ),
-                        ]);
+                        await executeTaskAndWaitForDiagnostics(
+                            createBuildAllTask(folderContext),
+                            createExpectedDiagnostics()
+                        );
                     });
 
                     callback && callback();
@@ -407,15 +300,9 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                         );
                         expectedDiagnostic2.source = "swiftc";
 
-                        await Promise.all([
-                            waitForDiagnostics({
-                                [cUri.fsPath]: [expectedDiagnostic1, expectedDiagnostic2],
-                            }),
-                            createBuildAllTask(cFolderContext).then(task =>
-                                executeTaskAndWaitForResult(task)
-                            ),
-                        ]);
-                        await waitForNoRunningTasks();
+                        await executeTaskAndWaitForDiagnostics(createBuildAllTask(cFolderContext), {
+                            [cUri.fsPath]: [expectedDiagnostic1, expectedDiagnostic2],
+                        });
                     });
 
                     test("Parses C++ diagnostics", async function () {
@@ -454,19 +341,16 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                             folderContext.toolchain.swiftVersion.isGreaterThanOrEqual(
                                 new Version(6, 4, 0)
                             );
-                        await Promise.all([
-                            waitForDiagnostics({
+                        await executeTaskAndWaitForDiagnostics(
+                            createBuildAllTask(cppFolderContext),
+                            {
                                 [cppUri.fsPath]: [
                                     expectedDiagnostic1,
                                     expectedDiagnostic2,
                                     ...(is64OrLater ? [] : [expectedDiagnostic3]),
                                 ],
-                            }),
-                            createBuildAllTask(cppFolderContext).then(task =>
-                                executeTaskAndWaitForResult(task)
-                            ),
-                        ]);
-                        await waitForNoRunningTasks();
+                            }
+                        );
 
                         const diagnostic = assertHasDiagnostic(cppUri, expectedDiagnostic2);
                         assert.equal(
@@ -671,7 +555,7 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                 assertHasDiagnostic(mainUri, diagnostic);
 
                 const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                const matchingDiagnostic = diagnostics.find(findDiagnostic(diagnostic));
+                const matchingDiagnostic = diagnostics.find(diagnosticMatcher(diagnostic));
 
                 expect(matchingDiagnostic).to.have.property("code", "string");
             });
@@ -690,7 +574,7 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                 assertHasDiagnostic(mainUri, diagnostic);
 
                 const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                const matchingDiagnostic = diagnostics.find(findDiagnostic(diagnostic));
+                const matchingDiagnostic = diagnostics.find(diagnosticMatcher(diagnostic));
 
                 expect(matchingDiagnostic).to.have.property("code", 1);
             });
@@ -713,7 +597,7 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                 assertHasDiagnostic(mainUri, diagnostic);
 
                 const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                const matchingDiagnostic = diagnostics.find(findDiagnostic(diagnostic));
+                const matchingDiagnostic = diagnostics.find(diagnosticMatcher(diagnostic));
 
                 expect(matchingDiagnostic).to.have.property("code", diagnostic.code);
             });
@@ -732,7 +616,7 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                 );
 
                 const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                const matchingDiagnostic = diagnostics.find(findDiagnostic(diagnostic));
+                const matchingDiagnostic = diagnostics.find(diagnosticMatcher(diagnostic));
 
                 expect(matchingDiagnostic).to.have.property("code");
                 expect(matchingDiagnostic?.code).to.have.property("value", "More Information...");
@@ -770,7 +654,7 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                 );
 
                 const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                const matchingDiagnostic = diagnostics.find(findDiagnostic(diagnostic));
+                const matchingDiagnostic = diagnostics.find(diagnosticMatcher(diagnostic));
 
                 expect(matchingDiagnostic).to.have.property("code");
                 expect(matchingDiagnostic?.code).to.have.property("value", "More Information...");
