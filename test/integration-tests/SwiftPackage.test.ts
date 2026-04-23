@@ -2,7 +2,7 @@
 //
 // This source file is part of the VS Code Swift open source project
 //
-// Copyright (c) 2021 the VS Code Swift project authors
+// Copyright (c) 2024 the VS Code Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -11,7 +11,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import * as assert from "assert";
 import { afterEach } from "mocha";
 
 import { FolderContext } from "@src/FolderContext";
@@ -20,6 +19,8 @@ import { WorkspaceContext } from "@src/WorkspaceContext";
 
 import { tag } from "../tags";
 import { activateExtensionForSuite } from "./utilities/testutilities";
+
+import assert = require("assert");
 
 tag("medium").suite("SwiftPackage Test Suite", function () {
     let swiftPackage: SwiftPackage;

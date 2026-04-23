@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
-import * as decompress from "decompress";
 import { mkdir, rm } from "fs/promises";
 import * as os from "os";
 import * as path from "path";
@@ -30,6 +29,8 @@ import {
     folderInRootWorkspace,
     updateSettings,
 } from "../utilities/testutilities";
+
+import decompress = require("decompress");
 
 tag("medium").suite("captureDiagnostics Test Suite", () => {
     let workspaceContext: WorkspaceContext;

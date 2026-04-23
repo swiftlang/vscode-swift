@@ -12,17 +12,19 @@
 //
 //===----------------------------------------------------------------------===//
 import * as chai from "chai";
-import * as chaiAsPromised from "chai-as-promised";
-import * as chaiSubset from "chai-subset";
 import * as fs from "fs";
 import * as mockFS from "mock-fs";
 import * as path from "path";
-import * as sinonChai from "sinon-chai";
 import * as sourceMapSupport from "source-map-support";
 import * as tsConfigPaths from "tsconfig-paths";
 
 import { chaiPathPlugin } from "./chai-path-plugin";
 import { installTagSupport } from "./tags";
+
+import chaiAsPromised = require("chai-as-promised");
+import chaiSubset = require("chai-subset");
+
+import sinonChai = require("sinon-chai");
 
 // Use source-map-support to get better stack traces.
 //

@@ -11,7 +11,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import * as assert from "assert";
 import { expect } from "chai";
 import * as vscode from "vscode";
 
@@ -29,6 +28,8 @@ import {
     folderInRootWorkspace,
     updateSettings,
 } from "../utilities/testutilities";
+
+import assert = require("assert");
 
 suite("SwiftTaskProvider Test Suite", () => {
     let workspaceContext: WorkspaceContext;

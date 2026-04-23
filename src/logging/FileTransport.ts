@@ -13,13 +13,10 @@
 //===----------------------------------------------------------------------===//
 import * as fs from "fs";
 import * as path from "path";
-import * as TransportType from "winston-transport";
 
-// Compile error if don't use "require": https://github.com/swiftlang/vscode-swift/actions/runs/16529946578/job/46752753379?pr=1746
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const Transport: typeof TransportType = require("winston-transport");
+import TransportStream = require("winston-transport");
 
-export class FileTransport extends Transport {
+export class FileTransport extends TransportStream {
     private fileHandle: fs.WriteStream | null = null;
     private pendingLogs: string[] = [];
     private isReady = false;

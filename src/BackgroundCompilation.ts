@@ -20,7 +20,6 @@ import { TaskOperation } from "./tasks/TaskQueue";
 import { Disposable } from "./utilities/Disposable";
 import { validFileTypes } from "./utilities/filesystem";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 import debounce = require("lodash.debounce");
 
 export class BackgroundCompilation implements Disposable {

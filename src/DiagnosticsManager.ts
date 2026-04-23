@@ -22,7 +22,6 @@ import { Disposable } from "./utilities/Disposable";
 import { validFileTypes } from "./utilities/filesystem";
 import { checkIfBuildComplete, lineBreakRegex } from "./utilities/tasks";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
 
 interface ParsedDiagnostic {

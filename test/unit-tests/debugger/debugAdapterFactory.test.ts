@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
-import * as mockFS from "mock-fs";
 import * as vscode from "vscode";
 
 import { FolderContext } from "@src/FolderContext";
@@ -36,6 +35,8 @@ import {
     mockGlobalObject,
     mockObject,
 } from "../../MockUtils";
+
+import mockFS = require("mock-fs");
 
 suite("LLDBDebugConfigurationProvider Tests", () => {
     let mockWorkspaceContext: MockedObject<WorkspaceContext>;

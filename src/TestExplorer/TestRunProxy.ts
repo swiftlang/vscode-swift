@@ -24,7 +24,6 @@ import { TestRunArguments } from "./TestRunArguments";
 import { TestLibrary } from "./TestRunner";
 import { reduceTestItemChildren } from "./TestUtils";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
 
 /**

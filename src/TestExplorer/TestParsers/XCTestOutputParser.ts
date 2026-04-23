@@ -17,7 +17,6 @@ import { lineBreakRegex } from "../../utilities/tasks";
 import { sourceLocationToVSCodeLocation } from "../../utilities/utilities";
 import { ITestRunState, TestIssueDiff } from "./TestRunState";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
 
 /** Regex for parsing XCTest output */

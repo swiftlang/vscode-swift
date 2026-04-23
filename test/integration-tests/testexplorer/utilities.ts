@@ -21,7 +21,6 @@ import { reduceTestItemChildren } from "@src/TestExplorer/TestUtils";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
 
 /**

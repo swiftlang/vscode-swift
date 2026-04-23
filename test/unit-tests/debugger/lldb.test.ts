@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
-import * as mockFS from "mock-fs";
 import * as sinon from "sinon";
 
 import * as lldb from "@src/debugger/lldb";
@@ -27,6 +26,8 @@ import {
     mockGlobalValue,
     mockObject,
 } from "../../MockUtils";
+
+import mockFS = require("mock-fs");
 
 suite("debugger.lldb Tests", () => {
     suite("getLLDBLibPath()", () => {
