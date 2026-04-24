@@ -567,6 +567,9 @@ export class TestingConfigurationFactory {
         if (args.length === 0) {
             return args;
         }
+        if (this.testList.length === 0) {
+            throw new Error("There were no tests found to launch.");
+        }
         return ["-XCTest", this.testList.join(","), ...args];
     }
 
