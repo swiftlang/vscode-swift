@@ -147,7 +147,8 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
 
                         resetSettings = await updateSettings({
                             "swift.diagnosticsStyle": style,
-                            "swift.buildArguments": ["-Xswiftc", `-DDIAGNOSTIC_STYLE=${style}`],
+                            // Force the re-computing of diagnostics by adding a define to the build arguments
+                            "swift.buildArguments": ["-Xswiftc", `-DDIAGNOSTIC_STYLE__${style}`],
                         });
 
                         // Clean up any lingering diagnostics
@@ -164,7 +165,7 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
 
                     test("succeeds", async function () {
                         await executeTaskAndWaitForDiagnostics(
-                            createBuildAllTask(folderContext),
+                            createBuildAllTask(folderContext, true),
                             createExpectedDiagnostics()
                         );
                     });
@@ -175,28 +176,19 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
 
             runTestDiagnosticStyle(
                 "default",
-                () => {
-                    const swiftVersion = folderContext.toolchain.swiftVersion;
-                    const is64OrLater = swiftVersion.isGreaterThanOrEqual(new Version(6, 4, 0));
-                    return {
-                        [mainUri.fsPath]: [
-                            // expectedMacroDiagnostic still checks "warning" is parsed
-                            ...(is64OrLater ? [] : [expectedWarningDiagnostic]),
-                            expectedMainErrorDiagnostic,
-                            expectedMainDictErrorDiagnostic,
-                            ...(workspaceContext.globalToolchainSwiftVersion.isGreaterThanOrEqual(
-                                new Version(6, 0, 0)
-                            )
-                                ? [expectedMacroDiagnostic]
-                                : []),
-                        ], // Should have parsed correct severity
-                        ...(is64OrLater
-                            ? {}
-                            : {
-                                  [funcUri.fsPath]: [expectedFuncErrorDiagnostic],
-                              }), // Check parsed for other file
-                    };
-                },
+                () => ({
+                    [mainUri.fsPath]: [
+                        expectedWarningDiagnostic,
+                        expectedMainErrorDiagnostic,
+                        expectedMainDictErrorDiagnostic,
+                        ...(workspaceContext.globalToolchainSwiftVersion.isGreaterThanOrEqual(
+                            new Version(6, 0, 0)
+                        )
+                            ? [expectedMacroDiagnostic]
+                            : []),
+                    ], // Should have parsed correct severity
+                    [funcUri.fsPath]: [expectedFuncErrorDiagnostic], // Check parsed for other file
+                }),
                 () => {
                     test("Parses related information", async function () {
                         if (
@@ -227,23 +219,14 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                 }
             );
 
-            runTestDiagnosticStyle("swift", () => {
-                const is64OrLater = folderContext.toolchain.swiftVersion.isGreaterThanOrEqual(
-                    new Version(6, 4, 0)
-                );
-                return {
-                    [mainUri.fsPath]: [
-                        ...(is64OrLater ? [] : [expectedWarningDiagnostic]),
-                        expectedMainErrorDiagnostic,
-                        expectedMainDictErrorDiagnostic,
-                    ], // Should have parsed correct severity
-                    ...(is64OrLater
-                        ? {}
-                        : {
-                              [funcUri.fsPath]: [expectedFuncErrorDiagnostic],
-                          }), // Check parsed for other file
-                };
-            });
+            runTestDiagnosticStyle("swift", () => ({
+                [mainUri.fsPath]: [
+                    expectedWarningDiagnostic,
+                    expectedMainErrorDiagnostic,
+                    expectedMainDictErrorDiagnostic,
+                ], // Should have parsed correct severity
+                [funcUri.fsPath]: [expectedFuncErrorDiagnostic], // Check parsed for other file
+            }));
 
             runTestDiagnosticStyle(
                 "llvm",
@@ -300,9 +283,12 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                         );
                         expectedDiagnostic2.source = "swiftc";
 
-                        await executeTaskAndWaitForDiagnostics(createBuildAllTask(cFolderContext), {
-                            [cUri.fsPath]: [expectedDiagnostic1, expectedDiagnostic2],
-                        });
+                        await executeTaskAndWaitForDiagnostics(
+                            createBuildAllTask(cFolderContext, true),
+                            {
+                                [cUri.fsPath]: [expectedDiagnostic1, expectedDiagnostic2],
+                            }
+                        );
                     });
 
                     test("Parses C++ diagnostics", async function () {
@@ -342,7 +328,7 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                                 new Version(6, 4, 0)
                             );
                         await executeTaskAndWaitForDiagnostics(
-                            createBuildAllTask(cppFolderContext),
+                            createBuildAllTask(cppFolderContext, true),
                             {
                                 [cppUri.fsPath]: [
                                     expectedDiagnostic1,
