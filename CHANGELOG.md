@@ -2,6 +2,8 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+## 2.16.4 - 2026-04-21
+
 ### Added
 
 - Add `${binPath}` variable substitution for launch configuration program paths ([#2184](https://github.com/swiftlang/vscode-swift/pull/2184))
