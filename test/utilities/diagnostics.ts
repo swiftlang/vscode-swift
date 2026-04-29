@@ -18,9 +18,8 @@ import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
 import { Disposable } from "@src/utilities/Disposable";
 
 import { executeTaskAndWaitForResult } from "./tasks";
+import { fixProcessOutput } from "./terminal";
 import { withTimeout } from "./withTimeout";
-
-import stripAnsi = require("strip-ansi");
 
 function severityToString(severity: vscode.DiagnosticSeverity): string {
     switch (severity) {
@@ -168,9 +167,9 @@ export async function executeTaskAndWaitForDiagnostics(
     expectedDiagnostics: ExpectedDiagnostics
 ): Promise<void> {
     const { output: taskOutput } = await executeTaskAndWaitForResult(await task);
-    return waitForDiagnostics(expectedDiagnostics).catch(error => {
+    return waitForDiagnostics(expectedDiagnostics).catch(async error => {
         throw Error(
-            `Failed to get diagnostics after running the task. Task output:\n\n${stripAnsi(taskOutput)}`,
+            `Failed to get diagnostics after running the task. Task output:\n\n${await fixProcessOutput(taskOutput)}`,
             { cause: error }
         );
     });
