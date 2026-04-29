@@ -157,7 +157,7 @@ tag("large").suite("Test Explorer Suite", function () {
                 //
                 // GitHub Issue: https://github.com/swiftlang/vscode-swift/issues/1986
                 if (
-                    workspaceContext.globalToolchain.swiftVersion.dev &&
+                    process.platform === "win32" &&
                     workspaceContext.globalToolchain.swiftVersion.isGreaterThanOrEqual({
                         major: 6,
                         minor: 3,
