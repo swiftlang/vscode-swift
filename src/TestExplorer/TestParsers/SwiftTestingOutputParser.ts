@@ -11,11 +11,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import { exec } from "child_process";
 import * as readline from "readline";
 import { Readable } from "stream";
 import * as vscode from "vscode";
 
+import { SwiftLogger } from "../../logging/SwiftLogger";
 import { lineBreakRegex } from "../../utilities/tasks";
 import { colorize, sourceLocationToVSCodeLocation } from "../../utilities/utilities";
 import { TestClass } from "../TestDiscovery";
@@ -197,11 +197,12 @@ export type SourceLocation = {
 export class SwiftTestingOutputParser {
     private completionMap = new Map<number, boolean>();
     private testCaseMap = new Map<string, Map<string, TestCase>>();
-    private path?: string;
+    private reader?: INamedPipeReader;
 
     constructor(
         public addParameterizedTestCases: (testClasses: TestClass[], parentIndex: number) => void,
-        public onAttachment: (testIndex: number, path: string) => void
+        public onAttachment: (testIndex: number, path: string) => void,
+        private logger?: SwiftLogger
     ) {}
 
     /**
@@ -213,10 +214,8 @@ export class SwiftTestingOutputParser {
         runState: ITestRunState,
         pipeReader?: INamedPipeReader
     ): Promise<void> {
-        this.path = path;
-
         // Creates a reader based on the platform unless being provided in a test context.
-        const reader = pipeReader ?? this.createReader(path);
+        this.reader = pipeReader ?? this.createReader(path);
         const readlinePipe = new Readable({
             read() {},
         });
@@ -228,26 +227,33 @@ export class SwiftTestingOutputParser {
             crlfDelay: Infinity,
         });
 
-        rl.on("line", line => this.parse(JSON.parse(line), runState));
+        // A thrown `SyntaxError` here would escalate to `uncaughtException` on
+        // the extension host because readline dispatches the listener
+        // synchronously. Swallow the bad line and carry on so one malformed
+        // payload can't bring the extension down.
+        rl.on("line", line => {
+            try {
+                this.parse(JSON.parse(line), runState);
+            } catch (error) {
+                this.logger?.error(
+                    `Failed to parse swift-testing event: ${error instanceof Error ? error.message : String(error)} line=${line}`
+                );
+            }
+        });
 
-        void reader.start(readlinePipe);
+        void this.reader.start(readlinePipe);
     }
 
     /**
-     * Closes the FIFO pipe after a test run. This must be called at the
-     * end of a run regardless of the run's success or failure.
+     * Stops the FIFO reader after a test run. This must be called at the
+     * end of a run regardless of the run's success or failure, because the
+     * reader holds the FIFO open (O_RDWR on Unix, a listening server on
+     * Windows) and would otherwise block EOF from ever reaching the parser.
      */
     public async close() {
-        if (!this.path) {
-            return;
-        }
-
-        await new Promise<void>(resolve => {
-            // eslint-disable-next-line sonarjs/os-command
-            exec(`echo '{}' > ${this.path}`, () => {
-                resolve();
-            });
-        });
+        const reader = this.reader;
+        this.reader = undefined;
+        await reader?.stop();
     }
 
     /**
@@ -265,8 +271,8 @@ export class SwiftTestingOutputParser {
 
     private createReader(path: string): INamedPipeReader {
         return process.platform === "win32"
-            ? new WindowsNamedPipeReader(path)
-            : new UnixNamedPipeReader(path);
+            ? new WindowsNamedPipeReader(path, this.logger)
+            : new UnixNamedPipeReader(path, this.logger);
     }
 
     private parse(item: SwiftTestEvent, runState: ITestRunState) {

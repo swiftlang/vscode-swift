@@ -105,7 +105,8 @@ export class TestRunner {
                 : new XCTestOutputParser();
         this.swiftTestOutputParser = new SwiftTestingOutputParser(
             this.testRun.addParameterizedTestCases.bind(this.testRun),
-            this.testRun.addAttachment.bind(this.testRun)
+            this.testRun.addAttachment.bind(this.testRun),
+            this.folderContext.workspaceContext.logger
         );
         this.onDebugSessionTerminated = this.debugSessionTerminatedEmitter.event;
     }
@@ -119,7 +120,8 @@ export class TestRunner {
         // The SwiftTestingOutputParser holds state and needs to be reset between iterations.
         this.swiftTestOutputParser = new SwiftTestingOutputParser(
             this.testRun.addParameterizedTestCases,
-            this.testRun.addAttachment
+            this.testRun.addAttachment,
+            this.folderContext.workspaceContext.logger
         );
         this.testRun.setIteration(iteration);
     }
@@ -446,13 +448,22 @@ export class TestRunner {
 
                 this.testRun.testRunStarted();
 
-                await this.launchTests(
-                    runState,
-                    this.testKind === TestKind.parallel ? TestKind.standard : this.testKind,
-                    outputStream,
-                    testBuildConfig,
-                    TestLibrary.swiftTesting
-                );
+                try {
+                    await this.launchTests(
+                        runState,
+                        this.testKind === TestKind.parallel ? TestKind.standard : this.testKind,
+                        outputStream,
+                        testBuildConfig,
+                        TestLibrary.swiftTesting
+                    );
+                } finally {
+                    // The reader holds the FIFO open (O_RDWR on Unix, a listening
+                    // server on Windows) so that sequential writers from each test
+                    // target can all reach the parser. Now that `swift test` has
+                    // exited we must stop the reader to release the fd before the
+                    // FIFO is unlinked below.
+                    await this.swiftTestOutputParser.close();
+                }
 
                 await SwiftTestingConfigurationSetup.cleanupAttachmentFolder(
                     this.folderContext,
@@ -520,8 +531,6 @@ export class TestRunner {
                 // `testRunStarted()` to flush the buffer of test result output, the build error will be silently
                 // discarded. If the test run has already started this is a no-op so its safe to call it multiple times.
                 this.testRun.testRunStarted();
-
-                void this.swiftTestOutputParser.close();
             }
 
             // If there is a compilation error the tests slated to be run are marked as 'skipped' and not 'failed'.

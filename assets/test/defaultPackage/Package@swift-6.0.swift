@@ -32,5 +32,9 @@ let package = Package(
             name: "PackageTests",
             dependencies: ["PackageLib"]
         ),
+        .testTarget(
+            name: "PackageTests2",
+            dependencies: ["PackageLib"]
+        ),
     ]
 )

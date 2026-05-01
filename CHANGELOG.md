@@ -2,6 +2,10 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+### Fixed
+
+- Fix swift-testing timeout when doing a Run All tests w/ multiple test targets when using swift-build ([#2207](https://github.com/swiftlang/vscode-swift/pull/2207))
+
 ## 2.16.4 - 2026-04-21
 
 ### Added
