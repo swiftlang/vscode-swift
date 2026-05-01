@@ -221,6 +221,8 @@ tag("large").suite("Test Explorer Suite", function () {
                 // 6.0 uses the LSP which returns tests in the order they're declared.
                 // Includes swift-testing tests.
                 assertTestControllerHierarchy(testExplorer.controller, [
+                    "PackageTests2",
+                    ["secondTargetTestPassing()", "SecondTargetSuite", ["testPassing()"]],
                     "PackageTests",
                     [
                         "PassingXCTestSuite",
@@ -254,6 +256,8 @@ tag("large").suite("Test Explorer Suite", function () {
                 // 5.10 uses `swift test list` which returns test alphabetically, without the round brackets.
                 // Does not include swift-testing tests.
                 assertTestControllerHierarchy(testExplorer.controller, [
+                    "PackageTests2",
+                    ["secondTargetTestPassing()", "SecondTargetSuite", ["testPassing()"]],
                     "PackageTests",
                     [
                         "CrashingXCTests",
@@ -456,6 +460,22 @@ tag("large").suite("Test Explorer Suite", function () {
                             test: "PackageTests.testRelease()",
                             issues: [issueText],
                         },
+                    ],
+                });
+            });
+
+            test("runs tests across multiple targets in one invocation", async () => {
+                const testRun = await runTest(
+                    testExplorer,
+                    TestKind.standard,
+                    "PackageTests.topLevelTestPassing()",
+                    "PackageTests2.secondTargetTestPassing()"
+                );
+
+                assertTestResults(testRun, {
+                    passed: [
+                        "PackageTests.topLevelTestPassing()",
+                        "PackageTests2.secondTargetTestPassing()",
                     ],
                 });
             });
@@ -1005,6 +1025,16 @@ tag("large").suite("Test Explorer Suite", function () {
 
         type TestHierarchy = string | TestHierarchy[];
 
+        function packageTestsChildren(testItems: TestHierarchy): TestHierarchy[] {
+            if (!Array.isArray(testItems)) {
+                return [];
+            }
+            const index = testItems.indexOf("PackageTests");
+            return index >= 0 && Array.isArray(testItems[index + 1])
+                ? (testItems[index + 1] as TestHierarchy[])
+                : [];
+        }
+
         // Because we're at the whim of how often VS Code/the LSP provide document symbols
         // we can't assume that changes to test items will be reflected in the next onTestItemsDidChange
         // so poll until the condition is met.
@@ -1030,14 +1060,14 @@ tag("large").suite("Test Explorer Suite", function () {
                 appendSource(newTest),
             ]);
 
-            await validate(testItems => testItems[1].includes(testName));
+            await validate(testItems => packageTestsChildren(testItems).includes(testName));
 
             await Promise.all([
                 eventPromise(testExplorer.onTestItemsDidChange),
                 setSource(originalSource),
             ]);
 
-            await validate(testItems => !testItems[1].includes(testName));
+            await validate(testItems => !packageTestsChildren(testItems).includes(testName));
         });
 
         test("Test explorer updates when a suite is added and removed", async () => {
@@ -1047,13 +1077,13 @@ tag("large").suite("Test Explorer Suite", function () {
                 eventPromise(testExplorer.onTestItemsDidChange),
                 appendSource(newSuite),
             ]);
-            await validate(testItems => testItems[1].includes(suiteName));
+            await validate(testItems => packageTestsChildren(testItems).includes(suiteName));
 
             await Promise.all([
                 eventPromise(testExplorer.onTestItemsDidChange),
                 setSource(originalSource),
             ]);
-            await validate(testItems => !testItems[1].includes(suiteName));
+            await validate(testItems => !packageTestsChildren(testItems).includes(suiteName));
         });
 
         afterEach(async () => {

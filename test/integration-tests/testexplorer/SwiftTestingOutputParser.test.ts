@@ -38,6 +38,8 @@ class TestEventStream {
         });
         readable.push(null);
     }
+
+    async stop() {}
 }
 
 suite("SwiftTestingOutputParser Suite", () => {
