@@ -157,7 +157,7 @@ tag("large").suite("Test Explorer Suite", function () {
                 //
                 // GitHub Issue: https://github.com/swiftlang/vscode-swift/issues/1986
                 if (
-                    workspaceContext.globalToolchain.swiftVersion.dev &&
+                    process.platform === "win32" &&
                     workspaceContext.globalToolchain.swiftVersion.isGreaterThanOrEqual({
                         major: 6,
                         minor: 3,
@@ -664,7 +664,7 @@ tag("large").suite("Test Explorer Suite", function () {
         [TestKind.standard, TestKind.parallel, TestKind.coverage].forEach(runProfile => {
             let xcTestFailureMessage: string;
 
-            beforeEach(() => {
+            beforeEach(function () {
                 // From 5.7 to 5.10 running with the --parallel option dumps the test results out
                 // to the console with no newlines, so it isn't possible to distinguish where errors
                 // begin and end. Consequently we can't record them, and so we manually mark them
@@ -677,6 +677,22 @@ tag("large").suite("Test Explorer Suite", function () {
             });
 
             suite(runProfile, () => {
+                suiteSetup(function () {
+                    // Code coverage is currently not working in Windows with the latest nightly-main toolchain
+                    // See https://github.com/swiftlang/swift/issues/88607
+                    if (
+                        runProfile === TestKind.coverage &&
+                        process.platform === "win32" &&
+                        workspaceContext.globalToolchain.swiftVersion.isGreaterThanOrEqual({
+                            major: 6,
+                            minor: 4,
+                            patch: 0,
+                        })
+                    ) {
+                        this.skip();
+                    }
+                });
+
                 suite(`swift-testing (${runProfile})`, function () {
                     suiteSetup(function () {
                         if (

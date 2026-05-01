@@ -63,7 +63,7 @@ jobs:
     with:
       needs_token: true
       # Linux
-      linux_exclude_swift_versions: '[{"swift_version": "nightly-6.1"}]'
+      # Run against all of the swift versions from https://github.com/swiftlang/github-workflows/blob/main/.github/workflows/swift_package_test.yml#L44
       linux_env_vars: |
         NODE_VERSION=${{ needs.package.outputs.node-version }}
         NODE_PATH=${{ needs.package.outputs.node-path }}
@@ -74,7 +74,7 @@ jobs:
       linux_pre_build_command: . .github/workflows/scripts/setup-linux.sh
       linux_build_command: ./scripts/test.sh
       # Windows
-      windows_exclude_swift_versions: '[{"swift_version": "nightly-6.1"}, {"swift_version": "nightly"}, {"swift_version": "6.2"}]'  # Missing https://github.com/swiftlang/swift/pull/80144
+      # Run against all of the swift versions from https://github.com/swiftlang/github-workflows/blob/main/.github/workflows/swift_package_test.yml#L85
       windows_env_vars: |
         CI=1
         VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}

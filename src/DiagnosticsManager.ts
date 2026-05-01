@@ -18,11 +18,10 @@ import * as vscode from "vscode";
 import { WorkspaceContext } from "./WorkspaceContext";
 import configuration from "./configuration";
 import { SwiftExecution } from "./tasks/SwiftExecution";
+import { TerminalEmulator } from "./terminal/TerminalEmulator";
 import { Disposable } from "./utilities/Disposable";
 import { validFileTypes } from "./utilities/filesystem";
-import { checkIfBuildComplete, lineBreakRegex } from "./utilities/tasks";
-
-import stripAnsi = require("strip-ansi");
+import { checkIfBuildComplete } from "./utilities/tasks";
 
 interface ParsedDiagnostic {
     uri: string;
@@ -303,43 +302,37 @@ export class DiagnosticsManager implements Disposable {
                 disposables.forEach(d => d.dispose());
                 res(diagnostics);
             };
-            let remainingData: string | undefined;
             let lastDiagnostic: vscode.Diagnostic | undefined;
             let lastDiagnosticNeedsSaving = false;
+            const terminalEmulator = new TerminalEmulator(swiftExecution);
             disposables.push(
-                swiftExecution.onDidWrite(data => {
-                    const sanitizedData = (remainingData || "") + stripAnsi(data);
-                    const lines = sanitizedData.split(lineBreakRegex);
-                    // If ends with \n then will be "" and there's no affect.
-                    // Otherwise want to keep remaining data to pre-pend next write
-                    remainingData = lines.pop();
-                    for (const line of lines) {
-                        if (checkIfBuildComplete(line)) {
-                            done();
-                            return;
-                        }
-                        const result = this.parseDiagnostic(line);
-                        if (!result) {
-                            continue;
-                        }
-                        if (result instanceof vscode.DiagnosticRelatedInformation) {
-                            lastDiagnosticNeedsSaving = this.handleRelatedInformation(
-                                result,
-                                lastDiagnostic,
-                                lastDiagnosticNeedsSaving,
-                                diagnostics
-                            );
-                            continue;
-                        }
-                        const parsed = this.handleParsedDiagnostic(
-                            result as ParsedDiagnostic,
+                terminalEmulator,
+                terminalEmulator.onDidReceiveLineData(line => {
+                    if (checkIfBuildComplete(line)) {
+                        done();
+                        return;
+                    }
+                    const result = this.parseDiagnostic(line);
+                    if (!result) {
+                        return;
+                    }
+                    if (result instanceof vscode.DiagnosticRelatedInformation) {
+                        lastDiagnosticNeedsSaving = this.handleRelatedInformation(
+                            result,
+                            lastDiagnostic,
+                            lastDiagnosticNeedsSaving,
                             diagnostics
                         );
-                        lastDiagnostic = parsed.lastDiagnostic;
-                        lastDiagnosticNeedsSaving = parsed.needsSaving;
+                        return;
                     }
+                    const parsed = this.handleParsedDiagnostic(
+                        result as ParsedDiagnostic,
+                        diagnostics
+                    );
+                    lastDiagnostic = parsed.lastDiagnostic;
+                    lastDiagnosticNeedsSaving = parsed.needsSaving;
                 }),
-                swiftExecution.onDidClose(done)
+                terminalEmulator.onDidClose(done)
             );
         });
     }
