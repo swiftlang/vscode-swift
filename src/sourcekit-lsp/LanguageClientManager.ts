@@ -421,20 +421,14 @@ export class LanguageClientManager implements Disposable {
             ),
         ];
 
-        let serverCommand: string;
-        let serverPrefixArgs: string[];
-        if (serverPathConfig.length > 0) {
-            serverCommand = serverPathConfig;
-            serverPrefixArgs = [];
-        } else {
-            const inv = toolchain.getToolchainInvocation("sourcekit-lsp", []);
-            serverCommand = inv.command;
-            serverPrefixArgs = inv.args;
-        }
+        const inv =
+            serverPathConfig.length > 0
+                ? { command: serverPathConfig, args: [] }
+                : toolchain.getToolchainInvocation("sourcekit-lsp", []);
 
         const sourcekit: Executable = {
-            command: serverCommand,
-            args: [...serverPrefixArgs, ...lspConfig.serverArguments, ...sdkArguments],
+            command: inv.command,
+            args: [...inv.args, ...lspConfig.serverArguments, ...sdkArguments],
             options: {
                 env: {
                     ...process.env,

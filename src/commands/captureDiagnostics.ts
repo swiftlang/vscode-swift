@@ -369,16 +369,10 @@ async function sourcekitDiagnose(ctx: FolderContext, dir: string) {
 
     const lspConfig = configuration.lsp;
     const serverPathConfig = lspConfig.serverPath;
-    let diagCommand: string;
-    let diagPrefixArgs: string[];
-    if (serverPathConfig.length > 0) {
-        diagCommand = serverPathConfig;
-        diagPrefixArgs = [];
-    } else {
-        const inv = ctx.toolchain.getToolchainInvocation("sourcekit-lsp", []);
-        diagCommand = inv.command;
-        diagPrefixArgs = inv.args;
-    }
+    const inv =
+        serverPathConfig.length > 0
+            ? { command: serverPathConfig, args: [] }
+            : ctx.toolchain.getToolchainInvocation("sourcekit-lsp", []);
 
     await vscode.window.withProgress(
         {
@@ -397,9 +391,9 @@ async function sourcekitDiagnose(ctx: FolderContext, dir: string) {
             });
 
             await execFileStreamOutput(
-                diagCommand,
+                inv.command,
                 [
-                    ...diagPrefixArgs,
+                    ...inv.args,
                     "diagnose",
                     "--bundle-output-path",
                     sourcekitDiagnosticDir,
