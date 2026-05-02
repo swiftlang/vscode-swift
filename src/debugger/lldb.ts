@@ -46,11 +46,6 @@ export function updateLaunchConfigForCI(
  * @returns Library path for LLDB
  */
 export async function getLLDBLibPath(toolchain: SwiftToolchain): Promise<Result<string>> {
-    try {
-        await toolchain.getLLDB();
-    } catch (error) {
-        return Result.makeFailure(error);
-    }
     let pathHint = toolchain.toolchainPath;
     try {
         const statement = `print('<!' + lldb.SBHostOS.GetLLDBPath(lldb.ePathTypeLLDBShlibDir).fullpath + '!>')`;

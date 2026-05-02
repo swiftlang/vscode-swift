@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 import configuration from "../configuration";
-import { SwiftToolchain } from "../toolchain/toolchain";
 import { Version } from "../utilities/version";
 
 /**
@@ -48,19 +47,5 @@ export class DebugAdapter {
         } else {
             return LaunchConfigType.CODE_LLDB;
         }
-    }
-
-    /**
-     * Return the path to the debug adapter.
-     *
-     * @param toolchain The Swift toolchain to use
-     * @returns A path to the debug adapter for the user's toolchain and configuration
-     **/
-    public static async getLLDBDebugAdapterPath(toolchain: SwiftToolchain): Promise<string> {
-        const customDebugAdapterPath = configuration.debugger.customDebugAdapterPath;
-        if (customDebugAdapterPath.length > 0) {
-            return customDebugAdapterPath;
-        }
-        return toolchain.getLLDBDebugAdapter();
     }
 }

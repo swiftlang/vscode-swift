@@ -434,53 +434,6 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
         return xcodeDirectory;
     }
 
-    /**
-     * Returns the path to the LLDB executable inside the selected toolchain.
-     * If the user is on macOS and has no OSS toolchain selected, also search
-     * inside Xcode.
-     * @returns The path to the `lldb` executable
-     * @throws Throws an error if the executable cannot be found
-     */
-    public async getLLDB(): Promise<string> {
-        return this.findToolchainExecutable("lldb");
-    }
-
-    /**
-     * Returns the path to the LLDB debug adapter executable inside the selected
-     * toolchain. If the user is on macOS and has no OSS toolchain selected, also
-     * search inside Xcode.
-     * @returns The path to the `lldb-dap` executable
-     * @throws Throws an error if the executable cannot be found
-     */
-    public async getLLDBDebugAdapter(): Promise<string> {
-        return this.findToolchainExecutable("lldb-dap");
-    }
-
-    /**
-     * Search for the supplied executable in the toolchain.
-     */
-    private async findToolchainExecutable(executable: string): Promise<string> {
-        let cause: unknown = undefined;
-        try {
-            if (process.platform === "win32") {
-                executable += ".exe";
-            }
-            // First search the toolchain's 'bin' directory
-            const toolchainExecutablePath = path.join(this.toolchainPath, "bin", executable);
-            if (await pathExists(toolchainExecutablePath)) {
-                return toolchainExecutablePath;
-            }
-            // Fallback to using xcrun if we're on macOS
-            if (process.platform === "darwin") {
-                const { stdout } = await execFile("xcrun", ["--find", executable]);
-                return stdout.trim();
-            }
-        } catch (error) {
-            cause = error;
-        }
-        throw new Error(`Failed to find ${executable} within Swift toolchain`, { cause });
-    }
-
     private basePlatformDeveloperPath(): string | undefined {
         if (!this.sdk) {
             return undefined;
