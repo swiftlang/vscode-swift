@@ -14,6 +14,7 @@
 import * as vscode from "vscode";
 
 import { SwiftLogger } from "../logging/SwiftLogger";
+import { Disposable } from "../utilities/Disposable";
 import { isPathInsidePath } from "../utilities/filesystem";
 
 const DEFAULT_TIMEOUT_MS = 5000;
@@ -24,7 +25,7 @@ type PendingRequest = {
     readonly cleanup: () => void;
 };
 
-export class WorkspaceFolderGate implements vscode.Disposable {
+export class WorkspaceFolderGate implements Disposable {
     private knownFolders: Set<string>;
     private pendingRequests: Set<PendingRequest>;
 

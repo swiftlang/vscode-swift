@@ -42,6 +42,7 @@ import {
 } from "@src/sourcekit-lsp/extensions/DidChangeActiveDocumentRequest";
 import { BuildFlags } from "@src/toolchain/BuildFlags";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { Disposable } from "@src/utilities/Disposable";
 import { Version } from "@src/utilities/version";
 
 import {
@@ -103,9 +104,7 @@ suite("LanguageClientManager Suite", () => {
         mockedVSCodeWorkspace.getConfiguration
             .withArgs("files")
             .returns({ get: () => ({}) } as any);
-        mockedVSCodeWorkspace.registerTextDocumentContentProvider.returns(
-            new vscode.Disposable(() => {})
-        );
+        mockedVSCodeWorkspace.registerTextDocumentContentProvider.returns(new Disposable(() => {}));
         // Mock the WorkspaceContext and SwiftToolchain
         mockedBuildFlags = mockObject<BuildFlags>({
             buildPathFlags: mockFn(s => s.returns([])),
@@ -836,7 +835,7 @@ suite("LanguageClientManager Suite", () => {
 
         setup(() => {
             mockedWorkspace.globalToolchainSwiftVersion = new Version(6, 1, 0);
-            mockWindow.onDidChangeActiveTextEditor.returns(new vscode.Disposable(() => {}));
+            mockWindow.onDidChangeActiveTextEditor.returns(new Disposable(() => {}));
         });
 
         teardown(async () => {
