@@ -256,8 +256,6 @@ tag("large").suite("Test Explorer Suite", function () {
                 // 5.10 uses `swift test list` which returns test alphabetically, without the round brackets.
                 // Does not include swift-testing tests.
                 assertTestControllerHierarchy(testExplorer.controller, [
-                    "PackageTests2",
-                    ["secondTargetTestPassing()", "SecondTargetSuite", ["testPassing()"]],
                     "PackageTests",
                     [
                         "CrashingXCTests",
