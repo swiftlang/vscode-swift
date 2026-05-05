@@ -54,7 +54,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
             mockedPlatform.setValue("linux");
             const tc = createToolchain("unknown", "/toolchains/swift-6.0.0/usr");
             const inv = tc.getToolchainInvocation("swift", ["build", "--configuration", "debug"]);
-            expect(inv.command).to.equal("/toolchains/swift-6.0.0/usr/bin/swift");
+            expect(inv.command).to.equalPath("/toolchains/swift-6.0.0/usr/bin/swift");
             expect(inv.args).to.deep.equal(["build", "--configuration", "debug"]);
         });
 
@@ -65,7 +65,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr"
             );
             const inv = tc.getToolchainInvocation("swift", ["package", "describe"]);
-            expect(inv.command).to.equal(
+            expect(inv.command).to.equalPath(
                 "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift"
             );
             expect(inv.args).to.deep.equal(["package", "describe"]);
@@ -99,10 +99,10 @@ suite("SwiftToolchain Unit Test Suite", () => {
             mockedPlatform.setValue("linux");
             const swiftly = createToolchain("swiftly", "/home/user/.swiftly/toolchains/6.0.0/usr");
             const unknown = createToolchain("unknown", "/toolchains/swift-6.0.0/usr");
-            expect(swiftly.getToolchainExecutablePath("swift")).to.equal(
+            expect(swiftly.getToolchainExecutablePath("swift")).to.equalPath(
                 "/home/user/.swiftly/toolchains/6.0.0/usr/bin/swift"
             );
-            expect(unknown.getToolchainExecutablePath("sourcekit-lsp")).to.equal(
+            expect(unknown.getToolchainExecutablePath("sourcekit-lsp")).to.equalPath(
                 "/toolchains/swift-6.0.0/usr/bin/sourcekit-lsp"
             );
         });
@@ -112,7 +112,7 @@ suite("SwiftToolchain Unit Test Suite", () => {
             const swiftly = createToolchain("swiftly", "C:/toolchains/swift-6.0.0/usr");
             const unknown = createToolchain("unknown", "C:/toolchains/swift-6.0.0/usr");
             expect(swiftly.getToolchainInvocation("swift", []).command).to.equal("swiftly");
-            expect(unknown.getToolchainInvocation("swift", []).command).to.equal(
+            expect(unknown.getToolchainInvocation("swift", []).command).to.equalPath(
                 "C:/toolchains/swift-6.0.0/usr/bin/swift.exe"
             );
         });
