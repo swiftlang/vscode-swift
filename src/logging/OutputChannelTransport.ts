@@ -24,6 +24,10 @@ export class OutputChannelTransport extends TransportStream {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     public log(info: any, next: () => void): void {
+        if (!this.ouptutChannel) {
+            next();
+            return;
+        }
         const logMessage = this.appending ? info.message : info[Symbol.for("message")];
         if (info.append) {
             this.ouptutChannel.append(logMessage);
