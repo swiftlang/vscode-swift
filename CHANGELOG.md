@@ -5,6 +5,7 @@
 ### Fixed
 
 - Fix swift-testing timeout when doing a Run All tests w/ multiple test targets when using swift-build ([#2207](https://github.com/swiftlang/vscode-swift/pull/2207))
+- Run toolchain executables via `swiftly run <tool>` when the active toolchain is managed by swiftly ([#2177](https://github.com/swiftlang/vscode-swift/pull/2177))
 
 ## 2.16.4 - 2026-04-21
 
@@ -17,7 +18,6 @@
 - Fix false positive workspace detection for non-Swift projects with `build/` or `out/` directories ([#2156](https://github.com/swiftlang/vscode-swift/pull/2156))
 - Fix build status notification to show a determinate progress bar ([#2188](https://github.com/swiftlang/vscode-swift/pull/2188))
 - Fix debugging when running tests with the swiftbuild build system ([#2191](https://github.com/swiftlang/vscode-swift/pull/2191))
-- Run toolchain executables via `swiftly run <tool>` when the active toolchain is managed by swiftly ([#2177](https://github.com/swiftlang/vscode-swift/pull/2177))
 
 ## 2.16.3 - 2026-04-02
 
