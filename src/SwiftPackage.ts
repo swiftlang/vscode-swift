@@ -36,7 +36,7 @@ import { SwiftToolchain } from "./toolchain/toolchain";
 import { Disposable } from "./utilities/Disposable";
 import { fileExists, isPathInsidePath } from "./utilities/filesystem";
 import { lineBreakRegex } from "./utilities/tasks";
-import { execSwift, getErrorDescription, hashString, unwrapPromise } from "./utilities/utilities";
+import { execSwift, hashString, unwrapPromise } from "./utilities/utilities";
 
 // Re-export some types from the external API for convenience.
 export { Dependency, PackagePlugin, ResolvedDependency, Target, TargetType };
@@ -271,19 +271,10 @@ export class SwiftPackage implements ExternalSwiftPackage, Disposable {
             };
 
             return packageState;
-        } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            // if caught error and contains "error: root manifest" then there is no Package.swift
-            if (
-                errorMessage.indexOf("error: root manifest") !== -1 ||
-                errorMessage.indexOf("error: Could not find Package.swift") !== -1
-            ) {
-                return undefined;
-            } else {
-                // otherwise it is an error loading the Package.swift so return `null` indicating
-                // we have a package but we failed to load it
-                return Error(getErrorDescription(error));
-            }
+        } catch (error) {
+            const parsingError = Error("Error parsing Package.swift", { cause: error });
+            folderContext.logger.error(parsingError);
+            return parsingError;
         }
     }
 
