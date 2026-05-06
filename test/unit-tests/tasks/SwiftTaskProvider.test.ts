@@ -58,7 +58,12 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
             swiftVersion: new Version(6, 0, 0),
             buildFlags: instance(buildFlags),
             sanitizer: mockFn(),
-            getToolchainExecutable: mockFn(s => s.withArgs("swift").returns("/path/to/bin/swift")),
+            getToolchainInvocation: mockFn(s =>
+                s.withArgs("swift", match.any).callsFake((_exe: string, args: string[]) => ({
+                    command: "/path/to/bin/swift",
+                    args,
+                }))
+            ),
         });
         const folderContext = mockObject<FolderContext>({
             workspaceContext: instance(workspaceContext),
@@ -182,6 +187,27 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                 instance(toolchain)
             );
             assert.equal(task.execution.command, "/path/to/bin/swift");
+        });
+
+        test("swiftly toolchain uses swiftly run swift invocation", () => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (toolchain as any).getToolchainInvocation = mockFn(s =>
+                s.withArgs("swift", match.any).callsFake((_exe: string, args: string[]) => ({
+                    command: "swiftly",
+                    args: ["run", "swift", ...args],
+                }))
+            );
+            const task = createSwiftTask(
+                ["build"],
+                "Build All",
+                { cwd: workspaceFolder.uri, scope: vscode.TaskScope.Workspace },
+                instance(toolchain)
+            );
+            assert.equal(task.execution.command, "swiftly");
+            assert.equal(task.execution.args[0], "run");
+            assert.equal(task.execution.args[1], "swift");
+            assert.equal(task.execution.args[2], "build");
+            assert.equal(task.detail, "swift build");
         });
 
         test("include sdk flags", () => {

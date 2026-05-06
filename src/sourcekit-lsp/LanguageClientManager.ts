@@ -407,10 +407,10 @@ export class LanguageClientManager implements Disposable {
         errorHandler: SourceKitLSPErrorHandler;
     } {
         const toolchain = folder.toolchain;
-        const toolchainSourceKitLSP = toolchain.getToolchainExecutable("sourcekit-lsp");
+        // Raw path kept for the SOURCEKIT_TOOLCHAIN_PATH comparison below.
+        const toolchainSourceKitLSPPath = toolchain.getToolchainExecutablePath("sourcekit-lsp");
         const lspConfig = configuration.lsp;
         const serverPathConfig = lspConfig.serverPath;
-        const serverPath = serverPathConfig.length > 0 ? serverPathConfig : toolchainSourceKitLSP;
         const buildFlags = toolchain.buildFlags;
         const sdkArguments = [
             ...buildFlags.swiftDriverSDKFlags(true),
@@ -421,9 +421,14 @@ export class LanguageClientManager implements Disposable {
             ),
         ];
 
+        const inv =
+            serverPathConfig.length > 0
+                ? { command: serverPathConfig, args: [] }
+                : toolchain.getToolchainInvocation("sourcekit-lsp", []);
+
         const sourcekit: Executable = {
-            command: serverPath,
-            args: lspConfig.serverArguments.concat(sdkArguments),
+            command: inv.command,
+            args: [...inv.args, ...lspConfig.serverArguments, ...sdkArguments],
             options: {
                 env: {
                     ...process.env,
@@ -438,7 +443,7 @@ export class LanguageClientManager implements Disposable {
         if (
             serverPathConfig.length > 0 &&
             configuration.path.length > 0 &&
-            serverPathConfig !== toolchainSourceKitLSP
+            serverPathConfig !== toolchainSourceKitLSPPath
         ) {
             sourcekit.options = {
                 env: {

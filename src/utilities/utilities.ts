@@ -253,24 +253,28 @@ export async function execFileStreamOutput(
  */
 export async function execSwift(
     args: string[],
-    toolchain: SwiftToolchain | "default" | { swiftExecutable: string },
+    toolchain: SwiftToolchain | { swiftExecutable: string },
     options: cp.ExecFileOptions = {},
     folderContext?: FolderContext
 ): Promise<{ stdout: string; stderr: string }> {
-    let swift: string;
+    let command: string;
+    let commandArgs: string[];
     if (typeof toolchain === "object" && "swiftExecutable" in toolchain) {
-        swift = toolchain.swiftExecutable;
-    } else if (toolchain === "default") {
-        swift = getSwiftExecutable();
+        command = toolchain.swiftExecutable;
+        commandArgs = args;
     } else {
-        swift = toolchain.getToolchainExecutable("swift");
-        args = toolchain.buildFlags.withAdditionalFlags(args);
+        const inv = toolchain.getToolchainInvocation(
+            "swift",
+            toolchain.buildFlags.withAdditionalFlags(args)
+        );
+        command = inv.command;
+        commandArgs = inv.args;
     }
     options = {
         ...options,
         maxBuffer: options.maxBuffer ?? 1024 * 1024 * 64, // 64MB
     };
-    return await execFile(swift, args, options, folderContext);
+    return await execFile(command, commandArgs, options, folderContext);
 }
 
 /**

@@ -303,15 +303,22 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             launchConfig.env = this.convertEnvironmentVariables(launchConfig.env);
         }
 
-        const lldbDapPath = await DebugAdapter.getLLDBDebugAdapterPath(toolchain);
-        if (!(await fileExists(lldbDapPath))) {
-            void vscode.window.showErrorMessage(
-                `Cannot find the LLDB debug adapter in your Swift toolchain: No such file or directory "${lldbDapPath}"`
-            );
-            return undefined;
+        const customDebugAdapterPath = configuration.debugger.customDebugAdapterPath;
+        if (customDebugAdapterPath) {
+            if (!(await fileExists(customDebugAdapterPath))) {
+                void vscode.window.showErrorMessage(
+                    `Cannot find the LLDB debug adapter: No such file or directory "${customDebugAdapterPath}"`
+                );
+                return undefined;
+            }
+
+            launchConfig.debugAdapterExecutable = customDebugAdapterPath;
+            return true;
         }
 
-        launchConfig.debugAdapterExecutable = lldbDapPath;
+        const inv = toolchain.getToolchainInvocation("lldb-dap", []);
+        launchConfig.debugAdapterExecutable = inv.command;
+        launchConfig.debugAdapterArgs = inv.args;
         return true;
     }
 

@@ -5,6 +5,7 @@
 ### Fixed
 
 - Fix swift-testing timeout when doing a Run All tests w/ multiple test targets when using swift-build ([#2207](https://github.com/swiftlang/vscode-swift/pull/2207))
+- Run toolchain executables via `swiftly run <tool>` when the active toolchain is managed by swiftly ([#2177](https://github.com/swiftlang/vscode-swift/pull/2177))
 
 ## 2.16.4 - 2026-04-21
 
@@ -98,7 +99,7 @@
 - Syntax highlighting for `*.swift.gyb` files ([#1515](https://github.com/swiftlang/vscode-swift/pull/1515))
 - Activate the extension if a workspace folder contains a `.bsp` folder ([#1865](https://github.com/swiftlang/vscode-swift/pull/1865))
 
-### Fixed 
+### Fixed
 
 - Fixed an issue where the activation of the extension was held up while waiting on the debug configuration to update ([#1914](https://github.com/swiftlang/vscode-swift/pull/1914))
 

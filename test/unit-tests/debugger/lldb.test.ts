@@ -41,7 +41,12 @@ suite("debugger.lldb Tests", () => {
             mockToolchain = mockObject<SwiftToolchain>({
                 swiftFolderPath: "/usr/bin",
                 toolchainPath: "/toolchain",
-                getLLDB: mockFn(s => s.resolves("/toolchain/bin/lldb")),
+                getToolchainInvocation: mockFn(s =>
+                    s.callsFake((_exe: string, args: string[]) => ({
+                        command: "/toolchain/bin/lldb",
+                        args,
+                    }))
+                ),
             });
         });
 

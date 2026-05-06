@@ -47,10 +47,10 @@ export async function executeSwiftPackageCommand<T>(
     config: SwiftPackageCommandConfig,
     token?: vscode.CancellationToken
 ): Promise<T> {
-    const swiftPath = folderContext.toolchain.getToolchainExecutable("swift");
     const args = folderContext.toolchain.buildFlags.withAdditionalFlags(config.args);
+    const inv = folderContext.toolchain.getToolchainInvocation("swift", args);
 
-    const swiftProcess = new ReadOnlySwiftProcess(swiftPath, args, {
+    const swiftProcess = new ReadOnlySwiftProcess(inv.command, inv.args, {
         cwd: folderContext.folder.fsPath,
         env: {
             ...swiftRuntimeEnv(),

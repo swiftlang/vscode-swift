@@ -102,6 +102,19 @@ export function getDarwinTargetTriple(target: DarwinCompatibleTarget): string | 
     }
 }
 
+/**
+ * The effective command and arguments needed to launch a toolchain executable.
+ *
+ * - For normal toolchains: `command` is the binary path and `args` are the
+ *   caller-supplied arguments verbatim.
+ * - For swiftly-managed toolchains: `command` is `"swiftly"` and `args` are
+ *   `["run", "<tool>", ...callerArgs]`.
+ */
+interface ToolchainInvocation {
+    command: string;
+    args: string[];
+}
+
 export class SwiftToolchain implements ExternalSwiftToolchain {
     public swiftVersionString: string;
 
@@ -320,7 +333,7 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
      */
     public async getProjectTemplates(): Promise<SwiftProjectTemplate[]> {
         // Parse the output from `swift package init --help`
-        const { stdout } = await execSwift(["package", "init", "--help"], "default");
+        const { stdout } = await execSwift(["package", "init", "--help"], this);
         const lines = stdout.split(/\r?\n/g);
         // Determine where the `--type` option is documented
         let position = lines.findIndex(line => line.trim().startsWith("--type"));
@@ -373,10 +386,29 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
     }
 
     /**
-     * Return fullpath for toolchain executable
+     * Return fullpath for toolchain executable.
+     * Use this only when a raw filesystem path is needed (diagnostics,
+     * `--toolchain` arguments, existence checks). For process spawning use
+     * {@link getToolchainInvocation} instead.
      */
-    public getToolchainExecutable(executable: string): string {
+    public getToolchainExecutablePath(executable: string): string {
         return SwiftToolchain._getToolchainExecutable(this.toolchainPath, executable);
+    }
+
+    /**
+     * Returns the effective command and arguments for spawning a toolchain
+     * executable. For swiftly-managed toolchains this wraps the call as
+     * `swiftly run <tool> …`; for all other managers it uses the direct
+     * binary path.
+     *
+     * @param executable The toolchain binary name (e.g. `"swift"`, `"sourcekit-lsp"`).
+     * @param args Arguments to pass to the executable (after any manager prefix).
+     */
+    public getToolchainInvocation(executable: string, args: string[]): ToolchainInvocation {
+        if (this.manager === "swiftly") {
+            return { command: "swiftly", args: ["run", executable, ...args] };
+        }
+        return { command: this.getToolchainExecutablePath(executable), args };
     }
 
     private static _getToolchainExecutable(toolchainPath: string, executable: string): string {
@@ -400,53 +432,6 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
             xcodeDirectory = path.dirname(xcodeDirectory);
         }
         return xcodeDirectory;
-    }
-
-    /**
-     * Returns the path to the LLDB executable inside the selected toolchain.
-     * If the user is on macOS and has no OSS toolchain selected, also search
-     * inside Xcode.
-     * @returns The path to the `lldb` executable
-     * @throws Throws an error if the executable cannot be found
-     */
-    public async getLLDB(): Promise<string> {
-        return this.findToolchainExecutable("lldb");
-    }
-
-    /**
-     * Returns the path to the LLDB debug adapter executable inside the selected
-     * toolchain. If the user is on macOS and has no OSS toolchain selected, also
-     * search inside Xcode.
-     * @returns The path to the `lldb-dap` executable
-     * @throws Throws an error if the executable cannot be found
-     */
-    public async getLLDBDebugAdapter(): Promise<string> {
-        return this.findToolchainExecutable("lldb-dap");
-    }
-
-    /**
-     * Search for the supplied executable in the toolchain.
-     */
-    private async findToolchainExecutable(executable: string): Promise<string> {
-        let cause: unknown = undefined;
-        try {
-            if (process.platform === "win32") {
-                executable += ".exe";
-            }
-            // First search the toolchain's 'bin' directory
-            const toolchainExecutablePath = path.join(this.toolchainPath, "bin", executable);
-            if (await pathExists(toolchainExecutablePath)) {
-                return toolchainExecutablePath;
-            }
-            // Fallback to using xcrun if we're on macOS
-            if (process.platform === "darwin") {
-                const { stdout } = await execFile("xcrun", ["--find", executable]);
-                return stdout.trim();
-            }
-        } catch (error) {
-            cause = error;
-        }
-        throw new Error(`Failed to find ${executable} within Swift toolchain`, { cause });
     }
 
     private basePlatformDeveloperPath(): string | undefined {
