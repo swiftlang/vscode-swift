@@ -695,22 +695,6 @@ tag("large").suite("Test Explorer Suite", function () {
             });
 
             suite(runProfile, () => {
-                suiteSetup(function () {
-                    // Code coverage is currently not working in Windows with the latest nightly-main toolchain
-                    // See https://github.com/swiftlang/swift/issues/88607
-                    if (
-                        runProfile === TestKind.coverage &&
-                        process.platform === "win32" &&
-                        workspaceContext.globalToolchain.swiftVersion.isGreaterThanOrEqual({
-                            major: 6,
-                            minor: 4,
-                            patch: 0,
-                        })
-                    ) {
-                        this.skip();
-                    }
-                });
-
                 suite(`swift-testing (${runProfile})`, function () {
                     suiteSetup(function () {
                         if (
