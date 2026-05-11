@@ -448,15 +448,10 @@ export class TestingConfigurationFactory {
             args = [...args, "--disable-xctest"];
         }
 
-        const inv = this.ctx.toolchain.getToolchainInvocation(
-            "swift",
-            this.addBuildOptionsToArgs(this.addTestsToArgs(args))
-        );
-
         return {
             ...baseConfig,
-            program: inv.command,
-            args: inv.args,
+            program: "swift",
+            args: this.addBuildOptionsToArgs(this.addTestsToArgs(args)),
             env: {
                 ...this.testEnv,
                 ...this.sanitizerRuntimeEnvironment,
@@ -512,15 +507,10 @@ export class TestingConfigurationFactory {
             xcTestArgs = [...xcTestArgs, "--parallel"];
         }
 
-        const inv = this.ctx.toolchain.getToolchainInvocation(
-            "swift",
-            this.addBuildOptionsToArgs(this.addTestsToArgs(xcTestArgs))
-        );
-
         return {
             ...baseConfig,
-            program: inv.command,
-            args: inv.args,
+            program: "swift",
+            args: this.addBuildOptionsToArgs(this.addTestsToArgs(xcTestArgs)),
             env: {
                 ...this.testEnv,
                 ...this.sanitizerRuntimeEnvironment,

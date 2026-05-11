@@ -190,7 +190,6 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
         });
 
         test("swiftly toolchain uses swiftly run swift invocation", () => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             (toolchain as any).getToolchainInvocation = mockFn(s =>
                 s.withArgs("swift", match.any).callsFake((_exe: string, args: string[]) => ({
                     command: "swiftly",

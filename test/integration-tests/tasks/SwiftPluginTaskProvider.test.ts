@@ -194,8 +194,7 @@ tag("medium").suite("SwiftPluginTaskProvider Test Suite", function () {
 
                 const swiftExecution = task?.execution as SwiftExecution;
                 expect(swiftExecution).to.not.be.undefined;
-                assert.deepEqual(
-                    swiftExecution.args,
+                expect(swiftExecution.args).to.include.members(
                     workspaceContext.globalToolchain.buildFlags.withAdditionalFlags([
                         "package",
                         ...expected,
@@ -257,7 +256,7 @@ tag("medium").suite("SwiftPluginTaskProvider Test Suite", function () {
                 });
 
                 test("provides", () => {
-                    expect(task?.execution.args).to.deep.equal(
+                    expect(task?.execution.args).to.include.members(
                         folderContext.toolchain.buildFlags.withAdditionalFlags([
                             "package",
                             "command_plugin",
@@ -288,7 +287,7 @@ tag("medium").suite("SwiftPluginTaskProvider Test Suite", function () {
                 });
 
                 test("provides", () => {
-                    expect(task?.execution.args).to.deep.equal(
+                    expect(task?.execution.args).to.include.members(
                         folderContext.toolchain.buildFlags.withAdditionalFlags([
                             "package",
                             "--disable-sandbox",

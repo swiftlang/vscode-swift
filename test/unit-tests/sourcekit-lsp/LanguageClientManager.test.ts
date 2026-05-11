@@ -349,7 +349,6 @@ suite("LanguageClientManager Suite", () => {
 
     test("launches SourceKit-LSP via swiftly run for swiftly-managed toolchains", async () => {
         mockedToolchain.manager = "swiftly";
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (mockedToolchain as any).getToolchainInvocation = mockFn(s =>
             s
                 .withArgs("sourcekit-lsp", match.any)

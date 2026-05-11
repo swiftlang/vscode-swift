@@ -20,6 +20,7 @@ import { SwiftLogger } from "../logging/SwiftLogger";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import { Disposable } from "../utilities/Disposable";
 import { fileExists } from "../utilities/filesystem";
+import { findBinaryInPath } from "../utilities/shell";
 import { getErrorDescription, swiftRuntimeEnv } from "../utilities/utilities";
 import { DebugAdapter, LaunchConfigType, SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
 import { getTargetBinaryPath, swiftPrelaunchBuildTaskArguments } from "./launch";
@@ -317,6 +318,10 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
         }
 
         const inv = toolchain.getToolchainInvocation("lldb-dap", []);
+        // lldb-dap requires that the debugAdapterExecutable always be an absolute path.
+        if (!path.isAbsolute(inv.command)) {
+            inv.command = await findBinaryInPath(inv.command);
+        }
         launchConfig.debugAdapterExecutable = inv.command;
         launchConfig.debugAdapterArgs = inv.args;
         return true;
