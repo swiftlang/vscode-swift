@@ -25,6 +25,7 @@ import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { BuildFlags } from "@src/toolchain/BuildFlags";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
 import { Result } from "@src/utilities/result";
+import * as shell from "@src/utilities/shell";
 import { Version } from "@src/utilities/version";
 
 import {
@@ -44,10 +45,15 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
     let mockToolchain: MockedObject<SwiftToolchain>;
     let mockBuildFlags: MockedObject<BuildFlags>;
     let mockLogger: MockedObject<SwiftLogger>;
+    const mockShellUtil = mockGlobalModule(shell);
     const mockDebugAdapter = mockGlobalObject(debugAdapter, "DebugAdapter");
     const mockWindow = mockGlobalObject(vscode, "window");
 
     setup(() => {
+        mockShellUtil.findBinaryInPath.rejects(
+            Error("findBinaryInPath() was not correctly mocked for this test.")
+        );
+        mockShellUtil.findBinaryInPath.withArgs("swiftly").resolves("/path/to/swiftly");
         mockBuildFlags = mockObject<BuildFlags>({ getBuildBinaryPath: mockFn() });
         mockToolchain = mockObject<SwiftToolchain>({
             swiftVersion: new Version(6, 0, 0),
@@ -637,7 +643,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 });
             expect(launchConfig).to.containSubset({
                 type: LaunchConfigType.LLDB_DAP,
-                debugAdapterExecutable: "swiftly",
+                debugAdapterExecutable: "/path/to/swiftly",
                 debugAdapterArgs: ["run", "lldb-dap"],
             });
         });
@@ -657,7 +663,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                     program: "/home/user/myproject/.build/debug/MyApp",
                 });
             expect(launchConfig).to.containSubset({
-                debugAdapterExecutable: "swiftly",
+                debugAdapterExecutable: "/path/to/swiftly",
                 debugAdapterArgs: ["run", "lldb-dap"],
             });
             expect(mockWindow.showErrorMessage).to.not.have.been.called;
