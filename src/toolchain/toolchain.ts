@@ -768,7 +768,12 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
         try {
             infoPlist = plist.parse(data) as unknown as InfoPlist;
         } catch (error) {
-            void vscode.window.showWarningMessage(`Unable to parse ${platformManifest}: ${error}`);
+            const parsingError = Error(
+                `Unable to parse ${platformManifest}. Tests explorer won't work as expected.`,
+                { cause: error }
+            );
+            logger?.error(parsingError);
+            void vscode.window.showWarningMessage(parsingError.message);
             return undefined;
         }
         const plistKey = type === "XCTest" ? "XCTEST_VERSION" : "SWIFT_TESTING_VERSION";
