@@ -4,6 +4,9 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    labels:
+      - "dependencies"
+      - "full-test-run"
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
@@ -11,6 +14,9 @@ updates:
     cooldown:
       default-days: 7
     open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "full-test-run"
     allow:
       - dependency-type: direct
     ignore:
