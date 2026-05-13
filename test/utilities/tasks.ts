@@ -174,6 +174,26 @@ export async function withTaskWatcher(
 }
 
 /**
+ * Creates a Promise that resolves when the provided Task ends.
+ *
+ * @param task A {@link vscode.Task}
+ * @returns A Promise
+ */
+export function waitForEndTask(task: vscode.Task): Promise<void> {
+    const subscriptions: Disposable[] = [];
+    return new Promise<void>(resolve => {
+        subscriptions.push(
+            vscode.tasks.onDidEndTask(event => {
+                if (task.detail !== event.execution.task.detail) {
+                    return;
+                }
+                resolve();
+            })
+        );
+    }).finally(() => subscriptions.forEach(s => s.dispose()));
+}
+
+/**
  * Ideally we would want to use {@link executeTaskAndWaitForResult} but that
  * requires the tests creating the task through some means. If the
  * {@link vscode.Task Task}, was provided by the extension under test, the
