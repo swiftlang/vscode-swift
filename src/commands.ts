@@ -20,6 +20,7 @@ import { WorkspaceContext } from "./WorkspaceContext";
 import { attachDebugger } from "./commands/attachDebugger";
 import { cleanBuild, debugBuild, runBuild } from "./commands/build";
 import { captureDiagnostics } from "./commands/captureDiagnostics";
+import { createDocumentationCatalog } from "./commands/createDocumentationCatalog";
 import { createNewProject } from "./commands/createNewProject";
 import { editDependency } from "./commands/dependencies/edit";
 import { resolveDependencies } from "./commands/dependencies/resolve";
@@ -351,6 +352,10 @@ export function register(ctx: WorkspaceContext): Disposable[] {
         vscode.commands.registerCommand(
             Commands.GENERATE_SOURCEKIT_CONFIG,
             async () => await generateSourcekitConfiguration(ctx)
+        ),
+        vscode.commands.registerCommand(
+            "swift.createDocumentationCatalog",
+            async () => await createDocumentationCatalog(ctx)
         ),
         vscode.commands.registerCommand(
             "swift.showCommands",
