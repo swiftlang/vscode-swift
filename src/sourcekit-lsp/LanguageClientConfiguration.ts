@@ -320,7 +320,7 @@ export function lspClientOptions(
             },
             handleWorkDoneProgress: (() => {
                 let lastPrompted = new Date(0).getTime();
-                return async (token, params, next) => {
+                return (token, params, next) => {
                     const result = next(token, params);
                     const tokenString = token.toString();
                     const now = new Date().getTime();

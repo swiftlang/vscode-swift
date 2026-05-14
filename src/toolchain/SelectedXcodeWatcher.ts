@@ -81,24 +81,25 @@ export class SelectedXcodeWatcher implements Disposable {
         ) {
             this.xcodePath = undefined; // Notify user when initially launching that xcode changed since last session
         }
-        this.interval = setInterval(async () => {
+        this.interval = setInterval(() => {
             if (this.disposed) {
                 return clearInterval(this.interval);
             }
 
-            const newXcodePath = await this.xcodeSymlink();
-            if (newXcodePath && this.xcodePath !== newXcodePath) {
-                this.logger.info(
-                    `Selected Xcode changed from ${this.xcodePath} to ${newXcodePath}`
-                );
-                this.xcodePath = newXcodePath;
-                await this.notifyXcodeChange(
-                    this.xcodePath,
-                    developerDir(),
-                    matchesPath,
-                    matchesDeveloperDir
-                );
-            }
+            void this.xcodeSymlink().then(async newXcodePath => {
+                if (newXcodePath && this.xcodePath !== newXcodePath) {
+                    this.logger.info(
+                        `Selected Xcode changed from ${this.xcodePath} to ${newXcodePath}`
+                    );
+                    this.xcodePath = newXcodePath;
+                    await this.notifyXcodeChange(
+                        this.xcodePath,
+                        developerDir(),
+                        matchesPath,
+                        matchesDeveloperDir
+                    );
+                }
+            });
         }, this.checkIntervalMs);
     }
 
