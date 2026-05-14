@@ -94,6 +94,7 @@ export async function waitForClose(fixture: {
  * before starting a new test
  */
 export function waitForNoRunningTasks(options?: { timeout: number }): Promise<void> {
+    const callSite = Error("waitForNoRunningTasks() was called here:");
     return new Promise<void>((res, reject) => {
         if (vscode.tasks.taskExecutions.length === 0) {
             res();
@@ -114,7 +115,8 @@ export function waitForNoRunningTasks(options?: { timeout: number }): Promise<vo
                 const runningTasks = vscode.tasks.taskExecutions.map(e => e.task.name);
                 reject(
                     new Error(
-                        `Timed out waiting for tasks to complete. The following ${runningTasks.length} tasks are still running: ${runningTasks}.`
+                        `Timed out waiting for tasks to complete. The following ${runningTasks.length} tasks are still running: ${runningTasks}.`,
+                        { cause: callSite }
                     )
                 );
             }, options.timeout);
