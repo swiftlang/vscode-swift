@@ -31,10 +31,13 @@ export default createRule({
                     return;
                 }
 
+                const reportNode =
+                    node.callee.type === "MemberExpression" ? node.callee.property : node.callee;
+
                 if (type.symbol.name === "ExclusiveSuiteFunction") {
                     context.report({
                         messageId: "noExclusiveSuites",
-                        node: node.callee,
+                        node: reportNode,
                     });
                     return;
                 }
@@ -42,7 +45,7 @@ export default createRule({
                 if (type.symbol.name === "ExclusiveTestFunction") {
                     context.report({
                         messageId: "noExclusiveTests",
-                        node: node.callee,
+                        node: reportNode,
                     });
                 }
             },
