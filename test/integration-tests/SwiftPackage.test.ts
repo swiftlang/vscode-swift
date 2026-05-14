@@ -43,7 +43,8 @@ tag("medium").suite("SwiftPackage Test Suite", function () {
         const asset = "empty-folder";
 
         activateExtensionForSuite({
-            async setup(ctx) {
+            async setup(api) {
+                const ctx = await api.waitForWorkspaceContext();
                 swiftPackage = getFolderContext(ctx, asset).swiftPackage;
             },
             testAssets: [asset],
@@ -58,7 +59,8 @@ tag("medium").suite("SwiftPackage Test Suite", function () {
         const asset = "invalid-package";
 
         activateExtensionForSuite({
-            async setup(ctx) {
+            async setup(api) {
+                const ctx = await api.waitForWorkspaceContext();
                 swiftPackage = getFolderContext(ctx, asset).swiftPackage;
             },
             testAssets: [asset],
@@ -75,7 +77,8 @@ tag("medium").suite("SwiftPackage Test Suite", function () {
         let folderContext: FolderContext;
 
         activateExtensionForSuite({
-            async setup(ctx) {
+            async setup(api) {
+                const ctx = await api.waitForWorkspaceContext();
                 folderContext = getFolderContext(ctx, asset);
                 swiftPackage = folderContext.swiftPackage;
             },
@@ -106,7 +109,8 @@ tag("medium").suite("SwiftPackage Test Suite", function () {
         const asset = "identity-case";
 
         activateExtensionForSuite({
-            async setup(ctx) {
+            async setup(api) {
+                const ctx = await api.waitForWorkspaceContext();
                 swiftPackage = getFolderContext(ctx, asset).swiftPackage;
             },
             testAssets: [asset],
@@ -132,7 +136,8 @@ tag("medium").suite("SwiftPackage Test Suite", function () {
         const asset = "identity-different";
 
         activateExtensionForSuite({
-            async setup(ctx) {
+            async setup(api) {
+                const ctx = await api.waitForWorkspaceContext();
                 swiftPackage = getFolderContext(ctx, asset).swiftPackage;
             },
             testAssets: [asset],
