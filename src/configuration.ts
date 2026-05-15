@@ -66,6 +66,8 @@ interface LSPConfiguration {
     readonly supportedLanguages: string[];
     /** Is SourceKit-LSP disabled */
     readonly disable: boolean;
+    /** Include declaration in Find All References results */
+    readonly includeDeclarationInFindAllReferences: boolean;
     /** Is the trace server enabled */
     readonly traceServer: "off" | "messages" | "verbose";
 }
@@ -193,6 +195,14 @@ const configuration = {
                         .getConfiguration("swift.sourcekit-lsp")
                         .get<boolean>("disable", false),
                     "swift.sourcekit-lsp.disable"
+                );
+            },
+            get includeDeclarationInFindAllReferences(): boolean {
+                return validateBooleanSetting(
+                    vscode.workspace
+                        .getConfiguration("swift.sourcekit-lsp")
+                        .get<boolean>("includeDeclarationInFindAllReferences", true),
+                    "swift.sourcekit-lsp.includeDeclarationInFindAllReferences"
                 );
             },
             get traceServer(): "off" | "messages" | "verbose" {
