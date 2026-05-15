@@ -971,6 +971,13 @@
             "order": 6,
             "scope": "machine-overridable"
           },
+          "swift.sourcekit-lsp.includeDeclarationInFindAllReferences": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Whether the symbol declaration should be included in the results of `Find All References`. When `false`, only usage sites are returned.",
+            "order": 7,
+            "scope": "machine-overridable"
+          },
           "sourcekit-lsp.inlayHints.enabled": {
             "type": "boolean",
             "default": true,

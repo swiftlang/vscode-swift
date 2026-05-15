@@ -122,5 +122,36 @@ tag("large").suite("Language Client Integration Suite", function () {
                 expect(referenceUris).to.contain(uri);
             }
         });
+        test("Find All References excludes declaration when setting is false", async function () {
+            const config = vscode.workspace.getConfiguration("swift.sourcekit-lsp");
+            await config.update(
+                "includeDeclarationInFindAllReferences",
+                false,
+                vscode.ConfigurationTarget.Workspace
+            );
+            try {
+                const editor = await vscode.window.showTextDocument(uri);
+                const document = editor.document;
+
+                const referenceLocations = await vscode.commands.executeCommand<vscode.Location[]>(
+                    "vscode.executeReferenceProvider",
+                    document.uri,
+                    position
+                );
+
+                // We expect the declaration in `PackageLib.swift` to be excluded,
+                // usages in `main.swift` and `hello.swift` remain.
+                const referenceUris = referenceLocations.map(ref => ref.uri.toString());
+                expect(referenceUris).to.not.contain(expectedDefinitionUri.toString());
+                expect(referenceUris).to.contain(uri.toString());
+                expect(referenceUris).to.contain(snippetUri.toString());
+            } finally {
+                await config.update(
+                    "includeDeclarationInFindAllReferences",
+                    undefined,
+                    vscode.ConfigurationTarget.Workspace
+                );
+            }
+        });
     });
 });
