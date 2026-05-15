@@ -372,9 +372,9 @@ suite("BuildFlags Test Suite", () => {
                     buildFlags.withAdditionalFlags(["package", sub, "--disable-sandbox"])
                 ).to.deep.equal([
                     "package",
-                    sub,
                     "--sdk",
                     "/some/full/path/to/sdk",
+                    sub,
                     "--disable-sandbox",
                 ]);
             }
@@ -411,17 +411,50 @@ suite("BuildFlags Test Suite", () => {
             buildPathConfig.setValue("/some/build/path");
             expect(
                 buildFlags.withAdditionalFlags(["package", "plugin", "my-plugin", "--verbose"])
-            ).to.deep.equal(["package", "plugin", "my-plugin", "--verbose"]);
+            ).to.deep.equal([
+                "package",
+                "--scratch-path",
+                "/some/build/path",
+                "plugin",
+                "my-plugin",
+                "--verbose",
+            ]);
 
             sdkConfig.setValue("/some/full/path/to/sdk");
             expect(
                 buildFlags.withAdditionalFlags(["package", "plugin", "my-plugin"])
-            ).to.deep.equal(["package", "plugin", "my-plugin"]);
+            ).to.deep.equal([
+                "package",
+                "--scratch-path",
+                "/some/build/path",
+                "plugin",
+                "my-plugin",
+            ]);
 
             sandboxConfig.setValue(true);
             expect(
                 buildFlags.withAdditionalFlags(["package", "plugin", "my-plugin"])
-            ).to.deep.equal(["package", "plugin", "my-plugin"]);
+            ).to.deep.equal([
+                "package",
+                "--scratch-path",
+                "/some/build/path",
+                "plugin",
+                "my-plugin",
+            ]);
+        });
+
+        test("package plugin --list with buildPath", () => {
+            // Regression test for https://github.com/swiftlang/vscode-swift/issues/2234
+            // The build-path flag must be placed before the `plugin` subcommand,
+            // otherwise SwiftPM rejects it as an unknown plugin option.
+            buildPathConfig.setValue("/tmp/scratch");
+            expect(buildFlags.withAdditionalFlags(["package", "plugin", "--list"])).to.deep.equal([
+                "package",
+                "--scratch-path",
+                "/tmp/scratch",
+                "plugin",
+                "--list",
+            ]);
         });
 
         test("build", () => {

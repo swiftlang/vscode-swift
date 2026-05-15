@@ -43,24 +43,24 @@ export class BuildFlags {
     private withSwiftSDKFlags(args: string[]): string[] {
         switch (args[0]) {
             case "package": {
-                if (args[1] === "plugin") {
-                    // Don't append build path flags for `swift package plugin` commands
-                    return args;
-                }
-                const subcommand = args.splice(0, 2).concat(this.buildPathFlags());
-                switch (subcommand[1]) {
+                // Build-path and destination control flags belong on the parent
+                // `package` command, before any subcommand. Otherwise SwiftPM's
+                // argument parser rejects them when the subcommand has further
+                // subcommands or positional args (e.g. `swift package plugin --list`).
+                const command = args.splice(0, 1).concat(this.buildPathFlags());
+                const subcommand: string | undefined = args[0];
+                switch (subcommand) {
                     case "dump-symbol-graph":
                     case "diagnose-api-breaking-changes":
-                    case "resolve": {
+                    case "resolve":
                         // These two tools require building the package, so SDK
                         // flags are needed. Destination control flags are
                         // required to be placed before subcommand options.
-                        return [...subcommand, ...this.swiftpmSDKFlags(), ...args];
-                    }
+                        return [...command, ...this.swiftpmSDKFlags(), ...args];
                     default:
                         // Other swift-package subcommands operate on the host,
-                        // so it doesn't need to know about the destination.
-                        return subcommand.concat(args);
+                        // so they don't need to know about the destination.
+                        return command.concat(args);
                 }
             }
             case "build":
@@ -259,7 +259,7 @@ export class BuildFlags {
         const disableSandboxFlags = ["--disable-sandbox", "-Xswiftc", "-disable-sandbox"];
         switch (args[0]) {
             case "package": {
-                if (args[1] === "plugin") {
+                if (BuildFlags.packageSubcommand(args) === "plugin") {
                     return args;
                 }
                 return [args[0], ...disableSandboxFlags, ...args.slice(1)];
@@ -273,6 +273,23 @@ export class BuildFlags {
                 // Do nothing for other commands
                 return args;
         }
+    }
+
+    /**
+     * Find the `swift package` subcommand in an argument list, skipping any
+     * leading global options (e.g. `--scratch-path PATH`, `--sdk PATH`,
+     * `--swift-sdk SDK`) that may have been inserted before it.
+     */
+    private static packageSubcommand(args: string[]): string | undefined {
+        let i = 1;
+        while (i < args.length) {
+            const arg = args[i];
+            if (!arg.startsWith("-")) {
+                return arg;
+            }
+            i += arg.includes("=") ? 1 : 2;
+        }
+        return undefined;
     }
 
     /**
