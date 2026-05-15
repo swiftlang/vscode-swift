@@ -49,7 +49,7 @@ export function registerDebugger(workspaceContext: WorkspaceContext): Disposable
     });
 
     function register() {
-        subscriptions.push(registerLoggingDebugAdapterTracker());
+        subscriptions.push(registerLoggingDebugAdapterTracker(workspaceContext));
         subscriptions.push(registerLLDBDebugAdapter(workspaceContext));
     }
 
