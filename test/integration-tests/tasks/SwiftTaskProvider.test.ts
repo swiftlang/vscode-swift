@@ -109,6 +109,7 @@ tag("medium").suite("SwiftTaskProvider Test Suite", () => {
 
     test("provides product debug task", async () => {
         const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
+        console.log(`==========> Available task details: ${tasks.map(t => t.detail).join(", ")}`);
         expect(tasks.map(t => t.name)).to.include("Build Debug PackageExe (defaultPackage)");
         expect(tasks.find(t => t.name === "Build Debug PackageExe (defaultPackage)"))
             .to.have.property("detail")
@@ -117,6 +118,7 @@ tag("medium").suite("SwiftTaskProvider Test Suite", () => {
 
     test("provides library build tasks when enabled in settings", async () => {
         let tasks = await vscode.tasks.fetchTasks({ type: "swift" });
+        console.log(`==========> Available task details: ${tasks.map(t => t.detail).join(", ")}`);
         let taskNames = tasks.map(t => t.name);
         expect(taskNames).to.not.include("Build Debug PackageLib2 (defaultPackage)");
         expect(taskNames).to.not.include("Build Release PackageLib2 (defaultPackage)");
@@ -144,6 +146,7 @@ tag("medium").suite("SwiftTaskProvider Test Suite", () => {
     test("provides product release task", async () => {
         const taskProvider = workspaceContext.taskProvider;
         const tasks = await taskProvider.provideTasks(new vscode.CancellationTokenSource().token);
+        console.log(`==========> Available task details: ${tasks.map(t => t.detail).join(", ")}`);
         expect(tasks.map(t => t.name)).to.include("Build Release PackageExe (defaultPackage)");
         expect(tasks.find(t => t.name === "Build Release PackageExe (defaultPackage)"))
             .to.have.property("detail")
