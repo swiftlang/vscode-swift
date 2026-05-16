@@ -20,7 +20,7 @@ import {
     vsdiag,
 } from "vscode-languageclient";
 
-import { DiagnosticsManager } from "../DiagnosticsManager";
+import { DiagnosticsManager, getOriginalLSPMessage } from "../DiagnosticsManager";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { promptForDiagnostics } from "../commands/captureDiagnostics";
 import configuration from "../configuration";
@@ -317,6 +317,39 @@ export function lspClientOptions(
                     DiagnosticsManager.isSourcekit,
                     diagnostics
                 );
+            },
+            // `DiagnosticsManager` mutates messages for display (capitalize, strip
+            // `(fix available)`, etc.). Some language services on the server side
+            // — notably clangd — match diagnostics in `context.diagnostics` to
+            // cached fix-its by `(range, message)`, so a mutated message produces
+            // a cache miss and no quickfix is returned. Restore the original
+            // message before forwarding.
+            provideCodeActions: async (document, range, context, token, next) => {
+                let restoredDiagnostics: readonly vscode.Diagnostic[] | undefined;
+                for (let i = 0; i < context.diagnostics.length; i++) {
+                    const d = context.diagnostics[i];
+                    const original = getOriginalLSPMessage(d);
+                    if (original !== undefined && original !== d.message) {
+                        if (restoredDiagnostics === undefined) {
+                            restoredDiagnostics = context.diagnostics.slice();
+                        }
+                        const restored = new vscode.Diagnostic(d.range, original, d.severity);
+                        restored.code = d.code;
+                        restored.source = d.source;
+                        restored.tags = d.tags;
+                        restored.relatedInformation = d.relatedInformation;
+                        (restoredDiagnostics as vscode.Diagnostic[])[i] = restored;
+                    }
+                }
+                if (restoredDiagnostics !== undefined) {
+                    const restoredContext: vscode.CodeActionContext = {
+                        diagnostics: restoredDiagnostics,
+                        only: context.only,
+                        triggerKind: context.triggerKind,
+                    };
+                    return next(document, range, restoredContext, token);
+                }
+                return next(document, range, context, token);
             },
             handleWorkDoneProgress: (() => {
                 let lastPrompted = new Date(0).getTime();
