@@ -59,3 +59,22 @@ chai.use(chaiPathPlugin);
 chai.use(chaiAsPromised);
 
 installTagSupport();
+
+// Add missing type definitions for chai-as-promised
+declare global {
+    // eslint-disable-next-line @typescript-eslint/no-namespace
+    namespace Chai {
+        interface Eventually {
+            includes: Chai.PromisedInclude;
+            contains: Chai.PromisedInclude;
+        }
+
+        interface PromisedNested {
+            includes: Chai.PromisedInclude;
+        }
+
+        interface PromisedDeep {
+            includes: Chai.PromisedInclude;
+        }
+    }
+}

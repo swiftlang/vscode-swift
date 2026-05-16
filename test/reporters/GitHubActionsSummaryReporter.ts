@@ -11,6 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import * as chai from "chai";
 import { diffLines } from "diff";
 import * as fs from "fs";
 import * as mocha from "mocha";
@@ -20,12 +21,12 @@ const SUMMARY_ENV_VAR = "GITHUB_STEP_SUMMARY";
 
 interface AssertionError extends Error {
     showDiff?: boolean;
-    actual: string;
-    expected: string;
+    actual: unknown;
+    expected: unknown;
 }
 
 function isAssertionError(err: Error): err is AssertionError {
-    return typeof (err as any).actual === "string" && typeof (err as any).expected === "string";
+    return Object.hasOwn(err, "actual") && Object.hasOwn(err, "expected");
 }
 
 module.exports = class GitHubActionsSummaryReporter extends mocha.reporters.Base {
@@ -88,33 +89,20 @@ function generateErrorMessage(failure: Mocha.Test): string {
 
 function convertErrorToString(error: Error): string {
     const stackTraceFilter = mocha.utils.stackTraceFilter();
-    let result: string;
-    if (isAssertionError(error) && error.showDiff) {
-        const stackTraceFilter = mocha.utils.stackTraceFilter();
-        const { message, stack } = splitStackTrace(error);
-        result =
-            message +
-            EOL +
-            generateDiff(error.actual, error.expected) +
-            EOL +
-            EOL +
-            stackTraceFilter(stack);
-    } else if (error.stack) {
-        result = stackTraceFilter(error.stack);
-    } else {
-        result = mocha.utils.stringify(error);
+    const { message, stack } = splitStackTrace(error);
+    let result = message;
+    if (isAssertionError(error)) {
+        if (error.showDiff) {
+            result += EOL + generateDiff(error);
+        } else if (prettyPrint(error.actual).length > chai.config.truncateThreshold) {
+            result += EOL + "The full actual value was:" + EOL + prettyPrint(error.actual);
+        }
     }
-
-    if (!error.cause) {
-        return result;
-    }
-    let causedByString = "Caused By: ";
+    result += EOL + stackTraceFilter(stack);
     if (error.cause instanceof Error) {
-        causedByString += convertErrorToString(error.cause);
-    } else {
-        causedByString += mocha.utils.stringify(error.cause);
+        result += EOL + "Caused By: " + EOL + convertErrorToString(error.cause);
     }
-    return result + EOL + causedByString;
+    return result.replaceAll(/\r?\n/g, EOL);
 }
 
 function splitStackTrace(error: Error): { message: string; stack: string } {
@@ -130,7 +118,21 @@ function splitStackTrace(error: Error): { message: string; stack: string } {
     };
 }
 
-function generateDiff(actual: string, expected: string) {
+function prettyPrint(obj: unknown): string {
+    if (obj === undefined) {
+        return "undefined";
+    }
+
+    if (obj === null) {
+        return "null";
+    }
+
+    return JSON.stringify(obj, undefined, 2).replaceAll(/\r?\n/g, EOL);
+}
+
+function generateDiff(error: AssertionError) {
+    const actual = prettyPrint(error.actual);
+    const expected = prettyPrint(error.expected);
     return [
         "🟩 expected 🟥 actual" + EOL + EOL,
         ...diffLines(expected, actual).map(part => {
