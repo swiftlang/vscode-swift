@@ -47,6 +47,27 @@ const isSourceKit: DiagnosticPredicate = diagnostic =>
     isSource(diagnostic, DiagnosticsManager.isSourcekit);
 
 /**
+ * Symbol-like key used to stash the original LSP message on a `vscode.Diagnostic`
+ * before `DiagnosticsManager` mutates it for display (capitalize, strip
+ * `(fix available)`, etc.). Read back in the `provideCodeActions` middleware
+ * so we forward the un-mutated message to the server.
+ *
+ * This matters because clangd looks up cached fix-its by `(range, message)`
+ * ([ClangdLSPServer.h] `struct DiagKey`); if the message differs from what it
+ * published, the lookup misses and the user sees no quickfix.
+ */
+const ORIGINAL_LSP_MESSAGE = "__vscodeSwiftOriginalLSPMessage";
+
+export function getOriginalLSPMessage(diagnostic: vscode.Diagnostic): string | undefined {
+    const raw = (diagnostic as unknown as Record<string, unknown>)[ORIGINAL_LSP_MESSAGE];
+    return typeof raw === "string" ? raw : undefined;
+}
+
+function setOriginalLSPMessage(diagnostic: vscode.Diagnostic, message: string): void {
+    (diagnostic as unknown as Record<string, unknown>)[ORIGINAL_LSP_MESSAGE] = message;
+}
+
+/**
  * Handles the collection and deduplication of diagnostics from
  * various {@link vscode.Diagnostic.source | Diagnostic sources}.
  *
@@ -462,15 +483,19 @@ export class DiagnosticsManager implements Disposable {
     }
 
     private capitalizeMessage = (diagnostic: vscode.Diagnostic): vscode.Diagnostic => {
+        const original = getOriginalLSPMessage(diagnostic) ?? diagnostic.message;
         const message = diagnostic.message;
         diagnostic = { ...diagnostic };
         diagnostic.message = this.capitalize(message);
+        setOriginalLSPMessage(diagnostic, original);
         return diagnostic;
     };
 
     private cleanMessage = (diagnostic: vscode.Diagnostic) => {
+        const original = getOriginalLSPMessage(diagnostic) ?? diagnostic.message;
         diagnostic = { ...diagnostic };
         diagnostic.message = diagnostic.message.replace("(fix available)", "").trim();
+        setOriginalLSPMessage(diagnostic, original);
         return diagnostic;
     };
 
