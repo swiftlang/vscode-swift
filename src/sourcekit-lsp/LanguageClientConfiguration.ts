@@ -288,15 +288,12 @@ export function lspClientOptions(
                 return result;
             },
             provideReferences: async (document, position, options, token, next) => {
-                return next(
-                    document,
-                    position,
-                    {
-                        ...options,
-                        includeDeclaration: configuration.lsp.includeDeclarationInFindAllReferences,
-                    },
-                    token
-                );
+                const setting = configuration.lsp.includeDeclarationInFindAllReferences;
+                const referenceOptions =
+                    setting === "default"
+                        ? options
+                        : { ...options, includeDeclaration: setting === "always" };
+                return next(document, position, referenceOptions, token);
             },
             // temporarily remove text edit from Inlay hints while SourceKit-LSP
             // returns invalid replacement text
