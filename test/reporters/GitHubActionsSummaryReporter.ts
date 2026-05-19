@@ -15,6 +15,8 @@ import { diffLines } from "diff";
 import * as fs from "fs";
 import * as mocha from "mocha";
 
+import { getCapturedLogs } from "./utilities";
+
 const EOL = "\r\n";
 const SUMMARY_ENV_VAR = "GITHUB_STEP_SUMMARY";
 
@@ -182,13 +184,22 @@ function createMarkdownSummary(title: string, stats: Mocha.Stats, failures: Moch
         summary += list(
             failures.map(failure => {
                 const errorMessage = generateErrorMessage(failure);
-                return (
+                let content =
                     EOL +
                     tag("h5", [], fullTitle(failure)) +
                     EOL +
                     tag("pre", [], fixLineEndings(errorMessage)) +
-                    EOL
-                );
+                    EOL;
+                const logs = getCapturedLogs(failure);
+                if (logs && logs.length > 0) {
+                    content +=
+                        details(
+                            "Captured Extension Logs",
+                            false,
+                            tag("pre", [], fixLineEndings(logs.join("\n")))
+                        ) + EOL;
+                }
+                return content;
             })
         );
         summary += EOL;
