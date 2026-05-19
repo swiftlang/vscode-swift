@@ -67,7 +67,7 @@ interface LSPConfiguration {
     /** Is SourceKit-LSP disabled */
     readonly disable: boolean;
     /** Include declaration in Find All References results */
-    readonly includeDeclarationInFindAllReferences: boolean;
+    readonly includeDeclarationInFindAllReferences: "default" | "always" | "never";
     /** Is the trace server enabled */
     readonly traceServer: "off" | "messages" | "verbose";
 }
@@ -197,11 +197,11 @@ const configuration = {
                     "swift.sourcekit-lsp.disable"
                 );
             },
-            get includeDeclarationInFindAllReferences(): boolean {
-                return validateBooleanSetting(
+            get includeDeclarationInFindAllReferences(): "default" | "always" | "never" {
+                return validateStringSetting<"default" | "always" | "never">(
                     vscode.workspace
                         .getConfiguration("swift.sourcekit-lsp")
-                        .get<boolean>("includeDeclarationInFindAllReferences", true),
+                        .get<string>("includeDeclarationInFindAllReferences", "default"),
                     "swift.sourcekit-lsp.includeDeclarationInFindAllReferences"
                 );
             },
