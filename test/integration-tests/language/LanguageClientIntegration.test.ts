@@ -122,11 +122,11 @@ tag("large").suite("Language Client Integration Suite", function () {
                 expect(referenceUris).to.contain(uri);
             }
         });
-        test("Find All References excludes declaration when setting is false", async function () {
+        test("Find All References excludes declaration when setting is never", async function () {
             const config = vscode.workspace.getConfiguration("swift.sourcekit-lsp");
             await config.update(
                 "includeDeclarationInFindAllReferences",
-                false,
+                "never",
                 vscode.ConfigurationTarget.Workspace
             );
             try {
