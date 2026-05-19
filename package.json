@@ -971,6 +971,23 @@
             "order": 6,
             "scope": "machine-overridable"
           },
+          "swift.sourcekit-lsp.includeDeclarationInFindAllReferences": {
+            "type": "string",
+            "default": "default",
+            "enum": [
+              "default",
+              "always",
+              "never"
+            ],
+            "enumDescriptions": [
+              "Use the value sent by VS Code.",
+              "Always include the symbol declaration in `Find All References` results.",
+              "Never include the symbol declaration in `Find All References` results."
+            ],
+            "markdownDescription": "Controls whether the symbol declaration is included in the results of `Find All References`.",
+            "order": 7,
+            "scope": "machine-overridable"
+          },
           "sourcekit-lsp.inlayHints.enabled": {
             "type": "boolean",
             "default": true,
