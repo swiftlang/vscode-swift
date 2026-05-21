@@ -5,6 +5,7 @@
 ### Added
 
 - Add `swift.sourcekit-lsp.includeDeclarationInFindAllReferences` setting to control whether the symbol declaration is included in Find All References results ([#2236](https://github.com/swiftlang/vscode-swift/pull/2236))
+- Add support for [swift-testing warnings](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0013-issue-severity-warning.md) ([#2244](https://github.com/swiftlang/vscode-swift/pull/2244))
 
 ### Fixed
 
