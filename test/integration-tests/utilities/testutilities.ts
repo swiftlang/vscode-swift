@@ -29,6 +29,7 @@ import { fileExists } from "@src/utilities/filesystem";
 import { Version } from "@src/utilities/version";
 
 import { testAssetPath, testAssetUri } from "../../fixtures";
+import { attachCapturedLogs } from "../../reporters/utilities";
 import { closeAllEditors } from "../../utilities/commands";
 import { waitForNoRunningTasks } from "../../utilities/tasks";
 
@@ -38,19 +39,7 @@ export function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     return result;
 }
 
-interface Loggable {
-    get logs(): string[];
-}
-
-function printLogs(logger: Loggable, message: string) {
-    console.error(`${message}, captured logs are:`);
-    logger.logs.forEach(log => console.log(log));
-    console.log("======== END OF LOGS ========\n");
-}
-
-// Until the logger on the WorkspaceContext is available we capture logs here.
-// Once it becomes available (via setLogger) we forward logs to that logger to maintain ordering.
-class ExtensionActivationLogger implements Loggable {
+class ExtensionActivationLogger {
     private logger: SwiftLogger | undefined;
     private _logs: string[] = [];
 
@@ -106,11 +95,15 @@ class ExtensionActivationLogger implements Loggable {
 // Mocha doesn't give us a hook to run code when a before block times out.
 // This utility method can be used to dump logs right before the before block times out.
 // Ensure you pass in a timeout that is slightly less than mocha's `before` timeout.
-function configureLogDumpOnTimeout(timeout: number, logger: ExtensionActivationLogger) {
+function configureLogDumpOnTimeout(
+    timeout: number,
+    logger: ExtensionActivationLogger,
+    test: Mocha.Runnable | undefined
+): NodeJS.Timeout {
     return setTimeout(
         () => {
             logger.info(`Activating extension timed out!`);
-            printLogs(logger, "Activating extension exceeded the timeout");
+            attachCapturedLogs(test, logger.logs);
         },
         Math.max(0, timeout - 300)
     );
@@ -151,7 +144,7 @@ const extensionBootstrapper = (() => {
 
             // Mocha doesn't give us a hook to run code when a before block times out, so
             // we set a timeout to just before mocha's so we have time to print the logs.
-            const timer = configureLogDumpOnTimeout(SETUP_TIMEOUT_MS, activationLogger);
+            const timer = configureLogDumpOnTimeout(SETUP_TIMEOUT_MS, activationLogger, this.test);
 
             activationLogger.info(`Begin activating extension`);
 
@@ -231,7 +224,7 @@ const extensionBootstrapper = (() => {
             } catch (error: any) {
                 // Mocha will throw an error to break out of a test if `.skip` is used.
                 if (error.message?.indexOf("sync skip;") === -1) {
-                    printLogs(activationLogger, "Error during test/suite setup");
+                    attachCapturedLogs(this.test, activationLogger.logs);
                 }
                 throw error;
             } finally {
@@ -248,7 +241,7 @@ const extensionBootstrapper = (() => {
 
         mocha.afterEach(async function () {
             if (this.currentTest && activatedAPI && this.currentTest.isFailed()) {
-                printLogs(activationLogger, `Test failed: ${testTitle(this.currentTest)}`);
+                attachCapturedLogs(this.currentTest, activationLogger.logs);
             }
             if (vscode.debug.activeDebugSession) {
                 await vscode.debug.stopDebugging(vscode.debug.activeDebugSession);
@@ -259,7 +252,11 @@ const extensionBootstrapper = (() => {
             // Allow enough time for the extension to deactivate
             this.timeout(TEARDOWN_TIMEOUT_MS);
 
-            const timer = configureLogDumpOnTimeout(TEARDOWN_TIMEOUT_MS, activationLogger);
+            const timer = configureLogDumpOnTimeout(
+                TEARDOWN_TIMEOUT_MS,
+                activationLogger,
+                this.test
+            );
 
             activationLogger.info("Deactivating extension...");
 
@@ -279,7 +276,7 @@ const extensionBootstrapper = (() => {
                 }
             } catch (error) {
                 if (workspaceContext) {
-                    printLogs(activationLogger, "Error during test/suite teardown");
+                    attachCapturedLogs(this.test, activationLogger.logs);
                 }
                 // We always want to restore settings and deactivate the extension even if the
                 // user supplied teardown fails. That way we have the best chance at not causing
@@ -360,10 +357,7 @@ const extensionBootstrapper = (() => {
             }
 
             if (!workspaceContext) {
-                printLogs(
-                    activationLogger,
-                    "Error during test/suite setup, workspace context could not be created"
-                );
+                attachCapturedLogs(currentTest, activationLogger.logs);
                 throw new Error("Extension did not activate. Workspace context is not available.");
             }
 
