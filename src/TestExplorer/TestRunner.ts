@@ -1191,6 +1191,14 @@ export class TestRunnerTestRunState implements ITestRunState {
         this.issues.set(index, issueList);
     }
 
+    recordWarning(index: number, message: string, location?: vscode.Location) {
+        if (this.isUnknownTest(index)) {
+            return;
+        }
+        const test = this.testRun.testItems[index];
+        this.testRun.recordWarning(test, message, location);
+    }
+
     // set test item to have been skipped
     skipped(index: number) {
         if (this.isUnknownTest(index)) {

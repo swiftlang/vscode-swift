@@ -391,7 +391,18 @@ export class SwiftTestingOutputParser {
             .map(message => MessageRenderer.render(message))
             .join("\n");
 
-        if (payload.issue.isFailure === false && !payload.issue.isKnown) {
+        const isWarning =
+            payload.issue.severity === "warning" ||
+            (payload.issue.isFailure === false && !payload.issue.isKnown);
+
+        if (isWarning) {
+            issues.forEach(message => {
+                const text =
+                    additionalDetails.length > 0
+                        ? `${MessageRenderer.render(message)}: ${additionalDetails}`
+                        : MessageRenderer.render(message);
+                runState.recordWarning(testIndex, text, location);
+            });
             return;
         }
 

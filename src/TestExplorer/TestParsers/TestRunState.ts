@@ -57,6 +57,10 @@ export interface ITestRunState {
         diff?: TestIssueDiff
     ): void;
 
+    // record a non-failing warning against a test. Warnings are surfaced via the
+    // test run output panel and as editor diagnostics, but do not mark the test as failed.
+    recordWarning(index: number, message: string, location?: vscode.Location): void;
+
     // set test index to have been skipped
     skipped(index: number): void;
 

@@ -161,6 +161,9 @@ class ParallelXCTestRunStateProxy implements ITestRunState {
     ): void {
         this.runState.recordIssue(index, message, isKnown, location);
     }
+    recordWarning(index: number, message: string, location?: Location | undefined): void {
+        this.runState.recordWarning(index, message, location);
+    }
     started(index: number, startTime?: number | undefined): void {}
     completed(index: number, timing: { duration: number } | { timestamp: number }): void {}
     skipped(index: number): void {}
