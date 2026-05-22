@@ -109,7 +109,7 @@ const SwiftlyListAvailableResult = z.object({
 });
 
 const InUseVersionResult = z.object({
-    version: z.string(),
+    version: z.optional(z.string()),
 });
 
 const SwiftlyProgressData = z.object({
@@ -565,6 +565,7 @@ export class Swiftly {
      */
     public static async inUseVersion(
         swiftlyPath: string = "swiftly",
+        logger?: SwiftLogger,
         cwd?: vscode.Uri
     ): Promise<string | undefined> {
         if (!this.isSupported()) {
@@ -578,8 +579,20 @@ export class Swiftly {
         const { stdout } = await execFile(swiftlyPath, ["use", "--format=json"], {
             cwd: cwd?.fsPath,
         });
-        const result = InUseVersionResult.parse(JSON.parse(stdout));
-        return result.version;
+        if (stdout.trim() === "") {
+            return undefined;
+        }
+        try {
+            const result = InUseVersionResult.parse(JSON.parse(stdout));
+            return result.version;
+        } catch (error) {
+            logger?.error(
+                Error(`Failed to parse swiftly JSON output: ${JSON.stringify(stdout)}`, {
+                    cause: error,
+                })
+            );
+            return undefined;
+        }
     }
 
     /**
