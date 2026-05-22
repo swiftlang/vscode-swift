@@ -12,6 +12,7 @@
 - Run toolchain executables via `swiftly run <tool>` when the active toolchain is managed by swiftly ([#2177](https://github.com/swiftlang/vscode-swift/pull/2177))
 - Fix swift.buildPath being ignored by swift package plugin tasks ([#2235](https://github.com/swiftlang/vscode-swift/pull/2235))
 - Fix nightly toolchains providing a value to `--swift-testing-event-stream-version` that swift-testing doesn't support ([#2247](https://github.com/swiftlang/vscode-swift/pull/2247))
+- Fix error during toolchain selection when swiftly has no active toolchain ([#2246](https://github.com/swiftlang/vscode-swift/pull/2246))
 
 ## 2.16.4 - 2026-04-21
 
