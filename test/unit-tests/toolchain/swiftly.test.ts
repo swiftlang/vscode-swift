@@ -125,6 +125,59 @@ suite("Swiftly Unit Tests", () => {
         });
     });
 
+    suite("inUseVersion()", () => {
+        let mockLogger: SwiftLogger;
+
+        setup(() => {
+            mockLogger = instance(
+                mockObject<SwiftLogger>({
+                    error: mockFn(),
+                })
+            );
+            // Mock version check to return 1.1.1
+            mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
+                stdout: "1.1.1\n",
+                stderr: "",
+            });
+        });
+
+        test("returns the version of the active toolchain as reported by swiftly", async () => {
+            mockUtilities.execFile.withArgs("swiftly", ["use", "--format=json"]).resolves({
+                stdout: '{ "source" : { "globalDefault" : {} }, "version" : "6.3.2" }',
+                stderr: "",
+            });
+            expect(await Swiftly.inUseVersion("swiftly", mockLogger)).to.equal("6.3.2");
+            expect(mockLogger.error).to.not.have.been.called;
+        });
+
+        test("returns undefined if swiftly reports no toolchain version", async () => {
+            mockUtilities.execFile.withArgs("swiftly", ["use", "--format=json"]).resolves({
+                stdout: '{ "source" : { "globalDefault" : {} } }',
+                stderr: "",
+            });
+            expect(await Swiftly.inUseVersion("swiftly", mockLogger)).to.be.undefined;
+            expect(mockLogger.error).to.not.have.been.called;
+        });
+
+        test("returns undefined if swiftly gives empty output", async () => {
+            mockUtilities.execFile.withArgs("swiftly", ["use", "--format=json"]).resolves({
+                stdout: " ",
+                stderr: "",
+            });
+            expect(await Swiftly.inUseVersion("swiftly", mockLogger)).to.be.undefined;
+            expect(mockLogger.error).to.not.have.been.called;
+        });
+
+        test("returns undefined and logs an error if swiftly reports malformed JSON", async () => {
+            mockUtilities.execFile.withArgs("swiftly", ["use", "--format=json"]).resolves({
+                stdout: "{",
+                stderr: "",
+            });
+            expect(await Swiftly.inUseVersion("swiftly", mockLogger)).to.be.undefined;
+            expect(mockLogger.error).to.have.been.calledOnce;
+        });
+    });
+
     suite("list()", () => {
         test("should return toolchain names and locations from list command for version 1.1.0", async () => {
             // Mock version check to return 1.1.0
