@@ -52,6 +52,29 @@ export function effectiveBuildSystem(
     );
 }
 
+/**
+ * The highest swift-testing event stream version supported by this extension.
+ * Toolchains newer than this are clamped down so we don't pass a version that
+ * swift-testing in the toolchain doesn't yet understand.
+ */
+const MAX_SUPPORTED_SWIFT_TESTING_EVENT_STREAM_VERSION = new Version(6, 4, 0);
+
+/**
+ * Returns the value to pass to `--experimental-event-stream-version`.
+ * For Swift < 6.3 the version is `"0"`. For Swift >= 6.3 the version
+ * matches the toolchain `major.minor`, capped at the highest version
+ * this extension supports.
+ */
+export function swiftTestingEventStreamVersion(swiftVersion: Version): string {
+    if (swiftVersion.isLessThan(new Version(6, 3, 0))) {
+        return "0";
+    }
+    const capped = swiftVersion.isGreaterThan(MAX_SUPPORTED_SWIFT_TESTING_EVENT_STREAM_VERSION)
+        ? MAX_SUPPORTED_SWIFT_TESTING_EVENT_STREAM_VERSION
+        : swiftVersion;
+    return `${capped.major}.${capped.minor}`;
+}
+
 export function groupTestsByTarget(
     testArgs: readonly string[],
     c99ToName?: ReadonlyMap<string, string>
@@ -528,11 +551,9 @@ export class TestingConfigurationFactory {
             );
         }
 
-        // Starting in 6.3 the version string should match the toolchain version.
-        let versionString = "0";
-        if (this.ctx.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(6, 3, 0))) {
-            versionString = `${this.ctx.toolchain.swiftVersion.major}.${this.ctx.toolchain.swiftVersion.minor}`;
-        }
+        // Starting in 6.3 the version string should match the toolchain version,
+        // capped at the highest version this extension supports.
+        const versionString = swiftTestingEventStreamVersion(this.ctx.toolchain.swiftVersion);
 
         const swiftTestingArgs = [
             ...this.ctx.toolchain.buildFlags.withAdditionalFlags(args),

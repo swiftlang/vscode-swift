@@ -26,6 +26,7 @@ import {
     TestingConfigurationFactory,
     effectiveBuildSystem,
     groupTestsByTarget,
+    swiftTestingEventStreamVersion,
 } from "@src/debugger/buildConfig";
 import { BuildFlags } from "@src/toolchain/BuildFlags";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
@@ -350,6 +351,27 @@ suite("BuildConfig Test Suite", () => {
             expect(
                 effectiveBuildSystem(new Version(6, 4, 0), ["--build-system", "xcodebuild"])
             ).to.equal("swiftbuild");
+        });
+    });
+
+    suite("swiftTestingEventStreamVersion", () => {
+        test('returns "0" for Swift < 6.3.0', () => {
+            expect(swiftTestingEventStreamVersion(new Version(6, 2, 0))).to.equal("0");
+            expect(swiftTestingEventStreamVersion(new Version(6, 0, 0))).to.equal("0");
+            expect(swiftTestingEventStreamVersion(new Version(5, 9, 0))).to.equal("0");
+        });
+
+        test("returns toolchain major.minor for Swift 6.3.0", () => {
+            expect(swiftTestingEventStreamVersion(new Version(6, 3, 0))).to.equal("6.3");
+        });
+
+        test("returns toolchain major.minor for Swift 6.4.0", () => {
+            expect(swiftTestingEventStreamVersion(new Version(6, 4, 0))).to.equal("6.4");
+        });
+
+        test("caps at 6.4 for Swift > 6.4 (highest supported by this plugin)", () => {
+            expect(swiftTestingEventStreamVersion(new Version(6, 5, 0))).to.equal("6.4");
+            expect(swiftTestingEventStreamVersion(new Version(7, 0, 0))).to.equal("6.4");
         });
     });
 
