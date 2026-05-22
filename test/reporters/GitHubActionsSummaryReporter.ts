@@ -132,7 +132,8 @@ function prettyPrint(obj: unknown, options: { multiline: boolean } = { multiline
     }
 
     const spaces = options.multiline ? 2 : undefined;
-    return JSON.stringify(obj, undefined, spaces).replaceAll(/\r?\n/g, EOL);
+    const prettyPrintedObj = JSON.stringify(obj, undefined, spaces) ?? "";
+    return prettyPrintedObj.replaceAll(/\r?\n/g, EOL);
 }
 
 function generateDiff(error: AssertionError) {
