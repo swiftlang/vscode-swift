@@ -11,6 +11,7 @@
 - Fix swift-testing timeout when doing a Run All tests w/ multiple test targets when using swift-build ([#2207](https://github.com/swiftlang/vscode-swift/pull/2207))
 - Run toolchain executables via `swiftly run <tool>` when the active toolchain is managed by swiftly ([#2177](https://github.com/swiftlang/vscode-swift/pull/2177))
 - Fix swift.buildPath being ignored by swift package plugin tasks ([#2235](https://github.com/swiftlang/vscode-swift/pull/2235))
+- Fix nightly toolchains providing a value to `--swift-testing-event-stream-version` that swift-testing doesn't support ([#2247](https://github.com/swiftlang/vscode-swift/pull/2247))
 
 ## 2.16.4 - 2026-04-21
 
