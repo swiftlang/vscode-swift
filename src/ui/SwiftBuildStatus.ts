@@ -160,6 +160,11 @@ export class SwiftBuildStatus implements Disposable {
                     started = true;
                     return false;
                 }
+                if (this.checkIfPlanning(line)) {
+                    update({ message: `${name}: Planning...` });
+                    started = true;
+                    return false;
+                }
             }
             return false;
         };
@@ -194,8 +199,13 @@ export class SwiftBuildStatus implements Disposable {
         return !!fetchRegex.exec(line);
     }
 
+    private checkIfPlanning(line: string): boolean {
+        const planningRegex = /^\[Planning\b/g;
+        return !!planningRegex.exec(line);
+    }
+
     private findBuildProgress(line: string): SwiftProgress | undefined {
-        const buildingRegex = /^\[(\d+)\/(\d+)\]/g;
+        const buildingRegex = /^\[(\d+)\s*\/\s*(\d+)\]/g;
         const match = buildingRegex.exec(line);
         if (match) {
             return { completed: parseInt(match[1]), total: parseInt(match[2]) };

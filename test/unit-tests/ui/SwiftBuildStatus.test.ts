@@ -260,4 +260,35 @@ suite("SwiftBuildStatus Unit Test Suite", function () {
         // Report only the preparing message
         expect(mockedProgress.report).to.have.been.calledWith({ message: "My Task: Preparing..." });
     });
+
+    test("Parses progress with spaces around the slash (newer toolchains)", async () => {
+        configurationMock.setValue("progress");
+        buildStatus = new SwiftBuildStatus();
+        await didStartTaskMock.fire({ execution: mockedTaskExecution });
+
+        // swift-build emits a U+2009 THIN SPACE on either side of the slash
+        // via activityMessageFractionString; SwiftPM forwards it verbatim.
+        testSwiftProcess.write("[191 / 195] SimpleLibraryTests-product\n");
+        expect(mockedProgress.report).to.have.been.calledWith({
+            message: "My Task: [191/195]",
+            increment: 97,
+        });
+    });
+
+    test("Reports Planning status during planning phase, then switches to progress", async () => {
+        configurationMock.setValue("progress");
+        buildStatus = new SwiftBuildStatus();
+        await didStartTaskMock.fire({ execution: mockedTaskExecution });
+
+        testSwiftProcess.write("[Planning 123 / 124]\n[Planning deferred tasks]\n");
+        expect(mockedProgress.report).to.have.been.calledWith({
+            message: "My Task: Planning...",
+        });
+
+        testSwiftProcess.write("[36 / 75]\n");
+        expect(mockedProgress.report).to.have.been.calledWith({
+            message: "My Task: [36/75]",
+            increment: 48,
+        });
+    });
 });

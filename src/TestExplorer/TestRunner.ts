@@ -587,8 +587,8 @@ export class TestRunner {
 
             task.execution.onDidWrite(str => {
                 const replaced = str
-                    .replace("[1/1] Planning build", "") // Work around SPM still emitting progress when doing --no-build.
-                    .replace(/\[1\/1\] Write swift-version-.*/gm, "")
+                    .replace(/\[1\s*\/\s*1\] Planning build/g, "") // Work around SPM still emitting progress when doing --no-build.
+                    .replace(/\[1\s*\/\s*1\] Write swift-version-.*/gm, "")
                     .replace(
                         /LLVM Profile Error: Failed to write file "default.profraw": Operation not permitted\r\n/gm,
                         ""
