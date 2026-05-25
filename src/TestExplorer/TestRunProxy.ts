@@ -35,6 +35,10 @@ function getWarningDiagnostics(): vscode.DiagnosticCollection {
     return warningDiagnostics;
 }
 
+export function clearTestWarningDiagnostics(): void {
+    warningDiagnostics?.clear();
+}
+
 /**
  * Test only structure that stores the state of test items.
  */
@@ -433,10 +437,7 @@ export class TestRunProxy implements vscode.CancellationToken {
     }
 
     private clearWarningDiagnostics() {
-        if (!warningDiagnostics) {
-            return;
-        }
-        warningDiagnostics.clear();
+        clearTestWarningDiagnostics();
         this.warningDiagnosticUris.clear();
     }
 

@@ -16,6 +16,7 @@ import * as vscode from "vscode";
 
 import { debugSnippet, runSnippet } from "./SwiftSnippets";
 import { TestKind } from "./TestExplorer/TestKind";
+import { clearTestWarningDiagnostics } from "./TestExplorer/TestRunProxy";
 import { WorkspaceContext } from "./WorkspaceContext";
 import { attachDebugger } from "./commands/attachDebugger";
 import { cleanBuild, debugBuild, runBuild } from "./commands/build";
@@ -295,9 +296,10 @@ export function register(ctx: WorkspaceContext): Disposable[] {
             }
         }),
         vscode.commands.registerCommand("swift.attachDebugger", attachDebugger),
-        vscode.commands.registerCommand("swift.clearDiagnosticsCollection", () =>
-            ctx.diagnostics.clear()
-        ),
+        vscode.commands.registerCommand("swift.clearDiagnosticsCollection", () => {
+            ctx.diagnostics.clear();
+            clearTestWarningDiagnostics();
+        }),
         vscode.commands.registerCommand(
             "swift.captureDiagnostics",
             async () => await captureDiagnostics(ctx)
