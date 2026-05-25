@@ -119,7 +119,7 @@ interface PackageResolvedPinFileV2 {
 }
 
 /** workspace-state.json file */
-interface WorkspaceState {
+export interface WorkspaceState {
     object: { dependencies: WorkspaceStateDependency[] };
     version: number;
 }
@@ -169,6 +169,7 @@ export class SwiftPackage implements ExternalSwiftPackage, Disposable {
     private contentsPromise: Promise<SwiftPackageState>;
     private contentsResolve: (value: SwiftPackageState | PromiseLike<SwiftPackageState>) => void;
     private tokenSource: vscode.CancellationTokenSource = new vscode.CancellationTokenSource();
+    private pluginLoadQueue: Promise<void> = Promise.resolve();
 
     /**
      * SwiftPackage Constructor
@@ -376,12 +377,25 @@ export class SwiftPackage implements ExternalSwiftPackage, Disposable {
         logger: SwiftLogger,
         disableSwiftPMIntegration: boolean = false
     ) {
-        this.plugins = await SwiftPackage.loadPlugins(
-            this.folder,
-            toolchain,
-            logger,
-            disableSwiftPMIntegration
-        );
+        // Serialize concurrent invocations so each call observes a consistent
+        // (plugins, workspaceState) pair from the SAME SwiftPM resolve. Read
+        // workspace-state.json BEFORE assigning either field, since `swift
+        // package plugin --list` regenerates it as a side effect and trusted-plugin
+        // URL checks (see TrustedPlugins.ts) require the two fields to move
+        // together.
+        const next = this.pluginLoadQueue.then(async () => {
+            const newPlugins = await SwiftPackage.loadPlugins(
+                this.folder,
+                toolchain,
+                logger,
+                disableSwiftPMIntegration
+            );
+            const newWorkspaceState = await SwiftPackage.loadWorkspaceState(this.folder);
+            this.plugins = newPlugins;
+            this.workspaceState = newWorkspaceState;
+        });
+        this.pluginLoadQueue = next.catch(() => undefined);
+        await next;
     }
 
     /** Return if has valid contents */

@@ -283,7 +283,6 @@ function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise
                     async () => {
                         await folder.loadSwiftPlugins(logger);
                         workspace.contextKeys.updateForPlugins(workspace.folders);
-                        await folder.fireEvent(FolderOperation.pluginsUpdated);
                     }
                 );
             }

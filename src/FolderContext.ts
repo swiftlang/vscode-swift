@@ -237,6 +237,10 @@ export class FolderContext implements ExternalFolderContext, Disposable {
             logger,
             configuration.disableSwiftPMIntegration
         );
+        // The load mutates `plugins` and `workspaceState` together (see
+        // TrustedPlugins.ts); fire both events so subscribers stay in sync.
+        await this.fireEvent(FolderOperation.pluginsUpdated);
+        await this.fireEvent(FolderOperation.workspaceStateUpdated);
     }
 
     /**

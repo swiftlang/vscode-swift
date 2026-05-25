@@ -14,7 +14,7 @@
 import * as path from "path";
 import * as vscode from "vscode";
 
-import { PackagePlugin } from "../SwiftPackage";
+import { PackagePlugin, WorkspaceState } from "../SwiftPackage";
 import { WorkspaceContext } from "../WorkspaceContext";
 import configuration, {
     PluginPermissionConfiguration,
@@ -25,6 +25,13 @@ import { SwiftToolchain } from "../toolchain/toolchain";
 import { packageName, resolveTaskCwd } from "../utilities/tasks";
 import { swiftRuntimeEnv } from "../utilities/utilities";
 import { SwiftTask } from "./SwiftTaskProvider";
+import { PluginPermissions, getTrustedPluginPermissions } from "./TrustedPlugins";
+
+const NO_TRUSTED_PERMISSIONS: Required<PluginPermissions> = {
+    disableSandbox: false,
+    allowWritingToPackageDirectory: false,
+    disableTaskQueue: false,
+};
 
 // Interface class for defining task configuration
 interface TaskConfig {
@@ -32,6 +39,7 @@ interface TaskConfig {
     scope: vscode.WorkspaceFolder;
     presentationOptions?: vscode.TaskPresentationOptions;
     packageName?: string;
+    workspaceState?: WorkspaceState;
 }
 
 /**
@@ -63,6 +71,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
                             reveal: vscode.TaskRevealKind.Always,
                         },
                         packageName: packageName(folderContext),
+                        workspaceState: folderContext.swiftPackage.workspaceState,
                     })
                 );
             }
@@ -128,7 +137,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         // Add relative path current working directory
         const relativeCwd = path.relative(config.scope.uri.fsPath, config.cwd.fsPath);
         const taskDefinitionCwd = relativeCwd !== "" ? relativeCwd : undefined;
-        const definition = this.getTaskDefinition(plugin, taskDefinitionCwd);
+        const definition = this.getTaskDefinition(plugin, taskDefinitionCwd, config.workspaceState);
         let swiftArgs = [
             "package",
             ...this.pluginArgumentsFromConfiguration(config.scope, definition, plugin),
@@ -156,51 +165,19 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         return task as SwiftTask;
     }
 
-    /**
-     * Get task definition for a command plugin
-     */
     private getTaskDefinition(
         plugin: PackagePlugin,
-        cwd: string | undefined
+        cwd: string | undefined,
+        workspaceState: WorkspaceState | undefined
     ): vscode.TaskDefinition {
-        const definition = {
+        return {
             type: "swift-plugin",
             command: plugin.command,
             args: [],
-            disableSandbox: false,
-            allowWritingToPackageDirectory: false,
             cwd,
-            disableTaskQueue: false,
+            ...NO_TRUSTED_PERMISSIONS,
+            ...getTrustedPluginPermissions(plugin, workspaceState),
         };
-        // There are common command plugins used across the package eco-system eg for docc generation
-        // Everytime these are run they need the same default setup.
-        switch (`${plugin.package}, ${plugin.command}`) {
-            case "swift-aws-lambda-runtime, archive":
-                definition.disableSandbox = true;
-                definition.disableTaskQueue = true;
-                break;
-
-            case "SwiftDocCPlugin, generate-documentation":
-                definition.allowWritingToPackageDirectory = true;
-                break;
-
-            case "SwiftDocCPlugin, preview-documentation":
-                definition.disableSandbox = true;
-                definition.allowWritingToPackageDirectory = true;
-                break;
-
-            case "SwiftFormat, swiftformat":
-                definition.allowWritingToPackageDirectory = true;
-                break;
-
-            case "swift-format, format-source-code":
-                definition.allowWritingToPackageDirectory = true;
-                break;
-
-            default:
-                break;
-        }
-        return definition;
     }
 
     /**
