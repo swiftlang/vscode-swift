@@ -26,6 +26,19 @@ import { reduceTestItemChildren } from "./TestUtils";
 
 import stripAnsi = require("strip-ansi");
 
+let warningDiagnostics: vscode.DiagnosticCollection | undefined;
+
+function getWarningDiagnostics(): vscode.DiagnosticCollection {
+    if (!warningDiagnostics) {
+        warningDiagnostics = vscode.languages.createDiagnosticCollection("swift-test-warnings");
+    }
+    return warningDiagnostics;
+}
+
+export function clearTestWarningDiagnostics(): void {
+    warningDiagnostics?.clear();
+}
+
 /**
  * Test only structure that stores the state of test items.
  */
@@ -58,6 +71,7 @@ export class TestRunProxy implements vscode.CancellationToken {
     private testRunCompleteEmitter = new vscode.EventEmitter<void>();
     private coverage: TestCoverage;
     private _testItems: vscode.TestItem[];
+    private warningDiagnosticUris = new Set<string>();
 
     /**
      * The list of test items for this test run
@@ -129,6 +143,7 @@ export class TestRunProxy implements vscode.CancellationToken {
 
         this.runStarted = true;
         this.resetTags(this.controller);
+        this.clearWarningDiagnostics();
 
         this.testRun = this.controller.createTestRun(this.testRunRequest);
         this.token.add(this.testRun.token);
@@ -389,6 +404,41 @@ export class TestRunProxy implements vscode.CancellationToken {
      */
     public appendOutputToTest(output: string, test: vscode.TestItem, location?: vscode.Location) {
         this.performAppendOutput(output, test, location);
+    }
+
+    /**
+     * Records a warning against a test. The warning is surfaced both in the test
+     * results output panel and as a `vscode.DiagnosticSeverity.Warning` diagnostic
+     * in the editor. The test itself is not marked as failed.
+     * @param test The test the warning is associated with.
+     * @param message The warning message.
+     * @param location Optional source location of the warning.
+     */
+    public recordWarning(test: vscode.TestItem, message: string, location?: vscode.Location) {
+        const symbol = SymbolRenderer.eventMessageSymbol(TestSymbol.warning);
+        const colored = `${SymbolRenderer.ansiEscapeCodePrefix}33m${message}${SymbolRenderer.resetANSIEscapeCode}`;
+
+        this.testRun?.appendOutput(`${symbol} ${colored}\r\n`, location, test);
+
+        if (!location) {
+            return;
+        }
+
+        const diagnostic = new vscode.Diagnostic(
+            location.range,
+            message,
+            vscode.DiagnosticSeverity.Warning
+        );
+        diagnostic.source = "swift-testing";
+        const collection = getWarningDiagnostics();
+        const existing = collection.get(location.uri) ?? [];
+        collection.set(location.uri, [...existing, diagnostic]);
+        this.warningDiagnosticUris.add(location.uri.toString());
+    }
+
+    private clearWarningDiagnostics() {
+        clearTestWarningDiagnostics();
+        this.warningDiagnosticUris.clear();
     }
 
     private enqueued(test: vscode.TestItem) {
