@@ -58,17 +58,15 @@ suite("SwiftToolchain Unit Test Suite", () => {
             expect(inv.args).to.deep.equal(["build", "--configuration", "debug"]);
         });
 
-        test("xcrun toolchain returns direct binary path with caller args", () => {
+        test("xcrun toolchain wraps as xcrun <tool>", () => {
             mockedPlatform.setValue("darwin");
             const tc = createToolchain(
                 "xcrun",
                 "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr"
             );
             const inv = tc.getToolchainInvocation("swift", ["package", "describe"]);
-            expect(inv.command).to.equalPath(
-                "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift"
-            );
-            expect(inv.args).to.deep.equal(["package", "describe"]);
+            expect(inv.command).to.equalPath("xcrun");
+            expect(inv.args).to.deep.equal(["swift", "package", "describe"]);
         });
 
         test("swiftly toolchain wraps as swiftly run <tool>", () => {

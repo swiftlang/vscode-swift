@@ -405,10 +405,14 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
      * @param args Arguments to pass to the executable (after any manager prefix).
      */
     public getToolchainInvocation(executable: string, args: string[]): ToolchainInvocation {
-        if (this.manager === "swiftly") {
-            return { command: "swiftly", args: ["run", executable, ...args] };
+        switch (this.manager) {
+            case "swiftly":
+                return { command: "swiftly", args: ["run", executable, ...args] };
+            case "xcrun":
+                return { command: "xcrun", args: [executable, ...args] };
+            default:
+                return { command: this.getToolchainExecutablePath(executable), args };
         }
-        return { command: this.getToolchainExecutablePath(executable), args };
     }
 
     private static _getToolchainExecutable(toolchainPath: string, executable: string): string {
