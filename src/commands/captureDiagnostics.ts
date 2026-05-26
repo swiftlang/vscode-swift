@@ -11,7 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import * as archiver from "archiver";
+import { Archiver, ZipArchive } from "archiver";
 import { exec } from "child_process";
 import * as fs from "fs";
 import * as fsPromises from "fs/promises";
@@ -178,14 +178,12 @@ async function captureFolderLldbDapLogs(
 }
 
 function configureZipArchiver(zipFilePath: string): {
-    archive: archiver.Archiver;
+    archive: Archiver;
     done: Promise<void>;
 } {
     const output = fs.createWriteStream(zipFilePath);
     // Create an archive with max compression
-    const archive = archiver.create("zip", {
-        zlib: { level: 9 },
-    });
+    const archive = new ZipArchive({ zlib: { level: 9 } });
     const { promise, resolve, reject } = destructuredPromise<void>();
     output.once("close", () => {
         archive.removeListener("error", reject);
