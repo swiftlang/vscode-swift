@@ -24,6 +24,7 @@ import { FolderContext } from "../FolderContext";
 import { WorkspaceContext } from "../WorkspaceContext";
 import configuration from "../configuration";
 import { DebugAdapter } from "../debugger/debugAdapter";
+import { showErrorMessageWithLogs } from "../ui/showErrorWithLogs";
 import { Extension } from "../utilities/extensions";
 import { destructuredPromise, execFileStreamOutput, randomString } from "../utilities/utilities";
 import { Version } from "../utilities/version";
@@ -80,7 +81,11 @@ export async function captureDiagnostics(
 
         return zipFilePath;
     } catch (error) {
-        void vscode.window.showErrorMessage(`Unable to capture diagnostic logs: ${error}`);
+        ctx.logger.error(Error("Failed to capture diagnostics bundle.", { cause: error }));
+        void showErrorMessageWithLogs(
+            ctx,
+            "Unable to capture diagnostic bundle. See logs for more information."
+        );
     }
 }
 

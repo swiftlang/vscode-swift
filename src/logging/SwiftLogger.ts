@@ -95,6 +95,10 @@ export class SwiftLogger implements Disposable {
         );
     }
 
+    showOutputChannel(): void {
+        this.outputChannel.show();
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     debug(message: any, label?: string, options?: LogMessageOptions) {
         const normalizedMessage = this.normalizeMessage(message, label);
