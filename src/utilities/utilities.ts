@@ -145,10 +145,9 @@ export async function execFile(
     folderContext?: FolderContext,
     customSwiftRuntime = true
 ): Promise<{ stdout: string; stderr: string }> {
-    folderContext?.workspaceContext.logger.debug(
-        `Exec: ${executable} ${args.join(" ")}`,
-        folderContext.name
-    );
+    folderContext?.workspaceContext.logger.debug(`Exec: ${executable} ${args.join(" ")}`, {
+        label: folderContext.name,
+    });
     if (customSwiftRuntime) {
         const runtimeEnv = swiftRuntimeEnv(options.env);
         if (runtimeEnv && Object.keys(runtimeEnv).length > 0) {
@@ -212,10 +211,9 @@ export async function execFileStreamOutput(
     customSwiftRuntime = true,
     killSignal: NodeJS.Signals = "SIGTERM"
 ): Promise<void> {
-    folderContext?.workspaceContext.logger.debug(
-        `Exec: ${executable} ${args.join(" ")}`,
-        folderContext.name
-    );
+    folderContext?.workspaceContext.logger.debug(`Exec: ${executable} ${args.join(" ")}`, {
+        label: folderContext.name,
+    });
     if (customSwiftRuntime) {
         const runtimeEnv = swiftRuntimeEnv(options.env);
         if (runtimeEnv && Object.keys(runtimeEnv).length > 0) {

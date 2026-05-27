@@ -95,16 +95,15 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
     private observers = new Set<(listener: FolderEvent) => unknown>();
     private swiftFileObservers = new Set<(listener: SwiftFileEvent) => unknown>();
 
-    public loggerFactory: SwiftLoggerFactory;
-
     constructor(
         public extensionContext: vscode.ExtensionContext,
         public contextKeys: ContextKeys,
+        private outputChannel: vscode.OutputChannel,
+        public loggerFactory: SwiftLoggerFactory,
         public logger: SwiftLogger,
         public globalToolchain: SwiftToolchain
     ) {
         this.testRunManager = new TestRunManager();
-        this.loggerFactory = new SwiftLoggerFactory(extensionContext.logUri);
         this.statusItem = new StatusItem();
         this.buildStatus = new SwiftBuildStatus(this.statusItem);
         this.languageClientManager = new LanguageClientToolchainCoordinator(this, {
@@ -116,7 +115,7 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
             },
         });
         this.tasks = new TaskManager(this);
-        this.diagnostics = new DiagnosticsManager(this);
+        this.diagnostics = new DiagnosticsManager(this.logger);
         this.taskProvider = new SwiftTaskProvider(this);
         this.pluginProvider = new SwiftPluginTaskProvider(this);
         this.documentation = new DocumentationManager(extensionContext, this);
@@ -253,6 +252,10 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
         this.lastFocusUri = vscode.window.activeTextEditor?.document.uri;
 
         this.setupEventListeners();
+    }
+
+    showSwiftOutputChannel(): void {
+        this.outputChannel.show();
     }
 
     async dispose(): Promise<void> {
