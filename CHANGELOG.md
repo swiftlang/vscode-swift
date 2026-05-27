@@ -2,6 +2,8 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+## 2.16.5 - 2026-05-26
+
 ### Added
 
 - Add `swift.sourcekit-lsp.includeDeclarationInFindAllReferences` setting to control whether the symbol declaration is included in Find All References results ([#2236](https://github.com/swiftlang/vscode-swift/pull/2236))
