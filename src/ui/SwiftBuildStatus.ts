@@ -41,7 +41,7 @@ export class SwiftBuildStatus implements Disposable {
     private lockedRegex = /Another instance of SwiftPM \(PID: \d+\) is already running/g;
     private debt = 0;
 
-    constructor() {
+    constructor(private statusItem: StatusItem) {
         this.onDidStartTaskDisposible = vscode.tasks.onDidStartTask(event => {
             if (!configuration.showBuildStatus) {
                 return;
@@ -71,13 +71,20 @@ export class SwiftBuildStatus implements Disposable {
         const handleTaskOutput = (
             update: (report: { message: string; increment?: number }) => void
         ) => this.awaitTaskCompletion(task, execution, isBuildTask, showBuildStatus, update);
-        const location =
-            showBuildStatus === "notification"
-                ? vscode.ProgressLocation.Notification
-                : vscode.ProgressLocation.Window;
-        void vscode.window.withProgress<void>({ location }, progress =>
-            handleTaskOutput(report => progress.report(report))
-        );
+        if (showBuildStatus === "swiftStatus") {
+            // Route through StatusItem so the click action reveals the task terminal.
+            void this.statusItem.showStatusWhileRunning(task, () =>
+                handleTaskOutput(report => this.statusItem.update(task, report.message))
+            );
+        } else {
+            const location =
+                showBuildStatus === "notification"
+                    ? vscode.ProgressLocation.Notification
+                    : vscode.ProgressLocation.Window;
+            void vscode.window.withProgress<void>({ location }, progress =>
+                handleTaskOutput(report => progress.report(report))
+            );
+        }
     }
 
     private awaitTaskCompletion(
