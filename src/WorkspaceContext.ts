@@ -44,7 +44,7 @@ import { StatusItem } from "./ui/StatusItem";
 import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
 import { Disposable } from "./utilities/Disposable";
 import { isExcluded, isPathInsidePath } from "./utilities/filesystem";
-import { swiftLibraryPathKey } from "./utilities/utilities";
+import { destructuredPromise, swiftLibraryPathKey } from "./utilities/utilities";
 import { isValidWorkspaceFolder, searchForPackages } from "./utilities/workspace";
 
 // Re-export some types from the external API for convenience.
@@ -88,8 +88,12 @@ export class WorkspaceContext implements ExternalWorkspaceContext, Disposable {
 
     private readonly buildStartEmitter = new vscode.EventEmitter<BuildEvent>();
     private readonly buildFinishEmitter = new vscode.EventEmitter<BuildEvent>();
-    public onDidStartBuild = this.buildStartEmitter.event;
-    public onDidFinishBuild = this.buildFinishEmitter.event;
+
+    public readonly onDidStartBuild = this.buildStartEmitter.event;
+    public readonly onDidFinishBuild = this.buildFinishEmitter.event;
+
+    private readonly onInitializationCompleteCallback: () => void;
+    public readonly onInitializationComplete: Promise<void>;
 
     private readonly indexingFinishedEmitter = new vscode.EventEmitter<void>();
     public onDidFinishIndexing = this.indexingFinishedEmitter.event;
@@ -126,6 +130,9 @@ export class WorkspaceContext implements ExternalWorkspaceContext, Disposable {
         this.currentDocument = null;
         this.commentCompletionProvider = new CommentCompletionProviders();
         this.projectPanel = new ProjectPanelProvider(this);
+        const { promise, resolve } = destructuredPromise<void>();
+        this.onInitializationComplete = promise;
+        this.onInitializationCompleteCallback = resolve;
 
         const onChangeConfig = vscode.workspace.onDidChangeConfiguration(async event => {
             // Clear build path cache when build-related configurations change
@@ -326,7 +333,7 @@ export class WorkspaceContext implements ExternalWorkspaceContext, Disposable {
             }
         }
 
-        await this.initialisationComplete();
+        await this.initializationComplete();
     }
 
     /**
@@ -571,12 +578,14 @@ export class WorkspaceContext implements ExternalWorkspaceContext, Disposable {
         }
     }
 
-    private async initialisationComplete() {
+    private async initializationComplete() {
         this.initialisationFinished = true;
         if (this.lastFocusUri) {
             await this.focusUri(this.lastFocusUri);
             this.lastFocusUri = undefined;
         }
+        await Promise.all(this.folders.map(f => f.swiftPackage.foundPackage));
+        this.onInitializationCompleteCallback();
     }
 
     /** return workspace folder from text editor */
