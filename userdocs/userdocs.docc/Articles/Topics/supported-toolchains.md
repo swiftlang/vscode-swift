@@ -17,6 +17,7 @@ Feature                    | Minimum Toolchain Required
 -------------------------- | ------------------------------------- 
 Debugging with `lldb-dap`  | 6.0
 <doc:docc-live-preview>    | 6.2
+<doc:playgrounds>          | 6.3
 
 ## Toolchain Management
 

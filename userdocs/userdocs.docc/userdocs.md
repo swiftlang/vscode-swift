@@ -30,6 +30,7 @@ This extension adds language support for Swift to Visual Studio Code, providing 
 - <doc:project-view>
 - <doc:test-explorer>
 - <doc:docc-live-preview>
+- <doc:playgrounds>
 
 ### Advanced
 
