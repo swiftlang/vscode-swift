@@ -110,4 +110,21 @@ tag("large").suite("Build Commands", function () {
         // After executing the clean command the build directory is guaranteed to have less entries.
         expect(afterItemCount).to.be.lessThan(beforeItemCount);
     });
+
+    test("Swift: Clean Rebuild All", async () => {
+        let result = await vscode.commands.executeCommand(Commands.RUN, "PackageExe");
+        expect(result).to.be.true;
+
+        const buildPath = path.join(folderContext.folder.fsPath, ".build");
+
+        await withTaskWatcher(async taskWatcher => {
+            result = await vscode.commands.executeCommand(Commands.CLEAN_REBUILD_ALL);
+            expect(result).to.be.true;
+            taskWatcher.assertTaskCompletedByName("Build All (defaultPackage)");
+        });
+
+        const afterItemCount = (await fs.readdir(buildPath)).length;
+        // .build shouldn't be completely empty since rebuild puts artifacts back.
+        expect(afterItemCount).to.be.greaterThan(0);
+    });
 });
