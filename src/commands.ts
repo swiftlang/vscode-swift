@@ -19,7 +19,7 @@ import { TestKind } from "./TestExplorer/TestKind";
 import { clearTestWarningDiagnostics } from "./TestExplorer/TestRunProxy";
 import { WorkspaceContext } from "./WorkspaceContext";
 import { attachDebugger } from "./commands/attachDebugger";
-import { cleanBuild, debugBuild, runBuild } from "./commands/build";
+import { cleanBuild, cleanRebuildAll, debugBuild, runBuild } from "./commands/build";
 import { captureDiagnostics } from "./commands/captureDiagnostics";
 import { createNewProject } from "./commands/createNewProject";
 import { editDependency } from "./commands/dependencies/edit";
@@ -90,6 +90,7 @@ export enum Commands {
     DEBUG = "swift.debug",
     PLAY = "swift.play",
     CLEAN_BUILD = "swift.cleanBuild",
+    CLEAN_REBUILD_ALL = "swift.cleanRebuildAll",
     RESOLVE_DEPENDENCIES = "swift.resolveDependencies",
     SHOW_FLAT_DEPENDENCIES_LIST = "swift.flatDependenciesList",
     SHOW_NESTED_DEPENDENCIES_LIST = "swift.nestedDependenciesList",
@@ -159,6 +160,10 @@ export function register(ctx: WorkspaceContext): Disposable[] {
             );
         }),
         vscode.commands.registerCommand(Commands.CLEAN_BUILD, async () => await cleanBuild(ctx)),
+        vscode.commands.registerCommand(
+            Commands.CLEAN_REBUILD_ALL,
+            async () => await cleanRebuildAll(ctx)
+        ),
         vscode.commands.registerCommand(
             Commands.RUN_TESTS_MULTIPLE_TIMES,
             async (...args: (vscode.TestItem | number)[]) => {

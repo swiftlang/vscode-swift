@@ -285,6 +285,11 @@
         "category": "Swift"
       },
       {
+        "command": "swift.cleanRebuildAll",
+        "title": "Clean Rebuild All",
+        "category": "Swift"
+      },
+      {
         "command": "swift.run",
         "title": "Run Swift executable",
         "category": "Swift",
@@ -1314,6 +1319,10 @@
           "when": "swift.hasPackage"
         },
         {
+          "command": "swift.cleanRebuildAll",
+          "when": "swift.hasPackage"
+        },
+        {
           "command": "swift.switchPlatform",
           "when": "swift.switchPlatformAvailable"
         },
@@ -1483,6 +1492,16 @@
           "command": "swift.debugSnippet",
           "group": "1_file@5",
           "when": "swift.fileIsSnippet"
+        },
+        {
+          "command": "swift.cleanBuild",
+          "group": "2_clean@1",
+          "when": "editorLangId == swift"
+        },
+        {
+          "command": "swift.cleanRebuildAll",
+          "group": "2_clean@2",
+          "when": "editorLangId == swift"
         }
       ],
       "view/title": [
@@ -1515,6 +1534,16 @@
           "command": "swift.openDocumentation",
           "when": "view == projectPanel",
           "group": "navigation@6"
+        },
+        {
+          "command": "swift.cleanBuild",
+          "when": "view == projectPanel",
+          "group": "navigation@31"
+        },
+        {
+          "command": "swift.cleanRebuildAll",
+          "when": "view == projectPanel",
+          "group": "navigation@32"
         }
       ],
       "view/item/context": [
