@@ -30,7 +30,7 @@ import { FolderContext } from "../FolderContext";
 import configuration from "../configuration";
 import { SwiftOutputChannel } from "../logging/SwiftOutputChannel";
 import { ArgumentFilter, BuildFlags } from "../toolchain/BuildFlags";
-import { Disposable } from "../utilities/Disposable";
+import { AsyncDisposable, Disposable } from "../utilities/Disposable";
 import { swiftRuntimeEnv } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { LSPLogger, LSPOutputChannel } from "./LSPOutputChannel";
@@ -64,7 +64,7 @@ interface LanguageClientManageOptions {
  * Manages the creation and destruction of Language clients as we move between
  * workspace folders
  */
-export class LanguageClientManager implements Disposable {
+export class LanguageClientManager implements AsyncDisposable {
     // known log names
     static readonly indexingLogName = "SourceKit-LSP: Indexing";
 
@@ -176,18 +176,18 @@ export class LanguageClientManager implements Disposable {
         this.cancellationToken = new vscode.CancellationTokenSource();
     }
 
-    // The language client stops asnyhronously, so we need to wait for it to stop
+    // The language client stops asynchronously, so we need to wait for it to stop
     // instead of doing it in dispose, which must be synchronous.
     async stop(dispose: boolean = true) {
         if (this.languageClient && this.languageClient.state === State.Running) {
-            await this.languageClient.stop(15000);
+            await this.languageClient.stop();
             if (dispose) {
                 await this.languageClient.dispose();
             }
         }
     }
 
-    dispose() {
+    async dispose(): Promise<void> {
         this.cancellationToken?.cancel();
         this.cancellationToken?.dispose();
         this.legacyInlayHints?.dispose();
@@ -195,6 +195,12 @@ export class LanguageClientManager implements Disposable {
         this.getReferenceDocument?.dispose();
         this.subscriptions.forEach(item => item.dispose());
         this.namedOutputChannels.forEach(channel => channel.dispose());
+        await this.stop(true).catch(error => {
+            // Stopping the language server can sometimes time out. Especially in tests.
+            this.folderContext.logger.error(
+                Error("Failed to dispose of language client", { cause: error })
+            );
+        });
     }
 
     /**

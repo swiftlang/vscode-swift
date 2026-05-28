@@ -31,15 +31,15 @@ suite("FolderContext Error Handling Test Suite", () => {
     const showToolchainError = mockGlobalValue(toolchain, "showToolchainError");
 
     activateExtensionForSuite({
-        async setup(ctx) {
-            workspaceContext = ctx;
-            this.timeout(60000);
+        async setup(api) {
+            workspaceContext = await api.waitForWorkspaceContext();
         },
         testAssets: ["defaultPackage"],
     });
 
     afterEach(() => {
         folderContext?.dispose();
+        workspaceContext.logger.clear();
         restore();
     });
 

@@ -13,12 +13,13 @@
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
 
-import { WorkspaceContext } from "../WorkspaceContext";
+import { InternalSwiftExtensionApi } from "../InternalSwiftExtensionApi";
 import { TaskOperation } from "../tasks/TaskQueue";
 
-export const runTask = async (ctx: WorkspaceContext, name: string) => {
+export async function runTask(api: InternalSwiftExtensionApi, name: string): Promise<boolean> {
+    const ctx = await api.waitForWorkspaceContext();
     if (!ctx.currentFolder) {
-        return;
+        return false;
     }
 
     const tasks = await vscode.tasks.fetchTasks();
@@ -33,10 +34,10 @@ export const runTask = async (ctx: WorkspaceContext, name: string) => {
 
     if (!task) {
         void vscode.window.showErrorMessage(`Task "${name}" not found`);
-        return;
+        return false;
     }
 
     return ctx.currentFolder.taskQueue
         .queueOperation(new TaskOperation(task))
         .then(result => result === 0);
-};
+}

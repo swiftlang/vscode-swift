@@ -77,7 +77,8 @@ ${tests.map(t => {
     let hasMultiLineParallelTestOutput: boolean;
     let workspaceContext: WorkspaceContext;
     activateExtensionForSuite({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             workspaceContext = ctx;
             hasMultiLineParallelTestOutput = ctx.globalToolchain.hasMultiLineParallelTestOutput;
         },

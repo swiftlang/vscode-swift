@@ -41,7 +41,8 @@ tag("large").suite("Language Client Integration Suite", function () {
     let folderContext: FolderContext;
 
     activateExtensionForSuite({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             if (process.platform === "win32") {
                 this.skip();
                 return;
