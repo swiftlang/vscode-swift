@@ -548,11 +548,6 @@ export class SwiftPackage implements ExternalSwiftPackage, Disposable {
         );
     }
 
-    static trimStdout(stdout: string): string {
-        const index = stdout.indexOf("{");
-        return index === -1 ? "" : stdout.slice(index);
-    }
-
     dispose() {
         this.tokenSource.cancel();
         this.tokenSource.dispose();

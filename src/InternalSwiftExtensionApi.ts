@@ -119,6 +119,12 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
     // to avoid delaying extension activation.
     activate(callSite?: Error): void {
         if (this.state.type !== "uninitialized") {
+            this.logger.error(
+                new Error(
+                    `Cannot activate the Swift extension: it is in the "${this.state.type}" state instead of "uninitialized". This usually means a previous deactivation did not complete. The previous activation originated from:`,
+                    { cause: this.state.activatedBy }
+                )
+            );
             throw new Error("The Swift extension has already been activated.", {
                 cause: this.state.activatedBy,
             });
@@ -302,17 +308,31 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
     }
 
     async deactivate(): Promise<void> {
+        const deactivationStartTime = Date.now();
+        this.logger.info(`Deactivating extension from "${this.state.type}" state...`);
         this.contextKeys.isActivated = false;
         if (this.state.type === "initializing") {
+            this.logger.info("Cancelling in-progress workspace initialization...");
             this.state.cancel();
         }
         if (this.state.type === "active") {
-            await this.state.context.dispose();
-            this.state.subscriptions.forEach(s => s.dispose());
+            const { context, subscriptions } = this.state;
+            this.logger.info("Disposing workspace context...");
+            const contextDisposeStartTime = Date.now();
+            await context.dispose();
+            this.logger.info(
+                `Workspace context disposed in ${Date.now() - contextDisposeStartTime}ms`
+            );
+            this.logger.info(`Disposing ${subscriptions.length} workspace subscriptions...`);
+            subscriptions.forEach(s => s.dispose());
         }
+        this.logger.info(`Disposing ${this.subscriptions.length} extension subscriptions...`);
         this.subscriptions.forEach(subscription => subscription.dispose());
         this.subscriptions.length = 0;
         this.state = { type: "uninitialized" };
+        this.logger.info(
+            `Extension deactivation completed in ${Date.now() - deactivationStartTime}ms`
+        );
     }
 
     dispose(): void {

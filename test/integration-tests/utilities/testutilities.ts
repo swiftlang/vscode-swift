@@ -291,10 +291,20 @@ const extensionBootstrapper = (() => {
             }
 
             activationLogger.info("Deactivation complete, calling deactivateExtension()");
-            await extensionBootstrapper.deactivateExtension();
+            try {
+                await extensionBootstrapper.deactivateExtension();
+            } catch (error) {
+                // A deactivation timeout is handled by the log-dump timer above, but if
+                // deactivation throws/rejects quickly the timer hasn't fired yet and the
+                // surrounding test has usually passed, so the per-test afterEach log capture
+                // won't fire either. Attach the logs to this hook so the reporter still
+                // prints them.
+                attachCapturedLogs(this.test, activationLogger.logs);
+                throw error;
+            } finally {
+                clearTimeout(timer);
+            }
             activationLogger.reset();
-
-            clearTimeout(timer);
 
             // Re-throw the user supplied teardown error
             if (userTeardownError) {
@@ -410,7 +420,13 @@ const extensionBootstrapper = (() => {
 
             // Wait for all tasks to complete before deactivating.
             // Long running tasks should be avoided in tests, but this is a safety net.
-            await waitForNoRunningTasks();
+            const runningTasks = vscode.tasks.taskExecutions.map(e => e.task.name);
+            activationLogger.info(
+                runningTasks.length > 0
+                    ? `Waiting for ${runningTasks.length} running task(s) to finish before deactivating: ${runningTasks.join(", ")}`
+                    : "No running tasks, proceeding with deactivation."
+            );
+            await logOnError("Waiting for no running tasks", () => waitForNoRunningTasks());
 
             // Close all editors before deactivating the extension.
             await logOnError(`Closing all editors.`, () => closeAllEditors());
@@ -422,8 +438,9 @@ const extensionBootstrapper = (() => {
                         getRootWorkspaceFolder()
                     ) ?? Promise.resolve()
             );
-            activationLogger.info(`Running extension deactivation function.`);
-            await activatedAPI.deactivate();
+            await logOnError(`Running extension deactivation function.`, () =>
+                activatedAPI!.deactivate()
+            );
             activationLogger.reset();
         },
 

@@ -62,6 +62,7 @@ module.exports = class GitHubActionsSummaryReporter extends mocha.reporters.Base
         runner.on(EVENT_RUN_END, () => {
             const title = options.reporterOption.title ?? "Test Summary";
             this.appendSummary(createMarkdownSummary(title, this.stats, this.failures));
+            printCapturedLogsToConsole(this.failures);
         });
     }
 
@@ -80,6 +81,23 @@ function fullTitle(test: Mocha.Test | Mocha.Suite): string {
         return fullTitle(test.parent) + " → " + test.title;
     }
     return test.title;
+}
+
+/**
+ * Prints the captured extension logs for each failure to stdout. The
+ * GitHubActionsSummaryReporter normally only surfaces these in the job summary
+ * page, which is easy to miss; printing them to the console ensures they also
+ * appear in the raw CI logs alongside the failure.
+ */
+function printCapturedLogsToConsole(failures: Mocha.Test[]): void {
+    for (const failure of failures) {
+        const logs = getCapturedLogs(failure);
+        if (!logs || logs.length === 0) {
+            continue;
+        }
+        const header = `===== Captured extension logs: ${fullTitle(failure)} =====`;
+        console.log(`\n${header}\n${logs.join("\n")}\n${"=".repeat(header.length)}\n`);
+    }
 }
 
 function generateErrorMessage(failure: Mocha.Test): string {
@@ -201,7 +219,7 @@ function createMarkdownSummary(title: string, stats: Mocha.Stats, failures: Moch
                     content +=
                         details(
                             "Captured Extension Logs",
-                            false,
+                            true,
                             tag("pre", [], fixLineEndings(logs.join("\n")))
                         ) + EOL;
                 }

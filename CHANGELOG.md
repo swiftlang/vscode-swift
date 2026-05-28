@@ -5,6 +5,7 @@
 ### Fixed
 
 - Loading large projects will no longer show the extension as unresponsive ([#1932](https://github.com/swiftlang/vscode-swift/pull/1932))
+- Packages that produced a warning during `swift package resolve` would not load ([#2262](https://github.com/swiftlang/vscode-swift/pull/2262))
 
 ## 2.16.5 - 2026-05-26
 
