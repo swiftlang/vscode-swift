@@ -2,6 +2,13 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+### Fixed
+
+- Loading large projects will no longer show the extension as unresponsive ([#1932](https://github.com/swiftlang/vscode-swift/pull/1932))
+- Reveal the task terminal when clicking the Swift build status item instead of showing a popup ([#2254](https://github.com/swiftlang/vscode-swift/pull/2254))
+
+## 2.16.5 - 2026-05-26
+
 ### Added
 
 - Add `swift.sourcekit-lsp.includeDeclarationInFindAllReferences` setting to control whether the symbol declaration is included in Find All References results ([#2236](https://github.com/swiftlang/vscode-swift/pull/2236))
@@ -15,7 +22,6 @@
 - Fix swift.buildPath being ignored by swift package plugin tasks ([#2235](https://github.com/swiftlang/vscode-swift/pull/2235))
 - Fix nightly toolchains providing a value to `--swift-testing-event-stream-version` that swift-testing doesn't support ([#2247](https://github.com/swiftlang/vscode-swift/pull/2247))
 - Fix error during toolchain selection when swiftly has no active toolchain ([#2246](https://github.com/swiftlang/vscode-swift/pull/2246))
-- Reveal the task terminal when clicking the Swift build status item instead of showing a popup ([#2254](https://github.com/swiftlang/vscode-swift/pull/2254))
 
 ## 2.16.4 - 2026-04-21
 

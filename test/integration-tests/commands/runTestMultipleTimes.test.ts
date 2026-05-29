@@ -26,7 +26,8 @@ suite("Test Multiple Times Command Test Suite", () => {
     let testItem: vscode.TestItem;
 
     activateExtensionForSuite({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             folderContext = await folderInRootWorkspace("defaultPackage", ctx);
             const testExplorer = await folderContext.resolvedTestExplorer;
 

@@ -27,7 +27,8 @@ suite("Swift Scripts Suite", () => {
     let toolchain: SwiftToolchain;
 
     activateExtensionForSuite({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             if (process.platform === "win32") {
                 // Swift Scripts on Windows give a JIT error in CI.
                 this.skip();
