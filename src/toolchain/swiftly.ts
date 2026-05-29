@@ -131,6 +131,7 @@ export type SwiftlyProgressData = z.infer<typeof SwiftlyProgressData>;
 interface PostInstallValidationResult {
     isValid: boolean;
     summary: string;
+    scriptContent: string;
     invalidCommands?: string[];
 }
 
@@ -977,6 +978,7 @@ export class Swiftly {
             return {
                 isValid,
                 summary,
+                scriptContent,
                 invalidCommands: invalidCommands.length > 0 ? invalidCommands : undefined,
             };
         } catch (error) {
@@ -984,6 +986,7 @@ export class Swiftly {
             return {
                 isValid: false,
                 summary: "Failed to read post-install script",
+                scriptContent: "",
                 invalidCommands: ["Unable to read script file"],
             };
         }
@@ -1016,11 +1019,52 @@ export class Swiftly {
         );
         const choice = await vscode.window.showWarningMessage(
             message,
-            { modal: true },
+            {
+                modal: true,
+                detail: this.formatScriptForReview(validation.scriptContent),
+            },
             "Execute Script"
         );
 
         return choice === "Execute Script";
+    }
+
+    /**
+     * Formats the post-install script contents for display in the confirmation
+     * dialog's detail area. Very long scripts are truncated so the modal stays
+     * readable.
+     */
+    private static formatScriptForReview(scriptContent: string): string {
+        const heading = "Script contents:";
+        const trimmed = scriptContent.replace(/\s+$/, "");
+
+        if (!trimmed) {
+            return `${heading}\n(empty script)`;
+        }
+
+        const maxLines = 50;
+        const maxChars = 4000;
+        const lines = trimmed.split("\n");
+
+        let body: string;
+        let truncated = false;
+        if (lines.length > maxLines) {
+            body = lines.slice(0, maxLines).join("\n");
+            truncated = true;
+        } else {
+            body = trimmed;
+        }
+
+        if (body.length > maxChars) {
+            body = body.slice(0, maxChars);
+            truncated = true;
+        }
+
+        if (truncated) {
+            body += "\n… (script truncated for display)";
+        }
+
+        return `${heading}\n${body}`;
     }
 
     /**
