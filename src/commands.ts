@@ -304,9 +304,9 @@ export function registerCommands(api: InternalSwiftExtensionApi): Disposable[] {
             }
         }),
         vscode.commands.registerCommand("swift.attachDebugger", attachDebugger),
-        vscode.commands.registerCommand("swift.clearDiagnosticsCollection", () => {
-            api.withWorkspaceContext(ctx => ctx.diagnostics.clear());
+        vscode.commands.registerCommand("swift.clearDiagnosticsCollection", async () => {
             clearTestWarningDiagnostics();
+            await api.withWorkspaceContext(ctx => ctx.diagnostics.clear());
         }),
         vscode.commands.registerCommand("swift.captureDiagnostics", async () =>
             api.withWorkspaceContext(ctx => captureDiagnostics(ctx))
