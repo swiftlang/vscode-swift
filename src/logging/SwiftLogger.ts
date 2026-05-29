@@ -66,11 +66,17 @@ export class SwiftLogger implements Disposable {
         this.logger = winston.createLogger({
             transports: transports,
             format: winston.format.combine(
-                winston.format.errors({ stack: true }),
+                winston.format.errors({ stack: true, cause: true }),
                 winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss.SSS" }), // This is the format of `vscode.LogOutputChannel`
-                winston.format.printf(msg => {
-                    const stackTrace = msg.stack ? ` ${msg.stack}` : "";
-                    return `${msg.timestamp} [${msg.level}] ${msg.message}${stackTrace}`;
+                winston.format.printf(info => {
+                    let message = `${info.message}`;
+                    if (typeof info.stack === "string") {
+                        message = info.stack;
+                        if (info.cause) {
+                            message += `\n${formatCauseChain(info.cause)}`;
+                        }
+                    }
+                    return `${info.timestamp} [${info.level}] ${message}`;
                 }),
                 winston.format.colorize()
             ),
@@ -183,4 +189,17 @@ export class SwiftLogger implements Disposable {
         this.rollingLog.clear();
         this.subscriptions.forEach(d => d.dispose());
     }
+}
+
+function formatCauseChain(cause: unknown): string {
+    let result = "Caused by: ";
+    if (cause instanceof Error) {
+        result += cause.stack ?? cause.message;
+        if (cause.cause) {
+            result += `\n${formatCauseChain(cause.cause)}`;
+        }
+    } else {
+        result += `${cause}`;
+    }
+    return result;
 }
