@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
 
-export class RunningTask {
+class RunningTask {
     constructor(public task: vscode.Task | string) {}
     get name(): string {
         if (typeof this.task !== "string") {
@@ -103,8 +103,12 @@ export class StatusItem {
 
     private showTask(task: RunningTask, message?: string) {
         const text = message ?? task.name;
-        this.item.text = `$(loading~spin) ${text}`;
-        this.item.accessibilityInformation = { label: text };
+        const newText = `$(loading~spin) ${text}`;
+        // Skip redundant updates so the spinner doesn't flicker on repeated messages.
+        if (this.item.text !== newText) {
+            this.item.text = newText;
+            this.item.accessibilityInformation = { label: text };
+        }
         // Only vscode.Task instances have a terminal to reveal via the running tasks picker.
         this.item.command =
             typeof task.task === "string" ? undefined : "workbench.action.tasks.showTasks";

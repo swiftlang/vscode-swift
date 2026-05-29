@@ -156,8 +156,13 @@ export class SwiftBuildStatus implements Disposable {
                     const reportedIncrement = this.applyDebt(increment);
 
                     lastPercentage = percentage;
+                    // Keep the status bar item static so the spinner doesn't flicker as
+                    // the [completed/total] counter updates. withProgress still gets it.
                     update({
-                        message: `${name}: [${progress.completed}/${progress.total}]`,
+                        message:
+                            showBuildStatus === "swiftStatus"
+                                ? name
+                                : `${name}: [${progress.completed}/${progress.total}]`,
                         increment: reportedIncrement,
                     });
                     return false;

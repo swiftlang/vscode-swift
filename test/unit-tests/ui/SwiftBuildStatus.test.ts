@@ -173,7 +173,9 @@ suite("SwiftBuildStatus Unit Test Suite", function () {
                 "[7/7] Applying MyCLI\n"
         );
 
-        expect(statusItem.update).to.have.been.calledWith(mockedTask, "My Task: [7/7]");
+        // swiftStatus shows just the task name, not the [completed/total] counter
+        expect(statusItem.update).to.have.been.calledWith(mockedTask, "My Task");
+        expect(statusItem.update).to.not.have.been.calledWith(mockedTask, "My Task: [7/7]");
 
         // Ignore old stuff
         expect(statusItem.update).to.not.have.been.calledWith(
@@ -268,14 +270,18 @@ suite("SwiftBuildStatus Unit Test Suite", function () {
     });
 
     test("Parses progress with spaces around the slash (newer toolchains)", async () => {
-        configurationMock.setValue("swiftStatus");
+        // Assert via a withProgress location, which still reports the counter.
+        configurationMock.setValue("notification");
         buildStatus = new SwiftBuildStatus(instance(statusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         // swift-build emits a U+2009 THIN SPACE on either side of the slash
         // via activityMessageFractionString; SwiftPM forwards it verbatim.
         testSwiftProcess.write("[191 / 195] SimpleLibraryTests-product\n");
-        expect(statusItem.update).to.have.been.calledWith(mockedTask, "My Task: [191/195]");
+        expect(mockedProgress.report).to.have.been.calledWith({
+            message: "My Task: [191/195]",
+            increment: 97,
+        });
     });
 
     test("Reports Planning status during planning phase, then switches to progress", async () => {
@@ -287,6 +293,6 @@ suite("SwiftBuildStatus Unit Test Suite", function () {
         expect(statusItem.update).to.have.been.calledWith(mockedTask, "My Task: Planning...");
 
         testSwiftProcess.write("[36 / 75]\n");
-        expect(statusItem.update).to.have.been.calledWith(mockedTask, "My Task: [36/75]");
+        expect(statusItem.update).to.have.been.calledWith(mockedTask, "My Task");
     });
 });
