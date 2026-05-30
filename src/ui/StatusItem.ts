@@ -109,9 +109,15 @@ export class StatusItem {
             this.item.text = newText;
             this.item.accessibilityInformation = { label: text };
         }
-        // Only vscode.Task instances have a terminal to reveal via the running tasks picker.
+        // String "processes" have no terminal to reveal; only real tasks do.
         this.item.command =
-            typeof task.task === "string" ? undefined : "workbench.action.tasks.showTasks";
+            typeof task.task === "string"
+                ? undefined
+                : {
+                      command: "swift.revealTaskTerminal",
+                      title: "Reveal Task Terminal",
+                      arguments: [task.task],
+                  };
         this.item.show();
     }
 

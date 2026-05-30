@@ -68,11 +68,19 @@ suite("StatusItem Unit Test Suite", function () {
         });
     });
 
-    test("sets the click command to the running tasks picker for vscode.Task instances", async () => {
+    test("sets the click command to reveal the task terminal for vscode.Task instances", async () => {
         const task = new vscode.Task({ type: "swift" }, vscode.TaskScope.Global, "Build", "swift");
 
         await statusItem.showStatusWhileRunning(task, () => {
-            expect(mockedStatusBarItem.command).to.equal("workbench.action.tasks.showTasks");
+            const command = mockedStatusBarItem.command as vscode.Command;
+            expect(command.command).to.equal("swift.revealTaskTerminal");
+            expect(command.arguments?.[0]).to.equal(task);
+        });
+    });
+
+    test("does not set a click command for string processes", async () => {
+        await statusItem.showStatusWhileRunning("Resolving", () => {
+            expect(mockedStatusBarItem.command).to.be.undefined;
         });
     });
 

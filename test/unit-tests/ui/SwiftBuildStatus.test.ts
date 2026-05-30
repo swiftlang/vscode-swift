@@ -162,27 +162,19 @@ suite("SwiftBuildStatus Unit Test Suite", function () {
         );
     });
 
-    test("Update build progress", async () => {
+    test("Only updates build progress once when shown in the status bar", async () => {
         configurationMock.setValue("swiftStatus");
         buildStatus = new SwiftBuildStatus(instance(statusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
-        testSwiftProcess.write(
-            "Fetching https://github.com/apple/example-package-figlet from cache\n" +
-                "[6/7] Building main.swift\n" +
-                "[7/7] Applying MyCLI\n"
-        );
+        // Ignore the initial "Preparing..." update; we only care about the build-progress phase.
+        statusItem.update.resetHistory();
 
-        // swiftStatus shows just the task name, not the [completed/total] counter
-        expect(statusItem.update).to.have.been.calledWith(mockedTask, "My Task");
-        expect(statusItem.update).to.not.have.been.calledWith(mockedTask, "My Task: [7/7]");
+        testSwiftProcess.write("[1/7] Compiling A.swift\n");
+        testSwiftProcess.write("[4/7] Compiling B.swift\n");
+        testSwiftProcess.write("[7/7] Applying MyCLI\n");
 
-        // Ignore old stuff
-        expect(statusItem.update).to.not.have.been.calledWith(
-            mockedTask,
-            "My Task: Fetching Dependencies"
-        );
-        expect(statusItem.update).to.not.have.been.calledWith(mockedTask, "My Task: [6/7]");
+        expect(statusItem.update).to.have.been.calledOnceWithExactly(mockedTask, "My Task");
     });
 
     test("Notification mode reports incremental progress across multiple writes", async () => {

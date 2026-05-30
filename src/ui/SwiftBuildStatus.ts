@@ -72,9 +72,16 @@ export class SwiftBuildStatus implements Disposable {
             update: (report: { message: string; increment?: number }) => void
         ) => this.awaitTaskCompletion(task, execution, isBuildTask, showBuildStatus, update);
         if (showBuildStatus === "swiftStatus") {
-            // Route through StatusItem so the click action reveals the task terminal.
+            // Route through StatusItem so the click reveals the task terminal. Only update on a
+            // changed message, since the stripped [x/y] counter makes every progress line identical.
+            let lastMessage: string | undefined;
             void this.statusItem.showStatusWhileRunning(task, () =>
-                handleTaskOutput(report => this.statusItem.update(task, report.message))
+                handleTaskOutput(report => {
+                    if (report.message !== lastMessage) {
+                        lastMessage = report.message;
+                        this.statusItem.update(task, report.message);
+                    }
+                })
             );
         } else {
             const location =
