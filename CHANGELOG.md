@@ -5,6 +5,7 @@
 ### Fixed
 
 - Loading large projects will no longer show the extension as unresponsive ([#1932](https://github.com/swiftlang/vscode-swift/pull/1932))
+- Reveal the task terminal when clicking the Swift build status item instead of showing a popup ([#2254](https://github.com/swiftlang/vscode-swift/pull/2254))
 
 ## 2.16.5 - 2026-05-26
 

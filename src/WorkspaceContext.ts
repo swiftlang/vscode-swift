@@ -106,7 +106,7 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
         this.testRunManager = new TestRunManager();
         this.loggerFactory = new SwiftLoggerFactory(extensionContext.logUri);
         this.statusItem = new StatusItem();
-        this.buildStatus = new SwiftBuildStatus();
+        this.buildStatus = new SwiftBuildStatus(this.statusItem);
         this.languageClientManager = new LanguageClientToolchainCoordinator(this, {
             onDocumentSymbols: (folder, document, symbols) => {
                 folder.onDocumentSymbols(document, symbols);
@@ -246,6 +246,7 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
             this.tasks,
             this.diagnostics,
             this.documentation,
+            this.statusItem,
             this.buildStatus,
             this.projectPanel,
         ];
