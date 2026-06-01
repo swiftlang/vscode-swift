@@ -1094,7 +1094,7 @@ apt-get -y install libncurses5-dev`;
             mockUtilities.execFileStreamOutput.withArgs("sudo").resolves();
 
             // @ts-expect-error mocking vscode window methods makes type checking difficult
-            mockVscodeWindow.showWarningMessage.resolves("Execute Script");
+            mockVscodeWindow.showWarningMessage.resolves("Run Commands");
 
             await Swiftly.installToolchain("6.0.0", "/path/to/extension");
 
@@ -1244,7 +1244,7 @@ apt-get -y install build-essential`;
                 .rejects(new Error("Permission denied"));
 
             // @ts-expect-error mocking vscode window methods makes type checking difficult
-            mockVscodeWindow.showWarningMessage.resolves("Execute Script");
+            mockVscodeWindow.showWarningMessage.resolves("Run Commands");
             mockVscodeWindow.showErrorMessage.resolves(undefined);
 
             await Swiftly.installToolchain("6.0.0", "/path/to/extension");
@@ -1310,7 +1310,7 @@ yum install ncurses-devel`;
             mockUtilities.execFileStreamOutput.withArgs("sudo").resolves();
 
             // @ts-expect-error mocking vscode window methods makes type checking difficult
-            mockVscodeWindow.showWarningMessage.resolves("Execute Script");
+            mockVscodeWindow.showWarningMessage.resolves("Run Commands");
 
             await Swiftly.installToolchain("6.0.0", "/path/to/extension");
 
@@ -1393,7 +1393,7 @@ apt-get -y install libncurses5-dev
             mockUtilities.execFileStreamOutput.withArgs("sudo").resolves();
 
             // @ts-expect-error mocking vscode window methods makes type checking difficult
-            mockVscodeWindow.showWarningMessage.resolves("Execute Script");
+            mockVscodeWindow.showWarningMessage.resolves("Run Commands");
 
             await Swiftly.installToolchain("6.0.0", "/path/to/extension");
 
@@ -1442,7 +1442,7 @@ apt-get -y install libncurses5-dev
                 match.string,
                 match({
                     modal: true,
-                    detail: match("script truncated for display"),
+                    detail: match("(truncated for display)"),
                 })
             );
         });

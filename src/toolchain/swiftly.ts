@@ -993,7 +993,7 @@ export class Swiftly {
     }
 
     /**
-     * Shows confirmation dialog to user for executing post-install script
+     * Shows confirmation dialog to user for running the post-install commands.
      *
      * @param version The toolchain version being installed
      * @param validation The validation result
@@ -1005,41 +1005,37 @@ export class Swiftly {
         validation: PostInstallValidationResult,
         logger?: SwiftLogger
     ): Promise<boolean> {
-        const summaryLines = validation.summary.split("\n");
-        const firstTwoLines = summaryLines.slice(0, 2).join("\n");
-
         const message =
-            `Swift ${version} installation requires additional system packages to be installed. ` +
-            `This will require administrator privileges.\n\n${firstTwoLines}\n\n` +
-            `Do you want to proceed with running the post-install script?`;
+            `Swift ${version} installation requires additional system packages to be installed.\n\n` +
+            `The Swift extension would like to run the following commands on your behalf:`;
+
+        const detail =
+            `${this.formatCommandsForReview(validation.scriptContent)}\n\n` +
+            `Do you want to proceed with running these commands? ` +
+            `You will be prompted for administrator privileges.`;
 
         logger?.warn(
-            `User confirmation required to execute post-install script for Swift ${version} installation,
-            this requires ${firstTwoLines} permissions.`
+            `User confirmation required to run post-install commands for Swift ${version} installation.`
         );
         const choice = await vscode.window.showWarningMessage(
             message,
-            {
-                modal: true,
-                detail: this.formatScriptForReview(validation.scriptContent),
-            },
-            "Execute Script"
+            { modal: true, detail },
+            "Run Commands"
         );
 
-        return choice === "Execute Script";
+        return choice === "Run Commands";
     }
 
     /**
-     * Formats the post-install script contents for display in the confirmation
-     * dialog's detail area. Very long scripts are truncated so the modal stays
-     * readable.
+     * Formats the post-install commands for display in the confirmation
+     * dialog's detail area. Very long command sets are truncated so the modal
+     * stays readable.
      */
-    private static formatScriptForReview(scriptContent: string): string {
-        const heading = "Script contents:";
+    private static formatCommandsForReview(scriptContent: string): string {
         const trimmed = scriptContent.replace(/\s+$/, "");
 
         if (!trimmed) {
-            return `${heading}\n(empty script)`;
+            return "(no commands)";
         }
 
         const maxLines = 50;
@@ -1061,10 +1057,10 @@ export class Swiftly {
         }
 
         if (truncated) {
-            body += "\n… (script truncated for display)";
+            body += "\n… (truncated for display)";
         }
 
-        return `${heading}\n${body}`;
+        return body;
     }
 
     /**
