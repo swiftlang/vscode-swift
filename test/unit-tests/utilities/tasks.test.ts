@@ -49,5 +49,11 @@ suite("Task utilities", () => {
 
             expect(findTaskTerminal(swiftTask("Build All"))).to.be.undefined;
         });
+
+        test("does not match a terminal with a non-swift source prefix", () => {
+            windowMock.terminals = [terminal("other: Build All")];
+
+            expect(findTaskTerminal(swiftTask("Build All"))).to.be.undefined;
+        });
     });
 });
