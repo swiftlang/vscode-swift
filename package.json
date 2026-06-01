@@ -285,6 +285,11 @@
         "category": "Swift"
       },
       {
+        "command": "swift.revealTaskTerminal",
+        "title": "Reveal Task Terminal",
+        "category": "Swift"
+      },
+      {
         "command": "swift.run",
         "title": "Run Swift executable",
         "category": "Swift",
@@ -1261,6 +1266,10 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "swift.revealTaskTerminal",
+          "when": "false"
+        },
         {
           "command": "swift.runTestsMultipleTimes",
           "group": "testExtras",

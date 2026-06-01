@@ -2,6 +2,9 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+### Fixed
+- Reveal the task terminal when clicking the Swift build status item instead of showing a popup ([#2254](https://github.com/swiftlang/vscode-swift/pull/2254))
+
 ## 2.16.6 - 2026-06-04
 
 ### Fixed

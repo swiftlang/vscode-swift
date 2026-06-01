@@ -42,6 +42,7 @@ import { pickProcess } from "./commands/pickProcess";
 import { reindexProject } from "./commands/reindexProject";
 import { resetPackage } from "./commands/resetPackage";
 import restartLSPServer from "./commands/restartLSPServer";
+import { revealTaskTerminal } from "./commands/revealTaskTerminal";
 import { runAllTests } from "./commands/runAllTests";
 import { runPlayground } from "./commands/runPlayground";
 import { runPluginTask } from "./commands/runPluginTask";
@@ -119,6 +120,7 @@ export enum Commands {
     INSTALL_SWIFTLY_TOOLCHAIN = "swift.installSwiftlyToolchain",
     INSTALL_SWIFTLY_SNAPSHOT_TOOLCHAIN = "swift.installSwiftlySnapshotToolchain",
     GENERATE_SOURCEKIT_CONFIG = "swift.generateSourcekitConfiguration",
+    REVEAL_TASK_TERMINAL = "swift.revealTaskTerminal",
 }
 
 /**
@@ -158,6 +160,9 @@ export function register(ctx: WorkspaceContext): Disposable[] {
                 PlaygroundNode.isPlaygroundNode(target) ? target.playground : target
             );
         }),
+        vscode.commands.registerCommand(Commands.REVEAL_TASK_TERMINAL, (task?: vscode.Task) =>
+            revealTaskTerminal(task)
+        ),
         vscode.commands.registerCommand(Commands.CLEAN_BUILD, async () => await cleanBuild(ctx)),
         vscode.commands.registerCommand(
             Commands.RUN_TESTS_MULTIPLE_TIMES,
