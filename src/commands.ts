@@ -42,6 +42,7 @@ import { pickProcess } from "./commands/pickProcess";
 import { reindexProject } from "./commands/reindexProject";
 import { resetPackage } from "./commands/resetPackage";
 import restartLSPServer from "./commands/restartLSPServer";
+import { revealTaskTerminal } from "./commands/revealTaskTerminal";
 import { runAllTests } from "./commands/runAllTests";
 import { runPlayground } from "./commands/runPlayground";
 import { runPluginTask } from "./commands/runPluginTask";
@@ -97,6 +98,7 @@ export enum Commands {
     INSTALL_SWIFTLY_TOOLCHAIN = "swift.installSwiftlyToolchain",
     INSTALL_SWIFTLY_SNAPSHOT_TOOLCHAIN = "swift.installSwiftlySnapshotToolchain",
     GENERATE_SOURCEKIT_CONFIG = "swift.generateSourcekitConfiguration",
+    REVEAL_TASK_TERMINAL = "swift.revealTaskTerminal",
 }
 
 /**
@@ -123,6 +125,9 @@ export function registerCommands(api: InternalSwiftExtensionApi): Disposable[] {
             api.withWorkspaceContext(ctx => generateLaunchConfigurations(ctx))
         ),
         vscode.commands.registerCommand("swift.newFile", uri => newSwiftFile(uri)),
+        vscode.commands.registerCommand(Commands.REVEAL_TASK_TERMINAL, (task?: vscode.Task) =>
+            revealTaskTerminal(task)
+        ),
         vscode.commands.registerCommand(Commands.RESOLVE_DEPENDENCIES, () =>
             api.withWorkspaceContext(ctx => resolveDependencies(ctx))
         ),
