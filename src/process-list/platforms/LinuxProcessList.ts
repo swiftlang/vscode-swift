@@ -36,7 +36,7 @@ export class LinuxProcessList extends BaseProcessList {
                 return;
             }
 
-            const pidAndState = /^\s*([0-9]+)\s+([a-zA-Z<>+]+)\s+/.exec(line);
+            const pidAndState = /^\s*(\d+)\s+([a-zA-Z<>+]+)\s+/.exec(line);
             if (!pidAndState) {
                 return;
             }

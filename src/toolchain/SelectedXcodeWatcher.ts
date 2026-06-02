@@ -18,8 +18,9 @@ import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { showReloadExtensionNotification } from "../ui/ReloadExtension";
 import { removeToolchainPath, selectToolchain } from "../ui/ToolchainSelection";
+import { Disposable } from "../utilities/Disposable";
 
-export class SelectedXcodeWatcher implements vscode.Disposable {
+export class SelectedXcodeWatcher implements Disposable {
     private xcodePath: string | undefined;
     private disposed: boolean = false;
     private interval: NodeJS.Timeout | undefined;
@@ -69,9 +70,10 @@ export class SelectedXcodeWatcher implements vscode.Disposable {
         this.xcodePath = await this.xcodeSymlink();
         this.logger.debug(`Initial Xcode symlink path ${this.xcodePath}`);
         const developerDir = () => configuration.swiftEnvironmentVariables["DEVELOPER_DIR"];
-        const matchesPath = (xcodePath: string) =>
-            configuration.path && configuration.path.startsWith(xcodePath);
-        const matchesDeveloperDir = (xcodePath: string) => developerDir()?.startsWith(xcodePath);
+        const matchesPath = (xcodePath: string): boolean =>
+            !!configuration.path && configuration.path.startsWith(xcodePath);
+        const matchesDeveloperDir = (xcodePath: string): boolean =>
+            !!developerDir()?.startsWith(xcodePath);
         if (
             this.xcodePath &&
             (configuration.path || developerDir()) &&
@@ -79,46 +81,66 @@ export class SelectedXcodeWatcher implements vscode.Disposable {
         ) {
             this.xcodePath = undefined; // Notify user when initially launching that xcode changed since last session
         }
-        this.interval = setInterval(async () => {
+        this.interval = setInterval(() => {
             if (this.disposed) {
                 return clearInterval(this.interval);
             }
 
-            const newXcodePath = await this.xcodeSymlink();
-            if (newXcodePath && this.xcodePath !== newXcodePath) {
-                this.logger.info(
-                    `Selected Xcode changed from ${this.xcodePath} to ${newXcodePath}`
-                );
-                this.xcodePath = newXcodePath;
-                if (!configuration.path) {
-                    await showReloadExtensionNotification(
-                        "The Swift Extension has detected a change in the selected Xcode. Please reload the extension to apply the changes."
+            void this.xcodeSymlink().then(async newXcodePath => {
+                if (newXcodePath && this.xcodePath !== newXcodePath) {
+                    this.logger.info(
+                        `Selected Xcode changed from ${this.xcodePath} to ${newXcodePath}`
                     );
-                } else if (developerDir() && !matchesDeveloperDir(this.xcodePath)) {
-                    const selected = await vscode.window.showWarningMessage(
-                        'The Swift Extension has detected a change in the selected Xcode which does not match the value of your DEVELOPER_DIR in the "swift.swiftEnvironmentVariables" setting. Would you like to update your configured "swift.swiftEnvironmentVariables" setting?',
-                        "Remove From Settings",
-                        "Select Toolchain"
+                    this.xcodePath = newXcodePath;
+                    await this.notifyXcodeChange(
+                        this.xcodePath,
+                        developerDir(),
+                        matchesPath,
+                        matchesDeveloperDir
                     );
-                    if (selected === "Remove From Settings") {
-                        await removeToolchainPath();
-                    } else if (selected === "Select Toolchain") {
-                        await selectToolchain();
-                    }
-                } else if (!matchesPath(this.xcodePath)) {
-                    const selected = await vscode.window.showWarningMessage(
-                        'The Swift Extension has detected a change in the selected Xcode which does not match the value of your "swift.path" setting. Would you like to update your configured "swift.path" setting?',
-                        "Remove From Settings",
-                        "Select Toolchain"
-                    );
-                    if (selected === "Remove From Settings") {
-                        await removeToolchainPath();
-                    } else if (selected === "Select Toolchain") {
-                        await selectToolchain();
-                    }
                 }
-            }
+            });
         }, this.checkIntervalMs);
+    }
+
+    private async notifyXcodeChange(
+        xcodePath: string,
+        developerDir: string | undefined,
+        matchesPath: (xcodePath: string) => boolean,
+        matchesDeveloperDir: (xcodePath: string) => boolean
+    ): Promise<void> {
+        if (!configuration.path) {
+            await showReloadExtensionNotification(
+                "The Swift Extension has detected a change in the selected Xcode. Please reload the extension to apply the changes."
+            );
+            return;
+        }
+
+        if (developerDir && !matchesDeveloperDir(xcodePath)) {
+            await this.promptToolchainUpdate(
+                'The Swift Extension has detected a change in the selected Xcode which does not match the value of your DEVELOPER_DIR in the "swift.swiftEnvironmentVariables" setting. Would you like to update your configured "swift.swiftEnvironmentVariables" setting?'
+            );
+            return;
+        }
+
+        if (!matchesPath(xcodePath)) {
+            await this.promptToolchainUpdate(
+                'The Swift Extension has detected a change in the selected Xcode which does not match the value of your "swift.path" setting. Would you like to update your configured "swift.path" setting?'
+            );
+        }
+    }
+
+    private async promptToolchainUpdate(message: string): Promise<void> {
+        const selected = await vscode.window.showWarningMessage(
+            message,
+            "Remove From Settings",
+            "Select Toolchain"
+        );
+        if (selected === "Remove From Settings") {
+            await removeToolchainPath();
+        } else if (selected === "Select Toolchain") {
+            await selectToolchain();
+        }
     }
 
     /**

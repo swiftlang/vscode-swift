@@ -1,6 +1,7 @@
 # Only lint certain file types
 *.*
 !*.js
+!*.mjs
 !*.json
 !*.ts
 

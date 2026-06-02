@@ -60,7 +60,7 @@ export class DocumentParser {
         const closeDelimitersFailure = "})]";
         const stack: string[] = [];
         for (let text = this.getLine(); text; text = this.getLine()) {
-            let delimiterIndex = -1;
+            let delimiterIndex: number;
             let index = 0;
             while (index < text.text.length) {
                 const character = text.text[index];

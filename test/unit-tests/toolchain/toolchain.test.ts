@@ -12,8 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
-import * as mockFS from "mock-fs";
-import * as path from "path";
 
 import { SwiftToolchain } from "@src/toolchain/toolchain";
 import * as utilities from "@src/utilities/utilities";
@@ -21,220 +19,100 @@ import { Version } from "@src/utilities/version";
 
 import { mockGlobalModule, mockGlobalValue } from "../../MockUtils";
 
+import mockFS = require("mock-fs");
+
 suite("SwiftToolchain Unit Test Suite", () => {
     const mockedUtilities = mockGlobalModule(utilities);
     const mockedPlatform = mockGlobalValue(process, "platform");
 
     setup(() => {
         mockFS({});
-        mockedUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
-            stdout: "1.0.0\n",
-            stderr: "",
-        });
+        mockedUtilities.execFile.rejects(
+            Error("execFile() was not properly mocked for this test.")
+        );
     });
 
     teardown(() => {
         mockFS.restore();
     });
 
-    suite("getLLDBDebugAdapter()", () => {
-        function createSwiftToolchain(options: {
-            swiftFolderPath: string;
-            toolchainPath: string;
-        }): SwiftToolchain {
+    suite("getToolchainInvocation()", () => {
+        function createToolchain(
+            manager: "xcrun" | "swiftly" | "swiftenv" | "unknown",
+            toolchainPath: string
+        ): SwiftToolchain {
             return new SwiftToolchain(
-                options.swiftFolderPath,
-                options.toolchainPath,
-                /* targetInfo */ {
-                    compilerVersion: "6.0.0",
-                    paths: {
-                        runtimeLibraryPaths: [],
-                    },
-                },
-                /* swiftVersion */ new Version(6, 0, 0),
-                /* runtimePath */ undefined,
-                /* defaultSDK */ undefined,
-                /* customSDK */ undefined,
-                /* xcTestPath */ undefined,
-                /* swiftTestingPath */ undefined,
-                /* swiftPMTestingHelperPath */ undefined
+                manager,
+                `${toolchainPath}/bin`,
+                toolchainPath,
+                { compilerVersion: "6.0.0", paths: { runtimeLibraryPaths: [] } },
+                new Version(6, 0, 0)
             );
         }
 
-        suite("macOS", () => {
-            setup(() => {
-                mockedPlatform.setValue("darwin");
-            });
-
-            test("returns the path to lldb-dap if it exists within a public toolchain", async () => {
-                mockFS({
-                    "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin/lldb-dap":
-                        mockFS.file({
-                            content: "",
-                            mode: 0o770,
-                        }),
-                });
-                const sut = createSwiftToolchain({
-                    swiftFolderPath:
-                        "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin",
-                    toolchainPath: "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain",
-                });
-
-                await expect(sut.getLLDBDebugAdapter()).to.eventually.equal(
-                    path.normalize(
-                        "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin/lldb-dap"
-                    )
-                );
-            });
-
-            test("throws an error if lldb-dap does not exist within a public toolchain", async () => {
-                mockFS({
-                    "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin": {},
-                });
-                const sut = createSwiftToolchain({
-                    swiftFolderPath:
-                        "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain/usr/bin",
-                    toolchainPath: "/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain",
-                });
-
-                await expect(sut.getLLDBDebugAdapter()).to.eventually.be.rejectedWith(
-                    "Failed to find lldb-dap within Swift toolchain '/Library/Developer/Toolchains/swift-6.0.1-RELEASE.xctoolchain'"
-                );
-            });
-
-            test("returns the path to lldb-dap if it exists within an Xcode toolchain", async () => {
-                mockFS({
-                    "/Applications/Xcode.app/Contents/Developer": {
-                        Toolchains: {
-                            "XcodeDefault.xctoolchain": {},
-                        },
-                        usr: {
-                            bin: {
-                                "lldb-dap": mockFS.file({
-                                    content: "",
-                                    mode: 0o770,
-                                }),
-                            },
-                        },
-                    },
-                });
-                mockedUtilities.execFile.resolves({
-                    stdout: "/Applications/Xcode.app/Contents/Developer/usr/bin/lldb-dap",
-                    stderr: "",
-                });
-                const sut = createSwiftToolchain({
-                    swiftFolderPath:
-                        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
-                    toolchainPath:
-                        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain",
-                });
-
-                await expect(sut.getLLDBDebugAdapter()).to.eventually.equal(
-                    "/Applications/Xcode.app/Contents/Developer/usr/bin/lldb-dap"
-                );
-            });
-
-            test("throws an error if xcrun fails when trying to find lldb-dap within an Xcode toolchain", async () => {
-                mockFS({
-                    "/Applications/Xcode.app/Contents/Developer": {
-                        Toolchains: {
-                            "XcodeDefault.xctoolchain": {},
-                        },
-                        usr: {
-                            bin: {},
-                        },
-                    },
-                });
-                mockedUtilities.execFile.rejects(new Error("Uh oh!"));
-                const sut = createSwiftToolchain({
-                    swiftFolderPath:
-                        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
-                    toolchainPath:
-                        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain",
-                });
-
-                await expect(sut.getLLDBDebugAdapter()).to.eventually.be.rejectedWith(
-                    "Failed to find lldb-dap within Xcode Swift toolchain '/Applications/Xcode.app':\nUh oh!"
-                );
-            });
+        test("normal toolchain returns direct binary path with caller args", () => {
+            mockedPlatform.setValue("linux");
+            const tc = createToolchain("unknown", "/toolchains/swift-6.0.0/usr");
+            const inv = tc.getToolchainInvocation("swift", ["build", "--configuration", "debug"]);
+            expect(inv.command).to.equalPath("/toolchains/swift-6.0.0/usr/bin/swift");
+            expect(inv.args).to.deep.equal(["build", "--configuration", "debug"]);
         });
 
-        suite("Linux", () => {
-            setup(() => {
-                mockedPlatform.setValue("linux");
-            });
-
-            test("returns the path to lldb-dap if it exists within the toolchain", async () => {
-                mockFS({
-                    "/toolchains/swift-6.0.0/usr/bin": {
-                        "lldb-dap": mockFS.file({
-                            content: "",
-                            mode: 0o770,
-                        }),
-                    },
-                });
-                const sut = createSwiftToolchain({
-                    swiftFolderPath: "/toolchains/swift-6.0.0/usr/bin",
-                    toolchainPath: "/toolchains/swift-6.0.0",
-                });
-
-                await expect(sut.getLLDBDebugAdapter()).to.eventually.equal(
-                    path.normalize("/toolchains/swift-6.0.0/usr/bin/lldb-dap")
-                );
-            });
-
-            test("throws an error if lldb dap doesn't exist within the toolchain", async () => {
-                mockFS({
-                    "/toolchains/swift-6.0.0/usr/bin": {},
-                });
-                const sut = createSwiftToolchain({
-                    swiftFolderPath: "/toolchains/swift-6.0.0/usr/bin",
-                    toolchainPath: "/toolchains/swift-6.0.0",
-                });
-
-                await expect(sut.getLLDBDebugAdapter()).to.eventually.be.rejectedWith(
-                    "Failed to find lldb-dap within Swift toolchain '/toolchains/swift-6.0.0'"
-                );
-            });
+        test("xcrun toolchain wraps as xcrun <tool>", () => {
+            mockedPlatform.setValue("darwin");
+            const tc = createToolchain(
+                "xcrun",
+                "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr"
+            );
+            const inv = tc.getToolchainInvocation("swift", ["package", "describe"]);
+            expect(inv.command).to.equalPath("xcrun");
+            expect(inv.args).to.deep.equal(["swift", "package", "describe"]);
         });
 
-        suite("Windows", () => {
-            setup(() => {
-                mockedPlatform.setValue("win32");
-            });
+        test("swiftly toolchain wraps as swiftly run <tool>", () => {
+            mockedPlatform.setValue("linux");
+            const tc = createToolchain("swiftly", "/home/user/.swiftly/toolchains/6.0.0/usr");
+            const inv = tc.getToolchainInvocation("swift", ["build"]);
+            expect(inv.command).to.equal("swiftly");
+            expect(inv.args).to.deep.equal(["run", "swift", "build"]);
+        });
 
-            test("returns the path to lldb-dap.exe if it exists within the toolchain", async () => {
-                mockFS({
-                    "/toolchains/swift-6.0.0/usr/bin": {
-                        "lldb-dap.exe": mockFS.file({
-                            content: "",
-                            mode: 0o770,
-                        }),
-                    },
-                });
-                const sut = createSwiftToolchain({
-                    swiftFolderPath: "/toolchains/swift-6.0.0/usr/bin",
-                    toolchainPath: "/toolchains/swift-6.0.0",
-                });
+        test("swiftly toolchain wraps sourcekit-lsp correctly", () => {
+            mockedPlatform.setValue("linux");
+            const tc = createToolchain("swiftly", "/home/user/.swiftly/toolchains/6.0.0/usr");
+            const inv = tc.getToolchainInvocation("sourcekit-lsp", []);
+            expect(inv.command).to.equal("swiftly");
+            expect(inv.args).to.deep.equal(["run", "sourcekit-lsp"]);
+        });
 
-                await expect(sut.getLLDBDebugAdapter()).to.eventually.equal(
-                    path.normalize("/toolchains/swift-6.0.0/usr/bin/lldb-dap.exe")
-                );
-            });
+        test("swiftly toolchain wraps lldb-dap correctly with no extra args", () => {
+            mockedPlatform.setValue("linux");
+            const tc = createToolchain("swiftly", "/home/user/.swiftly/toolchains/6.0.0/usr");
+            const inv = tc.getToolchainInvocation("lldb-dap", []);
+            expect(inv.command).to.equal("swiftly");
+            expect(inv.args).to.deep.equal(["run", "lldb-dap"]);
+        });
 
-            test("throws an error if lldb-dap.exe doesn't exist within the toolchain", async () => {
-                mockFS({
-                    "/toolchains/swift-6.0.0/usr/bin": {},
-                });
-                const sut = createSwiftToolchain({
-                    swiftFolderPath: "/toolchains/swift-6.0.0/usr/bin",
-                    toolchainPath: "/toolchains/swift-6.0.0",
-                });
+        test("getToolchainExecutablePath always returns raw path regardless of manager", () => {
+            mockedPlatform.setValue("linux");
+            const swiftly = createToolchain("swiftly", "/home/user/.swiftly/toolchains/6.0.0/usr");
+            const unknown = createToolchain("unknown", "/toolchains/swift-6.0.0/usr");
+            expect(swiftly.getToolchainExecutablePath("swift")).to.equalPath(
+                "/home/user/.swiftly/toolchains/6.0.0/usr/bin/swift"
+            );
+            expect(unknown.getToolchainExecutablePath("sourcekit-lsp")).to.equalPath(
+                "/toolchains/swift-6.0.0/usr/bin/sourcekit-lsp"
+            );
+        });
 
-                await expect(sut.getLLDBDebugAdapter()).to.eventually.be.rejectedWith(
-                    "Failed to find lldb-dap.exe within Swift toolchain '/toolchains/swift-6.0.0'"
-                );
-            });
+        test("Windows appends .exe to raw path but not to swiftly invocation", () => {
+            mockedPlatform.setValue("win32");
+            const swiftly = createToolchain("swiftly", "C:/toolchains/swift-6.0.0/usr");
+            const unknown = createToolchain("unknown", "C:/toolchains/swift-6.0.0/usr");
+            expect(swiftly.getToolchainInvocation("swift", []).command).to.equal("swiftly");
+            expect(unknown.getToolchainInvocation("swift", []).command).to.equalPath(
+                "C:/toolchains/swift-6.0.0/usr/bin/swift.exe"
+            );
         });
     });
 
@@ -249,7 +127,9 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 .withArgs("xcode-select", ["-p"])
                 .resolves({ stdout: "", stderr: "" });
 
-            const sortedXcodeInstalls = (await SwiftToolchain.findXcodeInstalls()).sort();
+            const sortedXcodeInstalls = (await SwiftToolchain.findXcodeInstalls()).sort((a, b) =>
+                a.localeCompare(b)
+            );
             expect(sortedXcodeInstalls).to.deep.equal([
                 "/Applications/Xcode-beta.app",
                 "/Applications/Xcode.app",
@@ -266,7 +146,9 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 .withArgs("xcode-select", ["-p"])
                 .resolves({ stdout: "/Applications/Xcode.app\n", stderr: "" });
 
-            const sortedXcodeInstalls = (await SwiftToolchain.findXcodeInstalls()).sort();
+            const sortedXcodeInstalls = (await SwiftToolchain.findXcodeInstalls()).sort((a, b) =>
+                a.localeCompare(b)
+            );
             expect(sortedXcodeInstalls).to.deep.equal([
                 "/Applications/Xcode-beta.app",
                 "/Applications/Xcode.app",
@@ -283,7 +165,9 @@ suite("SwiftToolchain Unit Test Suite", () => {
                 .withArgs("xcode-select", ["-p"])
                 .resolves({ stdout: "/Applications/Xcode.app\n", stderr: "" });
 
-            const sortedXcodeInstalls = (await SwiftToolchain.findXcodeInstalls()).sort();
+            const sortedXcodeInstalls = (await SwiftToolchain.findXcodeInstalls()).sort((a, b) =>
+                a.localeCompare(b)
+            );
             expect(sortedXcodeInstalls).to.deep.equal([
                 "/Applications/Xcode-beta.app",
                 "/Applications/Xcode.app",

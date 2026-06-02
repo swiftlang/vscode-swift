@@ -1,5 +1,5 @@
 diff --git a/src/routes.js b/src/routes.js
-index 0c928ce..f745003 100644
+index 11343be..62c13c9 100644
 --- a/src/routes.js
 +++ b/src/routes.js
 @@ -9,7 +9,6 @@
@@ -10,9 +10,9 @@ index 0c928ce..f745003 100644
    notFoundRouteName,
    serverErrorRouteName,
  } from 'docc-render/constants/router';
-@@ -18,25 +17,32 @@ import NotFound from 'theme/views/NotFound.vue';
+@@ -31,25 +30,34 @@ export const fallbackRoutes = [
  
- export default [
+ export const pagesRoutes = [
    {
 -    path: '/tutorials/:id',
 -    name: 'tutorials-overview',
@@ -40,15 +40,14 @@ index 0c928ce..f745003 100644
    {
 -    path: '/documentation*',
 -    name: documentationTopicName,
--    component: () => import(
--      /* webpackChunkName: "documentation-topic" */ 'theme/views/DocumentationTopic.vue'
--    ),
 +    path: '/live/documentation',
 +    name: 'live-documentation',
-+    component: () => import(/* webpackChunkName: "documentation-topic" */ 'docc-render/views/DocumentationTopic.vue'),
+     component: () => import(
+       /* webpackChunkName: "documentation-topic" */ 'theme/views/DocumentationTopic.vue'
+     ),
 +    meta: {
 +      skipFetchingData: true,
 +    },
    },
-   {
-     path: '*',
+ ];
+ 

@@ -18,5 +18,6 @@
   // Disable for when opening files in this workspace
   "swift.disableAutoResolve": true,
   "swift.autoGenerateLaunchConfigurations": false,
-  "swift.sourcekit-lsp.disable": true
+  "swift.sourcekit-lsp.disable": true,
+  "js/ts.tsdk.path": "node_modules/typescript/lib"
 }

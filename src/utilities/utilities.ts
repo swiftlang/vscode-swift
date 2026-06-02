@@ -19,6 +19,7 @@ import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
 import configuration from "../configuration";
 import { SwiftToolchain } from "../toolchain/toolchain";
+import { Disposable } from "./Disposable";
 
 /**
  * Whether or not this is a production build.
@@ -49,6 +50,20 @@ export const IS_RUNNING_UNDER_DOCKER = IS_RUNNING_UNDER_ACT || IS_RUNNING_UNDER_
  * This will NOT be removed when the extension is packaged into a VSIX, unlike "CI" variable.
  */
 export const IS_RUNNING_UNDER_TEST = process.env.RUNNING_UNDER_VSCODE_TEST_CLI === "1";
+
+/**
+ * Determined by the presence of the `VSCODE_DEBUG` environment variable, set by the
+ * launch.json when debugging the extension.
+ */
+export const IS_RUNNING_UNDER_DEBUGGER = process.env["VSCODE_DEBUG"] === "1";
+
+/** Determines whether the provided object has any properties set to non-null values. */
+export function isEmptyObject(obj: { [key: string]: unknown }): boolean {
+    const properties = Object.getOwnPropertyNames(obj).filter(
+        property => obj[property] !== undefined && obj[property] !== null
+    );
+    return properties.length === 0;
+}
 
 /**
  * Get required environment variable for Swift product
@@ -139,6 +154,14 @@ export async function execFile(
             options.env = { ...(options.env ?? process.env), ...runtimeEnv };
         }
     }
+    if (Object.keys(configuration.swiftEnvironmentVariables).length > 0) {
+        // when adding environment vars we either combine with vars passed
+        // into the function or the process environment vars
+        options.env = {
+            ...(options.env ?? process.env),
+            ...configuration.swiftEnvironmentVariables,
+        };
+    }
     options = {
         ...options,
         maxBuffer: options.maxBuffer ?? 1024 * 1024 * 64, // 64MB
@@ -170,11 +193,7 @@ enum Color {
 }
 
 export function colorize(text: string, color: keyof typeof Color): string {
-    const colorCode = Color[color];
-    if (colorCode !== undefined) {
-        return `\x1b[${colorCode}m${text}\x1b[0m`;
-    }
-    return text;
+    return `\x1b[${Color[color]}m${text}\x1b[0m`;
 }
 
 export async function execFileStreamOutput(
@@ -199,7 +218,7 @@ export async function execFileStreamOutput(
         }
     }
     return new Promise<void>((resolve, reject) => {
-        let cancellation: vscode.Disposable;
+        let cancellation: Disposable;
         const p = cp.execFile(executable, args, options, error => {
             if (error) {
                 reject(error);
@@ -234,32 +253,28 @@ export async function execFileStreamOutput(
  */
 export async function execSwift(
     args: string[],
-    toolchain: SwiftToolchain | "default" | { swiftExecutable: string },
+    toolchain: SwiftToolchain | { swiftExecutable: string },
     options: cp.ExecFileOptions = {},
     folderContext?: FolderContext
 ): Promise<{ stdout: string; stderr: string }> {
-    let swift: string;
+    let command: string;
+    let commandArgs: string[];
     if (typeof toolchain === "object" && "swiftExecutable" in toolchain) {
-        swift = toolchain.swiftExecutable;
-    } else if (toolchain === "default") {
-        swift = getSwiftExecutable();
+        command = toolchain.swiftExecutable;
+        commandArgs = args;
     } else {
-        swift = toolchain.getToolchainExecutable("swift");
-        args = toolchain.buildFlags.withAdditionalFlags(args);
-    }
-    if (Object.keys(configuration.swiftEnvironmentVariables).length > 0) {
-        // when adding environment vars we either combine with vars passed
-        // into the function or the process environment vars
-        options.env = {
-            ...(options.env ?? process.env),
-            ...configuration.swiftEnvironmentVariables,
-        };
+        const inv = toolchain.getToolchainInvocation(
+            "swift",
+            toolchain.buildFlags.withAdditionalFlags(args)
+        );
+        command = inv.command;
+        commandArgs = inv.args;
     }
     options = {
         ...options,
         maxBuffer: options.maxBuffer ?? 1024 * 1024 * 64, // 64MB
     };
-    return await execFile(swift, args, options, folderContext);
+    return await execFile(command, commandArgs, options, folderContext);
 }
 
 /**
@@ -301,6 +316,21 @@ export function compactMap<T, U>(
         return acc;
     }, []);
 }
+
+/**
+ * Create a promise that can be resolved outside the promise executor.
+ * @returns An object containing the promise that can be awaited, and its resolve and reject functions.
+ */
+export function unwrapPromise<T>() {
+    let resolve: (value: T | PromiseLike<T>) => void;
+    let reject: (reason?: unknown) => void;
+    const promise = new Promise<T>((res, rej) => {
+        resolve = res;
+        reject = rej;
+    });
+    return { promise, resolve: resolve!, reject: reject! };
+}
+
 /**
  * Get path to swift executable, or executable in swift bin folder
  *
@@ -325,7 +355,7 @@ export function getRepositoryName(url: string): string {
     // - at the end of the URL: $
     const pattern = /([^/]*)\/?$/;
     // The capture group in this pattern will match the last path component of the URL.
-    let lastPathComponent = url.match(pattern)![1];
+    let lastPathComponent = pattern.exec(url)![1];
     // Trim the optional .git extension.
     if (lastPathComponent.endsWith(".git")) {
         lastPathComponent = lastPathComponent.replace(/\.git$/, "");
@@ -338,8 +368,9 @@ export function getRepositoryName(url: string): string {
  * @param length Length of string to return (max 16)
  * @returns Random string
  */
-export function randomString(length = 8): string {
-    return Math.random().toString(16).substring(2, length);
+export function randomString(length = 8, radix = 16): string {
+    // eslint-disable-next-line sonarjs/pseudo-random
+    return Math.random().toString(radix).substring(2, length);
 }
 
 /**
@@ -443,16 +474,3 @@ export function destructuredPromise<T>(): {
     return { promise: p, resolve: resolve!, reject: reject! };
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
-
-/**
- * Creates a composite disposable from multiple disposables.
- * @param disposables The disposables to include.
- * @returns A composite disposable that disposes all included disposables.
- */
-export function compositeDisposable(...disposables: vscode.Disposable[]): vscode.Disposable {
-    return {
-        dispose: () => {
-            disposables.forEach(d => d.dispose());
-        },
-    };
-}

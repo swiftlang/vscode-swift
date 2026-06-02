@@ -113,6 +113,35 @@ Tests can also be launched from the terminal with the `--coverage` flag to displ
 npm run unit-test -- --coverage
 ```
 
+### Extension API Versioning
+
+The Swift extension exposes a public API to other extensions as defined in [`src/SwiftExtensionApi.ts`](src/SwiftExtensionApi.ts). This API follows [semantic versioning](https://semver.org/) and is separate from the extension's version number.
+
+When making changes to the public API you must update the `"api-version"` property in the `package.json`. The following sections describe when each version number should be updated:
+
+#### MAJOR version (breaking changes)
+Increment when making changes that are incompatible with previous versions:
+- Removing/renaming properties, methods, or interfaces
+- Changing property types incompatibly
+- Making optional properties required
+- Removing enum values
+
+> [!NOTE]
+> It is always preferable to deprecate old API and/or provide a compatibility layer before making a breaking change. We want to allow other extensions as much time as possible to update their API usage. In some instances this may not be feasible which will require working with extension authors to facilitate a smooth transition.
+
+#### MINOR version (new features)
+Increment when adding new backward-compatible features:
+- Adding new optional properties
+- Adding new interfaces, types, or enum values
+- Adding new methods
+- Making required properties optional
+- Marking properties as deprecated
+
+#### PATCH version (bug fixes)
+Increment when making backward-compatible fixes:
+- Documentation improvements
+- Type annotation fixes
+
 ## sourcekit-lsp
 
 The VS Code extension for Swift relies on Apple's [sourcekit-lsp](https://github.com/apple/sourcekit-lsp) for syntax highlighting, enumerating tests, and more. If you want to test the extension with a different version of the sourcekit-lsp you can add a `swift.sourcekit-lsp.serverPath` entry in your local `settings.json` to point to your sourcekit-lsp binary. The setting is no longer visible in the UI because it has been deprecated.

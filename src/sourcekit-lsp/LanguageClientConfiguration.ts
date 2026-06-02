@@ -36,6 +36,7 @@ function initializationOptions(swiftVersion: Version): any {
             supportedCommands: {
                 "swift.run": "swift.run",
                 "swift.debug": "swift.debug",
+                "swift.play": "swift.play",
             },
         },
     };
@@ -44,6 +45,7 @@ function initializationOptions(swiftVersion: Version): any {
     // (https://github.com/swiftlang/sourcekit-lsp/pull/2204)
     if (swiftVersion.isGreaterThanOrEqual(new Version(6, 3, 0))) {
         options = {
+            ...options,
             "workspace/peekDocuments": {
                 supported: true, // workaround for client capability to handle `PeekDocumentsRequest`
                 peekLocation: true, // allow SourceKit-LSP to send `Location` instead of `DocumentUri` for the locations to peek.
@@ -108,7 +110,7 @@ type SourceKitDocumentSelector = {
 }[];
 
 export class LanguagerClientDocumentSelectors {
-    static appleLangDocumentSelector: SourceKitDocumentSelector = [
+    static readonly appleLangDocumentSelector: SourceKitDocumentSelector = [
         { scheme: "sourcekit-lsp", language: "swift" },
         { scheme: "file", language: "swift" },
         { scheme: "untitled", language: "swift" },
@@ -118,22 +120,21 @@ export class LanguagerClientDocumentSelectors {
         { scheme: "untitled", language: "objective-cpp" },
     ];
 
-    static cFamilyDocumentSelector: SourceKitDocumentSelector = [
+    static readonly cFamilyDocumentSelector: SourceKitDocumentSelector = [
         { scheme: "file", language: "c" },
         { scheme: "untitled", language: "c" },
         { scheme: "file", language: "cpp" },
         { scheme: "untitled", language: "cpp" },
     ];
 
-    // document selector for swift-docc documentation
-    static documentationDocumentSelector: SourceKitDocumentSelector = [
+    static readonly documentationDocumentSelector: SourceKitDocumentSelector = [
         { scheme: "file", language: "markdown" },
         { scheme: "untitled", language: "markdown" },
         { scheme: "file", language: "tutorial" },
         { scheme: "untitiled", language: "tutorial" },
     ];
 
-    static miscelaneousDocumentSelector: SourceKitDocumentSelector = [
+    static readonly miscelaneousDocumentSelector: SourceKitDocumentSelector = [
         { scheme: "file", language: "plaintext", pattern: "**/.swift-version" },
     ];
 
@@ -214,7 +215,8 @@ export function lspClientOptions(
     documentSymbolWatcher?: (
         document: vscode.TextDocument,
         symbols: vscode.DocumentSymbol[]
-    ) => void
+    ) => void,
+    documentCodeLensWatcher?: (document: vscode.TextDocument, codeLens: vscode.CodeLens[]) => void
 ): LanguageClientOptions {
     return {
         documentSelector: LanguagerClientDocumentSelectors.sourcekitLSPDocumentTypes(),
@@ -223,7 +225,7 @@ export function lspClientOptions(
         outputChannel: workspaceContext.loggerFactory.create(
             `SourceKit Language Server (${swiftVersion.toString()})`,
             `sourcekit-lsp-${swiftVersion.toString()}.log`,
-            { outputChannel: true }
+            { outputChannel: true, logConsole: false }
         ),
         middleware: {
             didOpen: activeDocumentManager.didOpen.bind(activeDocumentManager),
@@ -246,6 +248,9 @@ export function lspClientOptions(
             },
             provideCodeLenses: async (document, token, next) => {
                 const result = await next(document, token);
+                if (documentCodeLensWatcher && result) {
+                    documentCodeLensWatcher(document, result);
+                }
                 return result?.map(codelens => {
                     switch (codelens.command?.command) {
                         case "swift.run":
@@ -253,6 +258,9 @@ export function lspClientOptions(
                             break;
                         case "swift.debug":
                             codelens.command.title = `$(debug)\u00A0${codelens.command.title}`;
+                            break;
+                        case "swift.play":
+                            codelens.command.title = `$(play)\u00A0${codelens.command.title}`;
                             break;
                     }
                     return codelens;
@@ -278,6 +286,18 @@ export function lspClientOptions(
                     return new vscode.Location(uri, definitions[0].range);
                 }
                 return result;
+            },
+            provideReferences: async (document, position, options, token, next) => {
+                const setting = configuration.lsp.includeDeclarationInFindAllReferences;
+                if (setting === "default") {
+                    return next(document, position, options, token);
+                }
+                return next(
+                    document,
+                    position,
+                    { ...options, includeDeclaration: setting === "always" },
+                    token
+                );
             },
             // temporarily remove text edit from Inlay hints while SourceKit-LSP
             // returns invalid replacement text
@@ -312,17 +332,21 @@ export function lspClientOptions(
             },
             handleWorkDoneProgress: (() => {
                 let lastPrompted = new Date(0).getTime();
-                return async (token, params, next) => {
+                return (token, params, next) => {
                     const result = next(token, params);
+                    const tokenString = token.toString();
                     const now = new Date().getTime();
                     const oneHour = 60 * 60 * 1000;
                     if (
                         now - lastPrompted > oneHour &&
-                        token.toString().startsWith("sourcekitd-crashed")
+                        tokenString.startsWith("sourcekitd-crashed")
                     ) {
                         // Only prompt once an hour in case sourcekit is in a crash loop
                         lastPrompted = now;
                         void promptForDiagnostics(workspaceContext);
+                    }
+                    if (tokenString.startsWith("indexing") && params.kind === "end") {
+                        workspaceContext.indexingFinished();
                     }
                     return result;
                 };

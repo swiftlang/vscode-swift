@@ -16,14 +16,6 @@ import * as vscode from "vscode";
 import { SwiftLogger } from "./SwiftLogger";
 
 export class SwiftOutputChannel extends SwiftLogger implements vscode.OutputChannel {
-    /**
-     * Creates a vscode.OutputChannel that allows for later retrieval of logs.
-     * @param name
-     */
-    constructor(name: string, logFilePath: string, logStoreLinesSize?: number) {
-        super(name, logFilePath, logStoreLinesSize);
-    }
-
     append(value: string): void {
         this.info(value, undefined, { append: true });
     }

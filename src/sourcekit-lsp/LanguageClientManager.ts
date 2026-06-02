@@ -30,6 +30,7 @@ import { FolderContext } from "../FolderContext";
 import configuration from "../configuration";
 import { SwiftOutputChannel } from "../logging/SwiftOutputChannel";
 import { ArgumentFilter, BuildFlags } from "../toolchain/BuildFlags";
+import { AsyncDisposable, Disposable } from "../utilities/Disposable";
 import { swiftRuntimeEnv } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { LSPLogger, LSPOutputChannel } from "./LSPOutputChannel";
@@ -40,17 +41,22 @@ import { SourceKitLogMessageNotification, SourceKitLogMessageParams } from "./ex
 import { DidChangeActiveDocumentNotification } from "./extensions/DidChangeActiveDocumentRequest";
 import { PollIndexRequest, WorkspaceSynchronizeRequest } from "./extensions/PollIndexRequest";
 import { activateGetReferenceDocument } from "./getReferenceDocument";
-import { activateLegacyInlayHints } from "./inlayHints";
 import { activatePeekDocuments } from "./peekDocuments";
 
+/**
+ * Options for the LanguageClientManager
+ */
 interface LanguageClientManageOptions {
-    /**
-     * Options for the LanguageClientManager
-     */
     onDocumentSymbols?: (
         folder: FolderContext,
         document: vscode.TextDocument,
         symbols: vscode.DocumentSymbol[] | null | undefined
+    ) => void;
+
+    onDocumentCodeLens?: (
+        folder: FolderContext,
+        document: vscode.TextDocument,
+        codeLens: vscode.CodeLens[] | null | undefined
     ) => void;
 }
 
@@ -58,12 +64,12 @@ interface LanguageClientManageOptions {
  * Manages the creation and destruction of Language clients as we move between
  * workspace folders
  */
-export class LanguageClientManager implements vscode.Disposable {
+export class LanguageClientManager implements AsyncDisposable {
     // known log names
-    static indexingLogName = "SourceKit-LSP: Indexing";
+    static readonly indexingLogName = "SourceKit-LSP: Indexing";
 
     // build argument to sourcekit-lsp filter
-    static buildArgumentFilter: ArgumentFilter[] = [
+    static readonly buildArgumentFilter: ArgumentFilter[] = [
         { argument: "--build-path", include: 1 },
         { argument: "--scratch-path", include: 1 },
         { argument: "-Xswiftc", include: 1 },
@@ -82,10 +88,10 @@ export class LanguageClientManager implements vscode.Disposable {
      */
     private languageClient: LanguageClient | null | undefined;
     private cancellationToken?: vscode.CancellationTokenSource;
-    private legacyInlayHints?: vscode.Disposable;
-    private peekDocuments?: vscode.Disposable;
-    private getReferenceDocument?: vscode.Disposable;
-    private didChangeActiveDocument?: vscode.Disposable;
+    private legacyInlayHints?: Disposable;
+    private peekDocuments?: Disposable;
+    private getReferenceDocument?: Disposable;
+    private didChangeActiveDocument?: Disposable;
     private restartedPromise?: Promise<void>;
     private currentWorkspaceFolder?: FolderContext;
     private waitingOnRestartCount: number;
@@ -94,7 +100,7 @@ export class LanguageClientManager implements vscode.Disposable {
         document: vscode.TextDocument,
         symbols: vscode.DocumentSymbol[] | null | undefined
     ) => void;
-    private subscriptions: vscode.Disposable[];
+    private subscriptions: Disposable[];
     private singleServerSupport: boolean;
     // used by single server support to keep a record of the project folders
     // that are not at the root of their workspace
@@ -165,38 +171,23 @@ export class LanguageClientManager implements vscode.Disposable {
 
         this.subscriptions.push(onChangeConfig);
 
-        // Swift versions prior to 5.6 don't support file changes, so need to restart
-        // lSP server when a file is either created or deleted
-        if (this.swiftVersion.isLessThan(new Version(5, 6, 0))) {
-            folderContext.workspaceContext.logger.debug("LSP: Adding new/delete file handlers");
-            // restart LSP server on creation of a new file
-            const onDidCreateFileDisposable = vscode.workspace.onDidCreateFiles(() => {
-                void this.restart();
-            });
-            // restart LSP server on deletion of a file
-            const onDidDeleteFileDisposable = vscode.workspace.onDidDeleteFiles(() => {
-                void this.restart();
-            });
-            this.subscriptions.push(onDidCreateFileDisposable, onDidDeleteFileDisposable);
-        }
-
         this.waitingOnRestartCount = 0;
         this.documentSymbolWatcher = undefined;
         this.cancellationToken = new vscode.CancellationTokenSource();
     }
 
-    // The language client stops asnyhronously, so we need to wait for it to stop
+    // The language client stops asynchronously, so we need to wait for it to stop
     // instead of doing it in dispose, which must be synchronous.
     async stop(dispose: boolean = true) {
         if (this.languageClient && this.languageClient.state === State.Running) {
-            await this.languageClient.stop(15000);
+            await this.languageClient.stop();
             if (dispose) {
                 await this.languageClient.dispose();
             }
         }
     }
 
-    dispose() {
+    async dispose(): Promise<void> {
         this.cancellationToken?.cancel();
         this.cancellationToken?.dispose();
         this.legacyInlayHints?.dispose();
@@ -204,6 +195,12 @@ export class LanguageClientManager implements vscode.Disposable {
         this.getReferenceDocument?.dispose();
         this.subscriptions.forEach(item => item.dispose());
         this.namedOutputChannels.forEach(channel => channel.dispose());
+        await this.stop(true).catch(error => {
+            // Stopping the language server can sometimes time out. Especially in tests.
+            this.folderContext.logger.error(
+                Error("Failed to dispose of language client", { cause: error })
+            );
+        });
     }
 
     /**
@@ -299,8 +296,13 @@ export class LanguageClientManager implements vscode.Disposable {
         const uri = folder.folder;
         if (this.languageClient === undefined) {
             this.currentWorkspaceFolder = folder;
-            this.restartedPromise = this.setupLanguageClient(folder);
-            return;
+            this.restartedPromise = this.setupLanguageClient(folder).catch(reason => {
+                this.folderContext.workspaceContext.logger.error(
+                    Error("Error starting SourceKit-LSP in setLanguageClientFolder", {
+                        cause: reason,
+                    })
+                );
+            });
         } else {
             // don't check for undefined uri's or if the current workspace is the same if we are
             // running a single server. The only way we can get here while using a single server
@@ -378,11 +380,20 @@ export class LanguageClientManager implements vscode.Disposable {
                     client.outputChannel.dispose();
                 })
                 .catch(async reason => {
+                    this.folderContext.workspaceContext.logger.error(
+                        `Error starting SourceKit-LSP in restartLanguageClient: ${reason}`
+                    );
                     // error message matches code here https://github.com/microsoft/vscode-languageserver-node/blob/2041784436fed53f4e77267a49396bca22a7aacf/client/src/common/client.ts#L1409C1-L1409C54
                     if (reason.message === "Stopping the server timed out") {
-                        await this.setupLanguageClient(workspaceFolder);
+                        try {
+                            await this.setupLanguageClient(workspaceFolder);
+                        } catch (reason) {
+                            this.folderContext.workspaceContext.logger.error(
+                                `Error starting SourceKit-LSP after server timeout in restartLanguageClient: ${reason}`
+                            );
+                        }
                     }
-                    this.folderContext.workspaceContext.logger.error(reason);
+                    this.folderContext.logger.error(reason);
                 });
             await this.restartedPromise;
         }
@@ -402,10 +413,10 @@ export class LanguageClientManager implements vscode.Disposable {
         errorHandler: SourceKitLSPErrorHandler;
     } {
         const toolchain = folder.toolchain;
-        const toolchainSourceKitLSP = toolchain.getToolchainExecutable("sourcekit-lsp");
+        // Raw path kept for the SOURCEKIT_TOOLCHAIN_PATH comparison below.
+        const toolchainSourceKitLSPPath = toolchain.getToolchainExecutablePath("sourcekit-lsp");
         const lspConfig = configuration.lsp;
         const serverPathConfig = lspConfig.serverPath;
-        const serverPath = serverPathConfig.length > 0 ? serverPathConfig : toolchainSourceKitLSP;
         const buildFlags = toolchain.buildFlags;
         const sdkArguments = [
             ...buildFlags.swiftDriverSDKFlags(true),
@@ -416,9 +427,14 @@ export class LanguageClientManager implements vscode.Disposable {
             ),
         ];
 
+        const inv =
+            serverPathConfig.length > 0
+                ? { command: serverPathConfig, args: [] }
+                : toolchain.getToolchainInvocation("sourcekit-lsp", []);
+
         const sourcekit: Executable = {
-            command: serverPath,
-            args: lspConfig.serverArguments.concat(sdkArguments),
+            command: inv.command,
+            args: [...inv.args, ...lspConfig.serverArguments, ...sdkArguments],
             options: {
                 env: {
                     ...process.env,
@@ -433,9 +449,8 @@ export class LanguageClientManager implements vscode.Disposable {
         if (
             serverPathConfig.length > 0 &&
             configuration.path.length > 0 &&
-            serverPathConfig !== toolchainSourceKitLSP
+            serverPathConfig !== toolchainSourceKitLSPPath
         ) {
-            // eslint-disable-next-line @typescript-eslint/naming-convention
             sourcekit.options = {
                 env: {
                     ...sourcekit.options?.env,
@@ -472,6 +487,18 @@ export class LanguageClientManager implements vscode.Disposable {
                     return;
                 }
                 this.options.onDocumentSymbols?.(documentFolderContext, document, symbols);
+            },
+            (document, codeLens) => {
+                const documentFolderContext = [this.folderContext, ...this.addedFolders].find(
+                    folderContext => document.uri.fsPath.startsWith(folderContext.folder.fsPath)
+                );
+                if (!documentFolderContext) {
+                    this.languageClientOutputChannel?.warn(
+                        "Unable to find folder for document: " + document.uri.fsPath
+                    );
+                    return;
+                }
+                this.options.onDocumentCodeLens?.(documentFolderContext, document, codeLens);
             }
         );
 
@@ -486,7 +513,10 @@ export class LanguageClientManager implements vscode.Disposable {
         };
     }
 
-    private async startClient(client: LanguageClient, errorHandler: SourceKitLSPErrorHandler) {
+    private startClient(
+        client: LanguageClient,
+        errorHandler: SourceKitLSPErrorHandler
+    ): Promise<void> {
         const runningPromise = new Promise<void>((res, rej) => {
             const disposable = client.onDidChangeState(e => {
                 // if state is now running add in any sub-folder workspaces that
@@ -504,13 +534,13 @@ export class LanguageClientManager implements vscode.Disposable {
             });
         });
         if (client.clientOptions.workspaceFolder) {
-            this.folderContext.workspaceContext.logger.info(
+            this.folderContext.logger.info(
                 `SourceKit-LSP setup for ${FolderContext.uriName(
                     client.clientOptions.workspaceFolder.uri
                 )}`
             );
         } else {
-            this.folderContext.workspaceContext.logger.info(`SourceKit-LSP setup`);
+            this.folderContext.logger.info(`SourceKit-LSP setup`);
         }
 
         client.onNotification(SourceKitLogMessageNotification.type, params => {
@@ -527,10 +557,6 @@ export class LanguageClientManager implements vscode.Disposable {
                 // Now that we've started up correctly, start the error handler to auto-restart
                 // if sourcekit-lsp crashes during normal operation.
                 errorHandler.enable();
-
-                if (this.swiftVersion.isLessThan(new Version(5, 7, 0))) {
-                    this.legacyInlayHints = activateLegacyInlayHints(client);
-                }
 
                 this.peekDocuments = activatePeekDocuments(client);
                 this.getReferenceDocument = activateGetReferenceDocument(client);
@@ -551,8 +577,8 @@ export class LanguageClientManager implements vscode.Disposable {
                     // do nothing, the experimental capability is not supported
                 }
             } catch (reason) {
-                this.folderContext.workspaceContext.logger.error(
-                    `Error starting SourceKit-LSP: ${reason}`
+                this.folderContext.logger.error(
+                    `Error starting SourceKit-LSP in startClient: ${reason}`
                 );
                 if (this.languageClient?.state === State.Running) {
                     await this.languageClient?.stop();
@@ -677,7 +703,7 @@ export class SourceKitLSPErrorHandler implements ErrorHandler {
 }
 
 /** Language client errors */
-export const enum LanguageClientError {
+const enum LanguageClientError {
     LanguageClientUnavailable = "Language Client Unavailable",
 }
 

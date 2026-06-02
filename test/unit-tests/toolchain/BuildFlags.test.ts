@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
-import * as path from "path";
+import { beforeEach } from "mocha";
 import * as sinon from "sinon";
 
 import configuration from "@src/configuration";
@@ -191,11 +191,11 @@ suite("BuildFlags Test Suite", () => {
             ]);
         });
 
-        test("configuration provided, before swift 5.8", () => {
-            mockedToolchain.swiftVersion = new Version(5, 7, 0);
+        test("configuration provided", () => {
+            mockedToolchain.swiftVersion = new Version(5, 9, 0);
             buildPathConfig.setValue("/some/other/full/test/path");
             expect(buildFlags.buildPathFlags()).to.deep.equal([
-                "--build-path",
+                "--scratch-path",
                 "/some/other/full/test/path",
             ]);
         });
@@ -203,52 +203,162 @@ suite("BuildFlags Test Suite", () => {
 
     suite("buildDirectoryFromWorkspacePath", () => {
         const buildPathConfig = mockGlobalValue(configuration, "buildPath");
+        const buildArgsConfig = mockGlobalValue(configuration, "buildArguments");
+        const packageArgsConfig = mockGlobalValue(configuration, "packageArguments");
+
+        beforeEach(() => {
+            buildPathConfig.setValue("");
+            buildArgsConfig.setValue([]);
+            packageArgsConfig.setValue([]);
+        });
 
         test("no configuration provided", () => {
             buildPathConfig.setValue("");
 
             expect(
                 BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
-            ).to.equal(path.normalize(".build"));
+            ).to.equalPath(".build");
 
             expect(
                 BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true)
-            ).to.equal(path.normalize("/some/full/workspace/test/path/.build"));
+            ).to.equalPath("/some/full/workspace/test/path/.build");
         });
 
         test("absolute configuration provided", () => {
-            buildPathConfig.setValue(path.normalize("/some/other/full/test/path"));
-
-            expect(
-                BuildFlags.buildDirectoryFromWorkspacePath(
-                    path.normalize("/some/full/workspace/test/path"),
-                    false
-                )
-            ).to.equal(path.normalize("/some/other/full/test/path"));
-
-            expect(
-                BuildFlags.buildDirectoryFromWorkspacePath(
-                    path.normalize("/some/full/workspace/test/path"),
-                    true
-                )
-            ).to.equal(path.normalize("/some/other/full/test/path"));
-        });
-
-        test("relative configuration provided", () => {
-            buildPathConfig.setValue(path.normalize("some/relative/test/path"));
+            buildPathConfig.setValue("/some/other/full/test/path");
 
             expect(
                 BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
-            ).to.equal(path.normalize("some/relative/test/path"));
+            ).to.equalPath("/some/other/full/test/path");
 
             expect(
                 BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true)
-            ).to.equal(path.normalize("/some/full/workspace/test/path/some/relative/test/path"));
+            ).to.equalPath("/some/other/full/test/path");
+        });
+
+        test("relative configuration provided", () => {
+            buildPathConfig.setValue("some/relative/test/path");
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
+            ).to.equalPath("some/relative/test/path");
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true)
+            ).to.equalPath("/some/full/workspace/test/path/some/relative/test/path");
+        });
+
+        test("--scratch-path in buildArguments with separate value", () => {
+            buildArgsConfig.setValue(["--scratch-path", "/custom/scratch/path"]);
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
+            ).to.equalPath("/custom/scratch/path");
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true)
+            ).to.equalPath("/custom/scratch/path");
+        });
+
+        test("--scratch-path in buildArguments with equals format", () => {
+            buildArgsConfig.setValue(["--scratch-path=/custom/scratch/path"]);
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
+            ).to.equalPath("/custom/scratch/path");
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true)
+            ).to.equalPath("/custom/scratch/path");
+        });
+
+        test("--scratch-path with relative path in buildArguments", () => {
+            buildArgsConfig.setValue(["--scratch-path", "custom/build"]);
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
+            ).to.equalPath("custom/build");
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true)
+            ).to.equalPath("/some/full/workspace/test/path/custom/build");
+        });
+
+        test("--build-path in buildArguments (legacy support)", () => {
+            buildArgsConfig.setValue(["--build-path", "/legacy/build/path"]);
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
+            ).to.equalPath("/legacy/build/path");
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true)
+            ).to.equalPath("/legacy/build/path");
+        });
+
+        test("--scratch-path in packageArguments", () => {
+            packageArgsConfig.setValue(["--scratch-path", "/package/scratch/path"]);
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
+            ).to.equalPath("/package/scratch/path");
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", true)
+            ).to.equalPath("/package/scratch/path");
+        });
+
+        test("buildArguments takes precedence over packageArguments", () => {
+            buildArgsConfig.setValue(["--scratch-path", "/build/args/path"]);
+            packageArgsConfig.setValue(["--scratch-path", "/package/args/path"]);
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
+            ).to.equalPath("/build/args/path");
+        });
+
+        test("buildArguments takes precedence over buildPath config", () => {
+            buildPathConfig.setValue("/config/path");
+            buildArgsConfig.setValue(["--scratch-path", "/build/args/path"]);
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
+            ).to.equalPath("/build/args/path");
+        });
+
+        test("packageArguments takes precedence over buildPath config", () => {
+            buildPathConfig.setValue("/config/path");
+            packageArgsConfig.setValue(["--scratch-path", "/package/args/path"]);
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
+            ).to.equalPath("/package/args/path");
+        });
+
+        test("--scratch-path among other arguments", () => {
+            buildArgsConfig.setValue([
+                "--verbose",
+                "--scratch-path",
+                "/custom/path",
+                "--configuration",
+                "release",
+            ]);
+
+            expect(
+                BuildFlags.buildDirectoryFromWorkspacePath("/some/full/workspace/test/path", false)
+            ).to.equalPath("/custom/path");
         });
     });
 
     suite("withAdditionalFlags", () => {
         const sdkConfig = mockGlobalValue(configuration, "sdk");
+        const buildPathConfig = mockGlobalValue(configuration, "buildPath");
+
+        beforeEach(() => {
+            buildPathConfig.setValue("");
+            sdkConfig.setValue("");
+            sandboxConfig.setValue(false);
+        });
 
         test("package", () => {
             for (const sub of ["dump-symbol-graph", "diagnose-api-breaking-changes", "resolve"]) {
@@ -262,9 +372,9 @@ suite("BuildFlags Test Suite", () => {
                     buildFlags.withAdditionalFlags(["package", sub, "--disable-sandbox"])
                 ).to.deep.equal([
                     "package",
-                    sub,
                     "--sdk",
                     "/some/full/path/to/sdk",
+                    sub,
                     "--disable-sandbox",
                 ]);
             }
@@ -288,6 +398,62 @@ suite("BuildFlags Test Suite", () => {
                 "-Xswiftc",
                 "-disable-sandbox",
                 "init",
+            ]);
+        });
+
+        test("package plugin", () => {
+            buildPathConfig.setValue("");
+            sdkConfig.setValue("");
+            expect(
+                buildFlags.withAdditionalFlags(["package", "plugin", "my-plugin"])
+            ).to.deep.equal(["package", "plugin", "my-plugin"]);
+
+            buildPathConfig.setValue("/some/build/path");
+            expect(
+                buildFlags.withAdditionalFlags(["package", "plugin", "my-plugin", "--verbose"])
+            ).to.deep.equal([
+                "package",
+                "--scratch-path",
+                "/some/build/path",
+                "plugin",
+                "my-plugin",
+                "--verbose",
+            ]);
+
+            sdkConfig.setValue("/some/full/path/to/sdk");
+            expect(
+                buildFlags.withAdditionalFlags(["package", "plugin", "my-plugin"])
+            ).to.deep.equal([
+                "package",
+                "--scratch-path",
+                "/some/build/path",
+                "plugin",
+                "my-plugin",
+            ]);
+
+            sandboxConfig.setValue(true);
+            expect(
+                buildFlags.withAdditionalFlags(["package", "plugin", "my-plugin"])
+            ).to.deep.equal([
+                "package",
+                "--scratch-path",
+                "/some/build/path",
+                "plugin",
+                "my-plugin",
+            ]);
+        });
+
+        test("package plugin --list with buildPath", () => {
+            // Regression test for https://github.com/swiftlang/vscode-swift/issues/2234
+            // The build-path flag must be placed before the `plugin` subcommand,
+            // otherwise SwiftPM rejects it as an unknown plugin option.
+            buildPathConfig.setValue("/tmp/scratch");
+            expect(buildFlags.withAdditionalFlags(["package", "plugin", "--list"])).to.deep.equal([
+                "package",
+                "--scratch-path",
+                "/tmp/scratch",
+                "plugin",
+                "--list",
             ]);
         });
 
@@ -459,7 +625,6 @@ suite("BuildFlags Test Suite", () => {
         test("debug configuration calls swift build with correct arguments", async () => {
             const result = await buildFlags.getBuildBinaryPath(
                 "/test/workspace",
-                "${workspaceFolder:SimpleExecutable}",
                 "debug",
                 instance(logger)
             );
@@ -478,7 +643,6 @@ suite("BuildFlags Test Suite", () => {
         test("release configuration calls swift build with correct arguments", async () => {
             const result = await buildFlags.getBuildBinaryPath(
                 "/test/workspace",
-                "${workspaceFolder:SimpleExecutable}",
                 "release",
                 instance(logger)
             );
@@ -494,12 +658,7 @@ suite("BuildFlags Test Suite", () => {
         test("includes build arguments in command", async () => {
             buildArgsConfig.setValue(["--build-system", "swiftbuild"]);
 
-            await buildFlags.getBuildBinaryPath(
-                "/test/workspace",
-                "${workspaceFolder:SimpleExecutable}",
-                "debug",
-                instance(logger)
-            );
+            await buildFlags.getBuildBinaryPath("/test/workspace", "debug", instance(logger));
 
             const [args] = execSwiftSpy.firstCall.args;
             expect(args).to.include("--build-system");
@@ -510,7 +669,6 @@ suite("BuildFlags Test Suite", () => {
             // First call
             const result1 = await buildFlags.getBuildBinaryPath(
                 "/test/workspace",
-                "${workspaceFolder:SimpleExecutable}",
                 "debug",
                 instance(logger)
             );
@@ -520,7 +678,6 @@ suite("BuildFlags Test Suite", () => {
             // Second call should use cache
             const result2 = await buildFlags.getBuildBinaryPath(
                 "/test/workspace",
-                "${workspaceFolder:SimpleExecutable}",
                 "debug",
                 instance(logger)
             );
@@ -529,7 +686,6 @@ suite("BuildFlags Test Suite", () => {
 
             // Different configuration should not use cache
             const result3 = await buildFlags.getBuildBinaryPath(
-                "/test/workspace",
                 "/test/workspace",
                 "release",
                 instance(logger)
@@ -540,24 +696,14 @@ suite("BuildFlags Test Suite", () => {
 
         test("different build arguments create different cache entries", async () => {
             // First call with no build arguments
-            await buildFlags.getBuildBinaryPath(
-                "/test/workspace",
-                "${workspaceFolder:SimpleExecutable}",
-                "debug",
-                instance(logger)
-            );
+            await buildFlags.getBuildBinaryPath("/test/workspace", "debug", instance(logger));
             expect(execSwiftSpy).to.have.been.calledOnce;
 
             // Change build arguments
             buildArgsConfig.setValue(["--build-system", "swiftbuild"]);
 
             // Second call should not use cache due to different build arguments
-            await buildFlags.getBuildBinaryPath(
-                "/test/workspace",
-                "${workspaceFolder:SimpleExecutable}",
-                "debug",
-                instance(logger)
-            );
+            await buildFlags.getBuildBinaryPath("/test/workspace", "debug", instance(logger));
             expect(execSwiftSpy).to.have.been.calledTwice;
         });
 
@@ -567,50 +713,116 @@ suite("BuildFlags Test Suite", () => {
 
             // Mock execSwift to throw an error
             execSwiftSpy = sinon.spy(() => Promise.reject(new Error("Command failed")));
-            const utilities = await import("@src/utilities/utilities");
             sinon.replace(utilities, "execSwift", execSwiftSpy);
 
             const log = instance(logger);
-            const result = await buildFlags.getBuildBinaryPath(
-                "/test/workspace",
-                "${workspaceFolder:SimpleExecutable}",
-                "debug",
-                log
-            );
+            const result = await buildFlags.getBuildBinaryPath("/test/workspace", "debug", log);
 
             // Should fallback to traditional path
-            expect(result).to.include("${workspaceFolder:SimpleExecutable}");
-            expect(result).to.include("debug");
+            expect(result).to.equalPath("/test/workspace/.build/debug");
             expect(log.warn).to.have.been.calledOnce;
         });
 
         test("clearBuildPathCache clears all cached entries", async () => {
             // Cache some entries
-            await buildFlags.getBuildBinaryPath(
-                "cwd",
-                "${workspaceFolder:Workspace1}",
-                "debug",
-                instance(logger)
-            );
-            await buildFlags.getBuildBinaryPath(
-                "cwd",
-                "${workspaceFolder:Workspace2}",
-                "release",
-                instance(logger)
-            );
+            await buildFlags.getBuildBinaryPath("cwd", "debug", instance(logger));
+            await buildFlags.getBuildBinaryPath("cwd", "release", instance(logger));
             expect(execSwiftSpy).to.have.been.calledTwice;
 
             // Clear cache
             BuildFlags.clearBuildPathCache();
 
             // Next calls should execute again
-            await buildFlags.getBuildBinaryPath(
-                "cwd",
-                "${workspaceFolder:Workspace1}",
-                "debug",
-                instance(logger)
-            );
+            await buildFlags.getBuildBinaryPath("cwd", "debug", instance(logger));
             expect(execSwiftSpy).to.have.been.calledThrice;
+        });
+    });
+
+    suite("lastFlagValue", () => {
+        test("returns undefined for empty args", () => {
+            expect(BuildFlags.lastFlagValue([], "--build-system")).to.be.undefined;
+        });
+
+        test("returns undefined when flag is not present", () => {
+            expect(BuildFlags.lastFlagValue(["--other-flag", "value"], "--build-system")).to.be
+                .undefined;
+        });
+
+        test("finds value in --flag value format", () => {
+            expect(
+                BuildFlags.lastFlagValue(["--build-system", "native"], "--build-system")
+            ).to.equal("native");
+        });
+
+        test("finds value in --flag=value format", () => {
+            expect(BuildFlags.lastFlagValue(["--build-system=native"], "--build-system")).to.equal(
+                "native"
+            );
+        });
+
+        test("returns last occurrence when flag appears multiple times (--flag value)", () => {
+            expect(
+                BuildFlags.lastFlagValue(
+                    ["--build-system", "xcode", "--build-system", "native"],
+                    "--build-system"
+                )
+            ).to.equal("native");
+        });
+
+        test("returns last occurrence when flag appears multiple times (--flag=value)", () => {
+            expect(
+                BuildFlags.lastFlagValue(
+                    ["--build-system=xcode", "--build-system=native"],
+                    "--build-system"
+                )
+            ).to.equal("native");
+        });
+
+        test("returns last valid occurrence when validate skips invalid values", () => {
+            const isNative = (v: string): v is "native" => v === "native";
+            expect(
+                BuildFlags.lastFlagValue(
+                    ["--build-system", "native", "--build-system", "unknown"],
+                    "--build-system",
+                    isNative
+                )
+            ).to.equal("native");
+        });
+
+        test("returns undefined when all occurrences fail validation", () => {
+            const isNative = (v: string): v is "native" => v === "native";
+            expect(
+                BuildFlags.lastFlagValue(["--build-system", "xcode"], "--build-system", isNative)
+            ).to.be.undefined;
+        });
+
+        test("validate skips invalid --flag=value occurrences and returns last valid", () => {
+            const isNative = (v: string): v is "native" => v === "native";
+            expect(
+                BuildFlags.lastFlagValue(
+                    ["--build-system=native", "--build-system=xcode"],
+                    "--build-system",
+                    isNative
+                )
+            ).to.equal("native");
+        });
+
+        test("returns undefined when flag is last argument with no following value", () => {
+            expect(BuildFlags.lastFlagValue(["--build-system"], "--build-system")).to.be.undefined;
+        });
+
+        test("handles mixed --flag value and --flag=value formats, returns last", () => {
+            expect(
+                BuildFlags.lastFlagValue(
+                    ["--build-system=xcode", "--build-system", "native"],
+                    "--build-system"
+                )
+            ).to.equal("native");
+        });
+
+        test("does not match flags that share a prefix", () => {
+            expect(BuildFlags.lastFlagValue(["--build-system-extra", "value"], "--build-system")).to
+                .be.undefined;
         });
     });
 });

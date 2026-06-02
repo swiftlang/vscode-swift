@@ -11,6 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+/* eslint-disable vscode-swift/no-exclusive-tests */
 import type { AsyncFunc, Func, Suite, Test } from "mocha";
 
 /** The set of all available test sizes that can be applied to a test or suite. */

@@ -85,20 +85,17 @@ export class LSPTestDiscovery {
         swiftPackage: SwiftPackage,
         input: LSPTestItem[]
     ): Promise<TestDiscovery.TestClass[]> {
-        let result: TestDiscovery.TestClass[] = [];
-        for (const item of input) {
-            const location = client.protocol2CodeConverter.asLocation(item.location);
-            result = [
-                ...result,
-                {
+        return Promise.all(
+            input.map(async item => {
+                const location = client.protocol2CodeConverter.asLocation(item.location);
+                return {
                     ...item,
                     id: await this.transformId(item, location, swiftPackage),
                     children: await this.transformToTestClass(client, swiftPackage, item.children),
                     location,
-                },
-            ];
-        }
-        return result;
+                };
+            })
+        );
     }
 
     /**

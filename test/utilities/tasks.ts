@@ -11,13 +11,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import { AssertionError } from "chai";
 import * as vscode from "vscode";
 
 import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
+import { Disposable } from "@src/utilities/Disposable";
 
 import { SwiftTaskFixture } from "../fixtures";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
 
 export type Mutable<T> = {
@@ -122,6 +123,57 @@ export function waitForNoRunningTasks(options?: { timeout: number }): Promise<vo
 }
 
 /**
+ * Allows for introspection of VS Code tasks that happened while this TaskWatcher is active.
+ *
+ * **Note:** Use {@link withTaskWatcher} to limit the scope to the duration of a test and clean up
+ * listeners upon test completion.
+ */
+export class TaskWatcher implements Disposable {
+    /** An array containing all of the tasks that have already completed. */
+    public completedTasks: vscode.Task[] = [];
+    private subscriptions: Disposable[];
+
+    constructor() {
+        this.subscriptions = [
+            vscode.tasks.onDidEndTask(event => {
+                this.completedTasks.push(event.execution.task);
+            }),
+        ];
+    }
+
+    /** Asserts that a task was completed with the given name. */
+    assertTaskCompletedByName(name: string): void {
+        if (this.completedTasks.find(t => t.name.includes(name))) {
+            return;
+        }
+        const createStringArray = (arr: string[]): string => {
+            return "[\n" + arr.map(s => "  " + s).join(",\n") + "\n]";
+        };
+        throw new AssertionError(`expected a task with name "${name}" to have completed.`, {
+            actual: createStringArray(this.completedTasks.map(t => t.name)),
+            expected: createStringArray([name]),
+            showDiff: true,
+        });
+    }
+
+    dispose() {
+        this.subscriptions.forEach(s => s.dispose());
+    }
+}
+
+/** Executes the given callback with a TaskWatcher that listens to the VS Code tasks API for the duration of the callback. */
+export async function withTaskWatcher(
+    task: (watcher: TaskWatcher) => Promise<void>
+): Promise<void> {
+    const watcher = new TaskWatcher();
+    try {
+        await task(watcher);
+    } finally {
+        watcher.dispose();
+    }
+}
+
+/**
  * Ideally we would want to use {@link executeTaskAndWaitForResult} but that
  * requires the tests creating the task through some means. If the
  * {@link vscode.Task Task}, was provided by the extension under test, the
@@ -132,7 +184,7 @@ export function waitForNoRunningTasks(options?: { timeout: number }): Promise<vo
  */
 export function waitForEndTaskProcess(task: vscode.Task): Promise<number | undefined> {
     return new Promise<number | undefined>(res => {
-        const disposables: vscode.Disposable[] = [];
+        const disposables: Disposable[] = [];
         disposables.push(
             vscode.tasks.onDidEndTaskProcess(e => {
                 if (task.detail !== e.execution.task.detail) {
@@ -155,7 +207,7 @@ export function waitForEndTaskProcess(task: vscode.Task): Promise<number | undef
  */
 export function waitForStartTaskProcess(task: vscode.Task): Promise<void> {
     return new Promise<void>(res => {
-        const disposables: vscode.Disposable[] = [];
+        const disposables: Disposable[] = [];
         disposables.push(
             vscode.tasks.onDidStartTaskProcess(e => {
                 if (task.detail !== e.execution.task.detail) {

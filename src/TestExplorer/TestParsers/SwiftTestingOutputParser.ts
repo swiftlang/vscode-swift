@@ -11,11 +11,11 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import { exec } from "child_process";
 import * as readline from "readline";
 import { Readable } from "stream";
 import * as vscode from "vscode";
 
+import { SwiftLogger } from "../../logging/SwiftLogger";
 import { lineBreakRegex } from "../../utilities/tasks";
 import { colorize, sourceLocationToVSCodeLocation } from "../../utilities/utilities";
 import { TestClass } from "../TestDiscovery";
@@ -89,7 +89,7 @@ type ParameterizedTestRecord = TestRecord & {
     };
 };
 
-export interface TestCase {
+interface TestCase {
     id: string;
     displayName: string;
 }
@@ -179,21 +179,30 @@ export interface EventMessage {
     text: string;
 }
 
-export interface SourceLocation {
-    _filePath: string;
+export type SourceLocation = {
     line: number;
     column: number;
-}
+} & (
+    | {
+          // Legacy _filePath is present in 6.2.x and below.
+          _filePath: string;
+          filePath?: never;
+      }
+    | {
+          filePath: string;
+          _filePath?: never;
+      }
+);
 
 export class SwiftTestingOutputParser {
     private completionMap = new Map<number, boolean>();
     private testCaseMap = new Map<string, Map<string, TestCase>>();
-    private path?: string;
+    private reader?: INamedPipeReader;
 
     constructor(
-        public testRunStarted: () => void,
-        public addParameterizedTestCase: (testClass: TestClass, parentIndex: number) => void,
-        public onAttachment: (testIndex: number, path: string) => void
+        public addParameterizedTestCases: (testClasses: TestClass[], parentIndex: number) => void,
+        public onAttachment: (testIndex: number, path: string) => void,
+        private logger?: SwiftLogger
     ) {}
 
     /**
@@ -205,10 +214,8 @@ export class SwiftTestingOutputParser {
         runState: ITestRunState,
         pipeReader?: INamedPipeReader
     ): Promise<void> {
-        this.path = path;
-
         // Creates a reader based on the platform unless being provided in a test context.
-        const reader = pipeReader ?? this.createReader(path);
+        this.reader = pipeReader ?? this.createReader(path);
         const readlinePipe = new Readable({
             read() {},
         });
@@ -220,25 +227,33 @@ export class SwiftTestingOutputParser {
             crlfDelay: Infinity,
         });
 
-        rl.on("line", line => this.parse(JSON.parse(line), runState));
+        // A thrown `SyntaxError` here would escalate to `uncaughtException` on
+        // the extension host because readline dispatches the listener
+        // synchronously. Swallow the bad line and carry on so one malformed
+        // payload can't bring the extension down.
+        rl.on("line", line => {
+            try {
+                this.parse(JSON.parse(line), runState);
+            } catch (error) {
+                this.logger?.error(
+                    `Failed to parse swift-testing event: ${error instanceof Error ? error.message : String(error)} line=${line}`
+                );
+            }
+        });
 
-        void reader.start(readlinePipe);
+        void this.reader.start(readlinePipe);
     }
 
     /**
-     * Closes the FIFO pipe after a test run. This must be called at the
-     * end of a run regardless of the run's success or failure.
+     * Stops the FIFO reader after a test run. This must be called at the
+     * end of a run regardless of the run's success or failure, because the
+     * reader holds the FIFO open (O_RDWR on Unix, a listening server on
+     * Windows) and would otherwise block EOF from ever reaching the parser.
      */
     public async close() {
-        if (!this.path) {
-            return;
-        }
-
-        await new Promise<void>(resolve => {
-            exec(`echo '{}' > ${this.path}`, () => {
-                resolve();
-            });
-        });
+        const reader = this.reader;
+        this.reader = undefined;
+        await reader?.stop();
     }
 
     /**
@@ -256,8 +271,8 @@ export class SwiftTestingOutputParser {
 
     private createReader(path: string): INamedPipeReader {
         return process.platform === "win32"
-            ? new WindowsNamedPipeReader(path)
-            : new UnixNamedPipeReader(path);
+            ? new WindowsNamedPipeReader(path, this.logger)
+            : new UnixNamedPipeReader(path, this.logger);
     }
 
     private parse(item: SwiftTestEvent, runState: ITestRunState) {
@@ -280,7 +295,6 @@ export class SwiftTestingOutputParser {
     private handleEventRecord(payload: EventRecordPayload, runState: ITestRunState) {
         switch (payload.kind) {
             case "runStarted":
-                this.handleRunStarted();
                 break;
             case "testStarted":
                 this.handleTestStarted(payload, runState);
@@ -322,29 +336,24 @@ export class SwiftTestingOutputParser {
 
         const testIndex = this.testItemIndexFromTestID(item.payload.id, runState);
         // If a test has test cases it is paramterized and we need to notify
-        // the caller that the TestClass should be added to the vscode.TestRun
-        // before it starts.
-        item.payload._testCases
+        // the caller that the TestClass should be added to the vscode.TestRun.
+        const parameterizedTestCases = item.payload._testCases
             .map((testCase, index) =>
                 this.parameterizedFunctionTestCaseToTestClass(
                     item.payload.id,
                     testCase,
                     sourceLocationToVSCodeLocation(
-                        item.payload.sourceLocation._filePath,
+                        item.payload.sourceLocation._filePath ??
+                            item.payload.sourceLocation.filePath,
                         item.payload.sourceLocation.line,
                         item.payload.sourceLocation.column
                     ),
                     index
                 )
             )
-            .flatMap(testClass => (testClass ? [testClass] : []))
-            .forEach(testClass => this.addParameterizedTestCase(testClass, testIndex));
-    }
+            .flatMap(testClass => (testClass ? [testClass] : []));
 
-    private handleRunStarted() {
-        // Notify the runner that we've received all the test cases and
-        // are going to start running tests now.
-        this.testRunStarted();
+        this.addParameterizedTestCases(parameterizedTestCases, testIndex);
     }
 
     private handleTestStarted(payload: TestStarted, runState: ITestRunState) {
@@ -367,8 +376,9 @@ export class SwiftTestingOutputParser {
         const testID = this.idFromOptionalTestCase(payload.testID, payload._testCase);
         const testIndex = this.getTestCaseIndex(runState, testID);
         const { isKnown, sourceLocation } = payload.issue;
+        const filePath = sourceLocation._filePath ?? sourceLocation.filePath;
         const location = sourceLocationToVSCodeLocation(
-            sourceLocation._filePath,
+            filePath,
             sourceLocation.line,
             sourceLocation.column
         );
@@ -381,7 +391,18 @@ export class SwiftTestingOutputParser {
             .map(message => MessageRenderer.render(message))
             .join("\n");
 
-        if (payload.issue.isFailure === false && !payload.issue.isKnown) {
+        const isWarning =
+            payload.issue.severity === "warning" ||
+            (payload.issue.isFailure === false && !payload.issue.isKnown);
+
+        if (isWarning) {
+            issues.forEach(message => {
+                const text =
+                    additionalDetails.length > 0
+                        ? `${MessageRenderer.render(message)}: ${additionalDetails}`
+                        : MessageRenderer.render(message);
+                runState.recordWarning(testIndex, text, location);
+            });
             return;
         }
 
@@ -448,7 +469,7 @@ export class SwiftTestingOutputParser {
 
     private testName(id: string): string {
         const nameMatcher = /^(.*\(.*\))\/(.*)\.swift:\d+:\d+$/;
-        const matches = id.match(nameMatcher);
+        const matches = nameMatcher.exec(id);
         return !matches ? id : matches[1];
     }
 
@@ -596,8 +617,8 @@ export class SymbolRenderer {
         return this.colorize(symbol, this.symbol(symbol));
     }
 
-    static ansiEscapeCodePrefix = "\u{001B}[";
-    static resetANSIEscapeCode = `${SymbolRenderer.ansiEscapeCodePrefix}0m`;
+    static readonly ansiEscapeCodePrefix = "\u{001B}[";
+    static readonly resetANSIEscapeCode = `${SymbolRenderer.ansiEscapeCodePrefix}0m`;
 
     // This is adapted from
     // https://github.com/apple/swift-testing/blob/786ade71421eb1d8a9c1d99c902cf1c93096e7df/Sources/Testing/Events/Recorder/Event.Symbol.swift#L102

@@ -16,50 +16,12 @@ import * as vscode from "vscode";
 
 import { TestExplorer } from "@src/TestExplorer/TestExplorer";
 import { TestKind } from "@src/TestExplorer/TestKind";
-import { TestRunProxy } from "@src/TestExplorer/TestRunner";
+import { TestRunProxy } from "@src/TestExplorer/TestRunProxy";
 import { reduceTestItemChildren } from "@src/TestExplorer/TestUtils";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 
-import { testAssetUri } from "../../fixtures";
-import {
-    SettingsMap,
-    activateExtension,
-    deactivateExtension,
-    updateSettings,
-} from "../utilities/testutilities";
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
-
-/**
- * Sets up a test that leverages the TestExplorer, returning the TestExplorer,
- * WorkspaceContext and a callback to revert the settings back to their original values.
- * @param settings Optional extension settings to set before the test starts.
- * @returns Object containing the TestExplorer, WorkspaceContext and a callback to revert
- * the settings back to their original values.
- */
-export async function setupTestExplorerTest(currentTest?: Mocha.Test, settings: SettingsMap = {}) {
-    const settingsTeardown = await updateSettings(settings);
-
-    const testProject = testAssetUri("defaultPackage");
-
-    const workspaceContext = await activateExtension(currentTest);
-    const testExplorer = testExplorerFor(workspaceContext, testProject);
-
-    // Set up the listener before bringing the text explorer in to focus,
-    // which starts searching the workspace for tests.
-    await waitForTestExplorerReady(testExplorer);
-
-    return {
-        settingsTeardown: async () => {
-            await settingsTeardown();
-            await deactivateExtension();
-        },
-        workspaceContext,
-        testExplorer,
-    };
-}
 
 /**
  * Returns the TestExplorer for the given workspace and package folder.
@@ -150,40 +112,47 @@ export function assertTestResults(
         }[];
         passed?: string[];
         skipped?: string[];
-        errored?: string[];
         enqueued?: string[];
         unknown?: number;
     }
 ) {
+    function firstLine(str: string) {
+        const stripped = stripAnsi(str);
+        const endOfLine = stripped.indexOf("\n");
+        if (endOfLine > 0) {
+            return stripped.slice(0, endOfLine);
+        }
+        return str;
+    }
     assert.deepEqual(
         {
-            passed: testRun.runState.passed.map(({ id }) => id).sort(),
+            passed: testRun.runState.passed.map(({ id }) => id).sort((a, b) => a.localeCompare(b)),
             failed: testRun.runState.failed
                 .map(({ test, message }) => ({
                     test: test.id,
                     issues: Array.isArray(message)
-                        ? message.map(({ message }) => stripAnsi(message.toString()))
-                        : [stripAnsi((message as vscode.TestMessage).message.toString())],
+                        ? message.map(({ message }) => firstLine(message.toString()))
+                        : [firstLine((message as vscode.TestMessage).message.toString())],
                 }))
-                .sort(),
-            skipped: testRun.runState.skipped.map(({ id }) => id).sort(),
-            errored: testRun.runState.errored.map(({ id }) => id).sort(),
+                .sort((a, b) => a.test.localeCompare(b.test)),
+            skipped: testRun.runState.skipped
+                .map(({ id }) => id)
+                .sort((a, b) => a.localeCompare(b)),
             enqueued: Array.from(testRun.runState.enqueued)
                 .map(({ id }) => id)
-                .sort(),
+                .sort((a, b) => a.localeCompare(b)),
             unknown: testRun.runState.unknown,
         },
         {
-            passed: (state.passed ?? []).sort(),
+            passed: (state.passed ?? []).sort((a, b) => a.localeCompare(b)),
             failed: (state.failed ?? [])
                 .map(({ test, issues }) => ({
                     test,
-                    issues: issues.map(message => stripAnsi(message)),
+                    issues: issues.map(message => firstLine(message)),
                 }))
-                .sort(),
-            skipped: (state.skipped ?? []).sort(),
-            errored: (state.errored ?? []).sort(),
-            enqueued: (state.enqueued ?? []).sort(),
+                .sort((a, b) => a.test.localeCompare(b.test)),
+            skipped: (state.skipped ?? []).sort((a, b) => a.localeCompare(b)),
+            enqueued: (state.enqueued ?? []).sort((a, b) => a.localeCompare(b)),
             unknown: 0,
         },
         `
@@ -215,10 +184,15 @@ export function eventPromise<T>(event: vscode.Event<T>): Promise<T> {
  * @returns The initialized test controller
  */
 export async function waitForTestExplorerReady(
-    testExplorer: TestExplorer
+    testExplorer: TestExplorer,
+    logger: SwiftLogger
 ): Promise<vscode.TestController> {
     await vscode.commands.executeCommand("workbench.view.testing.focus");
-    const controller = await (testExplorer.controller.items.size === 0
+    const noExistingTests = testExplorer.controller.items.size === 0;
+    logger.info(
+        `waitForTestExplorerReady: Found ${testExplorer.controller.items.size} existing top level test(s)`
+    );
+    const controller = await (noExistingTests
         ? eventPromise(testExplorer.onTestItemsDidChange)
         : Promise.resolve(testExplorer.controller));
     return controller;
@@ -268,9 +242,8 @@ export function gatherTests(
             const testsInController = reduceTestItemChildren(
                 controller.items,
                 (acc, item) => {
-                    acc.push(
-                        `${item.id}: ${item.label} ${item.error ? `(error: ${item.error})` : ""}`
-                    );
+                    const errorSuffix = item.error ? `(error: ${item.error})` : "";
+                    acc.push(`${item.id}: ${item.label} ${errorSuffix}`);
                     return acc;
                 },
                 [] as string[]
@@ -311,7 +284,7 @@ export async function runTest(
     const testItems = gatherTests(testExplorer.controller, ...tests);
     const request = new vscode.TestRunRequest(testItems);
 
-    logger.info(`runTest: configuring test run with ${testItems}`);
+    logger.info(`runTest: configuring test run with ${testItems.map(t => t.id)}`);
 
     // The first promise is the return value, the second promise builds and runs
     // the tests, populating the TestRunProxy with results and blocking the return
@@ -319,14 +292,29 @@ export async function runTest(
     return (
         await Promise.all([
             eventPromise(testExplorer.onCreateTestRun).then(run => {
-                logger.info(`runTest: created test run with items ${run.testItems}`);
+                logger.info(`runTest: created test run with items ${run.testItems.map(t => t.id)}`);
                 return run;
             }),
-            targetProfile
-                .runHandler(request, new vscode.CancellationTokenSource().token)
-                ?.then(() => {
-                    logger.info(`runTest: completed running tests`);
-                }),
+            performRun(targetProfile, request, logger),
         ])
     )[0];
+}
+
+async function performRun(
+    targetProfile: vscode.TestRunProfile,
+    request: vscode.TestRunRequest,
+    logger: SwiftLogger
+): Promise<void> {
+    const run = targetProfile.runHandler(request, new vscode.CancellationTokenSource().token);
+    if (!run) {
+        throw new Error("No test run was created");
+    }
+    logger.info(`runTest: starting running tests`);
+    try {
+        await run;
+        logger.info(`runTest: completed running tests`);
+    } catch (e) {
+        logger.error(`runTest: error running tests: ${e}`);
+        throw e;
+    }
 }

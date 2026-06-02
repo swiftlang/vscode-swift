@@ -15,61 +15,51 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import * as vscode from "vscode";
 
+import { FolderContext } from "./FolderContext";
+import {
+    Dependency,
+    PackageResolved as ExternalPackageResolved,
+    Product as ExternalProduct,
+    SwiftPackage as ExternalSwiftPackage,
+    PackagePlugin,
+    PackageResolvedPin,
+    PackageResolvedPinState,
+    ResolvedDependency,
+    Target,
+    TargetType,
+} from "./SwiftExtensionApi";
+import { describePackage } from "./commands/dependencies/describe";
+import { showPackageDependencies } from "./commands/dependencies/show";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { BuildFlags } from "./toolchain/BuildFlags";
 import { SwiftToolchain } from "./toolchain/toolchain";
-import { isPathInsidePath } from "./utilities/filesystem";
+import { Disposable } from "./utilities/Disposable";
+import { fileExists, isPathInsidePath } from "./utilities/filesystem";
 import { lineBreakRegex } from "./utilities/tasks";
-import { execSwift, getErrorDescription, hashString } from "./utilities/utilities";
+import { execSwift, hashString, unwrapPromise } from "./utilities/utilities";
+
+// Re-export some types from the external API for convenience.
+export { Dependency, PackagePlugin, ResolvedDependency, Target, TargetType };
+
+// Need to re-export the Product interface with internal types
+export interface Product extends ExternalProduct {
+    readonly type: { executable?: null; library?: string[] };
+}
 
 /** Swift Package Manager contents */
-interface PackageContents {
+export interface PackageContents {
     name: string;
     products: Product[];
     dependencies: Dependency[];
     targets: Target[];
 }
 
-/** Swift Package Manager product */
-export interface Product {
-    name: string;
-    targets: string[];
-    type: { executable?: null; library?: string[] };
-}
-
 export function isAutomatic(product: Product): boolean {
     return (product.type.library || []).includes("automatic");
 }
 
-/** Swift Package Manager target */
-export interface Target {
-    name: string;
-    c99name: string;
-    path: string;
-    sources: string[];
-    type: "executable" | "test" | "library" | "snippet" | "plugin" | "binary" | "system-target";
-}
-
-/** Swift Package Manager dependency */
-export interface Dependency {
-    identity: string;
-    type?: string;
-    requirement?: object;
-    url?: string;
-    path?: string;
-    dependencies: Dependency[];
-}
-
-export interface ResolvedDependency extends Dependency {
-    version: string;
-    type: string;
-    path: string;
-    location: string;
-    revision?: string;
-}
-
 /** Swift Package.resolved file */
-export class PackageResolved {
+class PackageResolved implements ExternalPackageResolved {
     readonly fileHash: number;
     readonly pins: PackageResolvedPin[];
     readonly version: number;
@@ -81,19 +71,18 @@ export class PackageResolved {
 
         if (this.version === 1) {
             const v1Json = json as PackageResolvedFileV1;
-            this.pins = v1Json.object.pins.map(
-                pin =>
-                    new PackageResolvedPin(
-                        this.identity(pin.repositoryURL),
-                        pin.repositoryURL,
-                        pin.state
-                    )
-            );
+            this.pins = v1Json.object.pins.map(pin => ({
+                identity: this.identity(pin.repositoryURL),
+                location: pin.repositoryURL,
+                state: pin.state,
+            }));
         } else if (this.version === 2 || this.version === 3) {
             const v2Json = json as PackageResolvedFileV2;
-            this.pins = v2Json.pins.map(
-                pin => new PackageResolvedPin(pin.identity, pin.location, pin.state)
-            );
+            this.pins = v2Json.pins.map(pin => ({
+                identity: pin.identity,
+                location: pin.location,
+                state: pin.state,
+            }));
         } else {
             throw Error("Unsupported Package.resolved version");
         }
@@ -101,26 +90,10 @@ export class PackageResolved {
 
     // Copied from `PackageIdentityParser.computeDefaultName` in
     // https://github.com/apple/swift-package-manager/blob/main/Sources/PackageModel/PackageIdentity.swift
-    identity(url: string): string {
+    private identity(url: string): string {
         const file = path.basename(url, ".git");
         return file.toLowerCase();
     }
-}
-
-/** Swift Package.resolved file */
-export class PackageResolvedPin {
-    constructor(
-        readonly identity: string,
-        readonly location: string,
-        readonly state: PackageResolvedPinState
-    ) {}
-}
-
-/** Swift Package.resolved file */
-export interface PackageResolvedPinState {
-    branch: string | null;
-    revision: string;
-    version: string | null;
 }
 
 interface PackageResolvedFileV1 {
@@ -154,22 +127,16 @@ export interface WorkspaceState {
 /** revision + (branch || version)
  * ref: https://github.com/apple/swift-package-manager/blob/e25a590dc455baa430f2ec97eacc30257c172be2/Sources/Workspace/CheckoutState.swift#L19:L23
  */
-export interface CheckoutState {
+interface CheckoutState {
     revision: string;
     branch: string | null;
     version: string | null;
 }
 
-export interface WorkspaceStateDependency {
+interface WorkspaceStateDependency {
     packageRef: { identity: string; kind: string; location: string; name: string };
     state: { name: string; path?: string; checkoutState?: CheckoutState; version?: string };
     subpath: string;
-}
-
-export interface PackagePlugin {
-    command: string;
-    name: string;
-    package: string;
 }
 
 /** Swift Package State
@@ -180,19 +147,29 @@ export interface PackagePlugin {
 type SwiftPackageState = PackageContents | Error | undefined;
 
 function isPackage(state: SwiftPackageState): state is PackageContents {
-    return (state as PackageContents).products !== undefined;
+    if (state === undefined) {
+        return false;
+    }
+    return "products" in state;
 }
 
 function isError(state: SwiftPackageState): state is Error {
+    if (state === undefined) {
+        return false;
+    }
     return state instanceof Error;
 }
 
 /**
  * Class holding Swift Package Manager Package
  */
-export class SwiftPackage {
+export class SwiftPackage implements ExternalSwiftPackage, Disposable {
     public plugins: PackagePlugin[] = [];
     private _contents: SwiftPackageState | undefined;
+    private contentsPromise: Promise<SwiftPackageState>;
+    private contentsResolve: (value: SwiftPackageState | PromiseLike<SwiftPackageState>) => void;
+    private tokenSource: vscode.CancellationTokenSource = new vscode.CancellationTokenSource();
+    private pluginLoadQueue: Promise<void> = Promise.resolve();
 
     /**
      * SwiftPackage Constructor
@@ -202,31 +179,26 @@ export class SwiftPackage {
      */
     private constructor(
         readonly folder: vscode.Uri,
-        private contentsPromise: Promise<SwiftPackageState>,
         public resolved: PackageResolved | undefined,
         // TODO: Make private again
         public workspaceState: WorkspaceState | undefined
-    ) {}
+    ) {
+        const { promise, resolve } = unwrapPromise<SwiftPackageState>();
+        this.contentsPromise = promise;
+        this.contentsResolve = resolve;
+    }
 
     /**
      * Create a SwiftPackage from a folder
      * @param folder folder package is in
      * @returns new SwiftPackage
      */
-    public static async create(
-        folder: vscode.Uri,
-        toolchain: SwiftToolchain
-    ): Promise<SwiftPackage> {
+    public static async create(folder: vscode.Uri): Promise<SwiftPackage> {
         const [resolved, workspaceState] = await Promise.all([
             SwiftPackage.loadPackageResolved(folder),
             SwiftPackage.loadWorkspaceState(folder),
         ]);
-        return new SwiftPackage(
-            folder,
-            SwiftPackage.loadPackage(folder, toolchain),
-            resolved,
-            workspaceState
-        );
+        return new SwiftPackage(folder, resolved, workspaceState);
     }
 
     /**
@@ -250,49 +222,60 @@ export class SwiftPackage {
     /**
      * Run `swift package describe` and return results
      * @param folder folder package is in
+     * @param disableSwiftPMIntegration Whether to disable SwiftPM integration
      * @returns results of `swift package describe`
      */
-    static async loadPackage(
-        folder: vscode.Uri,
-        toolchain: SwiftToolchain
+    public async loadPackageState(
+        folderContext: FolderContext,
+        disableSwiftPMIntegration: boolean = false
     ): Promise<SwiftPackageState> {
+        const resolve = this.contentsResolve;
+        const result = await this.performLoadPackageState(folderContext, disableSwiftPMIntegration);
+        resolve(result);
+        return result;
+    }
+
+    private async performLoadPackageState(
+        folderContext: FolderContext,
+        disableSwiftPMIntegration: boolean = false
+    ): Promise<SwiftPackageState> {
+        // When SwiftPM integration is disabled, return undefined to disable all features
+        if (disableSwiftPMIntegration) {
+            return undefined;
+        }
+
+        // Check for Package.swift existence upfront to avoid running
+        // `swift package describe` unnecessarily in non-SwiftPM projects
+        // (e.g. projects with only compile_commands.json or BSP config).
+        const packageSwiftPath = path.join(folderContext.folder.fsPath, "Package.swift");
+        if (!(await fileExists(packageSwiftPath))) {
+            return undefined;
+        }
+
+        // If there is an existing package load, cancel any running tasks first before loading a new one.
+        this.tokenSource.cancel();
+        this.tokenSource.dispose();
+        this.tokenSource = new vscode.CancellationTokenSource();
+
         try {
             // Use swift package describe to describe the package targets, products, and platforms
-            const describe = await execSwift(["package", "describe", "--type", "json"], toolchain, {
-                cwd: folder.fsPath,
-            });
-            const packageState = JSON.parse(
-                SwiftPackage.trimStdout(describe.stdout)
-            ) as PackageContents;
-
             // Use swift package show-dependencies to get the dependencies in a tree format
-            const dependencies = await execSwift(
-                ["package", "show-dependencies", "--format", "json"],
-                toolchain,
-                {
-                    cwd: folder.fsPath,
-                }
+            const describe = await describePackage(folderContext, this.tokenSource.token);
+            const dependencies = await showPackageDependencies(
+                folderContext,
+                this.tokenSource.token
             );
 
-            packageState.dependencies = JSON.parse(
-                SwiftPackage.trimStdout(dependencies.stdout)
-            ).dependencies;
+            const packageState = {
+                ...(describe as PackageContents),
+                dependencies: dependencies,
+            };
 
             return packageState;
         } catch (error) {
-            const execError = error as { stderr: string };
-            // if caught error and it begins with "error: root manifest" then there is no Package.swift
-            if (
-                execError.stderr !== undefined &&
-                (execError.stderr.startsWith("error: root manifest") ||
-                    execError.stderr.startsWith("error: Could not find Package.swift"))
-            ) {
-                return undefined;
-            } else {
-                // otherwise it is an error loading the Package.swift so return `null` indicating
-                // we have a package but we failed to load it
-                return Error(getErrorDescription(error));
-            }
+            const parsingError = Error("Error parsing Package.swift", { cause: error });
+            folderContext.logger.error(parsingError);
+            return parsingError;
         }
     }
 
@@ -312,8 +295,14 @@ export class SwiftPackage {
     private static async loadPlugins(
         folder: vscode.Uri,
         toolchain: SwiftToolchain,
-        logger: SwiftLogger
+        logger: SwiftLogger,
+        disableSwiftPMIntegration: boolean = false
     ): Promise<PackagePlugin[]> {
+        // When SwiftPM integration is disabled, return empty plugin list
+        if (disableSwiftPMIntegration) {
+            return [];
+        }
+
         try {
             const { stdout } = await execSwift(["package", "plugin", "--list"], toolchain, {
                 cwd: folder.fsPath,
@@ -360,10 +349,18 @@ export class SwiftPackage {
     }
 
     /** Reload swift package */
-    public async reload(toolchain: SwiftToolchain) {
-        const loadedContents = await SwiftPackage.loadPackage(this.folder, toolchain);
+    public async reload(folderContext: FolderContext, disableSwiftPMIntegration: boolean = false) {
+        const { promise, resolve } = unwrapPromise<SwiftPackageState>();
+        this.contentsPromise = promise;
+        this.contentsResolve = resolve;
+
+        const loadedContents = await this.performLoadPackageState(
+            folderContext,
+            disableSwiftPMIntegration
+        );
+
         this._contents = loadedContents;
-        this.contentsPromise = Promise.resolve(loadedContents);
+        resolve(loadedContents);
     }
 
     /** Reload Package.resolved file */
@@ -375,8 +372,30 @@ export class SwiftPackage {
         this.workspaceState = await SwiftPackage.loadWorkspaceState(this.folder);
     }
 
-    public async loadSwiftPlugins(toolchain: SwiftToolchain, logger: SwiftLogger) {
-        this.plugins = await SwiftPackage.loadPlugins(this.folder, toolchain, logger);
+    public async loadSwiftPlugins(
+        toolchain: SwiftToolchain,
+        logger: SwiftLogger,
+        disableSwiftPMIntegration: boolean = false
+    ) {
+        // Serialize concurrent invocations so each call observes a consistent
+        // (plugins, workspaceState) pair from the SAME SwiftPM resolve. Read
+        // workspace-state.json BEFORE assigning either field, since `swift
+        // package plugin --list` regenerates it as a side effect and trusted-plugin
+        // URL checks (see TrustedPlugins.ts) require the two fields to move
+        // together.
+        const next = this.pluginLoadQueue.then(async () => {
+            const newPlugins = await SwiftPackage.loadPlugins(
+                this.folder,
+                toolchain,
+                logger,
+                disableSwiftPMIntegration
+            );
+            const newWorkspaceState = await SwiftPackage.loadWorkspaceState(this.folder);
+            this.plugins = newPlugins;
+            this.workspaceState = newWorkspaceState;
+        });
+        this.pluginLoadQueue = next.catch(() => undefined);
+        await next;
     }
 
     /** Return if has valid contents */
@@ -510,20 +529,10 @@ export class SwiftPackage {
         );
     }
 
-    /**
-     * Array of targets in Swift Package. The targets may not be loaded yet.
-     * It is preferable to use the `targets` property that returns a promise that
-     * returns the targets when they're guarenteed to be resolved.
-     **/
     get currentTargets(): Target[] {
         return (this._contents as unknown as { targets: Target[] })?.targets ?? [];
     }
 
-    /**
-     * Return array of targets of a certain type
-     * @param type Type of target
-     * @returns Array of targets
-     */
     async getTargets(type?: TargetType): Promise<Target[]> {
         if (type === undefined) {
             return this.targets;
@@ -532,9 +541,6 @@ export class SwiftPackage {
         }
     }
 
-    /**
-     * Get target for file
-     */
     async getTarget(file: string): Promise<Target | undefined> {
         const filePath = path.relative(this.folder.fsPath, file);
         return this.targets.then(targets =>
@@ -542,18 +548,13 @@ export class SwiftPackage {
         );
     }
 
-    private static trimStdout(stdout: string): string {
-        // remove lines from `swift package describe` until we find a "{"
-        while (!stdout.startsWith("{")) {
-            const firstNewLine = stdout.indexOf("\n");
-            stdout = stdout.slice(firstNewLine + 1);
-        }
-        return stdout;
+    static trimStdout(stdout: string): string {
+        const index = stdout.indexOf("{");
+        return index === -1 ? "" : stdout.slice(index);
     }
-}
 
-export enum TargetType {
-    executable = "executable",
-    library = "library",
-    test = "test",
+    dispose() {
+        this.tokenSource.cancel();
+        this.tokenSource.dispose();
+    }
 }

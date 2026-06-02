@@ -22,15 +22,22 @@ export class SwiftLoggerFactory {
     constructor(public readonly logFolderUri: vscode.Uri) {}
 
     create(name: string, logFilename: string): SwiftLogger;
-    create(name: string, logFilename: string, options: { outputChannel: true }): SwiftOutputChannel;
     create(
         name: string,
         logFilename: string,
-        options: { outputChannel: boolean } = { outputChannel: false }
+        options: { outputChannel: true; logConsole?: boolean }
+    ): SwiftOutputChannel;
+    create(
+        name: string,
+        logFilename: string,
+        options: { outputChannel: boolean; logConsole?: boolean } = { outputChannel: false }
     ): SwiftLogger {
+        const logPath = this.logFilePath(logFilename);
+        const logOptions = { logConsole: options.logConsole };
+
         return options?.outputChannel
-            ? new SwiftOutputChannel(name, this.logFilePath(logFilename))
-            : new SwiftLogger(name, this.logFilePath(logFilename));
+            ? new SwiftOutputChannel(name, logPath, undefined, logOptions)
+            : new SwiftLogger(name, logPath, undefined, logOptions);
     }
 
     /**

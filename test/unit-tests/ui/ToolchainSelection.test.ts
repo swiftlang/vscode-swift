@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
-import * as mockFS from "mock-fs";
 import * as path from "path";
 import { match } from "sinon";
 import * as vscode from "vscode";
@@ -32,6 +31,8 @@ import {
     mockGlobalValue,
     mockObject,
 } from "../../MockUtils";
+
+import mockFS = require("mock-fs");
 
 suite("ToolchainSelection Unit Test Suite", () => {
     const mockedUtilities = mockGlobalModule(utilities);
@@ -69,7 +70,14 @@ suite("ToolchainSelection Unit Test Suite", () => {
         mockedConfiguration = mockObject<vscode.WorkspaceConfiguration>({
             update: mockFn(),
             inspect: mockFn(s => s.returns({})),
-            get: mockFn(),
+            get: mockFn(s => {
+                // Return appropriate defaults for configuration properties
+                s.withArgs("path", match.any).returns("");
+                s.withArgs("runtimePath", match.any).returns("");
+                s.withArgs("swiftEnvironmentVariables", match.any).returns({});
+                // Default fallback
+                s.returns(undefined);
+            }),
             has: mockFn(s => s.returns(false)),
         });
         mockedVSCodeWorkspace.getConfiguration.returns(instance(mockedConfiguration));
@@ -204,7 +212,7 @@ suite("ToolchainSelection Unit Test Suite", () => {
         });
 
         test("shows toolchains installed via Swiftly", async () => {
-            mockedSwiftly.list.resolves(["6.2.0", "6.0.0", "5.9.3"]);
+            mockedSwiftly.list.resolves([{ name: "6.2.0" }, { name: "6.0.0" }, { name: "5.9.3" }]);
             // Extract the Swiftly toolchain labels and simulate user cancellation
             let swiftlyToolchains: string[] = [];
             mockedVSCodeWindow.showQuickPick
@@ -222,7 +230,7 @@ suite("ToolchainSelection Unit Test Suite", () => {
         });
 
         test("user is able to set a Swiftly toolchain for their workspace", async () => {
-            mockedSwiftly.list.resolves(["6.2.0"]);
+            mockedSwiftly.list.resolves([{ name: "6.2.0" }]);
             mockedSwiftToolchain.findXcodeInstalls.resolves(["/Applications/Xcode.app"]);
             // User selects the first toolchain that appears
             mockedVSCodeWindow.showQuickPick
@@ -254,7 +262,7 @@ suite("ToolchainSelection Unit Test Suite", () => {
         });
 
         test("user is able to set a global Swiftly toolchain", async () => {
-            mockedSwiftly.list.resolves(["6.2.0"]);
+            mockedSwiftly.list.resolves([{ name: "6.2.0" }]);
             mockedSwiftToolchain.findXcodeInstalls.resolves(["/Applications/Xcode.app"]);
             mockedVSCodeWorkspace.workspaceFolders = [
                 {
@@ -296,7 +304,7 @@ suite("ToolchainSelection Unit Test Suite", () => {
         });
 
         test("shows toolchains installed via Swiftly", async () => {
-            mockedSwiftly.list.resolves(["6.2.0", "6.0.0", "5.9.3"]);
+            mockedSwiftly.list.resolves([{ name: "6.2.0" }, { name: "6.0.0" }, { name: "5.9.3" }]);
             // Extract the Swiftly toolchain labels and simulate user cancellation
             let swiftlyToolchains: string[] = [];
             mockedVSCodeWindow.showQuickPick
@@ -314,7 +322,7 @@ suite("ToolchainSelection Unit Test Suite", () => {
         });
 
         test("user is able to set a Swiftly toolchain for their workspace", async () => {
-            mockedSwiftly.list.resolves(["6.2.0"]);
+            mockedSwiftly.list.resolves([{ name: "6.2.0" }]);
             // User selects the first toolchain that appears
             mockedVSCodeWindow.showQuickPick
                 .withArgs(match.any, match.has("title", "Select the Swift toolchain"))
@@ -345,7 +353,7 @@ suite("ToolchainSelection Unit Test Suite", () => {
         });
 
         test("user is able to set a global Swiftly toolchain", async () => {
-            mockedSwiftly.list.resolves(["6.2.0"]);
+            mockedSwiftly.list.resolves([{ name: "6.2.0" }]);
             mockedVSCodeWorkspace.workspaceFolders = [
                 {
                     index: 0,

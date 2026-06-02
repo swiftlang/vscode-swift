@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
-import * as decompress from "decompress";
 import { mkdir, rm } from "fs/promises";
 import * as os from "os";
 import * as path from "path";
@@ -20,6 +19,7 @@ import * as vscode from "vscode";
 
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { captureDiagnostics } from "@src/commands/captureDiagnostics";
+import { randomString } from "@src/utilities/utilities";
 import { Version } from "@src/utilities/version";
 
 import { mockGlobalObject } from "../../MockUtils";
@@ -30,20 +30,26 @@ import {
     updateSettings,
 } from "../utilities/testutilities";
 
+import decompress = require("decompress");
+
 tag("medium").suite("captureDiagnostics Test Suite", () => {
     let workspaceContext: WorkspaceContext;
     const mockWindow = mockGlobalObject(vscode, "window");
+    const progressReport = { report: () => {} } as vscode.Progress<{ message?: string }>;
 
     suite("Minimal", () => {
         activateExtensionForSuite({
-            async setup(ctx) {
-                workspaceContext = ctx;
+            async setup(api) {
+                workspaceContext = await api.waitForWorkspaceContext();
             },
             testAssets: ["defaultPackage"],
         });
 
         setup(() => {
             mockWindow.showInformationMessage.resolves("Capture Minimal Diagnostics" as any);
+            mockWindow.withProgress.callsFake(async (_options, task) => {
+                return await task(progressReport, new vscode.CancellationTokenSource().token);
+            });
         });
 
         test("Should capture dianostics to a zip file", async () => {
@@ -92,14 +98,17 @@ tag("medium").suite("captureDiagnostics Test Suite", () => {
 
     tag("large").suite("Full", function () {
         activateExtensionForSuite({
-            async setup(ctx) {
-                workspaceContext = ctx;
+            async setup(api) {
+                workspaceContext = await api.waitForWorkspaceContext();
             },
             testAssets: ["defaultPackage"],
         });
 
         setup(async () => {
             mockWindow.showInformationMessage.resolves("Capture Full Diagnostics" as any);
+            mockWindow.withProgress.callsFake(async (_options, task) => {
+                return await task(progressReport, new vscode.CancellationTokenSource().token);
+            });
             resetSettings = await updateSettings({
                 "lldb-dap.logFolder": "logs",
             });
@@ -180,10 +189,7 @@ tag("medium").suite("captureDiagnostics Test Suite", () => {
     async function decompressZip(
         zipPath: string
     ): Promise<{ folder: string; files: decompress.File[] }> {
-        const tempDir = path.join(
-            os.tmpdir(),
-            `vscode-swift-test-${Math.random().toString(36).substring(7)}`
-        );
+        const tempDir = path.join(os.tmpdir(), `vscode-swift-test-${randomString(7, 36)}`);
         await mkdir(tempDir, { recursive: true });
         return { folder: tempDir, files: await decompress(zipPath as string, tempDir) };
     }

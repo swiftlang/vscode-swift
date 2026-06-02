@@ -19,7 +19,84 @@ import { SwiftProjectTemplate, SwiftToolchain } from "../toolchain/toolchain";
 import { showToolchainError } from "../ui/ToolchainSelection";
 import { withDelayedProgress } from "../ui/withDelayedProgress";
 import { execSwift } from "../utilities/utilities";
-import { Version } from "../utilities/version";
+
+function validateProjectName(value: string, existingNames: string[]): string | undefined {
+    if (value.trim() === "") {
+        return "Project name cannot be empty.";
+    }
+    if (value.includes("/") || value.includes("\\")) {
+        return "Project name cannot contain '/' or '\\' characters.";
+    }
+    if (value === "." || value === "..") {
+        return "Project name cannot be '.' or '..'.";
+    }
+    if (existingNames.includes(value)) {
+        return "A file/folder with this name already exists.";
+    }
+    return undefined;
+}
+
+function determineOpenAction(
+    openAfterCreate: string,
+    isWorkspaceOpened: boolean
+): "open" | "openNewWindow" | "addToWorkspace" | undefined {
+    if (openAfterCreate === "always") {
+        return "open";
+    }
+    if (openAfterCreate === "alwaysNewWindow") {
+        return "openNewWindow";
+    }
+    if (openAfterCreate === "whenNoFolderOpen" && !isWorkspaceOpened) {
+        return "open";
+    }
+    return undefined;
+}
+
+async function promptForOpenAction(
+    projectName: string,
+    isWorkspaceOpened: boolean
+): Promise<"open" | "openNewWindow" | "addToWorkspace" | undefined> {
+    let message = `Would you like to open ${projectName}?`;
+    const open = "Open";
+    const openNewWindow = "Open in New Window";
+    const choices = [open, openNewWindow];
+
+    const addToWorkspace = "Add to Workspace";
+    if (isWorkspaceOpened) {
+        message = `Would you like to open ${projectName}, or add it to the current workspace?`;
+        choices.push(addToWorkspace);
+    }
+
+    const result = await vscode.window.showInformationMessage(
+        message,
+        { modal: true, detail: "The default action can be configured in settings" },
+        ...choices
+    );
+    const actionMap: Record<string, "open" | "openNewWindow" | "addToWorkspace"> = {
+        [open]: "open",
+        [openNewWindow]: "openNewWindow",
+        [addToWorkspace]: "addToWorkspace",
+    };
+    return result ? actionMap[result] : undefined;
+}
+
+async function executeOpenAction(
+    action: "open" | "openNewWindow" | "addToWorkspace",
+    projectUri: vscode.Uri
+): Promise<void> {
+    if (action === "open") {
+        await vscode.commands.executeCommand("vscode.openFolder", projectUri, {
+            forceReuseWindow: true,
+        });
+    } else if (action === "openNewWindow") {
+        await vscode.commands.executeCommand("vscode.openFolder", projectUri, {
+            forceNewWindow: true,
+        });
+    } else if (action === "addToWorkspace") {
+        const index = vscode.workspace.workspaceFolders?.length ?? 0;
+        vscode.workspace.updateWorkspaceFolders(index, 0, { uri: projectUri });
+    }
+}
 
 /**
  * Prompts the user to input project details and then executes `swift package init`
@@ -31,16 +108,6 @@ export async function createNewProject(toolchain: SwiftToolchain | undefined): P
     // this case.
     if (!toolchain) {
         void showToolchainError();
-        return;
-    }
-
-    // The context key `swift.createNewProjectAvailable` only works if the extension has been
-    // activated. As such, we also have to allow this command to run when no workspace is
-    // active. Show an error to the user if the command is unavailable.
-    if (!toolchain.swiftVersion.isGreaterThanOrEqual(new Version(5, 8, 0))) {
-        void vscode.window.showErrorMessage(
-            "Creating a new swift project is only available starting in swift version 5.8.0."
-        );
         return;
     }
 
@@ -88,22 +155,7 @@ export async function createNewProject(toolchain: SwiftToolchain | undefined): P
     const projectName = await vscode.window.showInputBox({
         value: initialValue,
         prompt: "Enter a name for your new swift project",
-        validateInput(value) {
-            // Swift Package Manager doesn't seem to do any validation on the name.
-            // So, we'll just check for obvious failure cases involving mkdir.
-            if (value.trim() === "") {
-                return "Project name cannot be empty.";
-            } else if (value.includes("/") || value.includes("\\")) {
-                return "Project name cannot contain '/' or '\\' characters.";
-            } else if (value === "." || value === "..") {
-                return "Project name cannot be '.' or '..'.";
-            }
-            // Ensure there are no name collisions
-            if (existingNames.includes(value)) {
-                return "A file/folder with this name already exists.";
-            }
-            return undefined;
-        },
+        validateInput: value => validateProjectName(value, existingNames),
     });
     if (projectName === undefined) {
         return undefined;
@@ -133,53 +185,11 @@ export async function createNewProject(toolchain: SwiftToolchain | undefined): P
 
     // Prompt the user whether or not they want to open the newly created project
     const isWorkspaceOpened = !!vscode.workspace.workspaceFolders;
-    const openAfterCreate = configuration.openAfterCreateNewProject;
+    const action =
+        determineOpenAction(configuration.openAfterCreateNewProject, isWorkspaceOpened) ??
+        (await promptForOpenAction(projectName, isWorkspaceOpened));
 
-    let action: "open" | "openNewWindow" | "addToWorkspace" | undefined;
-    if (openAfterCreate === "always") {
-        action = "open";
-    } else if (openAfterCreate === "alwaysNewWindow") {
-        action = "openNewWindow";
-    } else if (openAfterCreate === "whenNoFolderOpen" && !isWorkspaceOpened) {
-        action = "open";
-    }
-
-    if (action === undefined) {
-        let message = `Would you like to open ${projectName}?`;
-        const open = "Open";
-        const openNewWindow = "Open in New Window";
-        const choices = [open, openNewWindow];
-
-        const addToWorkspace = "Add to Workspace";
-        if (isWorkspaceOpened) {
-            message = `Would you like to open ${projectName}, or add it to the current workspace?`;
-            choices.push(addToWorkspace);
-        }
-
-        const result = await vscode.window.showInformationMessage(
-            message,
-            { modal: true, detail: "The default action can be configured in settings" },
-            ...choices
-        );
-        if (result === open) {
-            action = "open";
-        } else if (result === openNewWindow) {
-            action = "openNewWindow";
-        } else if (result === addToWorkspace) {
-            action = "addToWorkspace";
-        }
-    }
-
-    if (action === "open") {
-        await vscode.commands.executeCommand("vscode.openFolder", projectUri, {
-            forceReuseWindow: true,
-        });
-    } else if (action === "openNewWindow") {
-        await vscode.commands.executeCommand("vscode.openFolder", projectUri, {
-            forceNewWindow: true,
-        });
-    } else if (action === "addToWorkspace") {
-        const index = vscode.workspace.workspaceFolders?.length ?? 0;
-        vscode.workspace.updateWorkspaceFolders(index, 0, { uri: projectUri });
+    if (action) {
+        await executeOpenAction(action, projectUri);
     }
 }

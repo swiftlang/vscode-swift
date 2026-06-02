@@ -26,6 +26,7 @@ suite("Workspace Utilities Test Suite", () => {
                 (vscode.workspace.workspaceFolders ?? [])[0]!.uri,
                 false,
                 true,
+                [],
                 testSwiftVersion
             );
 

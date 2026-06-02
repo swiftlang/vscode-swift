@@ -15,10 +15,10 @@ import * as vscode from "vscode";
 
 import configuration, { ShowBuildStatusOptions } from "../configuration";
 import { SwiftExecution } from "../tasks/SwiftExecution";
+import { Disposable } from "../utilities/Disposable";
 import { checkIfBuildComplete, lineBreakRegex } from "../utilities/tasks";
-import { RunningTask, StatusItem } from "./StatusItem";
+import { StatusItem } from "./StatusItem";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
 
 /**
@@ -36,8 +36,10 @@ interface SwiftProgress {
  *
  * @see {@link SwiftExecution} to see what and where the events come from
  */
-export class SwiftBuildStatus implements vscode.Disposable {
-    private onDidStartTaskDisposible: vscode.Disposable;
+export class SwiftBuildStatus implements Disposable {
+    private onDidStartTaskDisposible: Disposable;
+    private lockedRegex = /Another instance of SwiftPM \(PID: \d+\) is already running/g;
+    private debt = 0;
 
     constructor(private statusItem: StatusItem) {
         this.onDidStartTaskDisposible = vscode.tasks.onDidStartTask(event => {
@@ -66,45 +68,62 @@ export class SwiftBuildStatus implements vscode.Disposable {
 
         const execution = task.execution as SwiftExecution;
         const isBuildTask = task.group === vscode.TaskGroup.Build;
-        const disposables: vscode.Disposable[] = [];
-        const handleTaskOutput = (update: (message: string) => void) =>
-            new Promise<void>(res => {
-                const done = () => {
-                    disposables.forEach(d => d.dispose());
-                    res();
-                };
-                disposables.push(
-                    this.outputParser(
-                        new RunningTask(task).name,
-                        execution,
-                        isBuildTask,
-                        showBuildStatus,
-                        update,
-                        done
-                    ),
-                    execution.onDidClose(done),
-                    vscode.tasks.onDidEndTask(e => {
-                        if (e.execution.task === task) {
-                            done();
-                        }
-                    })
-                );
-            });
-        if (showBuildStatus === "progress" || showBuildStatus === "notification") {
-            void vscode.window.withProgress<void>(
-                {
-                    location:
-                        showBuildStatus === "progress"
-                            ? vscode.ProgressLocation.Window
-                            : vscode.ProgressLocation.Notification,
-                },
-                progress => handleTaskOutput(message => progress.report({ message }))
+        const handleTaskOutput = (
+            update: (report: { message: string; increment?: number }) => void
+        ) => this.awaitTaskCompletion(task, execution, isBuildTask, showBuildStatus, update);
+        if (showBuildStatus === "swiftStatus") {
+            // Route through StatusItem so the click reveals the task terminal. Only update on a
+            // changed message, since the stripped [x/y] counter makes every progress line identical.
+            let lastMessage: string | undefined;
+            void this.statusItem.showStatusWhileRunning(task, () =>
+                handleTaskOutput(report => {
+                    if (report.message !== lastMessage) {
+                        lastMessage = report.message;
+                        this.statusItem.update(task, report.message);
+                    }
+                })
             );
         } else {
-            void this.statusItem.showStatusWhileRunning(task, () =>
-                handleTaskOutput(message => this.statusItem.update(task, message))
+            const location =
+                showBuildStatus === "notification"
+                    ? vscode.ProgressLocation.Notification
+                    : vscode.ProgressLocation.Window;
+            void vscode.window.withProgress<void>({ location }, progress =>
+                handleTaskOutput(report => progress.report(report))
             );
         }
+    }
+
+    private awaitTaskCompletion(
+        task: vscode.Task,
+        execution: SwiftExecution,
+        isBuildTask: boolean,
+        showBuildStatus: ShowBuildStatusOptions,
+        update: (report: { message: string; increment?: number }) => void
+    ): Promise<void> {
+        const disposables: Disposable[] = [];
+        return new Promise<void>(res => {
+            const done = () => {
+                disposables.forEach(d => d.dispose());
+                res();
+            };
+            disposables.push(
+                this.outputParser(
+                    StatusItem.statusItemTaskName(task),
+                    execution,
+                    isBuildTask,
+                    showBuildStatus,
+                    update,
+                    done
+                ),
+                execution.onDidClose(done),
+                vscode.tasks.onDidEndTask(e => {
+                    if (e.execution.task === task) {
+                        done();
+                    }
+                })
+            );
+        });
     }
 
     private outputParser(
@@ -112,10 +131,11 @@ export class SwiftBuildStatus implements vscode.Disposable {
         execution: SwiftExecution,
         isBuildTask: boolean,
         showBuildStatus: ShowBuildStatusOptions,
-        update: (message: string) => void,
+        update: (report: { message: string; increment?: number }) => void,
         done: () => void
-    ): vscode.Disposable {
+    ): Disposable {
         let started = false;
+        let lastPercentage = 0;
 
         const parseEvents = (data: string) => {
             const sanitizedData = stripAnsi(data);
@@ -124,19 +144,43 @@ export class SwiftBuildStatus implements vscode.Disposable {
             // be concerned with
             const lines = sanitizedData.split(lineBreakRegex).reverse();
             for (const line of lines) {
+                const lockedFolderPID = this.checkIfBuildFolderLocked(line);
+                if (lockedFolderPID > 0) {
+                    update({
+                        message: `${name}: Build folder locked by pid ${lockedFolderPID}. Wait for this process to complete, or terminate it to continue.`,
+                    });
+                }
                 if (checkIfBuildComplete(line)) {
-                    update(name);
+                    update({ message: name });
                     return !isBuildTask;
                 }
                 const progress = this.findBuildProgress(line);
                 if (progress) {
-                    update(`${name}: [${progress.completed}/${progress.total}]`);
                     started = true;
+
+                    const percentage = Math.floor((progress.completed / progress.total) * 100);
+                    const increment = percentage - lastPercentage;
+                    const reportedIncrement = this.applyDebt(increment);
+
+                    lastPercentage = percentage;
+                    // Keep the status bar item static so the spinner doesn't flicker as
+                    // the [completed/total] counter updates. withProgress still gets it.
+                    update({
+                        message:
+                            showBuildStatus === "swiftStatus"
+                                ? name
+                                : `${name}: [${progress.completed}/${progress.total}]`,
+                        increment: reportedIncrement,
+                    });
                     return false;
                 }
                 if (this.checkIfFetching(line)) {
-                    // this.statusItem.update(task, `Fetching dependencies "${task.name}"`);
-                    update(`${name}: Fetching Dependencies`);
+                    update({ message: `${name}: Fetching Dependencies` });
+                    started = true;
+                    return false;
+                }
+                if (this.checkIfPlanning(line)) {
+                    update({ message: `${name}: Planning...` });
                     started = true;
                     return false;
                 }
@@ -147,7 +191,7 @@ export class SwiftBuildStatus implements vscode.Disposable {
         // Begin by showing a message that the build is preparing, as there is sometimes
         // a delay before building starts, especially in large projects.
         if (!started && showBuildStatus !== "never") {
-            update(`${name}: Preparing...`);
+            update({ message: `${name}: Preparing...` });
         }
 
         return execution.onDidWrite(data => {
@@ -157,16 +201,50 @@ export class SwiftBuildStatus implements vscode.Disposable {
         });
     }
 
+    private checkIfBuildFolderLocked(line: string): number {
+        const match = this.lockedRegex.exec(line);
+        if (match) {
+            const pidRegex = /\d+/;
+            const pidMatch = pidRegex.exec(match[0]);
+            if (pidMatch) {
+                return parseInt(pidMatch[0]);
+            }
+        }
+        return 0;
+    }
+
     private checkIfFetching(line: string): boolean {
         const fetchRegex = /^Fetching\s/gm;
         return !!fetchRegex.exec(line);
     }
 
+    private checkIfPlanning(line: string): boolean {
+        const planningRegex = /^\[Planning\b/g;
+        return !!planningRegex.exec(line);
+    }
+
     private findBuildProgress(line: string): SwiftProgress | undefined {
-        const buildingRegex = /^\[(\d+)\/(\d+)\]/g;
+        const buildingRegex = /^\[(\d+)\s*\/\s*(\d+)\]/g;
         const match = buildingRegex.exec(line);
         if (match) {
             return { completed: parseInt(match[1]), total: parseInt(match[2]) };
         }
+    }
+
+    private applyDebt(increment: number): number {
+        if (increment < 0) {
+            this.debt += Math.abs(increment);
+            return 0;
+        }
+        if (this.debt <= 0) {
+            return increment;
+        }
+        if (increment <= this.debt) {
+            this.debt -= increment;
+            return 0;
+        }
+        const result = increment - this.debt;
+        this.debt = 0;
+        return result;
     }
 }

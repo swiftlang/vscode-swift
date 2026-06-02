@@ -15,7 +15,8 @@ import * as vscode from "vscode";
 
 import { FolderContext } from "../FolderContext";
 import { TestKind, isDebugging } from "../TestExplorer/TestKind";
-import { TestRunState, TestRunner, TestRunnerTestRunState } from "../TestExplorer/TestRunner";
+import { TestRunState } from "../TestExplorer/TestRunProxy";
+import { TestRunner, TestRunnerTestRunState } from "../TestExplorer/TestRunner";
 import { colorize } from "../utilities/utilities";
 
 /**
@@ -90,7 +91,7 @@ export async function runTestMultipleTimes(
 
         if (
             runner.testRun.isCancellationRequested ||
-            (untilFailure && (runState.failed.length > 0 || runState.errored.length > 0))
+            (untilFailure && runState.failed.length > 0)
         ) {
             break;
         }

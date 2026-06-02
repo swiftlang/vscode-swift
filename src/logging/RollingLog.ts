@@ -11,9 +11,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import * as vscode from "vscode";
 
-export class RollingLog implements vscode.Disposable {
+export class RollingLog {
     private _logs: (string | null)[];
     private startIndex: number = 0;
     private endIndex: number = 0;
@@ -33,10 +32,6 @@ export class RollingLog implements vscode.Disposable {
 
     private incrementIndex(index: number): number {
         return (index + 1) % this.maxLogs;
-    }
-
-    dispose() {
-        this.clear();
     }
 
     clear() {

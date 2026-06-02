@@ -16,6 +16,7 @@ import * as vscode from "vscode";
 
 import configuration from "@src/configuration";
 import { SwiftEnvironmentVariablesManager, SwiftTerminalProfileProvider } from "@src/terminal";
+import { Disposable } from "@src/utilities/Disposable";
 
 import {
     MockedObject,
@@ -48,9 +49,10 @@ suite("Terminal", () => {
     });
 
     suite("SwiftEnvironmentVariablesManager", () => {
+        let manager: SwiftEnvironmentVariablesManager;
         let mockedExtensionContext: MockedObject<vscode.ExtensionContext>;
         let mockedEnvironmentVariableCollection: MockedObject<vscode.GlobalEnvironmentVariableCollection>;
-        let mockedDisposable: MockedObject<vscode.Disposable>;
+        let mockedDisposable: MockedObject<Disposable>;
 
         const mockedWorkspace = mockGlobalObject(vscode, "workspace");
 
@@ -71,7 +73,7 @@ suite("Terminal", () => {
                 environmentVariableCollection: instance(mockedEnvironmentVariableCollection),
             });
 
-            mockedDisposable = mockObject<vscode.Disposable>({
+            mockedDisposable = mockObject<Disposable>({
                 dispose: () => {},
             });
 
@@ -79,7 +81,7 @@ suite("Terminal", () => {
         });
 
         test("constructor initializes and calls update", () => {
-            new SwiftEnvironmentVariablesManager(instance(mockedExtensionContext));
+            manager = new SwiftEnvironmentVariablesManager(instance(mockedExtensionContext));
             expect(mockedEnvironmentVariableCollection.clear).to.have.been.calledOnce;
             expect(mockedEnvironmentVariableCollection.prepend).to.have.been.calledWith(
                 "PATH",
@@ -92,7 +94,7 @@ suite("Terminal", () => {
         });
 
         test("constructor registers configuration change listener", () => {
-            new SwiftEnvironmentVariablesManager(instance(mockedExtensionContext));
+            manager = new SwiftEnvironmentVariablesManager(instance(mockedExtensionContext));
 
             expect(mockedWorkspace.onDidChangeConfiguration).to.have.been.calledOnce;
         });
@@ -100,7 +102,7 @@ suite("Terminal", () => {
         test("update does nothing when enableTerminalEnvironment is false", () => {
             enableTerminalEnvironmentConfig.setValue(false);
 
-            new SwiftEnvironmentVariablesManager(instance(mockedExtensionContext));
+            manager = new SwiftEnvironmentVariablesManager(instance(mockedExtensionContext));
 
             expect(mockedEnvironmentVariableCollection.clear).to.have.been.calledOnce;
             expect(mockedEnvironmentVariableCollection.prepend).to.not.have.been.called;
@@ -110,7 +112,7 @@ suite("Terminal", () => {
         test("update handles empty path", () => {
             pathConfig.setValue("");
 
-            new SwiftEnvironmentVariablesManager(instance(mockedExtensionContext));
+            manager = new SwiftEnvironmentVariablesManager(instance(mockedExtensionContext));
 
             expect(mockedEnvironmentVariableCollection.clear).to.have.been.calledOnce;
             expect(mockedEnvironmentVariableCollection.prepend).to.not.have.been.called;
@@ -123,7 +125,7 @@ suite("Terminal", () => {
         test("update handles empty environment variables", () => {
             swiftEnvironmentVariablesConfig.setValue({});
 
-            new SwiftEnvironmentVariablesManager(instance(mockedExtensionContext));
+            manager = new SwiftEnvironmentVariablesManager(instance(mockedExtensionContext));
 
             expect(mockedEnvironmentVariableCollection.clear).to.have.been.calledOnce;
             expect(mockedEnvironmentVariableCollection.prepend).to.have.been.calledWith(
@@ -136,7 +138,7 @@ suite("Terminal", () => {
         test("update uses Windows path separator on Windows", () => {
             mockedPlatform.setValue("win32");
 
-            new SwiftEnvironmentVariablesManager(instance(mockedExtensionContext));
+            manager = new SwiftEnvironmentVariablesManager(instance(mockedExtensionContext));
 
             expect(mockedEnvironmentVariableCollection.prepend).to.have.been.calledWith(
                 "PATH",
@@ -145,7 +147,7 @@ suite("Terminal", () => {
         });
 
         test("dispose clears environment variables and disposes subscriptions", () => {
-            const manager = new SwiftEnvironmentVariablesManager(instance(mockedExtensionContext));
+            manager = new SwiftEnvironmentVariablesManager(instance(mockedExtensionContext));
 
             mockedEnvironmentVariableCollection.clear.resetHistory();
 
@@ -156,7 +158,7 @@ suite("Terminal", () => {
         });
 
         test("onDidChangeConfiguration calls update", () => {
-            new SwiftEnvironmentVariablesManager(instance(mockedExtensionContext));
+            manager = new SwiftEnvironmentVariablesManager(instance(mockedExtensionContext));
 
             const callback = mockedWorkspace.onDidChangeConfiguration.getCall(0).args[0];
 
@@ -174,8 +176,7 @@ suite("Terminal", () => {
         });
 
         test("onDidChangeConfiguration calls update", () => {
-            // Create the manager
-            new SwiftEnvironmentVariablesManager(instance(mockedExtensionContext));
+            manager = new SwiftEnvironmentVariablesManager(instance(mockedExtensionContext));
 
             // Get the callback
             const callback = mockedWorkspace.onDidChangeConfiguration.getCall(0).args[0];
@@ -204,7 +205,7 @@ suite("Terminal", () => {
         // Mock configuration values
         const mockedWindow = mockGlobalObject(vscode, "window");
         let mockedTerminal: MockedObject<vscode.Terminal>;
-        let mockedDisposable: MockedObject<vscode.Disposable>;
+        let mockedDisposable: MockedObject<Disposable>;
 
         setup(() => {
             // Create mocks
@@ -212,7 +213,7 @@ suite("Terminal", () => {
                 sendText: () => {},
             });
 
-            mockedDisposable = mockObject<vscode.Disposable>({
+            mockedDisposable = mockObject<Disposable>({
                 dispose: () => {},
             });
 

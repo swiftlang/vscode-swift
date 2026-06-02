@@ -14,7 +14,7 @@
 import * as path from "path";
 import * as vscode from "vscode";
 
-import { PackagePlugin } from "../SwiftPackage";
+import { PackagePlugin, WorkspaceState } from "../SwiftPackage";
 import { WorkspaceContext } from "../WorkspaceContext";
 import configuration, {
     PluginPermissionConfiguration,
@@ -25,6 +25,13 @@ import { SwiftToolchain } from "../toolchain/toolchain";
 import { packageName, resolveTaskCwd } from "../utilities/tasks";
 import { swiftRuntimeEnv } from "../utilities/utilities";
 import { SwiftTask } from "./SwiftTaskProvider";
+import { PluginPermissions, getTrustedPluginPermissions } from "./TrustedPlugins";
+
+const NO_TRUSTED_PERMISSIONS: Required<PluginPermissions> = {
+    disableSandbox: false,
+    allowWritingToPackageDirectory: false,
+    disableTaskQueue: false,
+};
 
 // Interface class for defining task configuration
 interface TaskConfig {
@@ -32,6 +39,7 @@ interface TaskConfig {
     scope: vscode.WorkspaceFolder;
     presentationOptions?: vscode.TaskPresentationOptions;
     packageName?: string;
+    workspaceState?: WorkspaceState;
 }
 
 /**
@@ -63,6 +71,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
                             reveal: vscode.TaskRevealKind.Always,
                         },
                         packageName: packageName(folderContext),
+                        workspaceState: folderContext.swiftPackage.workspaceState,
                     })
                 );
             }
@@ -85,7 +94,6 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         }
         // We need to create a new Task object here.
         // Reusing the task parameter doesn't seem to work.
-        const swift = currentFolder.toolchain.getToolchainExecutable("swift");
         let swiftArgs = [
             "package",
             ...this.pluginArguments(task.definition as PluginPermissionConfiguration),
@@ -93,6 +101,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             ...(task.definition.args ?? []).map(substituteVariablesInString),
         ];
         swiftArgs = currentFolder.toolchain.buildFlags.withAdditionalFlags(swiftArgs);
+        const inv = currentFolder.toolchain.getToolchainInvocation("swift", swiftArgs);
 
         const cwd = resolveTaskCwd(task, task.definition.cwd);
         const newTask = new vscode.Task(
@@ -100,7 +109,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             task.scope ?? vscode.TaskScope.Workspace,
             task.name,
             "swift-plugin",
-            new SwiftExecution(swift, swiftArgs, {
+            new SwiftExecution(inv.command, inv.args, {
                 cwd,
                 env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
                 presentation: task.presentationOptions,
@@ -125,12 +134,10 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         toolchain: SwiftToolchain,
         config: TaskConfig
     ): SwiftTask {
-        const swift = toolchain.getToolchainExecutable("swift");
-
         // Add relative path current working directory
         const relativeCwd = path.relative(config.scope.uri.fsPath, config.cwd.fsPath);
         const taskDefinitionCwd = relativeCwd !== "" ? relativeCwd : undefined;
-        const definition = this.getTaskDefinition(plugin, taskDefinitionCwd);
+        const definition = this.getTaskDefinition(plugin, taskDefinitionCwd, config.workspaceState);
         let swiftArgs = [
             "package",
             ...this.pluginArgumentsFromConfiguration(config.scope, definition, plugin),
@@ -138,6 +145,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             ...definition.args,
         ];
         swiftArgs = toolchain.buildFlags.withAdditionalFlags(swiftArgs);
+        const inv = toolchain.getToolchainInvocation("swift", swiftArgs);
 
         const presentation = config?.presentationOptions ?? {};
         const task = new vscode.Task(
@@ -145,7 +153,7 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
             config.scope ?? vscode.TaskScope.Workspace,
             plugin.name,
             "swift-plugin",
-            new SwiftExecution(swift, swiftArgs, {
+            new SwiftExecution(inv.command, inv.args, {
                 cwd: config.cwd.fsPath,
                 env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
                 presentation,
@@ -157,51 +165,19 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         return task as SwiftTask;
     }
 
-    /**
-     * Get task definition for a command plugin
-     */
     private getTaskDefinition(
         plugin: PackagePlugin,
-        cwd: string | undefined
+        cwd: string | undefined,
+        workspaceState: WorkspaceState | undefined
     ): vscode.TaskDefinition {
-        const definition = {
+        return {
             type: "swift-plugin",
             command: plugin.command,
             args: [],
-            disableSandbox: false,
-            allowWritingToPackageDirectory: false,
             cwd,
-            disableTaskQueue: false,
+            ...NO_TRUSTED_PERMISSIONS,
+            ...getTrustedPluginPermissions(plugin, workspaceState),
         };
-        // There are common command plugins used across the package eco-system eg for docc generation
-        // Everytime these are run they need the same default setup.
-        switch (`${plugin.package}, ${plugin.command}`) {
-            case "swift-aws-lambda-runtime, archive":
-                definition.disableSandbox = true;
-                definition.disableTaskQueue = true;
-                break;
-
-            case "SwiftDocCPlugin, generate-documentation":
-                definition.allowWritingToPackageDirectory = true;
-                break;
-
-            case "SwiftDocCPlugin, preview-documentation":
-                definition.disableSandbox = true;
-                definition.allowWritingToPackageDirectory = true;
-                break;
-
-            case "SwiftFormat, swiftformat":
-                definition.allowWritingToPackageDirectory = true;
-                break;
-
-            case "swift-format, format-source-code":
-                definition.allowWritingToPackageDirectory = true;
-                break;
-
-            default:
-                break;
-        }
-        return definition;
     }
 
     /**

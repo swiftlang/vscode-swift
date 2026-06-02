@@ -26,7 +26,7 @@ export class WindowsProcessList extends BaseProcessList {
     }
 
     protected override createParser(): ProcessListParser {
-        const lineRegex = /^([0-9]+)\s+([0-9]+)\s+(.*)$/;
+        const lineRegex = /^(\d+)\s+(\d+)\s+(.*)$/;
 
         return line => {
             const matches = lineRegex.exec(line.trim());

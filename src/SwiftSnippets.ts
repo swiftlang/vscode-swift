@@ -20,30 +20,6 @@ import { createSwiftTask } from "./tasks/SwiftTaskProvider";
 import { TaskOperation } from "./tasks/TaskQueue";
 
 /**
- * Set context key indicating whether current file is a Swift Snippet
- * @param ctx Workspace context
- */
-export function setSnippetContextKey(ctx: WorkspaceContext) {
-    if (
-        !ctx.currentFolder ||
-        !ctx.currentDocument ||
-        ctx.currentFolder.swiftVersion.isLessThan({ major: 5, minor: 7, patch: 0 })
-    ) {
-        ctx.contextKeys.fileIsSnippet = false;
-        return;
-    }
-
-    const filename = ctx.currentDocument.fsPath;
-    const snippetsFolder = path.join(ctx.currentFolder.folder.fsPath, "Snippets");
-    if (filename.startsWith(snippetsFolder)) {
-        ctx.contextKeys.fileIsSnippet = true;
-    } else {
-        ctx.contextKeys.fileIsSnippet = false;
-    }
-    return;
-}
-
-/**
  * If current file is a Swift Snippet run it
  * @param ctx Workspace Context
  */
@@ -65,7 +41,7 @@ export async function debugSnippet(
     return await debugSnippetWithOptions(ctx, {}, snippet);
 }
 
-export async function debugSnippetWithOptions(
+async function debugSnippetWithOptions(
     ctx: WorkspaceContext,
     options: vscode.DebugSessionOptions,
     snippet?: string

@@ -23,6 +23,7 @@ import {
     AsyncEventEmitter,
     mockFn,
     mockGlobalEvent,
+    mockGlobalFunction,
     mockGlobalModule,
     mockGlobalObject,
     mockGlobalValue,
@@ -30,7 +31,6 @@ import {
     waitForReturnedPromises,
 } from "../MockUtils";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function emptyFunction(..._: any): any {
     // Intentionally empty
 }
@@ -162,6 +162,14 @@ suite("MockUtils Test Suite", () => {
 
             expect(() => sut.a).to.throw("Cannot access this property");
         });
+
+        test("can be used as an argument to Promise.resolve()", async () => {
+            interface TestInterface {
+                readonly a: number;
+            }
+            const test = mockObject<TestInterface>({ a: 4 });
+            await expect(Promise.resolve(test)).to.eventually.have.property("a", 4);
+        });
     });
 
     suite("mockFn()", () => {
@@ -191,6 +199,17 @@ suite("MockUtils Test Suite", () => {
                     "compiler error"
                 );
             });
+        });
+    });
+
+    suite("mockGlobalFunction()", () => {
+        const asRelativePathStub = mockGlobalFunction(vscode.workspace, "asRelativePath");
+
+        test("can mock asRelativePath() in the workspace object from the VSCode API", async () => {
+            asRelativePathStub.returns("relative");
+
+            expect(vscode.workspace.asRelativePath("absolute")).to.equal("relative");
+            expect(asRelativePathStub).to.have.been.calledOnceWithExactly("absolute");
         });
     });
 

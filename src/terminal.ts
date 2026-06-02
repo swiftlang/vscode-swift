@@ -14,6 +14,7 @@
 import * as vscode from "vscode";
 
 import configuration from "./configuration";
+import { Disposable } from "./utilities/Disposable";
 
 /** The separator to use between paths in the PATH environment variable */
 const pathSeparator = () => (process.platform === "win32" ? ";" : ":");
@@ -22,8 +23,8 @@ const pathSeparator = () => (process.platform === "win32" ? ";" : ":");
  * Configures Swift environment variables for VS Code. Will automatically update
  * whenever the configuration changes.
  */
-export class SwiftEnvironmentVariablesManager implements vscode.Disposable {
-    private subscriptions: vscode.Disposable[] = [];
+export class SwiftEnvironmentVariablesManager implements Disposable {
+    private subscriptions: Disposable[] = [];
 
     constructor(private context: vscode.ExtensionContext) {
         this.update();
@@ -97,7 +98,7 @@ export class SwiftTerminalProfileProvider implements vscode.TerminalProfileProvi
      * Registers the Swift terminal profile provider with VS Code.
      * @returns A disposable that unregisters the provider when disposed.
      */
-    public static register(): vscode.Disposable {
+    public static register(): Disposable {
         return vscode.window.registerTerminalProfileProvider(
             "swift.terminalProfile",
             new SwiftTerminalProfileProvider()

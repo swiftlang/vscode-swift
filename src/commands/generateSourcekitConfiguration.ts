@@ -18,10 +18,11 @@ import { FolderContext } from "../FolderContext";
 import { WorkspaceContext } from "../WorkspaceContext";
 import configuration from "../configuration";
 import { selectFolder } from "../ui/SelectFolderQuickPick";
+import { Disposable } from "../utilities/Disposable";
 import restartLSPServer from "./restartLSPServer";
 
-export const sourcekitDotFolder: string = ".sourcekit-lsp";
-export const sourcekitConfigFileName: string = "config.json";
+const sourcekitDotFolder: string = ".sourcekit-lsp";
+const sourcekitConfigFileName: string = "config.json";
 
 export async function generateSourcekitConfiguration(ctx: WorkspaceContext): Promise<boolean> {
     if (ctx.folders.length === 0) {
@@ -47,7 +48,7 @@ export async function generateSourcekitConfiguration(ctx: WorkspaceContext): Pro
         await Promise.all(
             foldersToGenerate.map(folder => createSourcekitConfiguration(ctx, folder))
         )
-    ).reduceRight((prev, curr) => prev || curr);
+    ).reduceRight((prev, curr) => prev || curr, false);
 }
 
 export const sourcekitFolderPath = (f: FolderContext) => join(f.folder.fsPath, sourcekitDotFolder);
@@ -203,7 +204,6 @@ async function checkDocumentSchema(doc: vscode.TextDocument, workspaceContext: W
             doc.uri,
             Buffer.from(JSON.stringify(config, undefined, 2))
         );
-        return;
     } else if (result === "Don't Ask Again") {
         configuration.checkLspConfigurationSchema = false;
         return;
@@ -220,9 +220,7 @@ export async function handleSchemaUpdate(
     await checkDocumentSchema(doc, workspaceContext);
 }
 
-export function registerSourceKitSchemaWatcher(
-    workspaceContext: WorkspaceContext
-): vscode.Disposable {
+export function registerSourceKitSchemaWatcher(workspaceContext: WorkspaceContext): Disposable {
     const onDidOpenDisposable = vscode.workspace.onDidOpenTextDocument(doc => {
         void handleSchemaUpdate(doc, workspaceContext);
     });
@@ -238,7 +236,7 @@ export function registerSourceKitSchemaWatcher(
     const onDidCreateDisposable = configFileWatcher.onDidCreate(async uri => {
         await handleConfigFileChange(uri, workspaceContext);
     });
-    return vscode.Disposable.from(
+    return Disposable.from(
         onDidOpenDisposable,
         configFileWatcher,
         onDidChangeDisposable,

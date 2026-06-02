@@ -1,5 +1,8 @@
-$NODEJS='https://nodejs.org/dist/v20.19.0/node-v20.19.0-x64.msi'
-$NODEJS_SHA256='c2654d3557abd59de08474c6dd009b1d358f420b8e4010e4debbf130b1dfb90a'
+$NVMRC_PATH = Join-Path $PSScriptRoot "..\..\..\..\.nvmrc"
+$NODE_VERSION = (Get-Content $NVMRC_PATH -Raw).Trim()
+
+$NODEJS = "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-x64.msi"
+$NODEJS_SHA256='fd7a63fec3a54a665851e2d3d93e07cfead2ffb4521675ffdbceb1bb5ac009bb'
 Set-Variable ErrorActionPreference Stop
 Set-Variable ProgressPreference SilentlyContinue
 Write-Host -NoNewLine ('Downloading {0} ... ' -f ${NODEJS})

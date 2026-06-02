@@ -14,6 +14,7 @@
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
 
+import { Disposable } from "../utilities/Disposable";
 import { checkExperimentalCapability } from "./LanguageClientManager";
 import { DidChangeActiveDocumentNotification } from "./extensions/DidChangeActiveDocumentRequest";
 
@@ -43,7 +44,7 @@ export class LSPActiveDocumentManager {
         await next(document);
     }
 
-    public activateDidChangeActiveDocument(client: langclient.LanguageClient): vscode.Disposable {
+    public activateDidChangeActiveDocument(client: langclient.LanguageClient): Disposable {
         // Fire an inital notification on startup if there is an open document.
         this.sendNotification(client, vscode.window.activeTextEditor?.document);
 

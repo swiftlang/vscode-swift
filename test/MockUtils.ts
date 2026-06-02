@@ -14,6 +14,30 @@
 import { SinonStub, stub } from "sinon";
 import * as vscode from "vscode";
 
+import { Disposable } from "@src/utilities/Disposable";
+
+/**
+ * TypeScript 6.0+ compiles `import * as X from "module"` to `__importStar(require("module"))`,
+ * creating a wrapper with non-configurable getter properties that delegate to the underlying
+ * module. To mock properties via Object.defineProperty, we need the underlying module directly.
+ *
+ * For ES modules (with __esModule: true), __importStar returns the module directly without
+ * wrapping, so no unwrapping is needed. For CommonJS modules without __esModule, the wrapper
+ * stores the raw module in .default.
+ */
+function unwrapStarImport(obj: any, property: PropertyKey): any {
+    // For ES modules, __importStar returns the module directly, so no unwrapping needed
+    if (obj && obj.__esModule) {
+        return obj;
+    }
+    // For CommonJS modules without __esModule, the wrapper stores the raw module in .default
+    const desc = Object.getOwnPropertyDescriptor(obj, property);
+    if (desc && !desc.configurable && "default" in obj) {
+        return obj.default;
+    }
+    return obj;
+}
+
 /**
  * Waits for all promises returned by a MockedFunction to resolve. Useful when
  * the code you're testing doesn't await the function being mocked, but instead
@@ -32,32 +56,18 @@ export async function waitForReturnedPromises(
 /**
  * Convenience type used to convert a function into a SinonStub
  */
-export type MockedFunction<T extends (...args: any[]) => any> = SinonStub<
-    Parameters<T>,
-    ReturnType<T>
->;
-
-/**
- * Retrieves the parameter types from a class constructor
- */
-export type ConstructorParameters<T> = T extends abstract new (...args: infer Arguments) => any
-    ? Arguments
-    : never;
-
-/**
- * Retrieves the return type from a class constructor
- */
-export type ConstructorReturnType<T> = T extends abstract new (...args: any[]) => infer ReturnType
-    ? ReturnType
+export type MockedFunction<T extends (...args: any[]) => any> = T extends (
+    ...args: infer Arguments
+) => infer ReturnType
+    ? SinonStub<Arguments, ReturnType>
     : never;
 
 /**
  * Convenience type used to convert a class constructor into a SinonStub
  */
-export type MockedClass<T extends abstract new (...args: any[]) => any> = SinonStub<
-    ConstructorParameters<T>,
-    ConstructorReturnType<T>
->;
+export type MockedClass<T> = T extends abstract new (...args: infer Arguments) => infer ReturnType
+    ? SinonStub<Arguments, ReturnType>
+    : never;
 
 /**
  * An object that has its functions replaced with SinonStubs.
@@ -147,6 +157,11 @@ export function mockObject<T>(overrides: Partial<T>): MockedObject<T> {
     const clonedObject = replaceWithMocks<T>(overrides);
     function checkAndAcquireValueFromTarget(target: any, property: string | symbol): any {
         if (!Object.prototype.hasOwnProperty.call(target, property)) {
+            if (property === "then") {
+                // Utilities that check for promise-like objects expect that accessing a
+                // property won't result in an error.
+                return undefined;
+            }
             throw new Error(
                 `Attempted to access property '${String(property)}', but it was not mocked.`
             );
@@ -185,12 +200,12 @@ export function mockObject<T>(overrides: Partial<T>): MockedObject<T> {
  */
 export function mockFn<T extends (...args: any[]) => any>(
     stubFunction?: (_: MockedFunction<T>) => void
-): T {
-    const result: MockedFunction<T> = stub();
+): MockedFunction<T> {
+    const result: MockedFunction<T> = stub() as any;
     if (stubFunction) {
         stubFunction(result);
     }
-    return result as any;
+    return result;
 }
 
 /**
@@ -242,15 +257,27 @@ export function mockGlobalObject<T, K extends MockableObjectsOf<T>>(
     property: K
 ): MockedObject<T[K]> {
     let realMock: MockedObject<T[K]>;
+    let originalDescriptor: PropertyDescriptor | undefined;
+    let target: any;
     const originalValue: T[K] = obj[property];
     // Create the mock at setup
     setup(() => {
+        target = unwrapStarImport(obj, property as PropertyKey);
+        originalDescriptor = Object.getOwnPropertyDescriptor(target, property as PropertyKey);
         realMock = mockObject(obj[property]);
-        Object.defineProperty(obj, property, { value: realMock });
+        Object.defineProperty(target, property as PropertyKey, {
+            value: realMock,
+            writable: true,
+            configurable: true,
+        });
     });
-    // Restore original value at teardown
+    // Restore original property descriptor at teardown
     teardown(() => {
-        Object.defineProperty(obj, property, { value: originalValue });
+        if (originalDescriptor) {
+            Object.defineProperty(target, property as PropertyKey, originalDescriptor);
+        } else {
+            delete target[property as PropertyKey];
+        }
     });
     // Return the proxy to the real mock
     return new Proxy<any>(originalValue, {
@@ -301,32 +328,49 @@ function shallowClone<T>(obj: T): T {
  */
 export function mockGlobalModule<T>(mod: T): MockedObject<T> {
     let realMock: MockedObject<T>;
+    const originalDescriptors = new Map<string | symbol, PropertyDescriptor>();
     const originalValue: T = shallowClone(mod);
+    // Unwrap __importStar wrappers to get the modifiable underlying module
+    const propNames = Object.getOwnPropertyNames(mod);
+    const target: any = propNames.length > 0 ? unwrapStarImport(mod, propNames[0]) : mod;
     // Create the mock at setup
     setup(() => {
-        realMock = mockObject(mod);
+        realMock = mockObject(target as T);
         for (const property of Object.getOwnPropertyNames(realMock)) {
             try {
-                Object.defineProperty(mod, property, {
+                const originalDescriptor = Object.getOwnPropertyDescriptor(target, property);
+                if (originalDescriptor) {
+                    originalDescriptors.set(property, originalDescriptor);
+                }
+                Object.defineProperty(target, property, {
                     value: (realMock as any)[property],
                     writable: true,
+                    configurable: true,
                 });
             } catch {
                 // Some properties of a module just can't be mocked and that's fine
             }
         }
     });
-    // Restore original value at teardown
+    // Restore original property descriptors at teardown
     teardown(() => {
         for (const property of Object.getOwnPropertyNames(originalValue)) {
             try {
-                Object.defineProperty(mod, property, {
-                    value: (originalValue as any)[property],
-                });
+                const originalDescriptor = originalDescriptors.get(property);
+                if (originalDescriptor) {
+                    Object.defineProperty(target, property, originalDescriptor);
+                } else {
+                    Object.defineProperty(target, property, {
+                        value: (originalValue as any)[property],
+                        writable: true,
+                        configurable: true,
+                    });
+                }
             } catch {
                 // Some properties of a module just can't be mocked and that's fine
             }
         }
+        originalDescriptors.clear();
     });
     // Return the proxy to the real mock
     return new Proxy<any>(originalValue, {
@@ -334,10 +378,10 @@ export function mockGlobalModule<T>(mod: T): MockedObject<T> {
             if (!realMock) {
                 throw Error("Mock proxy accessed before setup()");
             }
-            return (mod as any)[property];
+            return (target as any)[property];
         },
         set(_target, property, value) {
-            (mod as any)[property] = value;
+            (target as any)[property] = value;
             return true;
         },
     });
@@ -374,15 +418,21 @@ export interface MockedValue<T> {
  */
 export function mockGlobalValue<T, K extends keyof T>(obj: T, property: K): MockedValue<T[K]> {
     let setupComplete: boolean = false;
-    let originalValue: T[K];
-    // Grab the original value during setup
+    let originalDescriptor: PropertyDescriptor | undefined;
+    let target: any;
+    // Grab the original property descriptor during setup
     setup(() => {
-        originalValue = obj[property];
+        target = unwrapStarImport(obj, property as PropertyKey);
+        originalDescriptor = Object.getOwnPropertyDescriptor(target, property as PropertyKey);
         setupComplete = true;
     });
-    // Restore the original value on teardown
+    // Restore the original property descriptor on teardown
     teardown(() => {
-        Object.defineProperty(obj, property, { value: originalValue });
+        if (originalDescriptor) {
+            Object.defineProperty(target, property as PropertyKey, originalDescriptor);
+        } else {
+            delete target[property as PropertyKey];
+        }
         setupComplete = false;
     });
     // Return a ValueMock that allows for easy mocking of the value
@@ -391,7 +441,11 @@ export function mockGlobalValue<T, K extends keyof T>(obj: T, property: K): Mock
             if (!setupComplete) {
                 throw new Error("Mocks cannot be accessed outside of test functions");
             }
-            Object.defineProperty(obj, property, { value: value });
+            Object.defineProperty(target, property as PropertyKey, {
+                value: value,
+                writable: true,
+                configurable: true,
+            });
         },
     };
 }
@@ -441,15 +495,26 @@ export function mockGlobalEvent<T, K extends EventsOf<T>>(
     property: K
 ): AsyncEventEmitter<EventType<T[K]>> {
     let eventEmitter: vscode.EventEmitter<EventType<T[K]>>;
-    const originalValue: T[K] = obj[property];
+    let originalDescriptor: PropertyDescriptor | undefined;
+    let target: any;
     // Create the mock at setup
     setup(() => {
+        target = unwrapStarImport(obj, property as PropertyKey);
+        originalDescriptor = Object.getOwnPropertyDescriptor(target, property as PropertyKey);
         eventEmitter = new vscode.EventEmitter();
-        Object.defineProperty(obj, property, { value: eventEmitter.event });
+        Object.defineProperty(target, property as PropertyKey, {
+            value: eventEmitter.event,
+            writable: true,
+            configurable: true,
+        });
     });
-    // Restore original value at teardown
+    // Restore original property descriptor at teardown
     teardown(() => {
-        Object.defineProperty(obj, property, { value: originalValue });
+        if (originalDescriptor) {
+            Object.defineProperty(target, property as PropertyKey, originalDescriptor);
+        } else {
+            delete target[property as PropertyKey];
+        }
     });
     // Return the proxy to the EventEmitter
     return new Proxy(new AsyncEventEmitter(), {
@@ -473,9 +538,9 @@ export function mockGlobalEvent<T, K extends EventsOf<T>>(
 export class AsyncEventEmitter<T> {
     private listeners: Set<(event: T) => any> = new Set();
 
-    event: vscode.Event<T> = (listener: (event: T) => unknown): vscode.Disposable => {
+    event: vscode.Event<T> = (listener: (event: T) => unknown): Disposable => {
         this.listeners.add(listener);
-        return new vscode.Disposable(() => this.listeners.delete(listener));
+        return new Disposable(() => this.listeners.delete(listener));
     };
 
     async fire(event: T): Promise<void> {
@@ -483,4 +548,75 @@ export class AsyncEventEmitter<T> {
             await listener(event);
         }
     }
+}
+
+/** Extracts all properties within the provided type that are functions. */
+type FunctionsOf<T> = {
+    [K in keyof T]: T[K] extends (...args: any[]) => any ? T[K] : never;
+};
+
+/**
+ * Create a new mock for each test that gets cleaned up automatically afterwards. This function makes use of the fact that
+ * Mocha's setup() and teardown() methods can be called from anywhere. The resulting function is a proxy to the real
+ * mock since it won't be created until the test actually begins.
+ *
+ * The proxy lets us avoid boilerplate by creating a mock in one line:
+ *
+ *     import { expect } from "chai";
+ *     import * as vscode from "vscode";
+ *
+ *     suite("Test Suite", () => {
+ *         const showErrorMessageStub = mockGlobalFunction(vscode.window, "showErrorMessage");
+ *
+ *         test('test case', () => {
+ *             vscode.window.showErrorMessage("Some error message");
+ *             expect(showErrorMessageStub).to.have.been.calledWith("Some error message");
+ *         });
+ *     });
+ *
+ * **Note:** This **MUST** be called at the suite level or it will not work.
+ *
+ * @param obj The object to create the stub inside
+ * @param property The property inside the object to be stubbed
+ */
+export function mockGlobalFunction<T extends object, K extends keyof FunctionsOf<T>>(
+    obj: T,
+    property: K
+): MockedFunction<FunctionsOf<T>[K]> {
+    let realMock: MockedFunction<FunctionsOf<T>[K]>;
+    let originalDescriptor: PropertyDescriptor | undefined;
+    let target: any;
+    const originalValue: T[K] = obj[property];
+    // Create the mock at setup
+    setup(() => {
+        target = unwrapStarImport(obj, property as PropertyKey);
+        originalDescriptor = Object.getOwnPropertyDescriptor(target, property as PropertyKey);
+        realMock = stub(target, property as any) as any;
+        Object.defineProperty(target, property as PropertyKey, {
+            value: realMock,
+            writable: true,
+            configurable: true,
+        });
+    });
+    // Restore original property descriptor at teardown
+    teardown(() => {
+        if (originalDescriptor) {
+            Object.defineProperty(target, property as PropertyKey, originalDescriptor);
+        } else {
+            delete target[property as PropertyKey];
+        }
+    });
+    // Return the proxy to the real mock
+    return new Proxy<any>(originalValue, {
+        get(_target, property) {
+            if (!realMock) {
+                throw Error("Mock proxy accessed before setup()");
+            }
+            return (realMock as any)[property];
+        },
+        set(_target, property, value) {
+            (realMock as any)[property] = value;
+            return true;
+        },
+    });
 }

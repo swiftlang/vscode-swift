@@ -15,14 +15,12 @@
 /* eslint-disable @typescript-eslint/no-namespace */
 import { MessageDirection, RequestType } from "vscode-languageclient";
 
-// eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace PollIndexRequest {
     export const method = "workspace/_pollIndex" as const;
     export const messageDirection: MessageDirection = MessageDirection.clientToServer;
     export const type = new RequestType<object, object, never>(method);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-namespace
 export namespace WorkspaceSynchronizeRequest {
     export const method = "workspace/synchronize" as const;
     export const messageDirection: MessageDirection = MessageDirection.clientToServer;

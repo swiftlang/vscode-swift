@@ -41,7 +41,8 @@ tag("large").suite("Language Client Integration Suite", function () {
     let folderContext: FolderContext;
 
     activateExtensionForSuite({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             if (process.platform === "win32") {
                 this.skip();
                 return;
@@ -120,6 +121,37 @@ tag("large").suite("Language Client Integration Suite", function () {
 
             for (const uri of expectedUris) {
                 expect(referenceUris).to.contain(uri);
+            }
+        });
+        test("Find All References excludes declaration when setting is never", async function () {
+            const config = vscode.workspace.getConfiguration("swift.sourcekit-lsp");
+            await config.update(
+                "includeDeclarationInFindAllReferences",
+                "never",
+                vscode.ConfigurationTarget.Workspace
+            );
+            try {
+                const editor = await vscode.window.showTextDocument(uri);
+                const document = editor.document;
+
+                const referenceLocations = await vscode.commands.executeCommand<vscode.Location[]>(
+                    "vscode.executeReferenceProvider",
+                    document.uri,
+                    position
+                );
+
+                // We expect the declaration in `PackageLib.swift` to be excluded,
+                // usages in `main.swift` and `hello.swift` remain.
+                const referenceUris = referenceLocations.map(ref => ref.uri.toString());
+                expect(referenceUris).to.not.contain(expectedDefinitionUri.toString());
+                expect(referenceUris).to.contain(uri.toString());
+                expect(referenceUris).to.contain(snippetUri.toString());
+            } finally {
+                await config.update(
+                    "includeDeclarationInFindAllReferences",
+                    undefined,
+                    vscode.ConfigurationTarget.Workspace
+                );
             }
         });
     });

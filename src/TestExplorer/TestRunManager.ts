@@ -14,7 +14,7 @@
 import * as vscode from "vscode";
 
 import { FolderContext } from "../FolderContext";
-import { TestRunProxy } from "./TestRunner";
+import { TestRunProxy } from "./TestRunProxy";
 
 /**
  * Manages active test runs and provides functionality to check if a test run is in progress

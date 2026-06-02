@@ -2,6 +2,125 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+### Fixed
+
+- Loading large projects will no longer show the extension as unresponsive ([#1932](https://github.com/swiftlang/vscode-swift/pull/1932))
+- Reveal the task terminal when clicking the Swift build status item instead of showing a popup ([#2254](https://github.com/swiftlang/vscode-swift/pull/2254))
+
+## 2.16.5 - 2026-05-26
+
+### Added
+
+- Add `swift.sourcekit-lsp.includeDeclarationInFindAllReferences` setting to control whether the symbol declaration is included in Find All References results ([#2236](https://github.com/swiftlang/vscode-swift/pull/2236))
+- Add support for [swift-testing warnings](https://github.com/swiftlang/swift-evolution/blob/main/proposals/testing/0013-issue-severity-warning.md) ([#2244](https://github.com/swiftlang/vscode-swift/pull/2244))
+
+### Fixed
+
+- Fix swift-testing timeout when doing a Run All tests w/ multiple test targets when using swift-build ([#2207](https://github.com/swiftlang/vscode-swift/pull/2207))
+- Run toolchain executables via `swiftly run <tool>` when the active toolchain is managed by swiftly ([#2177](https://github.com/swiftlang/vscode-swift/pull/2177))
+- Run toolchain executables via `xcrun <tool>` when the active toolchain is managed by Xcode ([#2253](https://github.com/swiftlang/vscode-swift/pull/2253))
+- Fix swift.buildPath being ignored by swift package plugin tasks ([#2235](https://github.com/swiftlang/vscode-swift/pull/2235))
+- Fix nightly toolchains providing a value to `--swift-testing-event-stream-version` that swift-testing doesn't support ([#2247](https://github.com/swiftlang/vscode-swift/pull/2247))
+- Fix error during toolchain selection when swiftly has no active toolchain ([#2246](https://github.com/swiftlang/vscode-swift/pull/2246))
+
+## 2.16.4 - 2026-04-21
+
+### Added
+
+- Add `${binPath}` variable substitution for launch configuration program paths ([#2184](https://github.com/swiftlang/vscode-swift/pull/2184))
+
+### Fixed
+
+- Fix false positive workspace detection for non-Swift projects with `build/` or `out/` directories ([#2156](https://github.com/swiftlang/vscode-swift/pull/2156))
+- Fix build status notification to show a determinate progress bar ([#2188](https://github.com/swiftlang/vscode-swift/pull/2188))
+- Fix debugging when running tests with the swiftbuild build system ([#2191](https://github.com/swiftlang/vscode-swift/pull/2191))
+
+## 2.16.3 - 2026-04-02
+
+### Added
+
+- Warn when the build folder is locked by another SwiftPM process ([#2168](https://github.com/swiftlang/vscode-swift/pull/2168))
+
+### Fixed
+
+- Refresh tests in the test explorer when background indexing completes ([#2164](https://github.com/swiftlang/vscode-swift/pull/2164))
+- Fix infinite loop on startup when swift-package-manager has a lock on the package being opened ([#2174](https://github.com/swiftlang/vscode-swift/pull/2174))
+
+## 2.16.2 - 2026-03-17
+
+### Added
+
+- Add `swift.ignoreSwiftVersionFile` setting to ignore the toolchain set in `.swift-version` files ([#2073](https://github.com/swiftlang/vscode-swift/pull/2073))
+
+### Fixed
+
+- Swift-testing test runs are marked as 'started' in the UI immediately, not after compilation finishes ([#2079](https://github.com/swiftlang/vscode-swift/pull/2079))
+- Fix legacy boolean setting values for `swift.sourcekit-lsp.backgroundIndexing` not being recognized ([#2092](https://github.com/swiftlang/vscode-swift/pull/2092))
+- Launch configurations defined in multi-root workspaces were unable to find the appropriate folder to run in ([#2105](https://github.com/swiftlang/vscode-swift/pull/2105))
+- Ignoring the dialog to use the toolchain defined in `.swift-version` would prevent extension acitvation ([#2107](https://github.com/swiftlang/vscode-swift/pull/2107))
+- Avoid rapidly resolving packages during rebases ([#2125](https://github.com/swiftlang/vscode-swift/pull/2125))
+- Fix typo in Swift extension setting ([#2130](https://github.com/swiftlang/vscode-swift/pull/2130))
+- Fix icon for build progress jittering in the status bar ([#2150](https://github.com/swiftlang/vscode-swift/pull/2150))
+
+## 2.16.1 - 2026-02-02
+
+### Fixed
+
+- Fixed extension activation issues involving swiftly ([#2066](https://github.com/swiftlang/vscode-swift/pull/2066))
+- Fixed not all settings notifying the user when malformed ([#2086](https://github.com/swiftlang/vscode-swift/pull/2086))
+
+## 2.16.0 - 2026-01-28
+
+### Added
+
+- Show progress when describing/listing dependencies on package load ([#2028](https://github.com/swiftlang/vscode-swift/pull/2028))
+- Drop support for Swift 5.8 ([#1853](https://github.com/swiftlang/vscode-swift/pull/1853))
+- An official public API for the Swift extension that can be used by other Visual Studio Code extensions ([#2030](https://github.com/swiftlang/vscode-swift/pull/2030))
+- Add support for installing the swiftly toolchain manager ([1881](https://github.com/swiftlang/vscode-swift/pull/1881))
+
+### Fixed
+
+- Fix the wrong toolchain being shown as selected when using swiftly v1.0.1 ([#2014](https://github.com/swiftlang/vscode-swift/pull/2014))
+- Fix extension displaying SwiftPM's project view and automatic build tasks even when `disableSwiftPackageManagerIntegration` was true ([#2011](https://github.com/swiftlang/vscode-swift/pull/2011))
+- Validate extension settings and warn if they are invalid ([#2016](https://github.com/swiftlang/vscode-swift/pull/2016))
+- Show the Test Results panel when tests fail to compile and the user has `testing.automaticallyOpenTestResults` set to `openOnTestFailure` ([#2035](https://github.com/swiftlang/vscode-swift/pull/2035))
+- Added missing icon for `macro` targets in the Project Panel ([#2043](https://github.com/swiftlang/vscode-swift/pull/2043))
+
+## 2.14.3 - 2025-12-15
+
+### Fixed
+
+- Fix extension failing to find `lldb-dap` when `swift.path` points at an Xcode toolchain ([#1998](https://github.com/swiftlang/vscode-swift/pull/1998))
+- Omit `--scratch-path` when enumerating plugins with `swift package plugin --list` ([#1996](https://github.com/swiftlang/vscode-swift/pull/1996))
+
+## 2.14.2 - 2025-12-07
+
+### Fixed
+
+- Fix extension failing to activate when Swiftly was installed via Homebrew ([#1975](https://github.com/swiftlang/vscode-swift/pull/1975))
+- Fix running `swift package` commands with `swift.disableSwiftPackageManagerIntegration` enabled ([#1969](https://github.com/swiftlang/vscode-swift/pull/1969))
+- Fixed an issue where `lldb-dap` could not be found in Command Line Tools toolchains ([#1936](https://github.com/swiftlang/vscode-swift/pull/1936))
+
+## 2.14.1 - 2025-11-20
+
+### Fixed
+
+- Suggest "Open Documentation" when toolchain not found ([#1939](https://github.com/swiftlang/vscode-swift/pull/1939))
+- Make sure all folder operation listeners get past folder add events ([#1945](https://github.com/swiftlang/vscode-swift/pull/1945))
+
+## 2.14.0 - 2025-11-11
+
+### Added
+
+- Syntax highlighting for `*.swift.gyb` files ([#1515](https://github.com/swiftlang/vscode-swift/pull/1515))
+- Activate the extension if a workspace folder contains a `.bsp` folder ([#1865](https://github.com/swiftlang/vscode-swift/pull/1865))
+
+### Fixed
+
+- Fixed an issue where the activation of the extension was held up while waiting on the debug configuration to update ([#1914](https://github.com/swiftlang/vscode-swift/pull/1914))
+
+## 2.12.0 - 2025-10-29
+
 ### Added
 
 - Swiftly toolchain installation support with commands to install stable and snapshot releases, progress tracking, and secure post-install script handling ([#1780](https://github.com/swiftlang/vscode-swift/pull/1780))
@@ -9,6 +128,7 @@
 - Prompt to cancel and replace the active test run if one is in flight ([#1774](https://github.com/swiftlang/vscode-swift/pull/1774))
 - A walkthrough for first time extension users ([#1560](https://github.com/swiftlang/vscode-swift/issues/1560))
 - Allow `swift.backgroundCompilation` setting to accept an object where enabling the `useDefaultTask` property will run the default build task, and the `release` property will run the `release` variant of the Build All task ([#1857](https://github.com/swiftlang/vscode-swift/pull/1857))
+- Added new `target` and `configuration` properties to `swift` launch configurations that can be used instead of `program` for SwiftPM based projects ([#1890](https://github.com/swiftlang/vscode-swift/pull/1890))
 
 ### Fixed
 

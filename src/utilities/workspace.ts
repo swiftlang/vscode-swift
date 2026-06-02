@@ -23,23 +23,27 @@ export async function searchForPackages(
     folder: vscode.Uri,
     disableSwiftPMIntegration: boolean,
     searchSubfoldersForPackages: boolean,
+    skipFolders: Array<string>,
     swiftVersion: Version
 ): Promise<Array<vscode.Uri>> {
     const folders: Array<vscode.Uri> = [];
 
     async function search(folder: vscode.Uri) {
-        // add folder if Package.swift/compile_commands.json/compile_flags.txt/buildServer.json exists
+        // add folder if Package.swift/compile_commands.json/compile_flags.txt/buildServer.json/.bsp exists
         if (await isValidWorkspaceFolder(folder.fsPath, disableSwiftPMIntegration, swiftVersion)) {
             folders.push(folder);
         }
-        // should I search sub-folders for more Swift Packages
+
+        // If sub-folder searches are disabled, don't search subdirectories
         if (!searchSubfoldersForPackages) {
             return;
         }
 
-        await globDirectory(folder, { onlyDirectories: true }).then(async entries => {
+        await globDirectory(folder, "*", { onlyDirectories: true }).then(async entries => {
+            const skip = new Set<string>(skipFolders);
             for (const entry of entries) {
-                if (basename(entry) !== "." && basename(entry) !== "Packages") {
+                const base = basename(entry);
+                if (!skip.has(base)) {
                     await search(vscode.Uri.file(entry));
                 }
             }
@@ -51,10 +55,7 @@ export async function searchForPackages(
     return folders;
 }
 
-export async function hasBSPConfigurationFile(
-    folder: string,
-    swiftVersion: Version
-): Promise<boolean> {
+async function hasBSPConfigurationFile(folder: string, swiftVersion: Version): Promise<boolean> {
     // buildServer.json
     const buildServerPath = path.join(folder, "buildServer.json");
     const buildServerStat = await fs.stat(buildServerPath).catch(() => undefined);
@@ -67,7 +68,7 @@ export async function hasBSPConfigurationFile(
         const bspStat = await fs.stat(bspDir).catch(() => undefined);
         if (bspStat && bspStat.isDirectory()) {
             const files = await fs.readdir(bspDir).catch(() => []);
-            if (files.some((f: string) => f.endsWith(".json"))) {
+            if (files.some(f => f.endsWith(".json"))) {
                 return true;
             }
         }
@@ -94,11 +95,17 @@ export async function isValidWorkspaceFolder(
         return true;
     }
 
-    if (await pathExists(folder, "build")) {
+    // Check for compile_commands.json inside common build directories.
+    // The default search paths (root ".", "build/") match SourceKit-LSP
+    // and clangd behavior (see DetermineBuildServer.swift in sourcekit-lsp).
+    // We additionally check "out/" as a common CMake build directory name.
+    // Only match if the actual compile_commands.json file exists, not just
+    // the directory, to avoid false positives with non-Swift projects (e.g. Flutter).
+    if (await pathExists(folder, "build", "compile_commands.json")) {
         return true;
     }
 
-    if (await pathExists(folder, "out")) {
+    if (await pathExists(folder, "out", "compile_commands.json")) {
         return true;
     }
 

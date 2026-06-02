@@ -1,10 +1,22 @@
 version: 2
 updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "full-test-run"
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "full-test-run"
     allow:
       - dependency-type: direct
     ignore:
@@ -22,6 +34,10 @@ updates:
       - dependency-name: "@types/svgicons2svgfont"
       - dependency-name: "octokit"
         update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint-plugin-mocha"
+        update-types: ["version-update:semver-major"]
+      # Versions of plist after 3.1.0 are broken on Windows.
+      - dependency-name: "plist"
       # Newer versions of fantasticon are broken on Windows.
       # https://github.com/tancredi/fantasticon/issues/470
       - dependency-name: "fantasticon"

@@ -33,7 +33,7 @@ export function parseTestsFromDocumentSymbols(
         .flatMap(symbol => {
             const functions = symbol.children
                 .filter(func => func.kind === vscode.SymbolKind.Method)
-                .filter(func => func.name.match(/^test.*\(\)/))
+                .filter(func => /^test.*\(\)/.test(func.name))
                 .map(func => {
                     const openBrackets = func.name.indexOf("(");
                     let funcName = func.name;

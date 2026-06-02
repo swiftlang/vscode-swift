@@ -49,7 +49,8 @@ suite("Generate SourceKit-LSP configuration Command", function () {
     }
 
     activateExtensionForSuite({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             workspaceContext = ctx;
             folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
             configFileUri = vscode.Uri.file(sourcekitConfigFilePath(folderContext));
@@ -113,7 +114,7 @@ suite("Generate SourceKit-LSP configuration Command", function () {
         );
     });
 
-    suite("handleSchemaUpdate", async () => {
+    suite("handleSchemaUpdate", () => {
         const mockWindow = mockGlobalObject(vscode, "window");
         const mockRestartLSPServerModule = mockGlobalModule(restartLSPServerModule);
 

@@ -14,6 +14,7 @@
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
 
+import { Disposable } from "../utilities/Disposable";
 import { PeekDocumentsParams, PeekDocumentsRequest } from "./extensions";
 
 /**
@@ -77,7 +78,7 @@ async function openPeekedEditorIn(
     );
 }
 
-export function activatePeekDocuments(client: langclient.LanguageClient): vscode.Disposable {
+export function activatePeekDocuments(client: langclient.LanguageClient): Disposable {
     const peekDocuments = client.onRequest(
         PeekDocumentsRequest.method,
         async (params: PeekDocumentsParams) => {

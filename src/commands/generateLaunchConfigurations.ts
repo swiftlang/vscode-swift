@@ -39,5 +39,5 @@ export async function generateLaunchConfigurations(ctx: WorkspaceContext): Promi
                 makeDebugConfigurations(folder, { force: true, yes: true })
             )
         )
-    ).reduceRight((prev, curr) => prev || curr);
+    ).reduceRight((prev, curr) => prev || curr, false);
 }

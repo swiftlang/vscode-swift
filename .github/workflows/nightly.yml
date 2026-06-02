@@ -1,9 +1,17 @@
 name: Nightly
 
+permissions:
+  contents: read
+
 on:
   schedule:
     - cron: "0 0 * * *"
   workflow_dispatch:
+    inputs:
+      patchRelease:
+        description: 'Make a patch release'
+        required: false
+        type: boolean
 
 jobs:
   package:
@@ -15,16 +23,20 @@ jobs:
       artifact-id: ${{ steps.archive.outputs.artifact-id }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Build Extension
+        env:
+          PATCH_RELEASE: ${{ github.event.inputs.patchRelease }}
         run: |
-          export NODE_VERSION=v20.19.0
-          export NODE_PATH=/usr/local/nvm/versions/node/v20.19.0/bin
-          export NVM_DIR=/usr/local/nvm
           . .github/workflows/scripts/setup-linux.sh
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
           npm ci
-          npm run package
+          if [ "$PATCH_RELEASE" = "true" ]; then
+            echo "Making patch release\n"
+            npm run patch-package
+          else
+            npm run package
+          fi
           npm run preview-package
           for file in *.vsix; do
             name="$(basename "$file" .vsix)-${{github.run_number}}.vsix"
@@ -35,7 +47,7 @@ jobs:
           git rev-parse HEAD > vscode-swift-sha.txt
       - name: Archive production artifacts
         id: archive
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: ${{ env.ACT != 'true' }}
         with:
           if-no-files-found: error
@@ -47,14 +59,14 @@ jobs:
   tests_release:
     name: Test Release
     needs: package
-    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@main
+    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.11
     with:
       needs_token: true
       # Linux
-      linux_exclude_swift_versions: '[{"swift_version": "nightly-6.1"}]'
+      # Run against all of the swift versions from https://github.com/swiftlang/github-workflows/blob/main/.github/workflows/swift_package_test.yml#L44
       linux_env_vars: |
-        NODE_VERSION=v20.19.0
-        NODE_PATH=/usr/local/nvm/versions/node/v20.19.0/bin
+        NODE_VERSION=${{ needs.package.outputs.node-version }}
+        NODE_PATH=${{ needs.package.outputs.node-path }}
         NVM_DIR=/usr/local/nvm
         CI=1
         VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
@@ -62,41 +74,10 @@ jobs:
       linux_pre_build_command: . .github/workflows/scripts/setup-linux.sh
       linux_build_command: ./scripts/test.sh
       # Windows
-      windows_exclude_swift_versions: '[{"swift_version": "nightly-6.1"},{"swift_version": "nightly"}]'  # Missing https://github.com/swiftlang/swift/pull/80144
+      # Run against all of the swift versions from https://github.com/swiftlang/github-workflows/blob/main/.github/workflows/swift_package_test.yml#L85
       windows_env_vars: |
         CI=1
         VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
-        GITHUB_REPOSITORY=${{github.repository}}
-      windows_pre_build_command: . .github\workflows\scripts\windows\setup.ps1
-      windows_build_command: Invoke-Program scripts\test_windows.ps1
-      enable_windows_docker: false
-
-  tests_insiders:
-    name: Test Insiders
-    needs: package
-    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@main
-    with:
-      needs_token: true
-      # Linux
-      linux_exclude_swift_versions: '[{"swift_version": "5.8"}, {"swift_version": "5.9"}, {"swift_version": "5.10"}, {"swift_version": "6.0"}, {"swift_version": "6.1"}, {"swift_version": "nightly-6.1"}, {"swift_version": "nightly-6.2"}, {"swift_version": "nightly-main"}]'
-      linux_env_vars: |
-        NODE_VERSION=v20.19.0
-        NODE_PATH=/usr/local/nvm/versions/node/v20.19.0/bin
-        NVM_DIR=/usr/local/nvm
-        CI=1
-        VSCODE_VERSION=insiders
-        VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
-        VSCODE_SWIFT_VSIX_PRERELEASE=1
-        GITHUB_REPOSITORY=${{github.repository}}
-      linux_pre_build_command: . .github/workflows/scripts/setup-linux.sh
-      linux_build_command: ./scripts/test.sh
-      # Windows
-      windows_exclude_swift_versions: '[{"swift_version": "5.9"}, {"swift_version": "6.0"}, {"swift_version": "6.1"}, {"swift_version": "nightly-6.1"}, {"swift_version": "nightly-6.2"}, {"swift_version": "nightly"}]'
-      windows_env_vars: |
-        CI=1
-        VSCODE_VERSION=insiders
-        VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
-        VSCODE_SWIFT_VSIX_PRERELEASE=1
         GITHUB_REPOSITORY=${{github.repository}}
       windows_pre_build_command: . .github\workflows\scripts\windows\setup.ps1
       windows_build_command: Invoke-Program scripts\test_windows.ps1

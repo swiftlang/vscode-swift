@@ -29,11 +29,37 @@ The most basic launch configuration uses the `"launch"` request and provides a p
 }
 ```
 
+The `program` property supports a `${binPath}` variable that resolves to the relative path from the build directory to the binary output directory. This is useful because the binary output location can vary depending on the Swift build system in use (e.g. `.build/debug` vs `.build/out/Products/Debug`):
+
+```javascript
+{
+    "label": "Debug my-executable",
+    "type": "swift",
+    "request": "launch",
+    "program": "${workspaceFolder}/.build/${binPath}/my-executable",
+    "configuration": "debug"
+}
+```
+
+For SwiftPM based projects, you may specify a `target` and `configuration` instead of a `program` to make your debug configurations shareable between different developers on different platforms:
+
+```javascript
+{
+    "label": "Debug my-executable", // Human readable name for the configuration
+    "type": "swift",                // All Swift launch configurations use the same type
+    "request": "launch",            // Launch an executable
+    "target": "my-executable",
+    "configuration": "debug"
+}
+```
+
 There are many more options that you can specify which will alter the behavior of the debugger:
 
 | Parameter                     | Type        | Description         |
 |-------------------------------|-------------|---------------------|
 | program                       | string      | Path to the executable to launch.
+| target                        | string      | Name of the target to launch. Only available in SwiftPM projects.
+| configuration                 | string      | Configuration used to build the target (debug or release). Only available in SwiftPM projects.
 | args                          | [string]    | An array of command line argument strings to be passed to the program being launched.
 | cwd                           | string      | The program working directory.
 | env                           | dictionary  | Environment variables to set when launching the program. The format of each environment variable string is "VAR=VALUE" for environment variables with values or just "VAR" for environment variables with no values.

@@ -14,11 +14,13 @@
 import * as fs from "fs/promises";
 import * as vscode from "vscode";
 
+import { Disposable } from "../utilities/Disposable";
+
 /**
  * Registers a {@link vscode.TextDocumentContentProvider TextDocumentContentProvider} that will display
  * a readonly version of a file
  */
-export function getReadOnlyDocumentProvider(): vscode.Disposable {
+export function getReadOnlyDocumentProvider(): Disposable {
     const provider = vscode.workspace.registerTextDocumentContentProvider("readonly", {
         provideTextDocumentContent: async uri => {
             try {

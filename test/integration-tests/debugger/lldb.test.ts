@@ -15,8 +15,6 @@ import { expect } from "chai";
 
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { getLLDBLibPath } from "@src/debugger/lldb";
-import { IS_RUNNING_UNDER_DOCKER } from "@src/utilities/utilities";
-import { Version } from "@src/utilities/version";
 
 import { activateExtensionForTest } from "../utilities/testutilities";
 
@@ -24,17 +22,8 @@ suite("lldb contract test suite", () => {
     let workspaceContext: WorkspaceContext;
 
     activateExtensionForTest({
-        async setup(ctx) {
-            // lldb.exe on Windows is not launching correctly, but only in Docker.
-            if (
-                IS_RUNNING_UNDER_DOCKER &&
-                process.platform === "win32" &&
-                ctx.globalToolchainSwiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) &&
-                ctx.globalToolchainSwiftVersion.isLessThan(new Version(6, 0, 2))
-            ) {
-                this.skip();
-            }
-            workspaceContext = ctx;
+        async setup(api) {
+            workspaceContext = await api.waitForWorkspaceContext();
         },
         requiresDebugger: true,
     });

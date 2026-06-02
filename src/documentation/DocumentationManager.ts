@@ -14,10 +14,11 @@
 import * as vscode from "vscode";
 
 import { WorkspaceContext } from "../WorkspaceContext";
+import { Disposable } from "../utilities/Disposable";
 import { DocumentationPreviewEditor } from "./DocumentationPreviewEditor";
 import { WebviewContent } from "./webview/WebviewMessage";
 
-export class DocumentationManager implements vscode.Disposable {
+export class DocumentationManager implements Disposable {
     private previewEditor?: DocumentationPreviewEditor;
     private editorUpdatedContentEmitter = new vscode.EventEmitter<WebviewContent>();
     private editorRenderedEmitter = new vscode.EventEmitter<void>();
@@ -45,7 +46,7 @@ export class DocumentationManager implements vscode.Disposable {
                 this.extension,
                 this.workspaceContext
             );
-            const subscriptions: vscode.Disposable[] = [
+            const subscriptions: Disposable[] = [
                 this.previewEditor.onDidUpdateContent(content => {
                     this.editorUpdatedContentEmitter.fire(content);
                 }),

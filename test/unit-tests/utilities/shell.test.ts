@@ -12,51 +12,98 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
-import { afterEach, beforeEach } from "mocha";
-import * as sinon from "sinon";
 
-import { findBinaryPath } from "@src/utilities/shell";
+import { findBinaryInPath } from "@src/utilities/shell";
 import * as utilities from "@src/utilities/utilities";
 
+import { mockGlobalModule, mockGlobalValue } from "../../MockUtils";
+
 suite("Shell Unit Test Suite", () => {
-    let execFileStub: sinon.SinonStub;
+    const mockedUtilities = mockGlobalModule(utilities);
+    const mockedPlatform = mockGlobalValue(process, "platform");
 
-    beforeEach(() => {
-        execFileStub = sinon.stub(utilities, "execFile");
+    setup(() => {
+        mockedUtilities.execFile.rejects(
+            Error("execFile() was not properly mocked for this test.")
+        );
     });
 
-    afterEach(() => {
-        sinon.restore();
-    });
-
-    suite("findBinaryPath", () => {
-        test("returns the path to a binary in the PATH", async () => {
-            execFileStub.resolves({
-                stdout: "node is /usr/local/bin/node\n",
-                stderr: "",
+    suite("findBinaryInPath()", () => {
+        suite("macOS", () => {
+            setup(() => {
+                mockedPlatform.setValue("darwin");
             });
 
-            const binaryPath = await findBinaryPath("node");
-            expect(binaryPath).to.equal("/usr/local/bin/node");
-            expect(execFileStub).to.have.been.calledWith("/bin/sh", [
-                "-c",
-                "LC_MESSAGES=C type node",
-            ]);
+            test("returns the path to a binary in the PATH", async () => {
+                mockedUtilities.execFile.withArgs("which", ["node"]).resolves({
+                    stdout: "/usr/local/bin/node\n",
+                    stderr: "",
+                });
+
+                await expect(findBinaryInPath("node")).to.eventually.equalPath(
+                    "/usr/local/bin/node"
+                );
+            });
+
+            test("throws for a non-existent binary", async () => {
+                mockedUtilities.execFile
+                    .withArgs("which", ["nonexistentbinary"])
+                    .rejects(Error("process exited with code 1"));
+
+                await expect(findBinaryInPath("nonexistentbinary")).to.eventually.be.rejected;
+            });
         });
 
-        test("throws for a non-existent binary", async () => {
-            execFileStub.resolves({
-                stdout: "",
-                stderr: "sh: type: nonexistentbinary: not found\n",
+        suite("Linux", () => {
+            setup(() => {
+                mockedPlatform.setValue("linux");
             });
 
-            try {
-                await findBinaryPath("nonexistentbinary");
-                expect.fail("Expected an error to be thrown for a non-existent binary");
-            } catch (error) {
-                expect(error).to.be.an("error");
-                expect((error as Error).message).to.include("nonexistentbinary");
-            }
+            test("returns the path to a binary in the PATH", async () => {
+                mockedUtilities.execFile
+                    .withArgs("/bin/sh", ["-c", "LC_MESSAGES=C type node"])
+                    .resolves({
+                        stdout: "node is /usr/local/bin/node\n",
+                        stderr: "",
+                    });
+
+                await expect(findBinaryInPath("node")).to.eventually.equalPath(
+                    "/usr/local/bin/node"
+                );
+            });
+
+            test("throws for a non-existent binary", async () => {
+                mockedUtilities.execFile
+                    .withArgs("/bin/sh", ["-c", "LC_MESSAGES=C type nonexistentbinary"])
+                    .rejects(Error("process exited with code 1"));
+
+                await expect(findBinaryInPath("nonexistentbinary")).to.eventually.be.rejected;
+            });
+        });
+
+        suite("Windows", () => {
+            setup(() => {
+                mockedPlatform.setValue("win32");
+            });
+
+            test("returns the path to a binary in the PATH", async () => {
+                mockedUtilities.execFile.withArgs("where.exe", ["node"]).resolves({
+                    stdout: "/usr/local/bin/node\r\n/usr/local/other/bin/node\r\n",
+                    stderr: "",
+                });
+
+                await expect(findBinaryInPath("node")).to.eventually.equalPath(
+                    "/usr/local/bin/node"
+                );
+            });
+
+            test("throws for a non-existent binary", async () => {
+                mockedUtilities.execFile
+                    .withArgs("where.exe", ["nonexistentbinary"])
+                    .rejects(Error("process exited with code 1"));
+
+                await expect(findBinaryInPath("nonexistentbinary")).to.eventually.be.rejected;
+            });
         });
     });
 });

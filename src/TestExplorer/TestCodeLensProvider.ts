@@ -14,13 +14,14 @@
 import * as vscode from "vscode";
 
 import configuration, { ValidCodeLens } from "../configuration";
+import { Disposable } from "../utilities/Disposable";
 import { TestExplorer } from "./TestExplorer";
 import { flattenTestItemCollection } from "./TestUtils";
 
-export class TestCodeLensProvider implements vscode.CodeLensProvider, vscode.Disposable {
+export class TestCodeLensProvider implements vscode.CodeLensProvider, Disposable {
     private onDidChangeCodeLensesEmitter = new vscode.EventEmitter<void>();
     public onDidChangeCodeLenses = this.onDidChangeCodeLensesEmitter.event;
-    private disposables: vscode.Disposable[] = [];
+    private disposables: Disposable[] = [];
 
     constructor(private testExplorer: TestExplorer) {
         this.disposables = [

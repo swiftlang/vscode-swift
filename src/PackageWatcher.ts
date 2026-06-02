@@ -17,11 +17,15 @@ import * as vscode from "vscode";
 
 import { FolderContext } from "./FolderContext";
 import { FolderOperation } from "./WorkspaceContext";
+import configuration from "./configuration";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { BuildFlags } from "./toolchain/BuildFlags";
 import { showReloadExtensionNotification } from "./ui/ReloadExtension";
+import { Disposable } from "./utilities/Disposable";
 import { fileExists } from "./utilities/filesystem";
 import { Version } from "./utilities/version";
+
+import debounce = require("lodash.debounce");
 
 /**
  * Watches for changes to **Package.swift** and **Package.resolved**.
@@ -31,7 +35,7 @@ import { Version } from "./utilities/version";
  */
 export class PackageWatcher {
     private packageFileWatcher?: vscode.FileSystemWatcher;
-    private resolvedChangedDisposable?: vscode.Disposable;
+    private resolvedChangedDisposable?: Disposable;
     private resolvedFileWatcher?: vscode.FileSystemWatcher;
     private workspaceStateFileWatcher?: vscode.FileSystemWatcher;
     private snippetWatcher?: vscode.FileSystemWatcher;
@@ -60,6 +64,8 @@ export class PackageWatcher {
      * when the extension deactivates.
      */
     dispose() {
+        this.handlePackageSwiftChange.cancel();
+        this.handlePackageResolvedChange.cancel();
         this.packageFileWatcher?.dispose();
         this.resolvedChangedDisposable?.dispose();
         this.resolvedFileWatcher?.dispose();
@@ -108,8 +114,6 @@ export class PackageWatcher {
         watcher.onDidDelete(async () => await this.handleWorkspaceStateChange());
 
         if (await fileExists(uri.fsPath)) {
-            // TODO: Remove this
-            this.logger.info("Loading initial workspace-state.json");
             await this.handleWorkspaceStateChange();
         }
 
@@ -139,7 +143,10 @@ export class PackageWatcher {
 
     async handleSwiftVersionFileChange() {
         const version = await this.readSwiftVersionFile();
-        if (version?.toString() !== this.currentVersion?.toString()) {
+        if (
+            version?.toString() !== this.currentVersion?.toString() &&
+            !configuration.folder(this.folderContext.workspaceFolder).ignoreSwiftVersionFile
+        ) {
             await this.folderContext.fireEvent(FolderOperation.swiftVersionUpdated);
             await showReloadExtensionNotification(
                 "Changing the swift toolchain version requires the extension to be reloaded"
@@ -167,26 +174,29 @@ export class PackageWatcher {
      * This will reload the swift package description, update the
      * launch configuration if required and then resolve the package
      * dependencies.
+     *
+     * Debounced by 500ms to coalesce rapid file system events (e.g. during rebases).
      */
-    async handlePackageSwiftChange() {
-        // Load SwiftPM Package.swift description
+    handlePackageSwiftChange = debounce(async () => {
         await this.folderContext.reload();
         await this.folderContext.fireEvent(FolderOperation.packageUpdated);
-    }
+    }, 500);
 
     /**
      * Handles a create or change event for **Package.resolved**.
      *
      * This will resolve any changes in the Package.resolved.
+     *
+     * Debounced by 500ms to coalesce rapid file system events (e.g. during rebases).
      */
-    private async handlePackageResolvedChange() {
+    handlePackageResolvedChange = debounce(async () => {
         const packageResolvedHash = this.folderContext.swiftPackage.resolved?.fileHash;
         await this.folderContext.reloadPackageResolved();
         // if file contents has changed then send resolve updated message
         if (this.folderContext.swiftPackage.resolved?.fileHash !== packageResolvedHash) {
             await this.folderContext.fireEvent(FolderOperation.resolvedUpdated);
         }
-    }
+    }, 500);
 
     /**
      * Handles a create or change event for **.build/workspace-state.json**.
@@ -195,10 +205,6 @@ export class PackageWatcher {
      */
     private async handleWorkspaceStateChange() {
         await this.folderContext.reloadWorkspaceState();
-        // TODO: Remove this
-        this.logger.info(
-            `Package watcher state updated workspace-state.json: ${JSON.stringify(this.folderContext.swiftPackage.workspaceState, null, 2)}`
-        );
         await this.folderContext.fireEvent(FolderOperation.workspaceStateUpdated);
     }
 }

@@ -11,7 +11,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-/* eslint-disable no-console */
 import { getExtensionVersion, main, packageExtension } from "./lib/utilities";
 
 /**

@@ -22,3 +22,4 @@ export * from "./PeekDocumentsRequest";
 export * from "./ReIndexProjectRequest";
 export * from "./SourceKitLogMessageNotification";
 export * from "./SymbolInfoRequest";
+export * from "./WorkspacePlaygroundsRequest";

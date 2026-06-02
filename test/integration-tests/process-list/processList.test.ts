@@ -18,9 +18,12 @@ import { Process, createProcessList } from "@src/process-list";
 
 suite("ProcessList Tests", () => {
     function expectProcessName(processes: Process[], command: string) {
+        const processList = processes
+            .map(proc => `${proc.id} - ${path.basename(proc.command)}`)
+            .join("\n");
         expect(
             processes.findIndex(proc => path.basename(proc.command) === command),
-            `Expected the list of processes to include '${command}':\n ${processes.map(proc => `${proc.id} - ${path.basename(proc.command)}`).join("\n")}\n\n`
+            `Expected the list of processes to include '${command}':\n ${processList}\n\n`
         ).to.be.greaterThanOrEqual(0);
     }
 

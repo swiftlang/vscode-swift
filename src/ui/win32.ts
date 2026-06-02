@@ -53,7 +53,7 @@ export function checkAndWarnAboutWindowsSymlinks(logger: SwiftLogger) {
  *
  * @returns whether or not a symlink can be created
  */
-export async function isSymlinkAllowed(logger?: SwiftLogger): Promise<boolean> {
+async function isSymlinkAllowed(logger?: SwiftLogger): Promise<boolean> {
     const temporaryFolder = await TemporaryFolder.create();
     return await temporaryFolder.withTemporaryFile("", async testFilePath => {
         const testSymlinkPath = temporaryFolder.filename("symlink-");

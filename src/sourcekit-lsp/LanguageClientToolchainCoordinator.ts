@@ -15,6 +15,7 @@ import * as vscode from "vscode";
 
 import { FolderContext } from "../FolderContext";
 import { FolderOperation, WorkspaceContext } from "../WorkspaceContext";
+import { AsyncDisposable, Disposable } from "../utilities/Disposable";
 import { isExcluded } from "../utilities/filesystem";
 import { Version } from "../utilities/version";
 import { LanguageClientFactory } from "./LanguageClientFactory";
@@ -27,8 +28,8 @@ import { LanguageClientManager } from "./LanguageClientManager";
  * folders share the same toolchain version then they will share the same LanguageClient.
  * This ensures that a folder always uses the LanguageClient bundled with its desired toolchain.
  */
-export class LanguageClientToolchainCoordinator implements vscode.Disposable {
-    private subscriptions: vscode.Disposable[] = [];
+export class LanguageClientToolchainCoordinator implements AsyncDisposable {
+    private subscriptions: Disposable[] = [];
     private clients: Map<string, LanguageClientManager> = new Map();
 
     public constructor(
@@ -38,6 +39,11 @@ export class LanguageClientToolchainCoordinator implements vscode.Disposable {
                 folder: FolderContext,
                 document: vscode.TextDocument,
                 symbols: vscode.DocumentSymbol[] | null | undefined
+            ) => void;
+            onDocumentCodeLens?: (
+                folder: FolderContext,
+                document: vscode.TextDocument,
+                symbols: vscode.CodeLens[] | null | undefined
             ) => void;
         } = {},
         languageClientFactory: LanguageClientFactory = new LanguageClientFactory() // used for testing only
@@ -145,7 +151,13 @@ export class LanguageClientToolchainCoordinator implements vscode.Disposable {
         return client;
     }
 
-    dispose() {
+    async dispose(): Promise<void> {
         this.subscriptions.forEach(item => item.dispose());
+        const disposeClients: Promise<void>[] = [];
+        for (const client of this.clients.values()) {
+            disposeClients.push(client.dispose());
+        }
+        await Promise.all(disposeClients);
+        this.clients.clear();
     }
 }

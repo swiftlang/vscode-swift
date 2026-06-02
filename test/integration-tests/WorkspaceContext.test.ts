@@ -11,35 +11,57 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import * as assert from "assert";
+import { expect } from "chai";
 import { afterEach } from "mocha";
 import * as vscode from "vscode";
 
-import { FolderContext } from "@src/FolderContext";
 import { FolderOperation, WorkspaceContext } from "@src/WorkspaceContext";
 import { SwiftExecution } from "@src/tasks/SwiftExecution";
 import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
+import { Disposable } from "@src/utilities/Disposable";
 import { resolveScope } from "@src/utilities/tasks";
 import { Version } from "@src/utilities/version";
 
 import { testAssetUri } from "../fixtures";
 import { tag } from "../tags";
-import { assertContains } from "./testexplorer/utilities";
 import {
     activateExtensionForSuite,
+    activateExtensionForTest,
     getRootWorkspaceFolder,
     updateSettings,
 } from "./utilities/testutilities";
 
 function assertContainsArg(execution: SwiftExecution, arg: string) {
-    assert(execution?.args.find(a => a === arg));
+    expect(execution?.args.find(a => a === arg)).to.not.be.undefined;
 }
 
 function assertNotContainsArg(execution: SwiftExecution, arg: string) {
-    assert.equal(
-        execution?.args.find(a => a.includes(arg)),
-        undefined
-    );
+    expect(execution?.args.find(a => a.includes(arg))).to.be.undefined;
+}
+
+function waitForAddedFolders(
+    workspaceContext: WorkspaceContext,
+    ...expectedFolderNames: string[]
+): Promise<void> {
+    const subscriptions: Disposable[] = [];
+    return new Promise<void>(resolve => {
+        const addedFolders: string[] = [];
+        subscriptions.push(
+            workspaceContext.onDidChangeFolders(event => {
+                if (!event.folder || event.operation !== FolderOperation.add) {
+                    return;
+                }
+                addedFolders.push(event.folder.name);
+                // Check if we've seen all the expected folders
+                for (const folderName of expectedFolderNames) {
+                    if (!addedFolders.find(name => name.includes(folderName))) {
+                        return;
+                    }
+                }
+                resolve();
+            })
+        );
+    }).finally(() => subscriptions.forEach(s => s.dispose()));
 }
 
 tag("medium").suite("WorkspaceContext Test Suite", () => {
@@ -47,55 +69,44 @@ tag("medium").suite("WorkspaceContext Test Suite", () => {
     const packageFolder: vscode.Uri = testAssetUri("defaultPackage");
 
     suite("Folder Events", () => {
-        activateExtensionForSuite({
-            async setup(ctx) {
-                workspaceContext = ctx;
+        activateExtensionForTest({
+            async setup(api) {
+                workspaceContext = await api.waitForWorkspaceContext();
             },
-            // No default assets as we want to verify against a clean workspace.
-            testAssets: ["defaultPackage"],
+            testAssets: [],
         });
 
-        test("Add", async () => {
-            let observer: vscode.Disposable | undefined;
-            const recordedFolders: {
-                folder: FolderContext | null;
-                operation: FolderOperation;
-            }[] = [];
+        test("onDidChangeFolders() triggers when folders are added to the workspace", async () => {
+            const workspaceFolder = getRootWorkspaceFolder();
+            const waitingPromise = waitForAddedFolders(workspaceContext, "package2");
 
-            try {
-                observer = workspaceContext.onDidChangeFolders(changedFolderRecord => {
-                    recordedFolders.push(changedFolderRecord);
-                });
+            const folder = await workspaceContext.addPackageFolder(
+                testAssetUri("package2"),
+                workspaceFolder
+            );
+            expect(await folder.swiftPackage.isValid).to.be.true;
 
-                const workspaceFolder = getRootWorkspaceFolder();
+            await waitingPromise;
+        });
 
-                assert.ok(workspaceFolder, "No workspace folders found in workspace");
+        test("onDidChangeFolders() triggers for folders that were already in the workspace", async () => {
+            const workspaceFolder = getRootWorkspaceFolder();
+            await workspaceContext.addPackageFolder(
+                testAssetUri("defaultPackage"),
+                workspaceFolder
+            );
+            await workspaceContext.addPackageFolder(testAssetUri("package2"), workspaceFolder);
 
-                await workspaceContext.addPackageFolder(testAssetUri("package2"), workspaceFolder);
-
-                const foldersNamePromises = recordedFolders
-                    .map(({ folder }) => folder?.swiftPackage.name)
-                    .filter(f => !!f);
-                const foldersNames = await Promise.all(foldersNamePromises);
-                assertContains(foldersNames, "package2");
-
-                const addedCount = recordedFolders.filter(
-                    ({ operation }) => operation === FolderOperation.add
-                ).length;
-                assert.strictEqual(
-                    addedCount,
-                    1,
-                    `Expected only one add folder operation, instead got folders: ${recordedFolders.map(folder => folder.folder?.name)}`
-                );
-            } finally {
-                observer?.dispose();
-            }
+            // Calling onDidChangeFolders should trigger the listener for already added folders.
+            // This is a regression test for https://github.com/swiftlang/vscode-swift/issues/1944
+            await waitForAddedFolders(workspaceContext, "defaultPackage", "package2");
         });
     });
 
     suite("Tasks", function () {
         activateExtensionForSuite({
-            async setup(ctx) {
+            async setup(api) {
+                const ctx = await api.waitForWorkspaceContext();
                 workspaceContext = ctx;
             },
         });
@@ -112,66 +123,66 @@ tag("medium").suite("WorkspaceContext Test Suite", () => {
             const folder = workspaceContext.folders.find(
                 f => f.folder.fsPath === packageFolder.fsPath
             );
-            assert(folder);
+            expect(folder).to.not.be.undefined;
             resetSettings = await updateSettings({
                 "swift.diagnosticsStyle": "",
             });
-            const buildAllTask = await createBuildAllTask(folder);
+            const buildAllTask = await createBuildAllTask(folder!);
             const execution = buildAllTask.execution;
-            assert.strictEqual(buildAllTask.definition.type, "swift");
-            assert.strictEqual(buildAllTask.name, "Build All (defaultPackage)");
+            expect(buildAllTask.definition.type).to.equal("swift");
+            expect(buildAllTask.name).to.equal("Build All (defaultPackage)");
             assertContainsArg(execution, "build");
             assertContainsArg(execution, "--build-tests");
-            assert.strictEqual(buildAllTask.scope, resolveScope(folder.workspaceFolder));
+            expect(buildAllTask.scope).to.equal(resolveScope(folder!.workspaceFolder));
         });
 
         test('"default" diagnosticsStyle', async () => {
             const folder = workspaceContext.folders.find(
                 f => f.folder.fsPath === packageFolder.fsPath
             );
-            assert(folder);
+            expect(folder).to.not.be.undefined;
             resetSettings = await updateSettings({
                 "swift.diagnosticsStyle": "default",
             });
-            const buildAllTask = await createBuildAllTask(folder);
+            const buildAllTask = await createBuildAllTask(folder!);
             const execution = buildAllTask.execution;
-            assert.strictEqual(buildAllTask.definition.type, "swift");
-            assert.strictEqual(buildAllTask.name, "Build All (defaultPackage)");
+            expect(buildAllTask.definition.type).to.equal("swift");
+            expect(buildAllTask.name).to.equal("Build All (defaultPackage)");
             assertContainsArg(execution, "build");
             assertContainsArg(execution, "--build-tests");
             assertNotContainsArg(execution, "-diagnostic-style");
-            assert.strictEqual(buildAllTask.scope, resolveScope(folder.workspaceFolder));
+            expect(buildAllTask.scope).to.equal(resolveScope(folder!.workspaceFolder));
         });
 
         test('"swift" diagnosticsStyle', async () => {
             const folder = workspaceContext.folders.find(
                 f => f.folder.fsPath === packageFolder.fsPath
             );
-            assert(folder);
+            expect(folder).to.not.be.undefined;
             resetSettings = await updateSettings({
                 "swift.diagnosticsStyle": "swift",
             });
-            const buildAllTask = await createBuildAllTask(folder);
+            const buildAllTask = await createBuildAllTask(folder!);
             const execution = buildAllTask.execution;
-            assert.strictEqual(buildAllTask.definition.type, "swift");
-            assert.strictEqual(buildAllTask.name, "Build All (defaultPackage)");
+            expect(buildAllTask.definition.type).to.equal("swift");
+            expect(buildAllTask.name).to.equal("Build All (defaultPackage)");
             assertContainsArg(execution, "build");
             assertContainsArg(execution, "--build-tests");
             assertContainsArg(execution, "-Xswiftc");
             assertContainsArg(execution, "-diagnostic-style=swift");
-            assert.strictEqual(buildAllTask.scope, resolveScope(folder.workspaceFolder));
+            expect(buildAllTask.scope).to.equal(resolveScope(folder!.workspaceFolder));
         });
 
         test("Build Settings", async () => {
             const folder = workspaceContext.folders.find(
                 f => f.folder.fsPath === packageFolder.fsPath
             );
-            assert(folder);
+            expect(folder).to.not.be.undefined;
             resetSettings = await updateSettings({
                 "swift.diagnosticsStyle": "",
                 "swift.buildArguments": ["--sanitize=thread"],
             });
-            const buildAllTask = await createBuildAllTask(folder);
+            const buildAllTask = await createBuildAllTask(folder!);
             const execution = buildAllTask.execution as SwiftExecution;
             assertContainsArg(execution, "--sanitize=thread");
         });
@@ -180,12 +191,12 @@ tag("medium").suite("WorkspaceContext Test Suite", () => {
             const folder = workspaceContext.folders.find(
                 f => f.folder.fsPath === packageFolder.fsPath
             );
-            assert(folder);
+            expect(folder).to.not.be.undefined;
             resetSettings = await updateSettings({
                 "swift.diagnosticsStyle": "",
                 "swift.packageArguments": ["--replace-scm-with-registry"],
             });
-            const buildAllTask = await createBuildAllTask(folder);
+            const buildAllTask = await createBuildAllTask(folder!);
             const execution = buildAllTask.execution as SwiftExecution;
             assertContainsArg(execution, "--replace-scm-with-registry");
         });
@@ -193,31 +204,27 @@ tag("medium").suite("WorkspaceContext Test Suite", () => {
 
     suite("Toolchain", function () {
         activateExtensionForSuite({
-            async setup(ctx) {
+            async setup(api) {
+                const ctx = await api.waitForWorkspaceContext();
                 workspaceContext = ctx;
             },
         });
 
         tag("small").test("get project templates", async () => {
-            // This is only supported in swift versions >=5.8.0
-            const swiftVersion = workspaceContext.globalToolchain.swiftVersion;
-            if (swiftVersion.isLessThan(new Version(5, 8, 0))) {
-                assert.deepEqual(await workspaceContext.globalToolchain.getProjectTemplates(), []);
-                return;
-            }
             // The output of `swift package init --help` will probably change at some point.
             // Just make sure that the most complex portions of the output are parsed correctly.
             const projectTemplates = await workspaceContext.globalToolchain.getProjectTemplates();
             // Contains multi-line description
             const toolTemplate = projectTemplates.find(template => template.id === "tool");
-            assert(toolTemplate);
-            assert.deepEqual(toolTemplate, {
+            expect(toolTemplate).to.not.be.undefined;
+            expect(toolTemplate).to.deep.equal({
                 id: "tool",
                 name: "Tool",
                 description:
                     "A package with an executable that uses Swift Argument Parser. Use this template if you plan to have a rich set of command-line arguments.",
             });
             // build-tool-plugin is only available in swift versions >=5.9.0
+            const swiftVersion = workspaceContext.globalToolchain.swiftVersion;
             if (swiftVersion.isLessThan(new Version(5, 9, 0))) {
                 return;
             }
@@ -225,8 +232,8 @@ tag("medium").suite("WorkspaceContext Test Suite", () => {
             const buildToolPluginTemplate = projectTemplates.find(
                 t => t.id === "build-tool-plugin"
             );
-            assert(buildToolPluginTemplate);
-            assert.deepEqual(buildToolPluginTemplate, {
+            expect(buildToolPluginTemplate).to.not.be.undefined;
+            expect(buildToolPluginTemplate).to.deep.equal({
                 id: "build-tool-plugin",
                 name: "Build Tool Plugin",
                 description: "A package that vends a build tool plugin.",

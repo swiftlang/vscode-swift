@@ -2,3 +2,6 @@ assets/swift-docc-render
 src/typings/node-pty.d.ts
 src/utilities/utilities.ts
 src/tasks/SwiftProcess.ts
+syntaxes/swift-gyb.tmLanguage.json
+test/unit-tests/syntaxes/swift.tmLanguage.json
+test/unit-tests/syntaxes/MagicPython.tmLanguage.json

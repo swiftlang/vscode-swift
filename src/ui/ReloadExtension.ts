@@ -15,7 +15,6 @@ import * as vscode from "vscode";
 
 import { Workbench } from "../utilities/commands";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 import debounce = require("lodash.debounce");
 
 /**

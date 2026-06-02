@@ -17,6 +17,41 @@ import { TestClass } from "./TestDiscovery";
 /*
  * Build an array of TestClasses from test list output by `swift test list`
  */
+function insertTestComponents(
+    roots: TestClass[],
+    targetName: string,
+    testName: string,
+    style: TestStyle
+): void {
+    const components = [targetName, ...testName.split("/")];
+    let separator = ".";
+    let currentTests = roots;
+    let currentId: string | undefined;
+    for (const component of components) {
+        const id = currentId ? `${currentId}${separator}${component}` : component;
+        if (currentId) {
+            separator = "/";
+        }
+
+        const testStyle: TestStyle = id === targetName ? "test-target" : style;
+        let target = currentTests.find(item => item.id === id);
+        if (!target) {
+            target = {
+                id,
+                label: component,
+                location: undefined,
+                style,
+                children: [],
+                disabled: false,
+                tags: [{ id: testStyle }],
+            };
+            currentTests.push(target);
+        }
+        currentTests = target.children;
+        currentId = id;
+    }
+}
+
 export function parseTestsFromSwiftTestListOutput(input: string): TestClass[] {
     const tests = new Array<TestClass>();
     const lines = input.match(/[^\r\n]+/g);
@@ -30,15 +65,14 @@ export function parseTestsFromSwiftTestListOutput(input: string): TestClass[] {
         let style: TestStyle = "XCTest";
 
         // Regex "<testTarget>.<class>/<function>"
-        const xcTestGroup = /^([\w\d_]*)\.([\w\d_]*)\/(.*)$/.exec(line);
+        const xcTestGroup = /^(\w+)\.(\w+)\/(.*)$/.exec(line);
         if (xcTestGroup) {
             targetName = xcTestGroup[1];
             testName = `${xcTestGroup[2]}/${xcTestGroup[3]}`;
-            style = "XCTest";
         }
 
         // Regex "<testTarget>.<testName>"
-        const swiftTestGroup = /^([\w\d_]*)\.(.*\(.*\))$/.exec(line);
+        const swiftTestGroup = /^(\w+)\.(.*\(.*\))$/.exec(line);
         if (swiftTestGroup) {
             targetName = swiftTestGroup[1];
             testName = swiftTestGroup[2];
@@ -49,35 +83,7 @@ export function parseTestsFromSwiftTestListOutput(input: string): TestClass[] {
             continue;
         }
 
-        const components = [targetName, ...testName.split("/")];
-        let separator = ".";
-        // Walk the components of the fully qualified name, adding any missing nodes in the tree
-        // as we encounter them, and adding to the children of existing nodes.
-        components.reduce(
-            ({ tests, currentId }, component) => {
-                const id = currentId ? `${currentId}${separator}${component}` : component;
-                if (currentId) {
-                    separator = "/"; // separator starts as . after the tartget name, then switches to / for suites.
-                }
-
-                const testStyle: TestStyle = id === targetName ? "test-target" : style;
-                let target = tests.find(item => item.id === id);
-                if (!target) {
-                    target = {
-                        id,
-                        label: component,
-                        location: undefined,
-                        style,
-                        children: [],
-                        disabled: false,
-                        tags: [{ id: testStyle }],
-                    };
-                    tests.push(target);
-                }
-                return { tests: target.children, currentId: id };
-            },
-            { tests, currentId: undefined as undefined | string }
-        );
+        insertTestComponents(tests, targetName, testName, style);
     }
     return tests;
 }
