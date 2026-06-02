@@ -217,13 +217,14 @@ export class SwiftPtyProcess implements SwiftProcess {
 export class ReadOnlySwiftProcess implements SwiftProcess {
     private readonly spawnEmitter: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
     private readonly writeEmitter: vscode.EventEmitter<string> = new vscode.EventEmitter<string>();
+    private readonly stdoutEmitter: vscode.EventEmitter<string> = new vscode.EventEmitter<string>();
+    private readonly stderrEmitter: vscode.EventEmitter<string> = new vscode.EventEmitter<string>();
     private readonly errorEmitter: vscode.EventEmitter<Error> = new vscode.EventEmitter<Error>();
     private readonly closeHandler: CloseHandler = new CloseHandler();
     private disposables: Disposable[] = [];
 
     private spawnedProcess: child_process.ChildProcessWithoutNullStreams | undefined;
 
-    // eslint-disable-next-line sonarjs/no-identical-functions
     constructor(
         public readonly command: string,
         public readonly args: string[],
@@ -232,6 +233,8 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
         this.disposables.push(
             this.spawnEmitter,
             this.writeEmitter,
+            this.stdoutEmitter,
+            this.stderrEmitter,
             this.errorEmitter,
             this.closeHandler
         );
@@ -239,33 +242,84 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
 
     spawn(): void {
         try {
+            const spawnAt = Date.now();
+            const elapsed = () => `${Date.now() - spawnAt}ms`;
+            const debugTag = `[ROSP] ${this.command} ${this.args.slice(0, 3).join(" ")}${this.args.length > 3 ? " …" : ""}`;
+            // eslint-disable-next-line no-console
+            console.log(`${debugTag} spawn() called`);
             this.spawnedProcess = child_process.spawn(this.command, this.args, {
                 cwd: this.options.cwd,
                 env: { ...process.env, ...this.options.env },
             });
             this.spawnEmitter.fire();
+            // eslint-disable-next-line no-console
+            console.log(`${debugTag} child pid=${this.spawnedProcess.pid} @ ${elapsed()}`);
+
+            let stdoutEnded = false;
+            let stderrEnded = false;
+            let exited = false;
 
             this.spawnedProcess.stdout.on("data", data => {
-                this.writeEmitter.fire(data.toString());
+                const text = data.toString();
+                this.stdoutEmitter.fire(text);
+                this.writeEmitter.fire(text);
                 this.closeHandler.reset();
+            });
+            this.spawnedProcess.stdout.once("end", () => {
+                stdoutEnded = true;
+                // eslint-disable-next-line no-console
+                console.log(`${debugTag} stdout 'end' @ ${elapsed()}`);
+            });
+            this.spawnedProcess.stdout.once("close", () => {
+                // eslint-disable-next-line no-console
+                console.log(`${debugTag} stdout 'close' @ ${elapsed()}`);
             });
 
             this.spawnedProcess.stderr.on("data", data => {
-                this.writeEmitter.fire(data.toString());
+                const text = data.toString();
+                this.stderrEmitter.fire(text);
+                this.writeEmitter.fire(text);
                 this.closeHandler.reset();
+            });
+            this.spawnedProcess.stderr.once("end", () => {
+                stderrEnded = true;
+                // eslint-disable-next-line no-console
+                console.log(`${debugTag} stderr 'end' @ ${elapsed()}`);
+            });
+            this.spawnedProcess.stderr.once("close", () => {
+                // eslint-disable-next-line no-console
+                console.log(`${debugTag} stderr 'close' @ ${elapsed()}`);
             });
 
             this.spawnedProcess.on("error", error => {
+                // eslint-disable-next-line no-console
+                console.log(`${debugTag} 'error' @ ${elapsed()}: ${error}`);
                 this.errorEmitter.fire(new Error(`${error}`));
                 this.closeHandler.handle();
             });
 
-            this.spawnedProcess.once("exit", code => {
+            this.spawnedProcess.once("exit", (code, signal) => {
+                exited = true;
+                // eslint-disable-next-line no-console
+                console.log(
+                    `${debugTag} 'exit' @ ${elapsed()} code=${code} signal=${signal} stdoutEnded=${stdoutEnded} stderrEnded=${stderrEnded}`
+                );
                 this.closeHandler.handle(code ?? undefined);
             });
 
+            this.spawnedProcess.once("close", (code, signal) => {
+                // eslint-disable-next-line no-console
+                console.log(
+                    `${debugTag} child 'close' @ ${elapsed()} code=${code} signal=${signal} exited=${exited}`
+                );
+            });
+
             this.disposables.push(
-                this.onDidClose(() => {
+                this.onDidClose(exitCode => {
+                    // eslint-disable-next-line no-console
+                    console.log(
+                        `${debugTag} closeHandler fired @ ${elapsed()} exitCode=${exitCode}`
+                    );
                     this.dispose();
                 })
             );
@@ -301,6 +355,16 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
     onDidSpawn: vscode.Event<void> = this.spawnEmitter.event;
 
     onDidWrite: vscode.Event<string> = this.writeEmitter.event;
+
+    /**
+     * Listen for stdout-only output from the child process. Use this when
+     * parsing structured output (e.g. JSON) — `onDidWrite` interleaves stderr
+     * which corrupts the parse.
+     */
+    onDidWriteStdout: vscode.Event<string> = this.stdoutEmitter.event;
+
+    /** Listen for stderr-only output from the child process. */
+    onDidWriteStderr: vscode.Event<string> = this.stderrEmitter.event;
 
     onDidThrowError: vscode.Event<Error> = this.errorEmitter.event;
 
