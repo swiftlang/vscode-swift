@@ -256,20 +256,11 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
     }
 
     async dispose(): Promise<void> {
-        this.logger.info(`Disposing ${this.folders.length} folder(s)...`);
         this.folders.forEach(f => f.dispose());
         this.folders.length = 0;
-        this.logger.info(
-            `Disposing ${this.subscriptions.length} workspace context subscription(s)...`
-        );
         this.subscriptions.forEach(item => item.dispose());
         this.subscriptions.length = 0;
-        this.logger.info("Disposing language client manager...");
-        const languageClientDisposeStartTime = Date.now();
         await this.languageClientManager.dispose();
-        this.logger.info(
-            `Language client manager disposed in ${Date.now() - languageClientDisposeStartTime}ms`
-        );
     }
 
     get globalToolchainSwiftVersion() {

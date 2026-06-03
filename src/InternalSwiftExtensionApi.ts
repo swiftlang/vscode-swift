@@ -308,31 +308,17 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
     }
 
     async deactivate(): Promise<void> {
-        const deactivationStartTime = Date.now();
-        this.logger.info(`Deactivating extension from "${this.state.type}" state...`);
         this.contextKeys.isActivated = false;
         if (this.state.type === "initializing") {
-            this.logger.info("Cancelling in-progress workspace initialization...");
             this.state.cancel();
         }
         if (this.state.type === "active") {
-            const { context, subscriptions } = this.state;
-            this.logger.info("Disposing workspace context...");
-            const contextDisposeStartTime = Date.now();
-            await context.dispose();
-            this.logger.info(
-                `Workspace context disposed in ${Date.now() - contextDisposeStartTime}ms`
-            );
-            this.logger.info(`Disposing ${subscriptions.length} workspace subscriptions...`);
-            subscriptions.forEach(s => s.dispose());
+            await this.state.context.dispose();
+            this.state.subscriptions.forEach(s => s.dispose());
         }
-        this.logger.info(`Disposing ${this.subscriptions.length} extension subscriptions...`);
         this.subscriptions.forEach(subscription => subscription.dispose());
         this.subscriptions.length = 0;
         this.state = { type: "uninitialized" };
-        this.logger.info(
-            `Extension deactivation completed in ${Date.now() - deactivationStartTime}ms`
-        );
     }
 
     dispose(): void {
