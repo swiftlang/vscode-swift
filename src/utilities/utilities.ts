@@ -20,6 +20,7 @@ import { FolderContext } from "../FolderContext";
 import configuration from "../configuration";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import { Disposable } from "./Disposable";
+import { safeBareRepositoryEnvironmentOverride } from "./gitConfig";
 
 /**
  * Whether or not this is a production build.
@@ -162,6 +163,10 @@ export async function execFile(
             ...configuration.swiftEnvironmentVariables,
         };
     }
+    const bareRepositoryOverride = safeBareRepositoryEnvironmentOverride(options.env);
+    if (Object.keys(bareRepositoryOverride).length > 0) {
+        options.env = { ...(options.env ?? process.env), ...bareRepositoryOverride };
+    }
     options = {
         ...options,
         maxBuffer: options.maxBuffer ?? 1024 * 1024 * 64, // 64MB
@@ -216,6 +221,10 @@ export async function execFileStreamOutput(
         if (runtimeEnv && Object.keys(runtimeEnv).length > 0) {
             options.env = { ...(options.env ?? process.env), ...runtimeEnv };
         }
+    }
+    const bareRepositoryOverride = safeBareRepositoryEnvironmentOverride(options.env);
+    if (Object.keys(bareRepositoryOverride).length > 0) {
+        options.env = { ...(options.env ?? process.env), ...bareRepositoryOverride };
     }
     return new Promise<void>((resolve, reject) => {
         let cancellation: Disposable;
