@@ -58,36 +58,14 @@ export async function executeSwiftPackageCommand<T>(
         },
     });
 
-    const logger = folderContext.workspaceContext.logger;
-    const debugTag = `[stream-debug:${config.commandName}:${folderContext.name}]`;
-    const startedAt = Date.now();
-    const elapsed = () => `${Date.now() - startedAt}ms`;
-
     const stdoutChunks: string[] = [];
     const stderrChunks: string[] = [];
-    let firstStdoutAt: number | undefined;
-    let firstStderrAt: number | undefined;
     const stdoutDisposable = swiftProcess.onDidWriteStdout(data => {
-        if (firstStdoutAt === undefined) {
-            firstStdoutAt = Date.now() - startedAt;
-            logger.info(
-                `${debugTag} first stdout chunk @ ${firstStdoutAt}ms (${data.length} chars, head=${JSON.stringify(data.slice(0, 64))})`
-            );
-        }
         stdoutChunks.push(data);
     });
     const stderrDisposable = swiftProcess.onDidWriteStderr(data => {
-        if (firstStderrAt === undefined) {
-            firstStderrAt = Date.now() - startedAt;
-            logger.info(
-                `${debugTag} first stderr chunk @ ${firstStderrAt}ms (${data.length} chars, head=${JSON.stringify(data.slice(0, 64))})`
-            );
-        }
         stderrChunks.push(data);
     });
-    logger.info(
-        `${debugTag} starting; cmd=${inv.command} args=${JSON.stringify(inv.args)} cwd=${folderContext.folder.fsPath}`
-    );
 
     const task = createSwiftTask(
         config.args,
@@ -120,16 +98,6 @@ export async function executeSwiftPackageCommand<T>(
         const stdout = stdoutChunks.join("");
         const stderr = stderrChunks.join("");
 
-        // Hex dump the first 32 bytes of stdout to detect a BOM or non-printable
-        // prefix that would silently break JSON.parse without showing in a string log.
-        const stdoutHead = Buffer.from(stdout.slice(0, 32), "utf8").toString("hex");
-        const firstBraceAt = stdout.indexOf("{");
-        logger.info(
-            `${debugTag} task done @ ${elapsed()} success=${success} stdoutChunks=${stdoutChunks.length} (${stdout.length} chars) stderrChunks=${stderrChunks.length} (${stderr.length} chars) firstBraceAt=${firstBraceAt} stdoutHeadHex=${stdoutHead}`
-        );
-        logger.info(`${debugTag} STDOUT >>>>>\n${stdout}\n<<<<< STDOUT`);
-        logger.info(`${debugTag} STDERR >>>>>\n${stderr}\n<<<<< STDERR`);
-
         if (!success) {
             throw new Error(stderr || stdout);
         }
@@ -138,24 +106,14 @@ export async function executeSwiftPackageCommand<T>(
             throw new Error(`No output received from swift ${config.commandName} command`);
         }
 
-        let parsedOutput: unknown;
-        try {
-            parsedOutput = JSON.parse(stdout);
-        } catch (err) {
-            logger.error(
-                `${debugTag} JSON.parse FAILED @ ${elapsed()}: ${err}. firstBraceAt=${firstBraceAt}, treating non-JSON prefix as a probable cause`
-            );
-            throw err;
-        }
+        const parsedOutput: unknown = JSON.parse(stdout);
 
         if (!parsedOutput || typeof parsedOutput !== "object") {
             throw new Error(`Invalid format received from swift ${config.commandName} command`);
         }
 
-        logger.info(`${debugTag} parsed successfully @ ${elapsed()}`);
         return parsedOutput as T;
     } catch (parseError) {
-        logger.error(`${debugTag} executeSwiftPackageCommand failed @ ${elapsed()}: ${parseError}`);
         throw new Error(`Failed to parse ${config.commandName} output`, { cause: parseError });
     } finally {
         stdoutDisposable.dispose();

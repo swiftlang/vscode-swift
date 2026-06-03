@@ -420,12 +420,6 @@ const extensionBootstrapper = (() => {
 
             // Wait for all tasks to complete before deactivating.
             // Long running tasks should be avoided in tests, but this is a safety net.
-            const runningTasks = vscode.tasks.taskExecutions.map(e => e.task.name);
-            activationLogger.info(
-                runningTasks.length > 0
-                    ? `Waiting for ${runningTasks.length} running task(s) to finish before deactivating: ${runningTasks.join(", ")}`
-                    : "No running tasks, proceeding with deactivation."
-            );
             await logOnError("Waiting for no running tasks", () => waitForNoRunningTasks());
 
             // Close all editors before deactivating the extension.
