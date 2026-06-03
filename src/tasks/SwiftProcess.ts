@@ -16,6 +16,7 @@ import type * as nodePty from "node-pty";
 import * as vscode from "vscode";
 
 import { Disposable } from "../utilities/Disposable";
+import { safeBareRepositoryEnvironmentOverride } from "../utilities/gitConfig";
 import { requireNativeModule } from "../utilities/native";
 
 const { spawn } = requireNativeModule<typeof nodePty>("node-pty");
@@ -138,9 +139,10 @@ export class SwiftPtyProcess implements SwiftProcess {
             // The pty process hangs on Windows when debugging the extension if we use conpty
             // See https://github.com/microsoft/node-pty/issues/640
             const useConpty = isWindows && process.env["VSCODE_DEBUG"] === "1" ? false : true;
+            const env = { ...process.env, ...this.options.env };
             this.spawnedProcess = spawn(this.command, this.args, {
                 cwd: this.options.cwd,
-                env: { ...process.env, ...this.options.env },
+                env: { ...env, ...safeBareRepositoryEnvironmentOverride(env) },
                 useConpty,
                 // https://github.com/swiftlang/vscode-swift/issues/1074
                 // Causing weird truncation issues
@@ -242,9 +244,10 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
 
     spawn(): void {
         try {
+            const env = { ...process.env, ...this.options.env };
             this.spawnedProcess = child_process.spawn(this.command, this.args, {
                 cwd: this.options.cwd,
-                env: { ...process.env, ...this.options.env },
+                env: { ...env, ...safeBareRepositoryEnvironmentOverride(env) },
             });
             this.spawnEmitter.fire();
 
