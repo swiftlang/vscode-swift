@@ -1005,62 +1005,40 @@ export class Swiftly {
         validation: PostInstallValidationResult,
         logger?: SwiftLogger
     ): Promise<boolean> {
-        const message =
-            `Swift ${version} installation requires additional system packages to be installed.\n\n` +
-            `The Swift extension would like to run the following commands on your behalf:`;
-
         const detail =
+            `Swift ${version} installation requires additional system packages to be installed:\n\n` +
             `${this.formatCommandsForReview(validation.scriptContent)}\n\n` +
-            `Do you want to proceed with running these commands? ` +
+            `Would you like to install these packages? ` +
             `You will be prompted for administrator privileges.`;
 
-        logger?.warn(
-            `User confirmation required to run post-install commands for Swift ${version} installation.`
-        );
+        logger?.warn(`User confirmation required to install system packages for Swift ${version}.`);
         const choice = await vscode.window.showWarningMessage(
-            message,
+            "Install System Packages",
             { modal: true, detail },
-            "Run Commands"
+            "Install"
         );
 
-        return choice === "Run Commands";
+        return choice === "Install";
     }
 
     /**
      * Formats the post-install commands for display in the confirmation
-     * dialog's detail area. Very long command sets are truncated so the modal
-     * stays readable.
+     * dialog's detail area. Commands are indented for readability and the
+     * list is truncated if it grows too long for the modal.
      */
     private static formatCommandsForReview(scriptContent: string): string {
-        const trimmed = scriptContent.replace(/\s+$/, "");
-
-        if (!trimmed) {
+        const trimmedScriptContent = scriptContent.trim();
+        if (trimmedScriptContent === "") {
             return "(no commands)";
         }
 
-        const maxLines = 50;
-        const maxChars = 4000;
-        const lines = trimmed.split("\n");
-
-        let body: string;
-        let truncated = false;
+        let lines = trimmedScriptContent.split("\n");
+        const maxLines = 10;
         if (lines.length > maxLines) {
-            body = lines.slice(0, maxLines).join("\n");
-            truncated = true;
-        } else {
-            body = trimmed;
+            lines = lines.slice(0, maxLines - 1);
+            lines.push("… (truncated for display)");
         }
-
-        if (body.length > maxChars) {
-            body = body.slice(0, maxChars);
-            truncated = true;
-        }
-
-        if (truncated) {
-            body += "\n… (truncated for display)";
-        }
-
-        return body;
+        return lines.map(line => `    ${line}`).join("\n");
     }
 
     /**
