@@ -242,37 +242,17 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
 
     spawn(): void {
         try {
-            const spawnAt = Date.now();
-            const elapsed = () => `${Date.now() - spawnAt}ms`;
-            const debugTag = `[ROSP] ${this.command} ${this.args.slice(0, 3).join(" ")}${this.args.length > 3 ? " …" : ""}`;
-            // eslint-disable-next-line no-console
-            console.log(`${debugTag} spawn() called`);
             this.spawnedProcess = child_process.spawn(this.command, this.args, {
                 cwd: this.options.cwd,
                 env: { ...process.env, ...this.options.env },
             });
             this.spawnEmitter.fire();
-            // eslint-disable-next-line no-console
-            console.log(`${debugTag} child pid=${this.spawnedProcess.pid} @ ${elapsed()}`);
-
-            let stdoutEnded = false;
-            let stderrEnded = false;
-            let exited = false;
 
             this.spawnedProcess.stdout.on("data", data => {
                 const text = data.toString();
                 this.stdoutEmitter.fire(text);
                 this.writeEmitter.fire(text);
                 this.closeHandler.reset();
-            });
-            this.spawnedProcess.stdout.once("end", () => {
-                stdoutEnded = true;
-                // eslint-disable-next-line no-console
-                console.log(`${debugTag} stdout 'end' @ ${elapsed()}`);
-            });
-            this.spawnedProcess.stdout.once("close", () => {
-                // eslint-disable-next-line no-console
-                console.log(`${debugTag} stdout 'close' @ ${elapsed()}`);
             });
 
             this.spawnedProcess.stderr.on("data", data => {
@@ -281,45 +261,18 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
                 this.writeEmitter.fire(text);
                 this.closeHandler.reset();
             });
-            this.spawnedProcess.stderr.once("end", () => {
-                stderrEnded = true;
-                // eslint-disable-next-line no-console
-                console.log(`${debugTag} stderr 'end' @ ${elapsed()}`);
-            });
-            this.spawnedProcess.stderr.once("close", () => {
-                // eslint-disable-next-line no-console
-                console.log(`${debugTag} stderr 'close' @ ${elapsed()}`);
-            });
 
             this.spawnedProcess.on("error", error => {
-                // eslint-disable-next-line no-console
-                console.log(`${debugTag} 'error' @ ${elapsed()}: ${error}`);
                 this.errorEmitter.fire(new Error(`${error}`));
                 this.closeHandler.handle();
             });
 
-            this.spawnedProcess.once("exit", (code, signal) => {
-                exited = true;
-                // eslint-disable-next-line no-console
-                console.log(
-                    `${debugTag} 'exit' @ ${elapsed()} code=${code} signal=${signal} stdoutEnded=${stdoutEnded} stderrEnded=${stderrEnded}`
-                );
+            this.spawnedProcess.once("exit", code => {
                 this.closeHandler.handle(code ?? undefined);
             });
 
-            this.spawnedProcess.once("close", (code, signal) => {
-                // eslint-disable-next-line no-console
-                console.log(
-                    `${debugTag} child 'close' @ ${elapsed()} code=${code} signal=${signal} exited=${exited}`
-                );
-            });
-
             this.disposables.push(
-                this.onDidClose(exitCode => {
-                    // eslint-disable-next-line no-console
-                    console.log(
-                        `${debugTag} closeHandler fired @ ${elapsed()} exitCode=${exitCode}`
-                    );
+                this.onDidClose(() => {
                     this.dispose();
                 })
             );

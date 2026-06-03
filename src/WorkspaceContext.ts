@@ -270,9 +270,6 @@ export class WorkspaceContext implements ExternalWorkspaceContext, Disposable {
     dispose() {
         this.folders.forEach(f => f.dispose());
         this.folders.length = 0;
-        this.logger.info(
-            `Disposing ${this.subscriptions.length} workspace context subscription(s)...`
-        );
         this.subscriptions.forEach(item => item.dispose());
         this.subscriptions.length = 0;
     }
