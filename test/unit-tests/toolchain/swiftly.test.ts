@@ -1094,7 +1094,7 @@ apt-get -y install libncurses5-dev`;
             mockUtilities.execFileStreamOutput.withArgs("sudo").resolves();
 
             // @ts-expect-error mocking vscode window methods makes type checking difficult
-            mockVscodeWindow.showWarningMessage.resolves("Execute Script");
+            mockVscodeWindow.showWarningMessage.resolves("Install");
 
             await Swiftly.installToolchain("6.0.0", "/path/to/extension");
 
@@ -1107,9 +1107,7 @@ apt-get -y install libncurses5-dev`;
                 match.any
             );
             expect(mockVscodeWindow.showWarningMessage).to.have.been.calledWith(
-                match(
-                    "Swift 6.0.0 installation requires additional system packages to be installed"
-                )
+                match("Install System Packages")
             );
             expect(mockUtilities.execFile).to.have.been.calledWith("chmod", match.array);
             expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
@@ -1122,6 +1120,40 @@ apt-get -y install libncurses5-dev`;
             );
             expect(mockVscodeWindow.showInformationMessage).to.have.been.calledWith(
                 match("Swift 6.0.0 post-install script executed successfully")
+            );
+        });
+
+        test("should display the install commands inline in the confirmation dialog", async () => {
+            const validScript = `#!/bin/bash
+apt-get -y install build-essential
+apt-get -y install libncurses5-dev`;
+
+            mockUtilities.execFileStreamOutput
+                .withArgs("swiftly", [
+                    "install",
+                    "6.0.0",
+                    "--assume-yes",
+                    "--post-install-file",
+                    match.string,
+                ])
+                .callsFake(async (_command, args) => {
+                    const postInstallPath = args[4];
+                    await fs.writeFile(postInstallPath, validScript);
+                });
+
+            // @ts-expect-error mocking vscode window methods makes type checking difficult
+            mockVscodeWindow.showWarningMessage.resolves("Cancel");
+
+            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
+
+            expect(mockVscodeWindow.showWarningMessage).to.have.been.calledWith(
+                "Install System Packages",
+                match({
+                    modal: true,
+                    detail: match("apt-get -y install build-essential").and(
+                        match("apt-get -y install libncurses5-dev")
+                    ),
+                })
             );
         });
 
@@ -1156,9 +1188,7 @@ apt-get -y install build-essential`;
                 match.any
             );
             expect(mockVscodeWindow.showWarningMessage).to.have.been.calledWith(
-                match(
-                    "Swift 6.0.0 installation requires additional system packages to be installed"
-                )
+                match("Install System Packages")
             );
             expect(mockUtilities.execFile).to.not.have.been.calledWith("chmod", match.array);
             expect(mockVscodeWindow.showWarningMessage).to.have.been.calledWith(
@@ -1233,7 +1263,7 @@ apt-get -y install build-essential`;
                 .rejects(new Error("Permission denied"));
 
             // @ts-expect-error mocking vscode window methods makes type checking difficult
-            mockVscodeWindow.showWarningMessage.resolves("Execute Script");
+            mockVscodeWindow.showWarningMessage.resolves("Install");
             mockVscodeWindow.showErrorMessage.resolves(undefined);
 
             await Swiftly.installToolchain("6.0.0", "/path/to/extension");
@@ -1247,9 +1277,7 @@ apt-get -y install build-essential`;
                 match.any
             );
             expect(mockVscodeWindow.showWarningMessage).to.have.been.calledWith(
-                match(
-                    "Swift 6.0.0 installation requires additional system packages to be installed"
-                )
+                match("Install System Packages")
             );
             expect(mockUtilities.execFile).to.have.been.calledWith("chmod", match.array);
             expect(mockVscodeWindow.showErrorMessage).to.have.been.calledWith(
@@ -1299,14 +1327,12 @@ yum install ncurses-devel`;
             mockUtilities.execFileStreamOutput.withArgs("sudo").resolves();
 
             // @ts-expect-error mocking vscode window methods makes type checking difficult
-            mockVscodeWindow.showWarningMessage.resolves("Execute Script");
+            mockVscodeWindow.showWarningMessage.resolves("Install");
 
             await Swiftly.installToolchain("6.0.0", "/path/to/extension");
 
             expect(mockVscodeWindow.showWarningMessage).to.have.been.calledWith(
-                match(
-                    "Swift 6.0.0 installation requires additional system packages to be installed"
-                )
+                match("Install System Packages")
             );
             expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
                 "sudo",
@@ -1382,14 +1408,12 @@ apt-get -y install libncurses5-dev
             mockUtilities.execFileStreamOutput.withArgs("sudo").resolves();
 
             // @ts-expect-error mocking vscode window methods makes type checking difficult
-            mockVscodeWindow.showWarningMessage.resolves("Execute Script");
+            mockVscodeWindow.showWarningMessage.resolves("Install");
 
             await Swiftly.installToolchain("6.0.0", "/path/to/extension");
 
             expect(mockVscodeWindow.showWarningMessage).to.have.been.calledWith(
-                match(
-                    "Swift 6.0.0 installation requires additional system packages to be installed"
-                )
+                match("Install System Packages")
             );
             expect(mockUtilities.execFileStreamOutput).to.have.been.calledWith(
                 "sudo",
@@ -1398,6 +1422,41 @@ apt-get -y install libncurses5-dev
                 match.any,
                 null,
                 match.object
+            );
+        });
+
+        test("should truncate very long scripts when shown in the confirmation dialog", async () => {
+            // Build a script with many valid lines so the dialog detail must be truncated.
+            const installLines = Array.from(
+                { length: 80 },
+                (_, i) => `apt-get -y install package-${i}`
+            );
+            const longScript = `#!/bin/bash\n${installLines.join("\n")}`;
+
+            mockUtilities.execFileStreamOutput
+                .withArgs("swiftly", [
+                    "install",
+                    "6.0.0",
+                    "--assume-yes",
+                    "--post-install-file",
+                    match.string,
+                ])
+                .callsFake(async (_command, args) => {
+                    const postInstallPath = args[4];
+                    await fs.writeFile(postInstallPath, longScript);
+                });
+
+            // @ts-expect-error mocking vscode window methods makes type checking difficult
+            mockVscodeWindow.showWarningMessage.resolves("Cancel");
+
+            await Swiftly.installToolchain("6.0.0", "/path/to/extension");
+
+            expect(mockVscodeWindow.showWarningMessage).to.have.been.calledWith(
+                match.string,
+                match({
+                    modal: true,
+                    detail: match("(truncated for display)"),
+                })
             );
         });
 
