@@ -185,3 +185,21 @@ export async function globDirectory(
     }
     return matches;
 }
+
+/**
+ * Provisions a DocC catalog inside the provided base path so that
+ * SourceKit-LSP can discover documentation for the module.
+ */
+export async function provisionDoccCatalog(basePath: string, moduleName: string): Promise<boolean> {
+    const doccDir = path.join(basePath, `${moduleName}.docc`);
+    const markdownFile = path.join(doccDir, `${moduleName}.md`);
+
+    if (await folderExists(doccDir)) {
+        return false;
+    }
+
+    await fs.mkdir(doccDir);
+    await fs.writeFile(markdownFile, `# \`\`${moduleName}\`\`\n`, "utf8");
+
+    return true;
+}
