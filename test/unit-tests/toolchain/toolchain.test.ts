@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
 
+import { Swiftly } from "@src/toolchain/swiftly";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
 import * as utilities from "@src/utilities/utilities";
 import { Version } from "@src/utilities/version";
@@ -22,6 +23,7 @@ import { mockGlobalModule, mockGlobalValue } from "../../MockUtils";
 import mockFS = require("mock-fs");
 
 suite("SwiftToolchain Unit Test Suite", () => {
+    const mockedSwiftly = mockGlobalModule(Swiftly);
     const mockedUtilities = mockGlobalModule(utilities);
     const mockedPlatform = mockGlobalValue(process, "platform");
 
@@ -85,12 +87,22 @@ suite("SwiftToolchain Unit Test Suite", () => {
             expect(inv.args).to.deep.equal(["run", "sourcekit-lsp"]);
         });
 
-        test("swiftly toolchain wraps lldb-dap correctly with no extra args", () => {
+        test("swiftly toolchain wraps lldb-dap correctly", async () => {
             mockedPlatform.setValue("linux");
+            mockedSwiftly.inUseVersion.resolves("6.2.0");
             const tc = createToolchain("swiftly", "/home/user/.swiftly/toolchains/6.0.0/usr");
-            const inv = tc.getToolchainInvocation("lldb-dap", []);
+            const inv = await tc.getDebuggerToolchainInvocation("lldb-dap", []);
             expect(inv.command).to.equal("swiftly");
             expect(inv.args).to.deep.equal(["run", "lldb-dap"]);
+        });
+
+        test("swiftly toolchain uses xcrun to launch lldb-dap if toolchain is xcode", async () => {
+            mockedPlatform.setValue("linux");
+            mockedSwiftly.inUseVersion.resolves("xcode");
+            const tc = createToolchain("swiftly", "/home/user/.swiftly/toolchains/6.0.0/usr");
+            const inv = await tc.getDebuggerToolchainInvocation("lldb-dap", []);
+            expect(inv.command).to.equal("xcrun");
+            expect(inv.args).to.deep.equal(["lldb-dap"]);
         });
 
         test("getToolchainExecutablePath always returns raw path regardless of manager", () => {
