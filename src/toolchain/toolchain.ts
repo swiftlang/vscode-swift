@@ -405,9 +405,41 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
      * @param args Arguments to pass to the executable (after any manager prefix).
      */
     public getToolchainInvocation(executable: string, args: string[]): ToolchainInvocation {
+        if (["lldb", "lldb-dap"].includes(executable)) {
+            throw Error("Use getAlternativeToolchainInvocation() for lldb related binaries.");
+        }
         switch (this.manager) {
             case "swiftly":
                 return { command: "swiftly", args: ["run", executable, ...args] };
+            case "xcrun":
+                return { command: "xcrun", args: [executable, ...args] };
+            default:
+                return { command: this.getToolchainExecutablePath(executable), args };
+        }
+    }
+
+    /**
+     * Returns the command and arguments needed for running a given executable from the toolchain.
+     *
+     * The difference between this and {@link getToolchainInvocation} is that it will query xcrun if swiftly reports
+     * that it's using an xcode toolchain. This was added as a workaround until the upstream swiftly bug
+     * [swiftlang/swiftly#521](https://github.com/swiftlang/swiftly/issues/521) is fixed.
+     *
+     * @param executable The name of the executable to run
+     * @param args The arguments to pass to the executable
+     * @returns A Promise that resolves to the {@link ToolchainInvocation}
+     */
+    public async getDebuggerToolchainInvocation(
+        executable: "lldb" | "lldb-dap",
+        args: string[]
+    ): Promise<ToolchainInvocation> {
+        switch (this.manager) {
+            case "swiftly": {
+                if ((await Swiftly.inUseVersion()) === "xcode") {
+                    return { command: "xcrun", args: [executable, ...args] };
+                }
+                return { command: "swiftly", args: ["run", executable, ...args] };
+            }
             case "xcrun":
                 return { command: "xcrun", args: [executable, ...args] };
             default:

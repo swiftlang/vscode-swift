@@ -50,7 +50,7 @@ export async function getLLDBLibPath(toolchain: SwiftToolchain): Promise<Result<
     try {
         const statement = `print('<!' + lldb.SBHostOS.GetLLDBPath(lldb.ePathTypeLLDBShlibDir).fullpath + '!>')`;
         const lldbArgs = ["-b", "-O", `script ${statement}`];
-        const inv = toolchain.getToolchainInvocation("lldb", lldbArgs);
+        const inv = await toolchain.getDebuggerToolchainInvocation("lldb", lldbArgs);
         const { stdout } = await execFile(inv.command, inv.args);
         const m = /^<!([^!]*)!>/m.exec(stdout);
         if (m) {
