@@ -317,7 +317,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             return true;
         }
 
-        const inv = toolchain.getToolchainInvocation("lldb-dap", []);
+        const inv = await toolchain.getDebuggerToolchainInvocation("lldb-dap", []);
         // lldb-dap requires that the debugAdapterExecutable always be an absolute path.
         if (!path.isAbsolute(inv.command)) {
             inv.command = await findBinaryInPath(inv.command);

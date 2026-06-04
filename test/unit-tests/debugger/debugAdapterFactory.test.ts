@@ -59,7 +59,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             swiftVersion: new Version(6, 0, 0),
             buildFlags: instance(mockBuildFlags),
             manager: "unknown",
-            getToolchainInvocation: mockFn(s =>
+            getDebuggerToolchainInvocation: mockFn(s =>
                 s.callsFake((executable: string, args: string[]) => ({
                     command: `/path/to/${executable}`,
                     args,
@@ -615,7 +615,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
 
         setup(() => {
             mockDebugAdapter.getLaunchConfigType.returns(LaunchConfigType.LLDB_DAP);
-            (mockToolchain as any).getToolchainInvocation = mockFn(s =>
+            (mockToolchain as any).getDebuggerToolchainInvocation = mockFn(s =>
                 s
                     .withArgs("lldb-dap", [])
                     .returns({ command: "swiftly", args: ["run", "lldb-dap"] })
@@ -704,7 +704,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         mockToolchain = mockObject<SwiftToolchain>({
             swiftVersion: new Version(5, 10, 0),
             manager: "unknown",
-            getToolchainInvocation: mockFn(s =>
+            getDebuggerToolchainInvocation: mockFn(s =>
                 s.withArgs("lldb-dap", []).returns({ command: debugAdapterPath, args: [] })
             ),
         });

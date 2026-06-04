@@ -6,6 +6,7 @@
 
 - Packages that produced a warning during `swift package resolve` would not load ([#2262](https://github.com/swiftlang/vscode-swift/pull/2262))
 - Override VS Code setting git `safe.bareRepository` to allow SwiftPM to resolve dependencies ([#2266](https://github.com/swiftlang/vscode-swift/pull/2266))
+- Fix debug sessions not being launched when swiftly is using an Xcode toolchain ([#2268](https://github.com/swiftlang/vscode-swift/pull/2268))
 
 ## 2.16.5 - 2026-05-26
 
