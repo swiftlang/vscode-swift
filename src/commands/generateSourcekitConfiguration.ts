@@ -128,15 +128,28 @@ async function checkURLExists(url: string): Promise<boolean> {
     }
 }
 
+// Resolves the sourcekit-lsp config schema URL for the toolchain, trying
+// release branches in order (e.g. release/6.4.x, release/6.4) and falling
+// back to main when none of the candidates exist on GitHub.
 export async function determineSchemaURL(folderContext: FolderContext): Promise<string> {
     const version = folderContext.toolchain.swiftVersion;
     const versionString = `${version.major}.${version.minor}`;
-    let branch =
-        configuration.lspConfigurationBranch || (version.dev ? "main" : `release/${versionString}`);
-    if (!(await checkURLExists(schemaURL(branch)))) {
-        branch = "main";
+    let candidates: string[];
+    if (configuration.lspConfigurationBranch) {
+        candidates = [configuration.lspConfigurationBranch, "main"];
+    } else if (version.dev) {
+        candidates = ["main"];
+    } else {
+        candidates = [`release/${versionString}.x`, `release/${versionString}`, "main"];
     }
-    return schemaURL(branch);
+    let resolved = "main";
+    for (const branch of candidates) {
+        if (await checkURLExists(schemaURL(branch))) {
+            resolved = branch;
+            break;
+        }
+    }
+    return schemaURL(resolved);
 }
 
 async function getValidatedFolderContext(
