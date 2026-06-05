@@ -59,7 +59,7 @@ export class FolderContext implements ExternalFolderContext, Disposable {
         public workspaceContext: WorkspaceContext,
         public logger: SwiftLogger
     ) {
-        this.packageWatcher = new PackageWatcher(this, workspaceContext.logger);
+        this.packageWatcher = new PackageWatcher(this);
         this.backgroundCompilation = new BackgroundCompilation(this);
         this.taskQueue = new TaskQueue(this);
         this.testRunManager = new TestRunManager();
@@ -75,7 +75,18 @@ export class FolderContext implements ExternalFolderContext, Disposable {
         });
     }
 
-    /** dispose of any thing FolderContext holds */
+    public async reloadToolchain(): Promise<void> {
+        const toolchain = await FolderContext.createToolchain(
+            this.folder,
+            this.workspaceFolder,
+            this.workspaceContext
+        );
+        this.toolchain = toolchain;
+        await this.swiftPackage.reload(this);
+        await this.workspaceContext.fireEvent(this, FolderOperation.swiftVersionUpdated);
+    }
+
+    /** dispose of anything FolderContext holds */
     dispose() {
         this.linuxMain?.dispose();
         this.swiftPackage.dispose();
@@ -101,52 +112,11 @@ export class FolderContext implements ExternalFolderContext, Disposable {
         const result = await workspaceContext.statusItem.showStatusWhileRunning(
             statusItemText,
             async () => {
-                let toolchain: SwiftToolchain;
-                try {
-                    toolchain = await SwiftToolchain.create(
-                        workspaceContext.extensionContext.extensionPath,
-                        workspaceContext.logger,
-                        configuration.folder(workspaceFolder).ignoreSwiftVersionFile
-                            ? undefined
-                            : folder
-                    );
-                } catch (error) {
-                    // This error case is quite hard for the user to get in to, but possible.
-                    // Typically on startup the toolchain creation failure is going to happen in
-                    // the extension activation in extension.ts. However if they incorrectly configure
-                    // their path post activation, and add a new folder to the workspace, this failure can occur.
-                    workspaceContext.logger.error(
-                        `Failed to discover Swift toolchain for ${FolderContext.uriName(folder)}: ${error}`,
-                        FolderContext.uriName(folder)
-                    );
-                    const userMadeSelection = await showToolchainError(folder);
-                    if (userMadeSelection) {
-                        // User updated toolchain settings, retry once
-                        try {
-                            toolchain = await SwiftToolchain.create(
-                                workspaceContext.extensionContext.extensionPath,
-                                workspaceContext.logger,
-                                configuration.folder(workspaceFolder).ignoreSwiftVersionFile
-                                    ? undefined
-                                    : folder
-                            );
-                            workspaceContext.logger.info(
-                                `Successfully created toolchain for ${FolderContext.uriName(folder)} after user selection`,
-                                FolderContext.uriName(folder)
-                            );
-                        } catch (retryError) {
-                            workspaceContext.logger.error(
-                                `Failed to create toolchain for ${FolderContext.uriName(folder)} even after user selection: ${retryError}`,
-                                FolderContext.uriName(folder)
-                            );
-                            // Fall back to global toolchain
-                            toolchain = workspaceContext.globalToolchain;
-                        }
-                    } else {
-                        toolchain = workspaceContext.globalToolchain;
-                    }
-                }
-
+                const toolchain = await this.createToolchain(
+                    folder,
+                    workspaceFolder,
+                    workspaceContext
+                );
                 const [linuxMain, swiftPackage] = await Promise.all([
                     LinuxMain.create(folder),
                     SwiftPackage.create(folder),
@@ -188,6 +158,57 @@ export class FolderContext implements ExternalFolderContext, Disposable {
         await folderContext.packageWatcher.install();
 
         return folderContext;
+    }
+
+    private static async createToolchain(
+        folder: vscode.Uri,
+        workspaceFolder: vscode.WorkspaceFolder,
+        workspaceContext: WorkspaceContext
+    ): Promise<SwiftToolchain> {
+        let toolchain: SwiftToolchain;
+        try {
+            toolchain = await SwiftToolchain.create(
+                workspaceContext.extensionContext.extensionPath,
+                workspaceContext.logger,
+                configuration.folder(workspaceFolder).ignoreSwiftVersionFile ? undefined : folder
+            );
+        } catch (error) {
+            // This error case is quite hard for the user to get in to, but possible.
+            // Typically on startup the toolchain creation failure is going to happen in
+            // the extension activation in extension.ts. However if they incorrectly configure
+            // their path post activation, and add a new folder to the workspace, this failure can occur.
+            workspaceContext.logger.error(
+                `Failed to discover Swift toolchain for ${FolderContext.uriName(folder)}: ${error}`,
+                FolderContext.uriName(folder)
+            );
+            const userMadeSelection = await showToolchainError(folder);
+            if (userMadeSelection) {
+                // User updated toolchain settings, retry once
+                try {
+                    toolchain = await SwiftToolchain.create(
+                        workspaceContext.extensionContext.extensionPath,
+                        workspaceContext.logger,
+                        configuration.folder(workspaceFolder).ignoreSwiftVersionFile
+                            ? undefined
+                            : folder
+                    );
+                    workspaceContext.logger.info(
+                        `Successfully created toolchain for ${FolderContext.uriName(folder)} after user selection`,
+                        FolderContext.uriName(folder)
+                    );
+                } catch (retryError) {
+                    workspaceContext.logger.error(
+                        `Failed to create toolchain for ${FolderContext.uriName(folder)} even after user selection: ${retryError}`,
+                        FolderContext.uriName(folder)
+                    );
+                    // Fall back to global toolchain
+                    toolchain = workspaceContext.globalToolchain;
+                }
+            } else {
+                toolchain = workspaceContext.globalToolchain;
+            }
+        }
+        return toolchain;
     }
 
     get languageClientManager() {
