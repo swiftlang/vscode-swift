@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 import * as fs from "fs";
 import * as path from "path";
+import type * as winston from "winston";
 
 import TransportStream = require("winston-transport");
 
@@ -63,10 +64,9 @@ export class FileTransport extends TransportStream {
         }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    public log(info: any, next: () => void): void {
+    public log(info: winston.Logform.TransformableInfo, next: () => void): void {
         // Get the formatted message from winston
-        const logMessage = info[Symbol.for("message")];
+        const logMessage = String(info[Symbol.for("message")]);
 
         if (this.isReady && this.fileHandle) {
             this.fileHandle.write(logMessage + "\n");

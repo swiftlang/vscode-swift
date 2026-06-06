@@ -95,26 +95,22 @@ export class SwiftLogger implements Disposable {
         );
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    debug(message: any, label?: string, options?: LogMessageOptions) {
+    debug(message: unknown, label?: string, options?: LogMessageOptions) {
         const normalizedMessage = this.normalizeMessage(message, label);
         this.logWithBuffer("debug", normalizedMessage, options);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    info(message: any, label?: string, options?: LogMessageOptions) {
+    info(message: unknown, label?: string, options?: LogMessageOptions) {
         const normalizedMessage = this.normalizeMessage(message, label);
         this.logWithBuffer("info", normalizedMessage, options);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    warn(message: any, label?: string, options?: LogMessageOptions) {
+    warn(message: unknown, label?: string, options?: LogMessageOptions) {
         const normalizedMessage = this.normalizeMessage(message, label);
         this.logWithBuffer("warn", normalizedMessage, options);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    error(message: any, label?: string, options?: LogMessageOptions) {
+    error(message: unknown, label?: string, options?: LogMessageOptions) {
         if (message instanceof Error) {
             this.logWithBuffer("error", message);
             return;
@@ -123,8 +119,7 @@ export class SwiftLogger implements Disposable {
         this.logWithBuffer("error", normalizedMessage, options);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private logWithBuffer(level: string, message: string | Error, meta?: any) {
+    private logWithBuffer(level: string, message: string | Error, meta?: LogMessageOptions) {
         if (this.isDisposed) {
             return;
         }
@@ -146,8 +141,7 @@ export class SwiftLogger implements Disposable {
         this.rollingLog.clear();
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private normalizeMessage(message: any, label?: string) {
+    private normalizeMessage(message: unknown, label?: string) {
         let fullMessage: string;
         if (typeof message === "string") {
             fullMessage = message;
@@ -155,11 +149,11 @@ export class SwiftLogger implements Disposable {
             try {
                 fullMessage = JSON.stringify(message);
             } catch (e) {
-                fullMessage = `${message}`;
+                fullMessage = String(message);
             }
         }
         if (label !== undefined) {
-            fullMessage = `${label}: ${message}`;
+            fullMessage = `${label}: ${String(message)}`;
         }
         return fullMessage;
     }

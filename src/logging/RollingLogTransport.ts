@@ -11,6 +11,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import type * as winston from "winston";
+
 import { RollingLog } from "./RollingLog";
 
 import TransportStream = require("winston-transport");
@@ -21,12 +23,11 @@ export class RollingLogTransport extends TransportStream {
         this.level = "debug";
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    public log(info: any, next: () => void): void {
+    public log(info: winston.Logform.TransformableInfo, next: () => void): void {
         if (info.append) {
-            this.rollingLog.append(info.message);
+            this.rollingLog.append(String(info.message));
         } else {
-            this.rollingLog.appendLine(info.message);
+            this.rollingLog.appendLine(String(info.message));
         }
         next();
     }

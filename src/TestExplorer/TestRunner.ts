@@ -999,8 +999,7 @@ export class TestRunner {
     private testOutputHandler(
         testLibrary: TestLibrary,
         runState: TestRunnerTestRunState
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ): (chunk: any) => void {
+    ): (chunk: string | Buffer) => void {
         let preambleComplete = false;
         switch (testLibrary) {
             case TestLibrary.swiftTesting:
