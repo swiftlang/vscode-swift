@@ -23,20 +23,58 @@ import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
 import { WorkspaceContext } from "../WorkspaceContext";
 import configuration from "../configuration";
-import { DebugAdapter } from "../debugger/debugAdapter";
+import { DebugAdapter, LaunchConfigType } from "../debugger/debugAdapter";
 import { SwiftLogger } from "../logging/SwiftLogger";
+import { SwiftToolchain } from "../toolchain/toolchain";
 import { Extension } from "../utilities/extensions";
 import { destructuredPromise, execFileStreamOutput, randomString } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 
-export async function captureDiagnostics(
-    ctx: WorkspaceContext,
-    allowMinimalCapture: boolean = true
-): Promise<string | undefined> {
-    try {
-        const captureMode = await captureDiagnosticsMode(ctx, allowMinimalCapture);
+export async function promptForDiagnostics(ctx: WorkspaceContext) {
+    const ok = "O";
+    const cancel = "Cancel";
+    const result = await vscode.window.showInformationMessage(
+        "SourceKit-LSP has been restored. Would you like to capture a diagnostic bundle to file an issue?",
+        ok,
+        cancel
+    );
 
-        // dialog was cancelled
+    if (!result || result === cancel) {
+        return;
+    }
+
+    return await captureDiagnostics(
+        {
+            logFolderUri: ctx.loggerFactory.logFolderUri,
+            globalToolchain: ctx.globalToolchain,
+            folders: ctx.folders,
+            requiresFullDiagnostics: true,
+            showSwiftOutputChannel: () => ctx.showSwiftOutputChannel(),
+        },
+        ctx.logger
+    );
+}
+
+export interface CaptureDiagnosticsOptions {
+    logFolderUri: vscode.Uri;
+    globalToolchain?: SwiftToolchain;
+    folders?: FolderContext[];
+    requiresFullDiagnostics?: boolean;
+    showSwiftOutputChannel(): void;
+}
+
+export async function captureDiagnostics(
+    options: CaptureDiagnosticsOptions,
+    logger: SwiftLogger
+): Promise<string | undefined> {
+    const {
+        logFolderUri,
+        globalToolchain,
+        folders = [],
+        requiresFullDiagnostics = false,
+    } = options;
+    try {
+        const captureMode = await promptForDiagnosticsMode(!requiresFullDiagnostics);
         if (!captureMode) {
             return;
         }
@@ -52,23 +90,27 @@ export async function captureDiagnostics(
         const zipFilePath = path.join(zipDir, `${path.basename(diagnosticsDir)}.zip`);
         const { archive, done: archivingDone } = configureZipArchiver(zipFilePath);
 
-        const archivedLldbDapLogFolders = await captureDefaultLldbDapLogs(
-            ctx,
+        const archivedLldbDapLogFolders = await captureGlobalLldbDapLogs(
+            globalToolchain?.swiftVersion,
+            logFolderUri,
             captureMode,
-            diagnosticsDir
+            diagnosticsDir,
+            logger
         );
 
-        for (const folder of ctx.folders) {
-            await captureFolderDiagnostics(
-                ctx,
-                folder,
-                captureMode,
-                diagnosticsDir,
-                archivedLldbDapLogFolders
-            );
-        }
+        await Promise.all(
+            folders.map(folder =>
+                captureFolderDiagnostics(
+                    folder,
+                    captureMode,
+                    diagnosticsDir,
+                    archivedLldbDapLogFolders,
+                    logger
+                )
+            )
+        );
 
-        await copyLogFolder(diagnosticsDir, ctx.loggerFactory.logFolderUri.fsPath, ctx.logger);
+        await copyLogFolder(diagnosticsDir, logFolderUri.fsPath, logger);
 
         archive.directory(diagnosticsDir, false);
         void archive.finalize();
@@ -76,74 +118,73 @@ export async function captureDiagnostics(
 
         await fsPromises.rm(diagnosticsDir, { recursive: true, force: true });
 
-        ctx.logger.info(`Saved diagnostics to ${zipFilePath}`);
+        logger.info(`Saved diagnostics to ${zipFilePath}`);
         await showCapturedDiagnosticsResults(zipFilePath);
 
         return zipFilePath;
     } catch (error) {
-        void vscode.window.showErrorMessage(`Unable to capture diagnostic logs: ${error}`);
+        logger.error(Error("Failed to capture diagnostics bundle.", { cause: error }));
+        void vscode.window.showErrorMessage(`Failed to capture diagnostics bundle: ${error}`);
     }
 }
 
-async function captureDefaultLldbDapLogs(
-    ctx: WorkspaceContext,
+async function captureGlobalLldbDapLogs(
+    globalToolchainVersion: Version | undefined,
+    logFolderUri: vscode.Uri,
     captureMode: "Minimal" | "Full",
-    diagnosticsDir: string
+    diagnosticsDir: string,
+    logger: SwiftLogger
 ): Promise<Set<string>> {
-    const archivedLldbDapLogFolders = new Set<string>();
-    const includeLldbDapLogs = DebugAdapter.getLaunchConfigType(ctx.globalToolchainSwiftVersion);
+    const includeLldbDapLogs = globalToolchainVersion
+        ? DebugAdapter.getLaunchConfigType(globalToolchainVersion) === LaunchConfigType.LLDB_DAP
+        : false;
 
     if (captureMode !== "Full" || !includeLldbDapLogs) {
-        return archivedLldbDapLogFolders;
+        return new Set();
     }
 
-    for (const logFolder of [defaultLldbDapLogFolder(ctx), lldbDapLogFolder()]) {
-        if (!logFolder || archivedLldbDapLogFolders.has(logFolder)) {
-            continue;
-        }
-        archivedLldbDapLogFolders.add(logFolder);
-        await copyLogFolder(diagnosticsDir, logFolder, ctx.logger);
+    const rootLogFolder = path.dirname(logFolderUri.fsPath);
+    const logFolder = path.join(rootLogFolder, Extension.LLDBDAP);
+    if (!logFolder) {
+        return new Set();
     }
-
-    return archivedLldbDapLogFolders;
+    await copyLogFolder(diagnosticsDir, logFolder, logger);
+    return new Set([logFolder]);
 }
 
 async function captureFolderDiagnostics(
-    ctx: WorkspaceContext,
     folder: FolderContext,
     captureMode: "Minimal" | "Full",
-    diagnosticsDir: string,
-    archivedLldbDapLogFolders: Set<string>
+    outputDir: string,
+    archivedLldbDapLogFolders: Set<string>,
+    logger: SwiftLogger
 ): Promise<void> {
-    const baseName = path.basename(folder.folder.fsPath);
-    const guid = randomString(10, 36);
-    const singleFolderWorkspace = ctx.folders.length === 1;
-    const outputDir = singleFolderWorkspace ? diagnosticsDir : path.join(diagnosticsDir, baseName);
+    if (!folder.isRootFolder) {
+        const baseName = path.basename(folder.folder.fsPath);
+        const guid = randomString(10, 36);
+        outputDir = path.join(outputDir, `${baseName}-${guid}`);
+    }
 
     await fsPromises.mkdir(outputDir, { recursive: true });
-    await writeLogFile(outputDir, `${baseName}-${guid}-settings.txt`, settingsLogs(folder));
+    await writeLogFile(outputDir, `settings.txt`, settingsLogs(folder));
 
     if (captureMode !== "Full") {
         return;
     }
 
-    await writeLogFile(
-        outputDir,
-        `${baseName}-${guid}-source-code-diagnostics.txt`,
-        diagnosticLogs()
-    );
+    await writeLogFile(outputDir, `source-code-diagnostics.txt`, diagnosticLogs());
 
     if (folder.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
         await sourcekitDiagnose(folder, outputDir);
     }
-    await captureFolderLldbDapLogs(ctx, folder, outputDir, archivedLldbDapLogFolders);
+    await captureFolderLldbDapLogs(folder, outputDir, archivedLldbDapLogFolders, logger);
 }
 
 async function captureFolderLldbDapLogs(
-    ctx: WorkspaceContext,
     folder: FolderContext,
     outputDir: string,
-    archivedLldbDapLogFolders: Set<string>
+    archivedLldbDapLogFolders: Set<string>,
+    logger: SwiftLogger
 ): Promise<void> {
     const includeLldbDapLogs = DebugAdapter.getLaunchConfigType(folder.swiftVersion);
     if (!includeLldbDapLogs) {
@@ -156,7 +197,7 @@ async function captureFolderLldbDapLogs(
     }
 
     archivedLldbDapLogFolders.add(lldbDapLogs);
-    await copyLogFolder(outputDir, lldbDapLogs, ctx.logger);
+    await copyLogFolder(outputDir, lldbDapLogs, logger);
 }
 
 function configureZipArchiver(zipFilePath: string): {
@@ -181,32 +222,13 @@ function configureZipArchiver(zipFilePath: string): {
     return { archive, done: promise };
 }
 
-export async function promptForDiagnostics(ctx: WorkspaceContext) {
-    const ok = "OK";
-    const cancel = "Cancel";
-    const result = await vscode.window.showInformationMessage(
-        "SourceKit-LSP has been restored. Would you like to capture a diagnostic bundle to file an issue?",
-        ok,
-        cancel
-    );
-
-    if (!result || result === cancel) {
-        return;
-    }
-
-    return await captureDiagnostics(ctx, false);
-}
-
-async function captureDiagnosticsMode(
-    ctx: WorkspaceContext,
+async function promptForDiagnosticsMode(
     allowMinimalCapture: boolean
 ): Promise<"Minimal" | "Full" | undefined> {
-    if (ctx.globalToolchainSwiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
-        const fullButton = "Capture Full Diagnostics";
-        const minimalButton = "Capture Minimal Diagnostics";
-        const buttons = allowMinimalCapture ? [fullButton, minimalButton] : [fullButton];
-        const fullCaptureResult = await vscode.window.showInformationMessage(
-            `A Diagnostic Bundle collects information that helps the developers of the Swift for VS Code extension diagnose and fix issues.
+    const fullButton = "Capture Full Diagnostics";
+    const minimalButton = "Capture Minimal Diagnostics";
+    const buttons = allowMinimalCapture ? [fullButton, minimalButton] : [fullButton];
+    let detail = `A Diagnostic Bundle collects information that helps the developers of the Swift for VS Code extension diagnose and fix issues.
 
 This information includes:
 - Extension logs
@@ -222,23 +244,23 @@ If you allow capturing a Full Diagnostic Bundle, the information will also inclu
 
 All information is collected locally and you can inspect the diagnose bundle before sharing it with developers of the Swift for VS Code extension.
 
-Please file an issue with a description of the problem you are seeing at https://github.com/swiftlang/vscode-swift, and attach this diagnose bundle.`,
-            {
-                modal: true,
-                detail: allowMinimalCapture
-                    ? `If you wish to omit potentially sensitive information choose "${minimalButton}"`
-                    : undefined,
-            },
-            ...buttons
-        );
-        if (!fullCaptureResult) {
-            return undefined;
-        }
-
-        return fullCaptureResult === fullButton ? "Full" : "Minimal";
-    } else {
-        return "Minimal";
+Please file an issue with a description of the problem you are seeing at https://github.com/swiftlang/vscode-swift, and attach this diagnose bundle.`;
+    if (allowMinimalCapture) {
+        detail += `\n\nIf you wish to omit potentially sensitive information choose "${minimalButton}"`;
     }
+    const fullCaptureResult = await vscode.window.showInformationMessage(
+        "Capture Swift Diagnostic Bundle",
+        {
+            modal: true,
+            detail,
+        },
+        ...buttons
+    );
+    if (!fullCaptureResult) {
+        return undefined;
+    }
+
+    return fullCaptureResult === fullButton ? "Full" : "Minimal";
 }
 
 async function showCapturedDiagnosticsResults(diagnosticsPath: string) {
@@ -304,11 +326,6 @@ async function createDiagnosticsZipDir(): Promise<string> {
     return diagnosticsDir;
 }
 
-function defaultLldbDapLogFolder(ctx: WorkspaceContext): string {
-    const rootLogFolder = path.dirname(ctx.loggerFactory.logFolderUri.fsPath);
-    return path.join(rootLogFolder, Extension.LLDBDAP);
-}
-
 function lldbDapLogFolder(workspaceFolder?: vscode.WorkspaceFolder): string | undefined {
     const config = vscode.workspace.workspaceFile
         ? vscode.workspace.getConfiguration("lldb-dap")
@@ -349,7 +366,7 @@ function diagnosticLogs(): string {
 
 async function sourcekitDiagnose(ctx: FolderContext, dir: string) {
     const sourcekitDiagnosticDir = path.join(dir, "sourcekit-lsp");
-    await fsPromises.mkdir(sourcekitDiagnosticDir);
+    await fsPromises.mkdir(sourcekitDiagnosticDir, { recursive: true });
 
     const lspConfig = configuration.lsp;
     const serverPathConfig = lspConfig.serverPath;
