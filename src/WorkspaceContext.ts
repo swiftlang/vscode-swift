@@ -20,7 +20,6 @@ import { FolderContext } from "./FolderContext";
 import {
     FolderEvent as ExternalFolderEvent,
     WorkspaceContext as ExternalWorkspaceContext,
-    FileOperation,
     FolderOperation,
     SwiftFileEvent,
 } from "./SwiftExtensionApi";
@@ -220,25 +219,7 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
                     });
             }
         });
-        const swiftFileWatcher = vscode.workspace.createFileSystemWatcher("**/*.swift");
-        swiftFileWatcher.onDidCreate(uri => {
-            this.swiftFileObservers.forEach(observer =>
-                observer({ uri, operation: FileOperation.created })
-            );
-        });
-        swiftFileWatcher.onDidChange(uri => {
-            this.swiftFileObservers.forEach(observer =>
-                observer({ uri, operation: FileOperation.changed })
-            );
-        });
-        swiftFileWatcher.onDidDelete(uri => {
-            this.swiftFileObservers.forEach(observer =>
-                observer({ uri, operation: FileOperation.deleted })
-            );
-        });
-
         this.subscriptions = [
-            swiftFileWatcher,
             onDidEndTask,
             this.commentCompletionProvider,
             contextKeysUpdate,
@@ -505,6 +486,11 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
     onDidChangeSwiftFiles(listener: (event: SwiftFileEvent) => unknown): Disposable {
         this.swiftFileObservers.add(listener);
         return { dispose: () => this.swiftFileObservers.delete(listener) };
+    }
+
+    /** Notify all swift file observers of a change to a `.swift` file. */
+    fireSwiftFileChange(event: SwiftFileEvent) {
+        this.swiftFileObservers.forEach(observer => observer(event));
     }
 
     /** set focus based on the file a TextEditor is editing */
