@@ -30,7 +30,6 @@ import { FolderEvent, FolderOperation, WorkspaceContext } from "@src/WorkspaceCo
 import configuration from "@src/configuration";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { SwiftLoggerFactory } from "@src/logging/SwiftLoggerFactory";
-import { SwiftOutputChannel } from "@src/logging/SwiftOutputChannel";
 import { LanguageClientFactory } from "@src/sourcekit-lsp/LanguageClientFactory";
 import { LanguageClientManager } from "@src/sourcekit-lsp/LanguageClientManager";
 import { LanguageClientToolchainCoordinator } from "@src/sourcekit-lsp/LanguageClientToolchainCoordinator";
@@ -133,7 +132,7 @@ suite("LanguageClientManager Suite", () => {
             debug: s => s,
         });
         mockLoggerFactory = mockObject<SwiftLoggerFactory>({
-            create: mockFn(s => s.returns(mockObject<SwiftOutputChannel>({}))),
+            createOutputChannel: mockFn(s => s.returns(mockObject<vscode.OutputChannel>({}))),
         });
         didChangeFoldersEmitter = new AsyncEventEmitter();
         mockedFolder = mockObject<FolderContext>({
@@ -175,9 +174,9 @@ suite("LanguageClientManager Suite", () => {
             code2ProtocolConverter: instance(mockedConverter),
             clientOptions: {},
             outputChannel: instance(
-                mockObject<SwiftOutputChannel>({
+                mockObject<vscode.OutputChannel>({
                     dispose: mockFn(),
-                    warn: mockFn(),
+                    appendLine: mockFn(),
                 })
             ),
             initializeResult: {

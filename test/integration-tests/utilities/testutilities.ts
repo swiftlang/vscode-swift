@@ -30,6 +30,7 @@ import { Version } from "@src/utilities/version";
 
 import { testAssetPath, testAssetUri } from "../../fixtures";
 import { attachCapturedLogs } from "../../reporters/utilities";
+import { TestLogger } from "../../utilities/TestLogger";
 import { closeAllEditors } from "../../utilities/commands";
 import { waitForNoRunningTasks } from "../../utilities/tasks";
 
@@ -39,71 +40,20 @@ export function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     return result;
 }
 
-class ExtensionActivationLogger {
-    private logger: SwiftLogger | undefined;
-    private _logs: string[] = [];
-
-    get logs(): string[] {
-        return [...this._logs, ...(this.logger?.logs ?? [])];
-    }
-
-    setLogger(logger: SwiftLogger) {
-        this.logger = logger;
-    }
-
-    private formatTimestamp(): string {
-        const now = new Date();
-        return now.toLocaleString("en-US", {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-            hour12: false,
-        });
-    }
-
-    info(message: string) {
-        const timestampedMessage = this.timestampedMessage(message);
-
-        if (this.logger) {
-            this.logger.info(timestampedMessage);
-        } else {
-            this._logs.push(timestampedMessage);
-        }
-    }
-
-    error(message: string) {
-        const timestampedMessage = this.timestampedMessage(message);
-
-        if (this.logger) {
-            this.logger.error(timestampedMessage);
-        } else {
-            this._logs.push(timestampedMessage);
-        }
-    }
-
-    reset() {
-        this._logs = [];
-        this.logger = undefined;
-    }
-
-    private timestampedMessage(message: string): string {
-        const timestamp = this.formatTimestamp();
-        return `[${timestamp}] ${message}`;
-    }
-}
-
 // Mocha doesn't give us a hook to run code when a before block times out.
 // This utility method can be used to dump logs right before the before block times out.
 // Ensure you pass in a timeout that is slightly less than mocha's `before` timeout.
 function configureLogDumpOnTimeout(
     timeout: number,
-    logger: ExtensionActivationLogger,
+    logger: TestLogger,
     test: Mocha.Runnable | undefined
 ): NodeJS.Timeout {
     return setTimeout(
         () => {
             logger.info(`Activating extension timed out!`);
-            attachCapturedLogs(test, logger.logs);
+            if (test) {
+                attachCapturedLogs(test, logger.logs);
+            }
         },
         Math.max(0, timeout - 300)
     );
@@ -112,7 +62,7 @@ function configureLogDumpOnTimeout(
 const extensionBootstrapper = (() => {
     let activatedAPI: InternalSwiftExtensionApi | undefined = undefined;
     const testTitle = (currentTest: Mocha.Test) => currentTest.titlePath().join(" → ");
-    let activationLogger: ExtensionActivationLogger;
+    let activationLogger: TestLogger;
     let logOnError: <T>(prefix: string, work: () => Thenable<T> | T) => Promise<T>;
 
     function testRunnerSetup(
@@ -130,7 +80,7 @@ const extensionBootstrapper = (() => {
         requiresDebugger: boolean = false
     ) {
         let autoTeardown: void | (() => Promise<void>);
-        activationLogger = new ExtensionActivationLogger();
+        activationLogger = new TestLogger();
         logOnError = withLogging(activationLogger);
         const SETUP_TIMEOUT_MS = 300_000;
         const TEARDOWN_TIMEOUT_MS = 60_000;
@@ -167,7 +117,6 @@ const extensionBootstrapper = (() => {
                 testAssets ?? ["defaultPackage"],
                 callSite
             );
-            activationLogger.setLogger(api.logger);
             activationLogger.info(`Extension activated successfully.`);
 
             await api.withWorkspaceContext(async workspaceContext => {
@@ -229,8 +178,7 @@ const extensionBootstrapper = (() => {
                     () => setup.call(this, activatedAPI!)
                 );
             } catch (error: any) {
-                // Mocha will throw an error to break out of a test if `.skip` is used.
-                if (error.message?.indexOf("sync skip;") === -1) {
+                if (this.test) {
                     attachCapturedLogs(this.test, activationLogger.logs);
                 }
                 throw error;
@@ -240,14 +188,14 @@ const extensionBootstrapper = (() => {
         });
 
         mocha.beforeEach(function () {
-            if (this.currentTest && activatedAPI) {
-                activatedAPI.logger.clear();
-                activatedAPI.logger.info(`Starting test: ${testTitle(this.currentTest)}`);
+            if (this.currentTest) {
+                activationLogger.info(`Starting test: ${testTitle(this.currentTest)}`);
             }
         });
 
         mocha.afterEach(async function () {
-            if (this.currentTest && activatedAPI && this.currentTest.isFailed()) {
+            if (this.currentTest) {
+                activationLogger.info(`Test finished: ${testTitle(this.currentTest)}`);
                 attachCapturedLogs(this.currentTest, activationLogger.logs);
             }
             if (vscode.debug.activeDebugSession) {
@@ -294,17 +242,19 @@ const extensionBootstrapper = (() => {
             try {
                 await extensionBootstrapper.deactivateExtension();
             } catch (error) {
-                // A deactivation timeout is handled by the log-dump timer above, but if
-                // deactivation throws/rejects quickly the timer hasn't fired yet and the
-                // surrounding test has usually passed, so the per-test afterEach log capture
-                // won't fire either. Attach the logs to this hook so the reporter still
-                // prints them.
-                attachCapturedLogs(this.test, activationLogger.logs);
+                if (this.test) {
+                    // A deactivation timeout is handled by the log-dump timer above, but if
+                    // deactivation throws/rejects quickly the timer hasn't fired yet and the
+                    // surrounding test has usually passed, so the per-test afterEach log capture
+                    // won't fire either. Attach the logs to this hook so the reporter still
+                    // prints them.
+                    attachCapturedLogs(this.test, activationLogger.logs);
+                }
                 throw error;
             } finally {
                 clearTimeout(timer);
             }
-            activationLogger.reset();
+            activationLogger.clear();
 
             // Re-throw the user supplied teardown error
             if (userTeardownError) {
@@ -350,6 +300,7 @@ const extensionBootstrapper = (() => {
                     "Activating Swift extension (true activation)...",
                     () => ext.activate()
                 );
+                activatedAPI.logger.addTransport(activationLogger.createTransport());
             } else {
                 await logOnError(
                     "Activating Swift extension by re-calling the extension's activation method...",
@@ -435,7 +386,7 @@ const extensionBootstrapper = (() => {
             await logOnError(`Running extension deactivation function.`, () =>
                 activatedAPI!.deactivate()
             );
-            activationLogger.reset();
+            activationLogger.clear();
         },
 
         activateExtensionForSuite: function (config?: {
@@ -703,7 +654,7 @@ export function isConfigurationSuperset(configValue: unknown, expected: unknown)
  * @param logger The logger object that must have an `info` method for logging messages
  * @returns A wrapper function that takes a prefix and async work function, returning a promise that resolves to the result of the async work
  */
-export function withLogging(logger: { info: (message: string) => void }) {
+export function withLogging(logger: SwiftLogger) {
     return async function <T>(prefix: string, work: () => Thenable<T> | T): Promise<T> {
         logger.info(`${prefix} - starting`);
         try {
@@ -711,7 +662,7 @@ export function withLogging(logger: { info: (message: string) => void }) {
             logger.info(`${prefix} - completed`);
             return result;
         } catch (error) {
-            logger.info(`${prefix} - failed: ${error}`);
+            logger.error(Error(`${prefix} - failed`, { cause: error }));
             throw error;
         }
     };

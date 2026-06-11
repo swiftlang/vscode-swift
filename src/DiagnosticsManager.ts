@@ -15,8 +15,8 @@ import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
 
-import { WorkspaceContext } from "./WorkspaceContext";
 import configuration from "./configuration";
+import { SwiftLogger } from "./logging/SwiftLogger";
 import { SwiftExecution } from "./tasks/SwiftExecution";
 import { TerminalEmulator } from "./terminal/TerminalEmulator";
 import { Disposable } from "./utilities/Disposable";
@@ -64,7 +64,7 @@ export class DiagnosticsManager implements Disposable {
     allDiagnostics: Map<string, vscode.Diagnostic[]> = new Map();
     private disposed = false;
 
-    constructor(context: WorkspaceContext) {
+    constructor(logger: SwiftLogger) {
         this.onDidChangeConfigurationDisposible = vscode.workspace.onDidChangeConfiguration(e => {
             if (e.affectsConfiguration("swift.diagnosticsCollection")) {
                 this.diagnosticCollection.clear();
@@ -99,7 +99,7 @@ export class DiagnosticsManager implements Disposable {
                         );
                     });
                 })
-                .catch(e => context.logger.error(`Failed to provide "swiftc" diagnostics: ${e}`));
+                .catch(e => logger.error(`Failed to provide "swiftc" diagnostics: ${e}`));
         });
         const fileTypes = validFileTypes.join(",");
         this.workspaceFileWatcher = vscode.workspace.createFileSystemWatcher(

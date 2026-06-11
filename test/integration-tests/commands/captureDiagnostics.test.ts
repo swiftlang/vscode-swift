@@ -65,7 +65,11 @@ tag("medium").suite("captureDiagnostics Test Suite", () => {
 
             validate(
                 files.map(file => file.path),
-                ["swift-vscode-extension.log", "defaultPackage-[a-z0-9]+-settings.txt"]
+                [
+                    "swift-vscode-extension.log",
+                    "sourcekit-lsp-[0-9.]+.log",
+                    "defaultPackage-[a-z0-9]+-settings.txt",
+                ]
             );
 
             await rm(folder, { recursive: true, force: true });
@@ -85,6 +89,7 @@ tag("medium").suite("captureDiagnostics Test Suite", () => {
                     files.map(file => file.path),
                     [
                         "swift-vscode-extension.log",
+                        "sourcekit-lsp-[0-9.]+.log",
                         "defaultPackage/",
                         "defaultPackage/defaultPackage-[a-z0-9]+-settings.txt",
                         "dependencies/",

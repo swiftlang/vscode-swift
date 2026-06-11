@@ -29,6 +29,7 @@ import configuration, {
 } from "./configuration";
 import { registerDebugger } from "./debugger/debugAdapterFactory";
 import { makeDebugConfigurations } from "./debugger/launch";
+import { OutputChannelTransport } from "./logging/OutputChannelTransport";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { SwiftLoggerFactory } from "./logging/SwiftLoggerFactory";
 import { PlaygroundProvider } from "./playgrounds/PlaygroundProvider";
@@ -84,6 +85,10 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
 
     contextKeys: ContextKeys;
 
+    outputChannel: vscode.OutputChannel;
+
+    loggerFactory: SwiftLoggerFactory;
+
     logger: SwiftLogger;
 
     constructor(
@@ -92,7 +97,11 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
     ) {
         this.contextKeys = new ContextKeyManager();
         const logSetupStartTime = Date.now();
-        this.logger = configureLogging(this.extensionContext);
+        this.outputChannel = vscode.window.createOutputChannel("Swift");
+        this.loggerFactory = new SwiftLoggerFactory(extensionContext.logUri);
+        this.logger = this.loggerFactory.createLogger("swift-vscode-extension.log", [
+            new OutputChannelTransport(this.outputChannel),
+        ]);
         const logSetupElapsed = Date.now() - logSetupStartTime;
         this.logger.info(`Log setup completed in ${logSetupElapsed}ms`);
     }
@@ -238,6 +247,8 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
         const workspaceContext = new WorkspaceContext(
             this.extensionContext,
             this.contextKeys,
+            this.outputChannel,
+            this.loggerFactory,
             this.logger,
             toolchain
         );
@@ -284,7 +295,7 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
         // observer for logging workspace folder addition/removal
         subscriptions.push(
             workspaceContext.onDidChangeFolders(({ folder, operation }) => {
-                this.logger.info(`${operation}: ${folder?.folder.fsPath}`, folder?.name);
+                this.logger.info(`${operation}: ${folder?.folder.fsPath}`, { label: folder?.name });
             })
         );
 
@@ -308,34 +319,24 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
     }
 
     async deactivate(): Promise<void> {
+        const currentState = this.state;
+        this.state = { type: "uninitialized" };
         this.contextKeys.isActivated = false;
-        if (this.state.type === "initializing") {
-            this.state.cancel();
+        if (currentState.type === "initializing") {
+            currentState.cancel();
         }
-        if (this.state.type === "active") {
-            await this.state.context.dispose();
-            this.state.subscriptions.forEach(s => s.dispose());
+        if (currentState.type === "active") {
+            await currentState.context.dispose();
+            currentState.subscriptions.forEach(s => s.dispose());
         }
         this.subscriptions.forEach(subscription => subscription.dispose());
         this.subscriptions.length = 0;
-        this.state = { type: "uninitialized" };
     }
 
     dispose(): void {
+        this.outputChannel.dispose();
         this.logger.dispose();
     }
-}
-
-function configureLogging(context: vscode.ExtensionContext) {
-    const logger = new SwiftLoggerFactory(context.logUri).create(
-        "Swift",
-        "swift-vscode-extension.log"
-    );
-    // Create log directory asynchronously but don't await it to avoid blocking activation
-    void vscode.workspace.fs
-        .createDirectory(context.logUri)
-        .then(undefined, error => logger.warn(`Failed to create log directory: ${error}`));
-    return logger;
 }
 
 /**

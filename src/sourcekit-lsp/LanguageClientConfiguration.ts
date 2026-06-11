@@ -220,10 +220,9 @@ export function lspClientOptions(
         documentSelector: LanguagerClientDocumentSelectors.sourcekitLSPDocumentTypes(),
         revealOutputChannelOn: RevealOutputChannelOn.Never,
         workspaceFolder,
-        outputChannel: workspaceContext.loggerFactory.create(
+        outputChannel: workspaceContext.loggerFactory.createOutputChannel(
             `SourceKit Language Server (${swiftVersion.toString()})`,
-            `sourcekit-lsp-${swiftVersion.toString()}.log`,
-            { outputChannel: true, logConsole: false }
+            `sourcekit-lsp-${swiftVersion.toString()}.log`
         ),
         middleware: {
             didOpen: activeDocumentManager.didOpen.bind(activeDocumentManager),
