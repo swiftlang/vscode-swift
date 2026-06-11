@@ -319,17 +319,18 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
     }
 
     async deactivate(): Promise<void> {
+        const currentState = this.state;
+        this.state = { type: "uninitialized" };
         this.contextKeys.isActivated = false;
-        if (this.state.type === "initializing") {
-            this.state.cancel();
+        if (currentState.type === "initializing") {
+            currentState.cancel();
         }
-        if (this.state.type === "active") {
-            await this.state.context.dispose();
-            this.state.subscriptions.forEach(s => s.dispose());
+        if (currentState.type === "active") {
+            await currentState.context.dispose();
+            currentState.subscriptions.forEach(s => s.dispose());
         }
         this.subscriptions.forEach(subscription => subscription.dispose());
         this.subscriptions.length = 0;
-        this.state = { type: "uninitialized" };
     }
 
     dispose(): void {
