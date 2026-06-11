@@ -313,8 +313,16 @@ export function registerCommands(api: InternalSwiftExtensionApi): Disposable[] {
             clearTestWarningDiagnostics();
             await api.withWorkspaceContext(ctx => ctx.diagnostics.clear());
         }),
-        vscode.commands.registerCommand("swift.captureDiagnostics", async () =>
-            api.withWorkspaceContext(ctx => captureDiagnostics(ctx))
+        vscode.commands.registerCommand("swift.captureDiagnostics", () =>
+            captureDiagnostics(
+                {
+                    logFolderUri: api.loggerFactory.logFolderUri,
+                    globalToolchain: api.workspaceContext?.globalToolchain,
+                    folders: api.workspaceContext?.folders,
+                    showSwiftOutputChannel: () => api.outputChannel.show(),
+                },
+                api.logger
+            )
         ),
         vscode.commands.registerCommand(Commands.RUN_ALL_TESTS_PARALLEL, item =>
             api.withWorkspaceContext(ctx =>

@@ -117,7 +117,7 @@ export class FolderContext implements ExternalFolderContext, Disposable {
                     // their path post activation, and add a new folder to the workspace, this failure can occur.
                     workspaceContext.logger.error(
                         `Failed to discover Swift toolchain for ${FolderContext.uriName(folder)}: ${error}`,
-                        FolderContext.uriName(folder)
+                        { label: FolderContext.uriName(folder) }
                     );
                     const userMadeSelection = await showToolchainError(folder);
                     if (userMadeSelection) {
@@ -132,12 +132,12 @@ export class FolderContext implements ExternalFolderContext, Disposable {
                             );
                             workspaceContext.logger.info(
                                 `Successfully created toolchain for ${FolderContext.uriName(folder)} after user selection`,
-                                FolderContext.uriName(folder)
+                                { label: FolderContext.uriName(folder) }
                             );
                         } catch (retryError) {
                             workspaceContext.logger.error(
                                 `Failed to create toolchain for ${FolderContext.uriName(folder)} even after user selection: ${retryError}`,
-                                FolderContext.uriName(folder)
+                                { label: FolderContext.uriName(folder) }
                             );
                             // Fall back to global toolchain
                             toolchain = workspaceContext.globalToolchain;
@@ -177,10 +177,9 @@ export class FolderContext implements ExternalFolderContext, Disposable {
                     void vscode.window.showErrorMessage(
                         `Failed to load ${folderContext.name}/Package.swift: ${error.message}`
                     );
-                    folderContext.logger.info(
-                        `Failed to load Package.swift: ${error.message}`,
-                        folderContext.name
-                    );
+                    folderContext.logger.info(`Failed to load Package.swift: ${error.message}`, {
+                        label: folderContext.name,
+                    });
                 }
             });
 

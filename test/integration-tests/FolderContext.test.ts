@@ -17,6 +17,8 @@ import { restore, stub } from "sinon";
 
 import { FolderContext } from "@src/FolderContext";
 import { WorkspaceContext } from "@src/WorkspaceContext";
+import { RollingLog } from "@src/logging/RollingLog";
+import { RollingLogTransport } from "@src/logging/RollingLogTransport";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
 import * as toolchain from "@src/ui/ToolchainSelection";
 
@@ -26,6 +28,7 @@ import { activateExtensionForSuite, getRootWorkspaceFolder } from "./utilities/t
 
 suite("FolderContext Error Handling Test Suite", () => {
     let workspaceContext: WorkspaceContext;
+    let rollingLog: RollingLog;
     let folderContext: FolderContext | undefined;
     let swiftToolchainCreateStub: MockedFunction<typeof SwiftToolchain.create>;
     const showToolchainError = mockGlobalValue(toolchain, "showToolchainError");
@@ -33,13 +36,16 @@ suite("FolderContext Error Handling Test Suite", () => {
     activateExtensionForSuite({
         async setup(api) {
             workspaceContext = await api.waitForWorkspaceContext();
+            rollingLog = new RollingLog(100);
+            workspaceContext.logger.addTransport(new RollingLogTransport(rollingLog));
+            this.timeout(60000);
         },
         testAssets: ["defaultPackage"],
     });
 
     afterEach(() => {
         folderContext?.dispose();
-        workspaceContext.logger.clear();
+        rollingLog.clear();
         restore();
     });
 
@@ -63,7 +69,7 @@ suite("FolderContext Error Handling Test Suite", () => {
             "Should fallback to global toolchain when user dismisses dialog"
         );
 
-        const errorLogs = folderContext.logger.logs.filter(
+        const errorLogs = rollingLog.logs.filter(
             log =>
                 log.includes("Failed to discover Swift toolchain") &&
                 log.includes("package2") &&
@@ -119,10 +125,10 @@ suite("FolderContext Error Handling Test Suite", () => {
         );
 
         // Assert: Should log both failure and success
-        const failureLogs = folderContext.logger.logs.filter(log =>
+        const failureLogs = rollingLog.logs.filter(log =>
             log.includes("Failed to discover Swift toolchain for package2")
         );
-        const successLogs = folderContext.logger.logs.filter(log =>
+        const successLogs = rollingLog.logs.filter(log =>
             log.includes("Successfully created toolchain for package2 after user selection")
         );
 
@@ -162,12 +168,12 @@ suite("FolderContext Error Handling Test Suite", () => {
             "Should retry toolchain creation after user selection"
         );
 
-        const initialFailureLogs = folderContext.logger.logs.filter(log =>
+        const initialFailureLogs = rollingLog.logs.filter(log =>
             log.includes(
                 "Failed to discover Swift toolchain for package2: Error: Initial toolchain failure"
             )
         );
-        const retryFailureLogs = folderContext.logger.logs.filter(log =>
+        const retryFailureLogs = rollingLog.logs.filter(log =>
             log.includes(
                 "Failed to create toolchain for package2 even after user selection: Error: Retry toolchain failure"
             )
