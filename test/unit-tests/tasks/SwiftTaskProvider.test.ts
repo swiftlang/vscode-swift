@@ -17,11 +17,11 @@ import * as os from "os";
 import { match } from "sinon";
 import * as vscode from "vscode";
 
-import { BuildConfigurationFactory } from "@src/debugger/buildConfig";
 import { FolderContext } from "@src/FolderContext";
 import { SwiftPackage } from "@src/SwiftPackage";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import configuration from "@src/configuration";
+import { BuildConfigurationFactory } from "@src/debugger/buildConfig";
 import { SwiftExecution } from "@src/tasks/SwiftExecution";
 import {
     SwiftTaskProvider,
@@ -814,9 +814,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                 new vscode.CancellationTokenSource().token
             );
 
-            const cleanTask = tasks.find(
-                t => t.name === SwiftTaskProvider.cleanBuildName
-            );
+            const cleanTask = tasks.find(t => t.name === SwiftTaskProvider.cleanBuildName);
             assert.ok(cleanTask, "A Clean Build task should be returned");
 
             const execution = cleanTask!.execution as SwiftExecution;
@@ -852,9 +850,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                 new vscode.CancellationTokenSource().token
             );
 
-            const cleanTask = tasks.find(
-                t => t.name === SwiftTaskProvider.cleanBuildName
-            );
+            const cleanTask = tasks.find(t => t.name === SwiftTaskProvider.cleanBuildName);
             assert.strictEqual(cleanTask, undefined);
         });
     });
