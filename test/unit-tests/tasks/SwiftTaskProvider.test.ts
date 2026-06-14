@@ -17,7 +17,9 @@ import * as os from "os";
 import { match } from "sinon";
 import * as vscode from "vscode";
 
+import { BuildConfigurationFactory } from "@src/debugger/buildConfig";
 import { FolderContext } from "@src/FolderContext";
+import { SwiftPackage } from "@src/SwiftPackage";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import configuration from "@src/configuration";
 import { SwiftExecution } from "@src/tasks/SwiftExecution";
@@ -37,6 +39,7 @@ import {
     MockedObject,
     instance,
     mockFn,
+    mockGlobalModule,
     mockGlobalObject,
     mockGlobalValue,
     mockObject,
@@ -73,6 +76,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
         workspaceContext = mockObject<WorkspaceContext>({
             globalToolchain: instance(toolchain),
             currentFolder: instance(folderContext),
+            folders: [],
         });
         workspaceFolder = {
             uri: vscode.Uri.file("/path/to/workspace"),
@@ -779,6 +783,79 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
             tasksMock.fetchTasks.withArgs().resolves([nonDefaultBuildTask]);
             tasksMock.fetchTasks.withArgs(match.object).returns(Promise.resolve([extensionTask]));
             assert.strictEqual(extensionTask, await getBuildAllTask(instance(folderContext)));
+        });
+    });
+
+    suite("provideTasks", () => {
+        const factoryMock = mockGlobalModule(BuildConfigurationFactory);
+
+        test("includes Clean Build task for each folder with a package", async () => {
+            (factoryMock as any).buildAll.resolves({ args: ["build"] });
+
+            const folderContext = mockObject<FolderContext>({
+                workspaceContext: instance(workspaceContext),
+                workspaceFolder,
+                folder: workspaceFolder.uri,
+                toolchain: instance(toolchain),
+                taskQueue: { activeOperation: undefined } as any,
+                relativePath: "",
+                swiftPackage: instance(
+                    mockObject<SwiftPackage>({
+                        foundPackage: Promise.resolve(true),
+                        executableProducts: Promise.resolve([]),
+                        libraryProducts: Promise.resolve([]),
+                    })
+                ),
+            });
+            (workspaceContext as any).folders = [instance(folderContext)];
+
+            const taskProvider = new SwiftTaskProvider(instance(workspaceContext));
+            const tasks = await taskProvider.provideTasks(
+                new vscode.CancellationTokenSource().token
+            );
+
+            const cleanTask = tasks.find(
+                t => t.name === SwiftTaskProvider.cleanBuildName
+            );
+            assert.ok(cleanTask, "A Clean Build task should be returned");
+
+            const execution = cleanTask!.execution as SwiftExecution;
+            assert.ok(
+                execution.args.some(arg => arg === "clean"),
+                "Clean Build task should include 'clean' in its arguments"
+            );
+            assert.strictEqual(cleanTask!.group, vscode.TaskGroup.Clean);
+        });
+
+        test("does not include Clean Build task when no package is found", async () => {
+            (factoryMock as any).buildAll.resolves({ args: ["build"] });
+
+            const folderContext = mockObject<FolderContext>({
+                workspaceContext: instance(workspaceContext),
+                workspaceFolder,
+                folder: workspaceFolder.uri,
+                toolchain: instance(toolchain),
+                taskQueue: { activeOperation: undefined } as any,
+                relativePath: "",
+                swiftPackage: instance(
+                    mockObject<SwiftPackage>({
+                        foundPackage: Promise.resolve(false),
+                        executableProducts: Promise.resolve([]),
+                        libraryProducts: Promise.resolve([]),
+                    })
+                ),
+            });
+            (workspaceContext as any).folders = [instance(folderContext)];
+
+            const taskProvider = new SwiftTaskProvider(instance(workspaceContext));
+            const tasks = await taskProvider.provideTasks(
+                new vscode.CancellationTokenSource().token
+            );
+
+            const cleanTask = tasks.find(
+                t => t.name === SwiftTaskProvider.cleanBuildName
+            );
+            assert.strictEqual(cleanTask, undefined);
         });
     });
 });

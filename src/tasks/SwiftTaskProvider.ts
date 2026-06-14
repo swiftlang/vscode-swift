@@ -382,7 +382,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
      * Provides tasks to run the following commands:
      *
      * - `swift build`
-     * - `swift package clean`
+     * - `swift package clean` (Clean Build Folder)
      * - `swift package resolve`
      * - `swift package update`
      */
@@ -404,6 +404,21 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             }
 
             tasks.push(await createBuildAllTask(folderContext, false));
+
+            tasks.push(
+                createSwiftTask(
+                    ["package", "clean"],
+                    SwiftTaskProvider.cleanBuildName,
+                    {
+                        cwd: folderContext.folder,
+                        scope: resolveScope(folderContext.workspaceFolder),
+                        packageName: packageName(folderContext),
+                        presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
+                        group: vscode.TaskGroup.Clean,
+                    },
+                    folderContext.toolchain
+                )
+            );
 
             const executables = await folderContext.swiftPackage.executableProducts;
             for (const executable of executables) {
