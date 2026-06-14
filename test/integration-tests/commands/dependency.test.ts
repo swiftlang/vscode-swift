@@ -32,7 +32,8 @@ tag("large").suite("Dependency Commands Test Suite", function () {
     let workspaceContext: WorkspaceContext;
 
     activateExtensionForTest({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             workspaceContext = ctx;
             depsContext = findWorkspaceFolder("dependencies", workspaceContext)!;
         },

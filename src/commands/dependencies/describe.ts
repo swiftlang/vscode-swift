@@ -14,7 +14,7 @@
 import * as vscode from "vscode";
 
 import { FolderContext } from "../../FolderContext";
-import { PackageContents, SwiftPackage } from "../../SwiftPackage";
+import { PackageContents } from "../../SwiftPackage";
 import configuration from "../../configuration";
 import { ReadOnlySwiftProcess } from "../../tasks/SwiftProcess";
 import { SwiftTaskProvider, createSwiftTask } from "../../tasks/SwiftTaskProvider";
@@ -58,9 +58,13 @@ export async function executeSwiftPackageCommand<T>(
         },
     });
 
-    const outputChunks: string[] = [];
-    const writeDisposable = swiftProcess.onDidWrite((data: string) => {
-        outputChunks.push(data);
+    const stdoutChunks: string[] = [];
+    const stderrChunks: string[] = [];
+    const stdoutDisposable = swiftProcess.onDidWriteStdout(data => {
+        stdoutChunks.push(data);
+    });
+    const stderrDisposable = swiftProcess.onDidWriteStderr(data => {
+        stderrChunks.push(data);
     });
 
     const task = createSwiftTask(
@@ -91,21 +95,18 @@ export async function executeSwiftPackageCommand<T>(
         );
         updateAfterError(success, folderContext);
 
-        const output = outputChunks.join("");
+        const stdout = stdoutChunks.join("");
+        const stderr = stderrChunks.join("");
 
         if (!success) {
-            throw new Error(output);
+            throw new Error(stderr || stdout);
         }
 
-        if (!output.trim()) {
+        if (!stdout.trim()) {
             throw new Error(`No output received from swift ${config.commandName} command`);
         }
 
-        const trimmedOutput = SwiftPackage.trimStdout(output);
-        if (trimmedOutput.length === 0) {
-            throw new Error(`No JSON output received from swift ${config.commandName} command`);
-        }
-        const parsedOutput = JSON.parse(trimmedOutput);
+        const parsedOutput: unknown = JSON.parse(stdout);
 
         if (!parsedOutput || typeof parsedOutput !== "object") {
             throw new Error(`Invalid format received from swift ${config.commandName} command`);
@@ -115,7 +116,8 @@ export async function executeSwiftPackageCommand<T>(
     } catch (parseError) {
         throw new Error(`Failed to parse ${config.commandName} output`, { cause: parseError });
     } finally {
-        writeDisposable.dispose();
+        stdoutDisposable.dispose();
+        stderrDisposable.dispose();
     }
 }
 

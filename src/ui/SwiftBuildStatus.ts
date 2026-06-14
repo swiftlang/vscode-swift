@@ -41,7 +41,7 @@ export class SwiftBuildStatus implements Disposable {
     private lockedRegex = /Another instance of SwiftPM \(PID: \d+\) is already running/g;
     private debt = 0;
 
-    constructor() {
+    constructor(private statusItem: StatusItem) {
         this.onDidStartTaskDisposible = vscode.tasks.onDidStartTask(event => {
             if (!configuration.showBuildStatus) {
                 return;
@@ -71,13 +71,27 @@ export class SwiftBuildStatus implements Disposable {
         const handleTaskOutput = (
             update: (report: { message: string; increment?: number }) => void
         ) => this.awaitTaskCompletion(task, execution, isBuildTask, showBuildStatus, update);
-        const location =
-            showBuildStatus === "notification"
-                ? vscode.ProgressLocation.Notification
-                : vscode.ProgressLocation.Window;
-        void vscode.window.withProgress<void>({ location }, progress =>
-            handleTaskOutput(report => progress.report(report))
-        );
+        if (showBuildStatus === "swiftStatus") {
+            // Route through StatusItem so the click reveals the task terminal. Only update on a
+            // changed message, since the stripped [x/y] counter makes every progress line identical.
+            let lastMessage: string | undefined;
+            void this.statusItem.showStatusWhileRunning(task, () =>
+                handleTaskOutput(report => {
+                    if (report.message !== lastMessage) {
+                        lastMessage = report.message;
+                        this.statusItem.update(task, report.message);
+                    }
+                })
+            );
+        } else {
+            const location =
+                showBuildStatus === "notification"
+                    ? vscode.ProgressLocation.Notification
+                    : vscode.ProgressLocation.Window;
+            void vscode.window.withProgress<void>({ location }, progress =>
+                handleTaskOutput(report => progress.report(report))
+            );
+        }
     }
 
     private awaitTaskCompletion(
@@ -149,8 +163,13 @@ export class SwiftBuildStatus implements Disposable {
                     const reportedIncrement = this.applyDebt(increment);
 
                     lastPercentage = percentage;
+                    // Keep the status bar item static so the spinner doesn't flicker as
+                    // the [completed/total] counter updates. withProgress still gets it.
                     update({
-                        message: `${name}: [${progress.completed}/${progress.total}]`,
+                        message:
+                            showBuildStatus === "swiftStatus"
+                                ? name
+                                : `${name}: [${progress.completed}/${progress.total}]`,
                         increment: reportedIncrement,
                     });
                     return false;

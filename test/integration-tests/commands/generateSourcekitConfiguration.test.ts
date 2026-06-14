@@ -48,8 +48,18 @@ suite("Generate SourceKit-LSP configuration Command", function () {
         return JSON.parse(contents);
     }
 
+    function expectedBranchForVersion(version: Version): string {
+        if (version.dev || version.isLessThan(new Version(6, 1, 0))) {
+            return "main";
+        } else if (version.isGreaterThanOrEqual(new Version(6, 4, 0))) {
+            return `release/${version.major}.${version.minor}.x`;
+        }
+        return `release/${version.major}.${version.minor}`;
+    }
+
     activateExtensionForSuite({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             workspaceContext = ctx;
             folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
             configFileUri = vscode.Uri.file(sourcekitConfigFilePath(folderContext));
@@ -74,13 +84,7 @@ suite("Generate SourceKit-LSP configuration Command", function () {
         const result = await vscode.commands.executeCommand(Commands.GENERATE_SOURCEKIT_CONFIG);
         expect(result).to.be.true;
         const config = await getSchema();
-        const version = folderContext.swiftVersion;
-        let branch: string;
-        if (folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 1, 0))) {
-            branch = version.dev ? "main" : `release/${version.major}.${version.minor}`;
-        } else {
-            branch = "main";
-        }
+        const branch = expectedBranchForVersion(folderContext.swiftVersion);
         expect(config).to.have.property(
             "$schema",
             `https://raw.githubusercontent.com/swiftlang/sourcekit-lsp/refs/heads/${branch}/config.schema.json`
@@ -133,13 +137,7 @@ suite("Generate SourceKit-LSP configuration Command", function () {
             await handleSchemaUpdate(document, workspaceContext);
 
             const config = await getSchema();
-            const version = folderContext.swiftVersion;
-            let branch: string;
-            if (folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 1, 0))) {
-                branch = version.dev ? "main" : `release/${version.major}.${version.minor}`;
-            } else {
-                branch = "main";
-            }
+            const branch = expectedBranchForVersion(folderContext.swiftVersion);
             expect(config).to.have.property(
                 "$schema",
                 `https://raw.githubusercontent.com/swiftlang/sourcekit-lsp/refs/heads/${branch}/config.schema.json`

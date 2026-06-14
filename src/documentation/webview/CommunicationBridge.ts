@@ -30,8 +30,7 @@ interface CommunicationBridge {
  * @returns A promise that resolves to the created CommunicationBridge
  */
 function createBridge(
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    sender: any,
+    sender: { receive(message: VueAppMessage): void },
     messageHandlers: Set<(message: VueAppMessage) => void>
 ): CommunicationBridge {
     return {

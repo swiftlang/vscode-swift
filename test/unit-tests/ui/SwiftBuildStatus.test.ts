@@ -16,10 +16,12 @@ import * as vscode from "vscode";
 
 import configuration from "@src/configuration";
 import { SwiftExecution } from "@src/tasks/SwiftExecution";
+import { StatusItem } from "@src/ui/StatusItem";
 import { SwiftBuildStatus } from "@src/ui/SwiftBuildStatus";
 
 import {
     MockedObject,
+    instance,
     mockFn,
     mockGlobalEvent,
     mockGlobalObject,
@@ -34,6 +36,7 @@ suite("SwiftBuildStatus Unit Test Suite", function () {
     const configurationMock = mockGlobalValue(configuration, "showBuildStatus");
 
     let buildStatus: SwiftBuildStatus;
+    let statusItem: MockedObject<StatusItem>;
     let mockedProgress: MockedObject<
         vscode.Progress<{
             message?: string;
@@ -57,6 +60,10 @@ suite("SwiftBuildStatus Unit Test Suite", function () {
         windowMock.withProgress.callsFake(async (_options, task) => {
             const cts = new vscode.CancellationTokenSource();
             await task(mockedProgress, cts.token);
+        });
+        statusItem = mockObject<StatusItem>({
+            showStatusWhileRunning: mockFn(s => s.callsFake(async (_task, process) => process())),
+            update: mockFn(),
         });
         testSwiftProcess = new TestSwiftProcess("swift", ["build"]);
         swiftExecution = new SwiftExecution(
@@ -85,58 +92,61 @@ suite("SwiftBuildStatus Unit Test Suite", function () {
     test("Never show status", async () => {
         configurationMock.setValue("never");
 
-        buildStatus = new SwiftBuildStatus();
+        buildStatus = new SwiftBuildStatus(instance(statusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         expect(windowMock.withProgress).to.not.have.been.called;
+        expect(statusItem.showStatusWhileRunning).to.not.have.been.called;
     });
 
     test("Ignore non-swift task", async () => {
         mockedTask.definition = { type: "shell" };
         configurationMock.setValue("swiftStatus");
 
-        buildStatus = new SwiftBuildStatus();
+        buildStatus = new SwiftBuildStatus(instance(statusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         expect(windowMock.withProgress).to.not.have.been.called;
+        expect(statusItem.showStatusWhileRunning).to.not.have.been.called;
     });
 
-    test("Show swift status", async () => {
+    test("Show swift status routes through StatusItem", async () => {
         configurationMock.setValue("swiftStatus");
 
-        buildStatus = new SwiftBuildStatus();
+        buildStatus = new SwiftBuildStatus(instance(statusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
-        expect(windowMock.withProgress).to.have.been.calledWith({
-            location: vscode.ProgressLocation.Window,
-        });
+        expect(statusItem.showStatusWhileRunning).to.have.been.calledOnce;
+        expect(windowMock.withProgress).to.not.have.been.called;
     });
 
-    test("Show status bar progress", async () => {
+    test("Show progress uses withProgress at Window location", async () => {
         configurationMock.setValue("progress");
 
-        buildStatus = new SwiftBuildStatus();
+        buildStatus = new SwiftBuildStatus(instance(statusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         expect(windowMock.withProgress).to.have.been.calledWith({
             location: vscode.ProgressLocation.Window,
         });
+        expect(statusItem.showStatusWhileRunning).to.not.have.been.called;
     });
 
-    test("Show notification progress", async () => {
+    test("Show notification uses withProgress at Notification location", async () => {
         configurationMock.setValue("notification");
 
-        buildStatus = new SwiftBuildStatus();
+        buildStatus = new SwiftBuildStatus(instance(statusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         expect(windowMock.withProgress).to.have.been.calledWith({
             location: vscode.ProgressLocation.Notification,
         });
+        expect(statusItem.showStatusWhileRunning).to.not.have.been.called;
     });
 
     test("Update fetching", async () => {
-        configurationMock.setValue("progress");
-        buildStatus = new SwiftBuildStatus();
+        configurationMock.setValue("swiftStatus");
+        buildStatus = new SwiftBuildStatus(instance(statusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         testSwiftProcess.write(
@@ -146,38 +156,30 @@ suite("SwiftBuildStatus Unit Test Suite", function () {
                 "Fetched https://github.com/apple/swift-testing.git from cache (0.77s)\n"
         );
 
-        expect(mockedProgress.report).to.have.been.calledWith({
-            message: "My Task: Fetching Dependencies",
-        });
+        expect(statusItem.update).to.have.been.calledWith(
+            mockedTask,
+            "My Task: Fetching Dependencies"
+        );
     });
 
-    test("Update build progress", async () => {
-        configurationMock.setValue("progress");
-        buildStatus = new SwiftBuildStatus();
+    test("Only updates build progress once when shown in the status bar", async () => {
+        configurationMock.setValue("swiftStatus");
+        buildStatus = new SwiftBuildStatus(instance(statusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
-        testSwiftProcess.write(
-            "Fetching https://github.com/apple/example-package-figlet from cache\n" +
-                "[6/7] Building main.swift\n" +
-                "[7/7] Applying MyCLI\n"
-        );
+        // Ignore the initial "Preparing..." update; we only care about the build-progress phase.
+        statusItem.update.resetHistory();
 
-        const expected = "My Task: [7/7]";
-        expect(mockedProgress.report).to.have.been.calledWith({
-            message: expected,
-            increment: 100,
-        });
+        testSwiftProcess.write("[1/7] Compiling A.swift\n");
+        testSwiftProcess.write("[4/7] Compiling B.swift\n");
+        testSwiftProcess.write("[7/7] Applying MyCLI\n");
 
-        // Ignore old stuff
-        expect(mockedProgress.report).to.not.have.been.calledWith({
-            message: "My Task: Fetching Dependencies",
-        });
-        expect(mockedProgress.report).to.not.have.been.calledWith({ message: "My Task: [6/7]" });
+        expect(statusItem.update).to.have.been.calledOnceWithExactly(mockedTask, "My Task");
     });
 
-    test("Reports incremental progress across multiple writes", async () => {
-        configurationMock.setValue("progress");
-        buildStatus = new SwiftBuildStatus();
+    test("Notification mode reports incremental progress across multiple writes", async () => {
+        configurationMock.setValue("notification");
+        buildStatus = new SwiftBuildStatus(instance(statusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         testSwiftProcess.write("[1/4] Compiling A.swift\n");
@@ -200,8 +202,8 @@ suite("SwiftBuildStatus Unit Test Suite", function () {
     });
 
     test("Reports zero increment when total increases and progress goes backwards", async () => {
-        configurationMock.setValue("progress");
-        buildStatus = new SwiftBuildStatus();
+        configurationMock.setValue("notification");
+        buildStatus = new SwiftBuildStatus(instance(statusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         // [5/10] = 50%
@@ -236,18 +238,16 @@ suite("SwiftBuildStatus Unit Test Suite", function () {
     });
 
     test("Preparing phase reports no increment", async () => {
-        configurationMock.setValue("progress");
-        buildStatus = new SwiftBuildStatus();
+        configurationMock.setValue("swiftStatus");
+        buildStatus = new SwiftBuildStatus(instance(statusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
-        expect(mockedProgress.report).to.have.been.calledWith({
-            message: "My Task: Preparing...",
-        });
+        expect(statusItem.update).to.have.been.calledWith(mockedTask, "My Task: Preparing...");
     });
 
     test("Build complete", async () => {
-        configurationMock.setValue("progress");
-        buildStatus = new SwiftBuildStatus();
+        configurationMock.setValue("swiftStatus");
+        buildStatus = new SwiftBuildStatus(instance(statusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         testSwiftProcess.write(
@@ -258,12 +258,13 @@ suite("SwiftBuildStatus Unit Test Suite", function () {
         );
 
         // Report only the preparing message
-        expect(mockedProgress.report).to.have.been.calledWith({ message: "My Task: Preparing..." });
+        expect(statusItem.update).to.have.been.calledWith(mockedTask, "My Task: Preparing...");
     });
 
     test("Parses progress with spaces around the slash (newer toolchains)", async () => {
-        configurationMock.setValue("progress");
-        buildStatus = new SwiftBuildStatus();
+        // Assert via a withProgress location, which still reports the counter.
+        configurationMock.setValue("notification");
+        buildStatus = new SwiftBuildStatus(instance(statusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         // swift-build emits a U+2009 THIN SPACE on either side of the slash
@@ -276,19 +277,14 @@ suite("SwiftBuildStatus Unit Test Suite", function () {
     });
 
     test("Reports Planning status during planning phase, then switches to progress", async () => {
-        configurationMock.setValue("progress");
-        buildStatus = new SwiftBuildStatus();
+        configurationMock.setValue("swiftStatus");
+        buildStatus = new SwiftBuildStatus(instance(statusItem));
         await didStartTaskMock.fire({ execution: mockedTaskExecution });
 
         testSwiftProcess.write("[Planning 123 / 124]\n[Planning deferred tasks]\n");
-        expect(mockedProgress.report).to.have.been.calledWith({
-            message: "My Task: Planning...",
-        });
+        expect(statusItem.update).to.have.been.calledWith(mockedTask, "My Task: Planning...");
 
         testSwiftProcess.write("[36 / 75]\n");
-        expect(mockedProgress.report).to.have.been.calledWith({
-            message: "My Task: [36/75]",
-            increment: 48,
-        });
+        expect(statusItem.update).to.have.been.calledWith(mockedTask, "My Task");
     });
 });

@@ -942,11 +942,12 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
  */
 class TaskPoller implements Disposable {
     private previousTasks: SwiftTask[] = [];
-    private timeout?: NodeJS.Timeout;
+    private interval: NodeJS.Timeout | undefined;
     private static POLL_INTERVAL = 5000;
 
     constructor(private onTasksChanged: () => void) {
         void this.pollTasks();
+        this.interval = setInterval(() => void this.pollTasks(), TaskPoller.POLL_INTERVAL);
     }
 
     private async pollTasks() {
@@ -974,13 +975,12 @@ class TaskPoller implements Disposable {
         } catch {
             // ignore errors
         }
-        this.timeout = setTimeout(() => this.pollTasks(), TaskPoller.POLL_INTERVAL);
     }
 
     dispose() {
-        if (this.timeout) {
-            clearTimeout(this.timeout);
-            this.timeout = undefined;
+        if (this.interval) {
+            clearInterval(this.interval);
+            this.interval = undefined;
         }
     }
 }

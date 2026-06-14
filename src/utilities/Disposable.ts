@@ -23,3 +23,15 @@ export class Disposable {
 
     constructor(public dispose: () => void) {}
 }
+
+export class AsyncDisposable {
+    static from(...disposables: AsyncDisposable[]): AsyncDisposable {
+        return {
+            async dispose(): Promise<void> {
+                await Promise.all(disposables.map(d => d.dispose()));
+            },
+        };
+    }
+
+    constructor(public dispose: () => Promise<void>) {}
+}

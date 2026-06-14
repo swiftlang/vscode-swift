@@ -64,9 +64,9 @@ export default defineConfig([
         },
         rules: {
             curly: "error",
-            eqeqeq: "warn",
-            "no-throw-literal": "warn",
-            "no-console": "warn",
+            eqeqeq: "error",
+            "no-throw-literal": "error",
+            "no-console": "error",
             "no-restricted-syntax": [
                 "error",
                 {
@@ -88,8 +88,9 @@ export default defineConfig([
                 },
             ],
 
-            "@typescript-eslint/no-floating-promises": ["warn", { checkThenables: true }],
-            "@typescript-eslint/await-thenable": "warn",
+            "@typescript-eslint/no-floating-promises": ["error", { checkThenables: true }],
+            "@typescript-eslint/no-misused-promises": "error",
+            "@typescript-eslint/await-thenable": "error",
             "@typescript-eslint/no-non-null-assertion": "off",
             "@typescript-eslint/no-require-imports": "off",
             "@typescript-eslint/no-unused-vars": [

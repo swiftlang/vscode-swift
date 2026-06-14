@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
+import type * as winston from "winston";
 
 import TransportStream = require("winston-transport");
 
@@ -22,9 +23,8 @@ export class OutputChannelTransport extends TransportStream {
         super();
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    public log(info: any, next: () => void): void {
-        const logMessage = this.appending ? info.message : info[Symbol.for("message")];
+    public log(info: winston.Logform.TransformableInfo, next: () => void): void {
+        const logMessage = String(this.appending ? info.message : info[Symbol.for("message")]);
         if (info.append) {
             this.ouptutChannel.append(logMessage);
             this.appending = true;

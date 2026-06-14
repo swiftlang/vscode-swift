@@ -44,7 +44,8 @@ tag("large").suite("SwiftSnippet Test Suite", function () {
     let resetSettings: (() => Promise<void>) | undefined;
 
     activateExtensionForSuite({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             workspaceContext = ctx;
 
             folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);

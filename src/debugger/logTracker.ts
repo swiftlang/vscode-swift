@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
 
-import { WorkspaceContext } from "../WorkspaceContext";
+import { InternalSwiftExtensionApi } from "../InternalSwiftExtensionApi";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { Disposable } from "../utilities/Disposable";
 import { Version } from "../utilities/version";
@@ -23,7 +23,7 @@ import { LaunchConfigType } from "./debugAdapter";
  * Factory class for building LoggingDebugAdapterTracker
  */
 class LoggingDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerFactory {
-    constructor(private workspaceContext: WorkspaceContext) {}
+    constructor(private api: InternalSwiftExtensionApi) {}
 
     createDebugAdapterTracker(
         session: vscode.DebugSession
@@ -36,7 +36,7 @@ class LoggingDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerFac
             // include the "console" category with this configuration.
             //
             // This issue was fixed in Swift 6.4, but the change cannot be easily cherry picked back to 6.3.
-            const swiftVersion = this.workspaceContext.folders.find(
+            const swiftVersion = this.api.workspaceContext?.folders.find(
                 f => f.workspaceFolder.uri.fsPath === session.workspaceFolder?.uri.fsPath
             )?.swiftVersion;
             if (
@@ -68,10 +68,10 @@ interface DebugMessage {
  * Register the LoggingDebugAdapterTrackerFactory with the VS Code debug adapter tracker
  * @returns A disposable to be disposed when the extension is deactivated
  */
-export function registerLoggingDebugAdapterTracker(workspaceContext: WorkspaceContext): Disposable {
+export function registerLoggingDebugAdapterTracker(api: InternalSwiftExtensionApi): Disposable {
     // Register the factory for both lldb-dap and CodeLLDB since either could be used when
     // resolving a Swift launch configuration.
-    const trackerFactory = new LoggingDebugAdapterTrackerFactory(workspaceContext);
+    const trackerFactory = new LoggingDebugAdapterTrackerFactory(api);
     const subscriptions: Disposable[] = [
         vscode.debug.registerDebugAdapterTrackerFactory(LaunchConfigType.CODE_LLDB, trackerFactory),
         vscode.debug.registerDebugAdapterTrackerFactory(LaunchConfigType.LLDB_DAP, trackerFactory),

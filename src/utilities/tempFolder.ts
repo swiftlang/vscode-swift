@@ -15,7 +15,7 @@ import * as fs from "fs/promises";
 import { tmpdir } from "os";
 import * as path from "path";
 
-import { Disposable } from "./Disposable";
+import { AsyncDisposable } from "./Disposable";
 import { randomString } from "./utilities";
 
 export class TemporaryFolder {
@@ -113,7 +113,7 @@ export class TemporaryFolder {
     }
 }
 
-export class DisposableFileCollection implements Disposable {
+export class DisposableFileCollection implements AsyncDisposable {
     private files: string[] = [];
 
     constructor(private folder: TemporaryFolder) {}
@@ -125,9 +125,7 @@ export class DisposableFileCollection implements Disposable {
     }
 
     async dispose() {
-        for (const file of this.files) {
-            await fs.rm(file, { force: true });
-        }
+        await Promise.all(this.files.map(file => fs.rm(file, { force: true })));
         this.files = [];
     }
 }

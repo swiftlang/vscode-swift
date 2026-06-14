@@ -29,9 +29,8 @@ import { SourceKitLSPErrorHandler } from "./LanguageClientManager";
 import { LSPActiveDocumentManager } from "./didChangeActiveDocument";
 import { uriConverters } from "./uriConverters";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-function initializationOptions(swiftVersion: Version): any {
-    let options: any = {
+function initializationOptions(swiftVersion: Version): Record<string, unknown> {
+    let options: Record<string, unknown> = {
         "textDocument/codeLens": {
             supportedCommands: {
                 "swift.run": "swift.run",
@@ -101,7 +100,6 @@ function initializationOptions(swiftVersion: Version): any {
 
     return options;
 }
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 type SourceKitDocumentSelector = {
     scheme: string;
@@ -332,7 +330,7 @@ export function lspClientOptions(
             },
             handleWorkDoneProgress: (() => {
                 let lastPrompted = new Date(0).getTime();
-                return async (token, params, next) => {
+                return (token, params, next) => {
                     const result = next(token, params);
                     const tokenString = token.toString();
                     const now = new Date().getTime();

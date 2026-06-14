@@ -43,7 +43,8 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
     let treeProvider: ProjectPanelProvider;
 
     activateExtensionForSuite({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             workspaceContext = ctx;
 
             const folderContext = await folderInRootWorkspace("targets", workspaceContext);

@@ -66,11 +66,17 @@ export class SwiftLogger implements Disposable {
         this.logger = winston.createLogger({
             transports: transports,
             format: winston.format.combine(
-                winston.format.errors({ stack: true }),
+                winston.format.errors({ stack: true, cause: true }),
                 winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss.SSS" }), // This is the format of `vscode.LogOutputChannel`
-                winston.format.printf(msg => {
-                    const stackTrace = msg.stack ? ` ${msg.stack}` : "";
-                    return `${msg.timestamp} [${msg.level}] ${msg.message}${stackTrace}`;
+                winston.format.printf(info => {
+                    let message = `${info.message}`;
+                    if (typeof info.stack === "string") {
+                        message = info.stack;
+                        if (info.cause) {
+                            message += `\n${formatCauseChain(info.cause)}`;
+                        }
+                    }
+                    return `${info.timestamp} [${info.level}] ${message}`;
                 }),
                 winston.format.colorize()
             ),
@@ -89,26 +95,22 @@ export class SwiftLogger implements Disposable {
         );
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    debug(message: any, label?: string, options?: LogMessageOptions) {
+    debug(message: unknown, label?: string, options?: LogMessageOptions) {
         const normalizedMessage = this.normalizeMessage(message, label);
         this.logWithBuffer("debug", normalizedMessage, options);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    info(message: any, label?: string, options?: LogMessageOptions) {
+    info(message: unknown, label?: string, options?: LogMessageOptions) {
         const normalizedMessage = this.normalizeMessage(message, label);
         this.logWithBuffer("info", normalizedMessage, options);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    warn(message: any, label?: string, options?: LogMessageOptions) {
+    warn(message: unknown, label?: string, options?: LogMessageOptions) {
         const normalizedMessage = this.normalizeMessage(message, label);
         this.logWithBuffer("warn", normalizedMessage, options);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    error(message: any, label?: string, options?: LogMessageOptions) {
+    error(message: unknown, label?: string, options?: LogMessageOptions) {
         if (message instanceof Error) {
             this.logWithBuffer("error", message);
             return;
@@ -117,8 +119,7 @@ export class SwiftLogger implements Disposable {
         this.logWithBuffer("error", normalizedMessage, options);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private logWithBuffer(level: string, message: string | Error, meta?: any) {
+    private logWithBuffer(level: string, message: string | Error, meta?: LogMessageOptions) {
         if (this.isDisposed) {
             return;
         }
@@ -140,8 +141,7 @@ export class SwiftLogger implements Disposable {
         this.rollingLog.clear();
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private normalizeMessage(message: any, label?: string) {
+    private normalizeMessage(message: unknown, label?: string) {
         let fullMessage: string;
         if (typeof message === "string") {
             fullMessage = message;
@@ -149,11 +149,11 @@ export class SwiftLogger implements Disposable {
             try {
                 fullMessage = JSON.stringify(message);
             } catch (e) {
-                fullMessage = `${message}`;
+                fullMessage = String(message);
             }
         }
         if (label !== undefined) {
-            fullMessage = `${label}: ${message}`;
+            fullMessage = `${label}: ${String(message)}`;
         }
         return fullMessage;
     }
@@ -183,4 +183,17 @@ export class SwiftLogger implements Disposable {
         this.rollingLog.clear();
         this.subscriptions.forEach(d => d.dispose());
     }
+}
+
+function formatCauseChain(cause: unknown): string {
+    let result = "Caused by: ";
+    if (cause instanceof Error) {
+        result += cause.stack ?? cause.message;
+        if (cause.cause) {
+            result += `\n${formatCauseChain(cause.cause)}`;
+        }
+    } else {
+        result += `${cause}`;
+    }
+    return result;
 }

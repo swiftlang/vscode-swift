@@ -31,6 +31,7 @@ import {
     assertWithoutDiagnostic,
     diagnosticMatcher,
     executeTaskAndWaitForDiagnostics,
+    waitForDiagnostics,
     waitForDiagnosticsCleared,
 } from "../utilities/diagnostics";
 import { waitForNoRunningTasks, waitForStartTaskProcess } from "../utilities/tasks";
@@ -54,7 +55,8 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
     let cppHeaderUri: vscode.Uri;
 
     activateExtensionForSuite({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             workspaceContext = ctx;
             toolchain = workspaceContext.globalToolchain;
             folderContext = await folderInRootWorkspace("diagnostics", workspaceContext);
@@ -374,17 +376,15 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
 
             test("Parse partial line", async () => {
                 const fixture = testSwiftTask("swift", ["build"], workspaceFolder, toolchain);
-                const startPromise = waitForStartTaskProcess(fixture.task);
                 await vscode.tasks.executeTask(fixture.task);
-                await startPromise;
+                await waitForStartTaskProcess(fixture.task);
                 // Wait to spawn before writing
                 fixture.process.write(`${mainUri.fsPath}:13:5: err`, "");
                 fixture.process.write("or: Cannot find 'fo", "");
                 fixture.process.write("o' in scope");
                 fixture.process.close(1);
                 await waitForNoRunningTasks();
-                // Should have parsed
-                assertHasDiagnostic(mainUri, outputDiagnostic);
+                await waitForDiagnostics({ [mainUri.fsPath]: [outputDiagnostic] });
             });
 
             // https://github.com/apple/swift/issues/73973
@@ -400,10 +400,9 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                 fixture.process.write(output);
                 fixture.process.close(1);
                 await waitForNoRunningTasks();
-                const diagnostics = vscode.languages.getDiagnostics(mainUri);
+                await waitForDiagnostics({ [mainUri.fsPath]: [outputDiagnostic] });
                 // Should only include one
-                assert.equal(diagnostics.length, 1);
-                assertHasDiagnostic(mainUri, outputDiagnostic);
+                expect(vscode.languages.getDiagnostics(mainUri)).to.have.length(1);
             });
 
             test("New set of swiftc diagnostics clear old list", async () => {
@@ -415,21 +414,21 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                 fixture.process.write(`${mainUri.fsPath}:13:5: error: Cannot find 'foo' in scope`);
                 fixture.process.close(1);
                 await waitForNoRunningTasks();
-                let diagnostics = vscode.languages.getDiagnostics(mainUri);
+                await waitForDiagnostics({ [mainUri.fsPath]: [outputDiagnostic] });
                 // Should only include one
-                assert.equal(diagnostics.length, 1);
-                assertHasDiagnostic(mainUri, outputDiagnostic);
+                expect(vscode.languages.getDiagnostics(mainUri)).to.have.length(1);
 
                 // Run again but no diagnostics returned
                 fixture = testSwiftTask("swift", ["build"], workspaceFolder, toolchain);
                 startPromise = waitForStartTaskProcess(fixture.task);
+                const clearPromise = waitForDiagnosticsCleared(mainUri);
                 await vscode.tasks.executeTask(fixture.task);
                 await startPromise;
                 fixture.process.close(0);
                 await waitForNoRunningTasks();
-                diagnostics = vscode.languages.getDiagnostics(mainUri);
+                await clearPromise;
                 // Should have cleaned up
-                assert.equal(diagnostics.length, 0);
+                expect(vscode.languages.getDiagnostics(mainUri)).to.have.length(0);
             });
 
             // https://github.com/apple/swift/issues/73973
@@ -444,9 +443,8 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                 );
                 fixture.process.close(1);
                 await waitForNoRunningTasks();
-                const diagnostics = vscode.languages.getDiagnostics(testUri);
                 // Should be empty
-                assert.equal(diagnostics.length, 0);
+                expect(vscode.languages.getDiagnostics(testUri)).to.have.length(0);
             });
         });
     });

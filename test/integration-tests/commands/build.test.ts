@@ -36,7 +36,8 @@ tag("large").suite("Build Commands", function () {
     ];
 
     activateExtensionForSuite({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             // The description of this package is crashing on Windows with Swift 5.9.x and below
             if (
                 process.platform === "win32" &&

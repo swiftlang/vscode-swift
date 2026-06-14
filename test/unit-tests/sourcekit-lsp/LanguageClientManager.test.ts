@@ -41,6 +41,7 @@ import {
 } from "@src/sourcekit-lsp/extensions/DidChangeActiveDocumentRequest";
 import { BuildFlags } from "@src/toolchain/BuildFlags";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { Disposable } from "@src/utilities/Disposable";
 import { Version } from "@src/utilities/version";
 
 import {
@@ -92,6 +93,9 @@ suite("LanguageClientManager Suite", () => {
         // Mock pieces of the VSCode API
         mockedVSCodeWindow.activeTextEditor = undefined;
         mockedVSCodeWindow.showInformationMessage.resolves();
+        mockedVSCodeWindow.onDidChangeActiveTextEditor.returns(
+            mockObject<Disposable>({ dispose: mockFn() })
+        );
         mockedVSCodeExtensions.getExtension.returns(undefined);
         changeConfigEmitter = new AsyncEventEmitter();
         mockedVSCodeWorkspace.onDidChangeConfiguration.callsFake(changeConfigEmitter.event);
@@ -102,6 +106,9 @@ suite("LanguageClientManager Suite", () => {
         mockedVSCodeWorkspace.getConfiguration
             .withArgs("files")
             .returns({ get: () => ({}) } as any);
+        mockedVSCodeWorkspace.registerTextDocumentContentProvider.returns(
+            mockObject<Disposable>({ dispose: mockFn() })
+        );
         // Mock the WorkspaceContext and SwiftToolchain
         mockedBuildFlags = mockObject<BuildFlags>({
             buildPathFlags: mockFn(s => s.returns([])),
@@ -214,6 +221,7 @@ suite("LanguageClientManager Suite", () => {
             sendNotification: mockFn(s => s.resolves()),
             onNotification: mockFn(s => s.returns({ dispose() {} })),
             onDidChangeState: mockFn(s => s.callsFake(changeStateEmitter.event)),
+            dispose: mockFn(),
         });
         // `new LanguageClient()` will always return the mocked LanguageClient
         languageClientFactoryMock = mockObject<LanguageClientFactory>({
@@ -234,8 +242,8 @@ suite("LanguageClientManager Suite", () => {
         excludeConfig.setValue({});
     });
 
-    teardown(() => {
-        coordinator?.dispose();
+    teardown(async () => {
+        await coordinator?.dispose();
     });
 
     suite("LanguageClientToolchainCoordinator", () => {
@@ -897,8 +905,8 @@ suite("LanguageClientManager Suite", () => {
             mockedWorkspace.globalToolchainSwiftVersion = new Version(6, 1, 0);
         });
 
-        teardown(() => {
-            clientManager?.dispose();
+        teardown(async () => {
+            await clientManager?.dispose();
         });
 
         test("Notifies when the active document changes", async () => {

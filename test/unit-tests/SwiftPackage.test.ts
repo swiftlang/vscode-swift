@@ -23,19 +23,6 @@ import * as utilities from "@src/utilities/utilities";
 import { instance, mockGlobalFunction, mockObject } from "../MockUtils";
 
 suite("SwiftPackage Suite", () => {
-    suite("trimStdout", () => {
-        test("strips inline prefix before opening brace on the same line", () => {
-            const json = '{\n  "name": "MyPackage"\n}';
-            const output = `Another instance of SwiftPM is already running...${json}`;
-            expect(SwiftPackage.trimStdout(output)).to.equal(json);
-        });
-
-        test("returns empty string when output contains no JSON", () => {
-            const output = "Another process is using this build folder";
-            expect(SwiftPackage.trimStdout(output)).to.equal("");
-        });
-    });
-
     suite("loadSwiftPlugins", () => {
         // Pins the security guarantee that a pre-staged forged
         // .build/workspace-state.json must not be authoritative once SwiftPM

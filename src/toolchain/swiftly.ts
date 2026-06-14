@@ -131,6 +131,7 @@ export type SwiftlyProgressData = z.infer<typeof SwiftlyProgressData>;
 interface PostInstallValidationResult {
     isValid: boolean;
     summary: string;
+    scriptContent: string;
     invalidCommands?: string[];
 }
 
@@ -977,6 +978,7 @@ export class Swiftly {
             return {
                 isValid,
                 summary,
+                scriptContent,
                 invalidCommands: invalidCommands.length > 0 ? invalidCommands : undefined,
             };
         } catch (error) {
@@ -984,13 +986,14 @@ export class Swiftly {
             return {
                 isValid: false,
                 summary: "Failed to read post-install script",
+                scriptContent: "",
                 invalidCommands: ["Unable to read script file"],
             };
         }
     }
 
     /**
-     * Shows confirmation dialog to user for executing post-install script
+     * Shows confirmation dialog to user for running the post-install commands.
      *
      * @param version The toolchain version being installed
      * @param validation The validation result
@@ -1002,25 +1005,40 @@ export class Swiftly {
         validation: PostInstallValidationResult,
         logger?: SwiftLogger
     ): Promise<boolean> {
-        const summaryLines = validation.summary.split("\n");
-        const firstTwoLines = summaryLines.slice(0, 2).join("\n");
+        const detail =
+            `Swift ${version} installation requires additional system packages to be installed:\n\n` +
+            `${this.formatCommandsForReview(validation.scriptContent)}\n\n` +
+            `Would you like to install these packages? ` +
+            `You will be prompted for administrator privileges.`;
 
-        const message =
-            `Swift ${version} installation requires additional system packages to be installed. ` +
-            `This will require administrator privileges.\n\n${firstTwoLines}\n\n` +
-            `Do you want to proceed with running the post-install script?`;
-
-        logger?.warn(
-            `User confirmation required to execute post-install script for Swift ${version} installation,
-            this requires ${firstTwoLines} permissions.`
-        );
+        logger?.warn(`User confirmation required to install system packages for Swift ${version}.`);
         const choice = await vscode.window.showWarningMessage(
-            message,
-            { modal: true },
-            "Execute Script"
+            "Install System Packages",
+            { modal: true, detail },
+            "Install"
         );
 
-        return choice === "Execute Script";
+        return choice === "Install";
+    }
+
+    /**
+     * Formats the post-install commands for display in the confirmation
+     * dialog's detail area. Commands are indented for readability and the
+     * list is truncated if it grows too long for the modal.
+     */
+    private static formatCommandsForReview(scriptContent: string): string {
+        const trimmedScriptContent = scriptContent.trim();
+        if (trimmedScriptContent === "") {
+            return "(no commands)";
+        }
+
+        let lines = trimmedScriptContent.split("\n");
+        const maxLines = 10;
+        if (lines.length > maxLines) {
+            lines = lines.slice(0, maxLines - 1);
+            lines.push("… (truncated for display)");
+        }
+        return lines.map(line => `    ${line}`).join("\n");
     }
 
     /**
