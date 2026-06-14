@@ -214,7 +214,7 @@ suite("SwiftTaskProvider Test Suite", () => {
         test("includes additional folders", async () => {
             const tasks = await vscode.tasks.fetchTasks({ type: "swift" });
             const diagnosticTasks = tasks.filter(t => t.name.endsWith("(diagnostics)"));
-            expect(diagnosticTasks).to.have.lengthOf(3);
+            expect(diagnosticTasks).to.have.lengthOf(4);
         });
     });
 
