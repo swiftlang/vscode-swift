@@ -60,6 +60,20 @@ suite("SwiftToolchain Unit Test Suite", () => {
             expect(inv.args).to.deep.equal(["build", "--configuration", "debug"]);
         });
 
+        test("normal toolchain returns the path to the binary when it's not in a bin folder", () => {
+            mockedPlatform.setValue("linux");
+            const tc = new SwiftToolchain(
+                "unknown",
+                "/path/to/custom/toolchain",
+                "/path/to/custom",
+                { compilerVersion: "6.0.0", paths: { runtimeLibraryPaths: [] } },
+                new Version(6, 0, 0)
+            );
+            const inv = tc.getToolchainInvocation("swift", ["build"]);
+            expect(inv.command).to.equalPath("/path/to/custom/toolchain/swift");
+            expect(inv.args).to.deep.equal(["build"]);
+        });
+
         test("xcrun toolchain wraps as xcrun <tool>", () => {
             mockedPlatform.setValue("darwin");
             const tc = createToolchain(
