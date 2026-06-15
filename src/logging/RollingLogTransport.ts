@@ -19,16 +19,11 @@ import TransportStream = require("winston-transport");
 
 export class RollingLogTransport extends TransportStream {
     constructor(private rollingLog: RollingLog) {
-        super();
-        this.level = "debug";
+        super({ level: "debug" });
     }
 
     public log(info: winston.Logform.TransformableInfo, next: () => void): void {
-        if (info.append) {
-            this.rollingLog.append(String(info.message));
-        } else {
-            this.rollingLog.appendLine(String(info.message));
-        }
+        this.rollingLog.appendLine(String(info[Symbol.for("message")]));
         next();
     }
 }

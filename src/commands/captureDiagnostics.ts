@@ -24,6 +24,7 @@ import { FolderContext } from "../FolderContext";
 import { WorkspaceContext } from "../WorkspaceContext";
 import configuration from "../configuration";
 import { DebugAdapter } from "../debugger/debugAdapter";
+import { SwiftLogger } from "../logging/SwiftLogger";
 import { Extension } from "../utilities/extensions";
 import { destructuredPromise, execFileStreamOutput, randomString } from "../utilities/utilities";
 import { Version } from "../utilities/version";
@@ -67,7 +68,7 @@ export async function captureDiagnostics(
             );
         }
 
-        await copyLogFile(diagnosticsDir, extensionLogFile(ctx));
+        await copyLogFolder(diagnosticsDir, ctx.loggerFactory.logFolderUri.fsPath, ctx.logger);
 
         archive.directory(diagnosticsDir, false);
         void archive.finalize();
@@ -101,7 +102,7 @@ async function captureDefaultLldbDapLogs(
             continue;
         }
         archivedLldbDapLogFolders.add(logFolder);
-        await copyLogFolder(ctx, diagnosticsDir, logFolder);
+        await copyLogFolder(diagnosticsDir, logFolder, ctx.logger);
     }
 
     return archivedLldbDapLogFolders;
@@ -132,24 +133,10 @@ async function captureFolderDiagnostics(
         diagnosticLogs()
     );
 
-    await captureSourceKitLogs(folder, outputDir);
-    await captureFolderLldbDapLogs(ctx, folder, outputDir, archivedLldbDapLogFolders);
-}
-
-async function captureSourceKitLogs(folder: FolderContext, outputDir: string): Promise<void> {
     if (folder.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
         await sourcekitDiagnose(folder, outputDir);
-        return;
     }
-
-    if (configuration.lsp.traceServer === "off") {
-        return;
-    }
-
-    const logFile = sourceKitLogFile(folder);
-    if (logFile) {
-        await copyLogFile(outputDir, logFile);
-    }
+    await captureFolderLldbDapLogs(ctx, folder, outputDir, archivedLldbDapLogFolders);
 }
 
 async function captureFolderLldbDapLogs(
@@ -169,7 +156,7 @@ async function captureFolderLldbDapLogs(
     }
 
     archivedLldbDapLogFolders.add(lldbDapLogs);
-    await copyLogFolder(ctx, outputDir, lldbDapLogs);
+    await copyLogFolder(outputDir, lldbDapLogs, ctx.logger);
 }
 
 function configureZipArchiver(zipFilePath: string): {
@@ -285,21 +272,27 @@ async function writeLogFile(dir: string, name: string, logs: string) {
     await fsPromises.writeFile(path.join(dir, name), logs);
 }
 
-async function copyLogFile(dir: string, filePath: string) {
-    await fsPromises.copyFile(filePath, path.join(dir, path.basename(filePath)));
+async function copyLogFile(dir: string, filePath: string, logger: SwiftLogger) {
+    try {
+        await fsPromises.copyFile(filePath, path.join(dir, path.basename(filePath)));
+    } catch (error) {
+        logger.error(
+            Error(`Failed to add "${filePath}" to captured diagnostics`, {
+                cause: error,
+            })
+        );
+    }
 }
 
-async function copyLogFolder(ctx: WorkspaceContext, dir: string, folderPath: string) {
-    try {
-        const lldbLogFiles = await fsPromises.readdir(folderPath);
-        for (const log of lldbLogFiles) {
-            await copyLogFile(dir, path.join(folderPath, log));
-        }
-    } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-            ctx.logger.error(`Failed to read log files from ${folderPath}: ${error}`);
-        }
-    }
+async function copyLogFolder(dir: string, folderPath: string, logger: SwiftLogger) {
+    const logFiles = await fsPromises.readdir(folderPath, { recursive: true, withFileTypes: true });
+    await Promise.all(
+        logFiles
+            .filter(entry => entry.isFile())
+            .map(async ({ name, parentPath }) => {
+                await copyLogFile(dir, path.join(parentPath, name), logger);
+            })
+    );
 }
 
 /**
@@ -309,10 +302,6 @@ async function createDiagnosticsZipDir(): Promise<string> {
     const diagnosticsDir = path.join(tmpdir(), "vscode-diagnostics", formatDateString(new Date()));
     await fsPromises.mkdir(diagnosticsDir, { recursive: true });
     return diagnosticsDir;
-}
-
-function extensionLogFile(ctx: WorkspaceContext): string {
-    return ctx.logger.logFilePath;
 }
 
 function defaultLldbDapLogFolder(ctx: WorkspaceContext): string {
@@ -356,11 +345,6 @@ function diagnosticLogs(): string {
             ([uri, diagnostics]) => `${uri}\n\t${diagnostics.map(diagnosticToString).join("\n\t")}`
         )
         .join("\n");
-}
-
-function sourceKitLogFile(folder: FolderContext) {
-    const languageClient = folder.workspaceContext.languageClientManager.get(folder);
-    return languageClient.languageClientOutputChannel?.logFilePath;
 }
 
 async function sourcekitDiagnose(ctx: FolderContext, dir: string) {

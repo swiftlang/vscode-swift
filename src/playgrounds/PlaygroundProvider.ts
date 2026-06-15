@@ -122,10 +122,9 @@ export class PlaygroundProvider implements Disposable {
             return;
         }
         if (!(await this.lspPlaygroundDiscovery.supportsPlaygrounds())) {
-            this.logger.debug(
-                `Fetching playgrounds not supported by the language server`,
-                this.folderContext.name
-            );
+            this.logger.debug(`Fetching playgrounds not supported by the language server`, {
+                label: this.folderContext.name,
+            });
             return;
         }
         this.fetchPromise = this.lspPlaygroundDiscovery.getWorkspacePlaygrounds();
@@ -140,10 +139,9 @@ export class PlaygroundProvider implements Disposable {
                 );
             }
         } catch (error) {
-            this.logger.error(
-                `Failed to fetch workspace playgrounds: ${error}`,
-                this.folderContext.name
-            );
+            this.logger.error(`Failed to fetch workspace playgrounds: ${error}`, {
+                label: this.folderContext.name,
+            });
         }
         this.fetchPromise = undefined;
     }

@@ -33,7 +33,7 @@ export async function uneditDependency(
         ctx.logger.debug("currentFolder is not set.");
         return false;
     }
-    ctx.logger.debug(`unedit dependency ${identifier}`, currentFolder.name);
+    ctx.logger.debug(`unedit dependency ${identifier}`, { label: currentFolder.name });
     const status = `Reverting edited dependency ${identifier} (${currentFolder.name})`;
     return await ctx.statusItem.showStatusWhileRunning(status, async () => {
         return await uneditFolderDependency(currentFolder, identifier, ctx);
@@ -89,12 +89,12 @@ async function uneditFolderDependency(
             );
 
             if (result === "No") {
-                ctx.logger.error(execError.stderr, folder.name);
+                ctx.logger.error(execError.stderr, { label: folder.name });
                 return false;
             }
             await uneditFolderDependency(folder, identifier, ctx, ["--force"]);
         } else {
-            ctx.logger.error(execError.stderr, folder.name);
+            ctx.logger.error(execError.stderr, { label: folder.name });
             void vscode.window.showErrorMessage(`${execError.stderr}`);
         }
         return false;

@@ -21,7 +21,6 @@ import * as askpass from "@src/askpass/askpass-server";
 import { handleMissingSwiftly, promptForSwiftlyInstallation } from "@src/commands/installSwiftly";
 import { installSwiftlyToolchainWithProgress } from "@src/commands/installSwiftlyToolchain";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
-import * as SwiftOutputChannelModule from "@src/logging/SwiftOutputChannel";
 import {
     Swiftly,
     handleMissingSwiftlyToolchain,
@@ -48,7 +47,6 @@ suite("Swiftly Unit Tests", () => {
     const mockUtilities = mockGlobalModule(utilities);
     const mockedPlatform = mockGlobalValue(process, "platform");
     const mockedEnv = mockGlobalValue(process, "env");
-    const mockSwiftOutputChannelModule = mockGlobalModule(SwiftOutputChannelModule);
     const mockOS = mockGlobalModule(os);
     const mockedFetch = mockGlobalValue(globalThis, "fetch");
 
@@ -56,22 +54,11 @@ suite("Swiftly Unit Tests", () => {
         mockAskpass.withAskpassServer.callsFake(task => task("nonce", 8080));
         mockUtilities.execFile.reset();
         mockUtilities.execFileStreamOutput.reset();
-        mockSwiftOutputChannelModule.SwiftOutputChannel.reset();
         mockOS.tmpdir.reset();
         mockedFetch.setValue(async () => ({}) as Response);
 
         // Mock os.tmpdir() to return a valid temp directory path for Windows compatibility
         mockOS.tmpdir.returns(process.platform === "win32" ? "C:\\temp" : "/tmp");
-
-        // Mock SwiftOutputChannel constructor to return a basic mock
-        mockSwiftOutputChannelModule.SwiftOutputChannel.callsFake(
-            () =>
-                ({
-                    show: () => {},
-                    appendLine: () => {},
-                    append: () => {},
-                }) as any
-        );
 
         mockedPlatform.setValue("darwin");
         mockedEnv.setValue({});

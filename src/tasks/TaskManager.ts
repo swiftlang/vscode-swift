@@ -21,9 +21,9 @@ export class TaskManager implements Disposable {
     constructor(private workspaceContext: WorkspaceContext) {
         this.subscriptions = [
             vscode.tasks.onDidStartTask(event => {
-                workspaceContext.logger.debug(
-                    `[TaskManager] Task started: ${event.execution.task.name}`
-                );
+                workspaceContext.logger.debug(`Task started: ${event.execution.task.name}`, {
+                    label: "TaskManager",
+                });
                 if (this.taskStartObserver) {
                     this.taskStartObserver(event);
                 }
@@ -34,19 +34,20 @@ export class TaskManager implements Disposable {
             }),
             vscode.tasks.onDidStartTaskProcess(event => {
                 workspaceContext.logger.debug(
-                    `[TaskManager] Task process started: ${event.execution.task.name}`
+                    `Task process started: ${event.execution.task.name}`,
+                    { label: "TaskManager" }
                 );
             }),
             vscode.tasks.onDidEndTaskProcess(event => {
-                workspaceContext.logger.debug(
-                    `[TaskManager] Task process ended: ${event.execution.task.name}`
-                );
+                workspaceContext.logger.debug(`Task process ended: ${event.execution.task.name}`, {
+                    label: "TaskManager",
+                });
                 this.taskEndObservers.forEach(observer => observer(event));
             }),
             vscode.tasks.onDidEndTask(event => {
-                workspaceContext.logger.debug(
-                    `[TaskManager] Task ended: ${event.execution.task.name}`
-                );
+                workspaceContext.logger.debug(`Task ended: ${event.execution.task.name}`, {
+                    label: "TaskManager",
+                });
                 this.taskEndObservers.forEach(observer =>
                     observer({ execution: event.execution, exitCode: undefined })
                 );

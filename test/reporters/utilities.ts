@@ -16,10 +16,7 @@
  * Attaches the provided array of log messages to a test so they can be
  * retrieved later by a reporter (e.g. to include in a failure summary).
  */
-export function attachCapturedLogs(test: Mocha.Runnable | undefined, logs: string[]): void {
-    if (!test) {
-        return;
-    }
+export function attachCapturedLogs(test: Mocha.Runnable, logs: string[]): void {
     (test as any).__VSCode_Swift_capturedLogs = [...logs];
 }
 
