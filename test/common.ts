@@ -19,6 +19,7 @@ import * as sourceMapSupport from "source-map-support";
 import * as tsConfigPaths from "tsconfig-paths";
 
 import { chaiPathPlugin } from "./chai-path-plugin";
+import { chaiRegexPlugin } from "./chai-regex-plugin";
 import { installTagSupport } from "./tags";
 
 import chaiAsPromised = require("chai-as-promised");
@@ -55,6 +56,7 @@ tsConfigPaths.register({
 chai.use(sinonChai);
 chai.use(chaiSubset);
 chai.use(chaiPathPlugin);
+chai.use(chaiRegexPlugin);
 // chai-as-promised must always be installed last!
 chai.use(chaiAsPromised);
 
