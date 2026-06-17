@@ -246,10 +246,9 @@ export class TaskQueue implements Disposable {
                 await this.waitWhileDisabled();
                 // log start
                 if (operation.log) {
-                    this.workspaceContext.logger.info(
-                        `${operation.log}: starting ... `,
-                        this.folderContext.name
-                    );
+                    this.workspaceContext.logger.info(`${operation.log}: starting ... `, {
+                        label: this.folderContext.name,
+                    });
                 }
                 const run = operation.showStatusItem
                     ? this.workspaceContext.statusItem.showStatusWhileRunning(
@@ -261,25 +260,22 @@ export class TaskQueue implements Disposable {
                     // log result
                     if (operation.log && !operation.token?.isCancellationRequested) {
                         if (result === 0) {
-                            this.workspaceContext.logger.info(
-                                `${operation.log}: ... done.`,
-                                this.folderContext.name
-                            );
+                            this.workspaceContext.logger.info(`${operation.log}: ... done.`, {
+                                label: this.folderContext.name,
+                            });
                         } else {
-                            this.workspaceContext.logger.error(
-                                `${operation.log}: ... failed.`,
-                                this.folderContext.name
-                            );
+                            this.workspaceContext.logger.error(`${operation.log}: ... failed.`, {
+                                label: this.folderContext.name,
+                            });
                         }
                     }
                     this.finishTask(operation, { success: result as number | undefined });
                 }).catch(error => {
                     // log error
                     if (operation.log) {
-                        this.workspaceContext.logger.error(
-                            `${operation.log}: ${error}`,
-                            this.folderContext.name
-                        );
+                        this.workspaceContext.logger.error(`${operation.log}: ${error}`, {
+                            label: this.folderContext.name,
+                        });
                     }
                     this.finishTask(operation, { fail: error });
                 });

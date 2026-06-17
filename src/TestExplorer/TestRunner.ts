@@ -799,10 +799,9 @@ export class TestRunner {
                 config.name = `Swift Testing (${targetName}): Test ${pkgName}`;
 
                 const configJSON = JSON.stringify(config);
-                this.workspaceContext.logger.debug(
-                    `swift-testing Debug Config: ${configJSON}`,
-                    this.folderContext.name
-                );
+                this.workspaceContext.logger.debug(`swift-testing Debug Config: ${configJSON}`, {
+                    label: this.folderContext.name,
+                });
 
                 configs.push(config);
             }
@@ -832,10 +831,9 @@ export class TestRunner {
                 config.name = `XCTest (${targetName}): Test ${pkgName}`;
 
                 const configJSON = JSON.stringify(config);
-                this.workspaceContext.logger.debug(
-                    `XCTest Debug Config: ${configJSON}`,
-                    this.folderContext.name
-                );
+                this.workspaceContext.logger.debug(`XCTest Debug Config: ${configJSON}`, {
+                    label: this.folderContext.name,
+                });
 
                 configs.push(config);
             }
@@ -872,10 +870,9 @@ export class TestRunner {
 
         // output test build configuration
         const configJSON = JSON.stringify(swiftTestBuildConfig);
-        this.workspaceContext.logger.debug(
-            `swift-testing Debug Config: ${configJSON}`,
-            this.folderContext.name
-        );
+        this.workspaceContext.logger.debug(`swift-testing Debug Config: ${configJSON}`, {
+            label: this.folderContext.name,
+        });
 
         return [swiftTestBuildConfig];
     }
@@ -899,10 +896,9 @@ export class TestRunner {
 
         // output test build configuration
         const configJSON = JSON.stringify(xcTestBuildConfig);
-        this.workspaceContext.logger.debug(
-            `XCTest Debug Config: ${configJSON}`,
-            this.folderContext.name
-        );
+        this.workspaceContext.logger.debug(`XCTest Debug Config: ${configJSON}`, {
+            label: this.folderContext.name,
+        });
 
         return [xcTestBuildConfig];
     }
@@ -947,10 +943,9 @@ export class TestRunner {
                 );
 
                 const cancellation = this.testRun.onCancellationRequested(() => {
-                    this.workspaceContext.logger.debug(
-                        "Test Debugging Cancelled",
-                        this.folderContext.name
-                    );
+                    this.workspaceContext.logger.debug("Test Debugging Cancelled", {
+                        label: this.folderContext.name,
+                    });
                     void vscode.debug.stopDebugging(session).then(resolve);
                 });
                 subscriptions.push(cancellation);
@@ -961,7 +956,9 @@ export class TestRunner {
                 if (e.name !== config.name) {
                     return;
                 }
-                this.workspaceContext.logger.debug("Stop Test Debugging", this.folderContext.name);
+                this.workspaceContext.logger.debug("Stop Test Debugging", {
+                    label: this.folderContext.name,
+                });
                 subscriptions.forEach(sub => sub.dispose());
 
                 void vscode.commands
@@ -978,10 +975,9 @@ export class TestRunner {
                         }
                         this.testRun.testRunStarted();
 
-                        this.workspaceContext.logger.debug(
-                            "Start Test Debugging",
-                            this.folderContext.name
-                        );
+                        this.workspaceContext.logger.debug("Start Test Debugging", {
+                            label: this.folderContext.name,
+                        });
                     } else {
                         subscriptions.forEach(sub => sub.dispose());
                         reject("Debugger not started");

@@ -19,21 +19,20 @@ import { FolderContext } from "./FolderContext";
 import { SwiftExtensionApi } from "./SwiftExtensionApi";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { FolderEvent, FolderOperation, WorkspaceContext } from "./WorkspaceContext";
-import { registerCommands } from "./commands";
+import { Commands, registerCommands } from "./commands";
 import { resolveFolderDependencies } from "./commands/dependencies/resolve";
 import { registerSourceKitSchemaWatcher } from "./commands/generateSourcekitConfiguration";
 import { handleMissingSwiftly } from "./commands/installSwiftly";
-import configuration, {
-    ConfigurationValidationError,
-    handleConfigurationChangeEvent,
-} from "./configuration";
+import configuration, { ConfigurationValidationError } from "./configuration";
 import { registerDebugger } from "./debugger/debugAdapterFactory";
 import { makeDebugConfigurations } from "./debugger/launch";
+import { OutputChannelTransport } from "./logging/OutputChannelTransport";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { SwiftLoggerFactory } from "./logging/SwiftLoggerFactory";
 import { PlaygroundProvider } from "./playgrounds/PlaygroundProvider";
 import { SwiftEnvironmentVariablesManager, SwiftTerminalProfileProvider } from "./terminal";
 import { SelectedXcodeWatcher } from "./toolchain/SelectedXcodeWatcher";
+import { SwiftlyToolchainWatcher } from "./toolchain/SwiftlyToolchainWatcher";
 import { Swiftly } from "./toolchain/swiftly";
 import { SwiftToolchain } from "./toolchain/toolchain";
 import { LanguageStatusItems } from "./ui/LanguageStatusItems";
@@ -75,6 +74,12 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
     private state: State = { type: "uninitialized" };
     private subscriptions: Disposable[] = [];
 
+    private workspaceChangeEmitter = new vscode.EventEmitter<WorkspaceContext>();
+
+    get onDidChangeWorkspaceContext(): vscode.Event<WorkspaceContext> {
+        return this.workspaceChangeEmitter.event;
+    }
+
     get workspaceContext(): WorkspaceContext | undefined {
         if (this.state.type !== "active") {
             return undefined;
@@ -84,6 +89,10 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
 
     contextKeys: ContextKeys;
 
+    outputChannel: vscode.OutputChannel;
+
+    loggerFactory: SwiftLoggerFactory;
+
     logger: SwiftLogger;
 
     constructor(
@@ -92,9 +101,41 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
     ) {
         this.contextKeys = new ContextKeyManager();
         const logSetupStartTime = Date.now();
-        this.logger = configureLogging(this.extensionContext);
+        this.outputChannel = vscode.window.createOutputChannel("Swift");
+        this.loggerFactory = new SwiftLoggerFactory(extensionContext.logUri);
+        this.logger = this.loggerFactory.createLogger("swift-vscode-extension.log", [
+            new OutputChannelTransport(this.outputChannel),
+        ]);
         const logSetupElapsed = Date.now() - logSetupStartTime;
         this.logger.info(`Log setup completed in ${logSetupElapsed}ms`);
+    }
+
+    /**
+     * Handler for configuration change events that triggers a reload of the extension
+     * if the setting changed requires one.
+     *
+     * @param ctx The workspace context.
+     * @returns A disposable that unregisters the provider when disposed.
+     */
+    private handleConfigurationChangeEvent(event: vscode.ConfigurationChangeEvent): void {
+        // Toolchain configuration changes require a reload of the workspace
+        if (
+            (event.affectsConfiguration("swift.path") &&
+                configuration.path !==
+                    this.workspaceContext?.currentFolder?.toolchain.swiftFolderPath) ||
+            event.affectsConfiguration("swift.swiftEnvironmentVariables")
+        ) {
+            this.reloadWorkspaceContext();
+        }
+        // on sdk config change, restart sourcekit-lsp
+        if (
+            event.affectsConfiguration("swift.SDK") ||
+            event.affectsConfiguration("swift.swiftSDK")
+        ) {
+            void vscode.commands.executeCommand(Commands.RESTART_LSP).then(() => {
+                /* Put in worker queue */
+            });
+        }
     }
 
     async waitForWorkspaceContext(): Promise<WorkspaceContext> {
@@ -152,10 +193,17 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
 
             this.subscriptions.push(...registerCommands(this));
             this.subscriptions.push(registerDebugger(this));
-            this.subscriptions.push(new SelectedXcodeWatcher(this.logger));
+
+            this.subscriptions.push(new SelectedXcodeWatcher(this, process.platform));
+            this.subscriptions.push(new SwiftlyToolchainWatcher(this));
 
             // swift module document provider
             this.subscriptions.push(getReadOnlyDocumentProvider());
+
+            // Watch for configuration changes the trigger a reload of the extension if necessary.
+            this.subscriptions.push(
+                vscode.workspace.onDidChangeConfiguration(this.handleConfigurationChangeEvent, this)
+            );
 
             const subscriptionsElapsed = Date.now() - subscriptionsStartTime;
 
@@ -178,6 +226,7 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
                             context: workspaceContext,
                             subscriptions,
                         };
+                        this.workspaceChangeEmitter.fire(workspaceContext);
                         return workspaceContext;
                     })
                     .catch(error => {
@@ -238,6 +287,8 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
         const workspaceContext = new WorkspaceContext(
             this.extensionContext,
             this.contextKeys,
+            this.outputChannel,
+            this.loggerFactory,
             this.logger,
             toolchain
         );
@@ -245,13 +296,6 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
 
         const subscriptionsStartTime = Date.now();
         const subscriptions: Disposable[] = [];
-
-        // Watch for configuration changes the trigger a reload of the extension if necessary.
-        subscriptions.push(
-            vscode.workspace.onDidChangeConfiguration(
-                handleConfigurationChangeEvent(workspaceContext)
-            )
-        );
 
         // Register task provider.
         subscriptions.push(
@@ -284,7 +328,7 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
         // observer for logging workspace folder addition/removal
         subscriptions.push(
             workspaceContext.onDidChangeFolders(({ folder, operation }) => {
-                this.logger.info(`${operation}: ${folder?.folder.fsPath}`, folder?.name);
+                this.logger.info(`${operation}: ${folder?.folder.fsPath}`, { label: folder?.name });
             })
         );
 
@@ -296,6 +340,8 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
         const workspaceFoldersElapsed = Date.now() - workspaceFoldersStartTime;
 
         if (token.isCancellationRequested) {
+            subscriptions.forEach(s => s.dispose());
+            await workspaceContext.dispose();
             throw new vscode.CancellationError();
         }
 
@@ -307,35 +353,78 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
         return { workspaceContext, subscriptions };
     }
 
-    async deactivate(): Promise<void> {
-        this.contextKeys.isActivated = false;
+    reloadWorkspaceContext(): void {
+        if (this.state.type === "uninitialized") {
+            throw new Error("The Swift extension has not been activated yet.");
+        }
         if (this.state.type === "initializing") {
             this.state.cancel();
         }
+        let disposePromise = Promise.resolve();
         if (this.state.type === "active") {
-            await this.state.context.dispose();
             this.state.subscriptions.forEach(s => s.dispose());
+            disposePromise = this.state.context.dispose();
+        }
+        const cancellationSource = new vscode.CancellationTokenSource();
+        const activatedBy = this.state.activatedBy;
+        this.state = {
+            type: "initializing",
+            activatedBy,
+            promise: disposePromise
+                .catch(error =>
+                    this.logger.error(
+                        Error("Failed to dispose of WorkspaceContext before reloading.", {
+                            cause: error,
+                        })
+                    )
+                )
+                .then(() => this.initializeWorkspace(cancellationSource.token))
+                .then(({ workspaceContext, subscriptions }) => {
+                    if (cancellationSource.token.isCancellationRequested) {
+                        throw new vscode.CancellationError();
+                    }
+
+                    this.state = {
+                        type: "active",
+                        activatedBy,
+                        context: workspaceContext,
+                        subscriptions,
+                    };
+                    this.workspaceChangeEmitter.fire(workspaceContext);
+                    return workspaceContext;
+                })
+                .catch(error => {
+                    if (!cancellationSource.token.isCancellationRequested) {
+                        this.state = { type: "failed", activatedBy, error };
+                    }
+                    throw error;
+                }),
+            cancel() {
+                cancellationSource.cancel();
+            },
+        };
+    }
+
+    async deactivate(): Promise<void> {
+        const currentState = this.state;
+        this.state = { type: "uninitialized" };
+        this.contextKeys.isActivated = false;
+        if (currentState.type === "initializing") {
+            currentState.cancel();
+        }
+        if (currentState.type === "active") {
+            await currentState.context.dispose();
+            currentState.subscriptions.forEach(s => s.dispose());
         }
         this.subscriptions.forEach(subscription => subscription.dispose());
         this.subscriptions.length = 0;
-        this.state = { type: "uninitialized" };
     }
 
     dispose(): void {
+        this.outputChannel.dispose();
         this.logger.dispose();
+        this.subscriptions.forEach(s => s.dispose());
     }
-}
-
-function configureLogging(context: vscode.ExtensionContext) {
-    const logger = new SwiftLoggerFactory(context.logUri).create(
-        "Swift",
-        "swift-vscode-extension.log"
-    );
-    // Create log directory asynchronously but don't await it to avoid blocking activation
-    void vscode.workspace.fs
-        .createDirectory(context.logUri)
-        .then(undefined, error => logger.warn(`Failed to create log directory: ${error}`));
-    return logger;
 }
 
 /**

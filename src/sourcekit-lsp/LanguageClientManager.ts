@@ -28,7 +28,6 @@ import { Executable, LanguageClient, ServerOptions } from "vscode-languageclient
 
 import { FolderContext } from "../FolderContext";
 import configuration from "../configuration";
-import { SwiftOutputChannel } from "../logging/SwiftOutputChannel";
 import { ArgumentFilter, BuildFlags } from "../toolchain/BuildFlags";
 import { AsyncDisposable, Disposable } from "../utilities/Disposable";
 import { swiftRuntimeEnv } from "../utilities/utilities";
@@ -233,8 +232,8 @@ export class LanguageClientManager implements AsyncDisposable {
         await this.setLanguageClientFolder(this.folderContext, true);
     }
 
-    get languageClientOutputChannel(): SwiftOutputChannel | undefined {
-        return this.languageClient?.outputChannel as SwiftOutputChannel | undefined;
+    get languageClientOutputChannel(): vscode.OutputChannel | undefined {
+        return this.languageClient?.outputChannel;
     }
 
     async addFolder(folderContext: FolderContext) {
@@ -481,8 +480,8 @@ export class LanguageClientManager implements AsyncDisposable {
                     folderContext => document.uri.fsPath.startsWith(folderContext.folder.fsPath)
                 );
                 if (!documentFolderContext) {
-                    this.languageClientOutputChannel?.warn(
-                        "Unable to find folder for document: " + document.uri.fsPath
+                    this.languageClientOutputChannel?.appendLine(
+                        "[warn] Unable to find folder for document: " + document.uri.fsPath
                     );
                     return;
                 }
@@ -493,8 +492,8 @@ export class LanguageClientManager implements AsyncDisposable {
                     folderContext => document.uri.fsPath.startsWith(folderContext.folder.fsPath)
                 );
                 if (!documentFolderContext) {
-                    this.languageClientOutputChannel?.warn(
-                        "Unable to find folder for document: " + document.uri.fsPath
+                    this.languageClientOutputChannel?.appendLine(
+                        "[warn] Unable to find folder for document: " + document.uri.fsPath
                     );
                     return;
                 }
