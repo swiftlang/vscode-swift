@@ -55,10 +55,10 @@ export class SwiftLoggerFactory {
      *
      * @param name Display name of the output channel.
      * @param logFileName Relative path of the log file within the log directory.
-     * @returns A {@link vscode.OutputChannel} backed by a log file.
+     * @returns A {@link vscode.LogOutputChannel} backed by a log file.
      * @throws If {@link logFileName} is an absolute path.
      */
-    createOutputChannel(name: string, logFileName: string): vscode.OutputChannel {
+    createOutputChannel(name: string, logFileName: string): vscode.LogOutputChannel {
         if (path.isAbsolute(logFileName)) {
             throw Error(`Log file must be a relative path: "${logFileName}"`);
         }

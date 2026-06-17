@@ -174,7 +174,7 @@ suite("LanguageClientManager Suite", () => {
             code2ProtocolConverter: instance(mockedConverter),
             clientOptions: {},
             outputChannel: instance(
-                mockObject<vscode.OutputChannel>({
+                mockObject<vscode.LogOutputChannel>({
                     dispose: mockFn(),
                     appendLine: mockFn(),
                 })

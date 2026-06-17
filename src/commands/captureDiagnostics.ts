@@ -181,7 +181,7 @@ function configureZipArchiver(zipFilePath: string): {
 } {
     const output = fs.createWriteStream(zipFilePath);
     // Create an archive with max compression
-    const archive = archiver.create("zip", {
+    const archive = new archiver.ZipArchive({
         zlib: { level: 9 },
     });
     const { promise, resolve, reject } = destructuredPromise<void>();
@@ -189,7 +189,7 @@ function configureZipArchiver(zipFilePath: string): {
         archive.removeListener("error", reject);
         resolve();
     });
-    archive.once("error", err => {
+    archive.once("error", (err: archiver.ArchiverError) => {
         output.removeListener("close", resolve);
         reject(err);
     });

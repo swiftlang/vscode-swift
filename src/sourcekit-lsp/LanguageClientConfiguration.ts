@@ -13,12 +13,7 @@
 //===----------------------------------------------------------------------===//
 import * as path from "path";
 import * as vscode from "vscode";
-import {
-    DocumentSelector,
-    LanguageClientOptions,
-    RevealOutputChannelOn,
-    vsdiag,
-} from "vscode-languageclient";
+import { LanguageClientOptions, RevealOutputChannelOn, vsdiag } from "vscode-languageclient";
 
 import { DiagnosticsManager } from "../DiagnosticsManager";
 import { WorkspaceContext } from "../WorkspaceContext";
@@ -136,7 +131,7 @@ export class LanguagerClientDocumentSelectors {
         { scheme: "file", language: "plaintext", pattern: "**/.swift-version" },
     ];
 
-    static sourcekitLSPDocumentTypes(): DocumentSelector {
+    static sourcekitLSPDocumentTypes(): SourceKitDocumentSelector {
         let documentSelector: SourceKitDocumentSelector;
         switch (configuration.lsp.supportCFamily) {
             case "enable":
@@ -169,7 +164,7 @@ export class LanguagerClientDocumentSelectors {
         return documentSelector;
     }
 
-    static allHandledDocumentTypes(): DocumentSelector {
+    static allHandledDocumentTypes(): SourceKitDocumentSelector {
         return [
             ...this.sourcekitLSPDocumentTypes(),
             ...LanguagerClientDocumentSelectors.miscelaneousDocumentSelector,
