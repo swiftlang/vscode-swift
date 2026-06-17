@@ -144,6 +144,7 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
         folder?: vscode.Uri
     ): Promise<SwiftToolchain> {
         const swiftBinaryPath = await this.findSwiftBinaryInPath();
+        const swiftFolderPath = path.dirname(swiftBinaryPath);
         const { toolchainPath, toolchainManager } = await this.getToolchainPath(
             swiftBinaryPath,
             extensionRoot,
@@ -151,7 +152,7 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
             folder
         );
         const targetInfo = await this.getSwiftTargetInfo(
-            this._getToolchainExecutable(toolchainPath, "swift"),
+            this._getToolchainExecutable(swiftFolderPath, "swift"),
             logger
         );
         const swiftVersion = this.getSwiftVersion(targetInfo);
@@ -181,7 +182,7 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
 
         return new SwiftToolchain(
             toolchainManager,
-            path.dirname(swiftBinaryPath),
+            swiftFolderPath,
             toolchainPath,
             targetInfo,
             swiftVersion,
@@ -392,7 +393,7 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
      * {@link getToolchainInvocation} instead.
      */
     public getToolchainExecutablePath(executable: string): string {
-        return SwiftToolchain._getToolchainExecutable(this.toolchainPath, executable);
+        return SwiftToolchain._getToolchainExecutable(this.swiftFolderPath, executable);
     }
 
     /**
@@ -447,10 +448,10 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
         }
     }
 
-    private static _getToolchainExecutable(toolchainPath: string, executable: string): string {
+    private static _getToolchainExecutable(swiftFolderPath: string, executable: string): string {
         // should we add `.exe` at the end of the executable name
         const executableSuffix = process.platform === "win32" ? ".exe" : "";
-        return path.join(toolchainPath, "bin", executable + executableSuffix);
+        return path.join(swiftFolderPath, executable + executableSuffix);
     }
 
     /**
