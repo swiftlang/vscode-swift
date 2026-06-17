@@ -30,6 +30,7 @@ import {
     getBuildAllTask,
     platformDebugBuildOptions,
 } from "@src/tasks/SwiftTaskProvider";
+import { TaskQueue } from "@src/tasks/TaskQueue";
 import { BuildFlags } from "@src/toolchain/BuildFlags";
 import { Sanitizer } from "@src/toolchain/Sanitizer";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
@@ -790,14 +791,16 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
         const factoryMock = mockGlobalModule(BuildConfigurationFactory);
 
         test("includes Clean Build task for each folder with a package", async () => {
-            (factoryMock as any).buildAll.resolves({ args: ["build"] });
+            factoryMock.buildAll.resolves(
+                mockObject<vscode.DebugConfiguration>({ args: ["build"] })
+            );
 
             const folderContext = mockObject<FolderContext>({
                 workspaceContext: instance(workspaceContext),
                 workspaceFolder,
                 folder: workspaceFolder.uri,
                 toolchain: instance(toolchain),
-                taskQueue: { activeOperation: undefined } as any,
+                taskQueue: instance(mockObject<TaskQueue>({ activeOperation: undefined })),
                 relativePath: "",
                 swiftPackage: instance(
                     mockObject<SwiftPackage>({
@@ -807,7 +810,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                     })
                 ),
             });
-            (workspaceContext as any).folders = [instance(folderContext)];
+            workspaceContext.folders = [instance(folderContext)];
 
             const taskProvider = new SwiftTaskProvider(instance(workspaceContext));
             const tasks = await taskProvider.provideTasks(
@@ -826,14 +829,16 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
         });
 
         test("does not include Clean Build task when no package is found", async () => {
-            (factoryMock as any).buildAll.resolves({ args: ["build"] });
+            factoryMock.buildAll.resolves(
+                mockObject<vscode.DebugConfiguration>({ args: ["build"] })
+            );
 
             const folderContext = mockObject<FolderContext>({
                 workspaceContext: instance(workspaceContext),
                 workspaceFolder,
                 folder: workspaceFolder.uri,
                 toolchain: instance(toolchain),
-                taskQueue: { activeOperation: undefined } as any,
+                taskQueue: instance(mockObject<TaskQueue>({ activeOperation: undefined })),
                 relativePath: "",
                 swiftPackage: instance(
                     mockObject<SwiftPackage>({
@@ -843,7 +848,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                     })
                 ),
             });
-            (workspaceContext as any).folders = [instance(folderContext)];
+            workspaceContext.folders = [instance(folderContext)];
 
             const taskProvider = new SwiftTaskProvider(instance(workspaceContext));
             const tasks = await taskProvider.provideTasks(

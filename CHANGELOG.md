@@ -2,6 +2,10 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+### Added
+
+- Add **Clean Build Folder** automatically generated task to remove all build artifacts ([#2280](https://github.com/swiftlang/vscode-swift/pull/2280))
+
 ### Fixed
 
 - Loading large projects will no longer show the extension as unresponsive ([#1932](https://github.com/swiftlang/vscode-swift/pull/1932))

@@ -7,7 +7,7 @@ For workspaces that contain a `Package.swift` file, the Swift extension adds the
 - **Build All**: Build all targets in the Package.
 - **Build Debug \<Executable\>**: Each executable product in a Package.swift get a task for building a debug build.
 - **Build Release \<Executable\>**: Each executable product in a Package.swift get a task for building a release build.
-- **Clean Build**: Runs `swift package clean` to remove all build artifacts.
+- **Clean Build Folder**: Runs `swift package clean` to remove all build artifacts.
 
 > 💡 Tip: Tasks use workflows common to all VS Code extensions. For more information see [the VS Code documentation for tasks](https://code.visualstudio.com/docs/editor/tasks).
 
@@ -31,7 +31,7 @@ Automatic tasks can be composed into a single workflow using the `dependsOn` pro
     "tasks": [
         {
             "label": "Clean Rebuild",
-            "dependsOn": ["Clean Build", "Build All"],
+            "dependsOn": ["Clean Build Folder", "Build All"],
             "dependsOrder": "sequence",
             "group": {"kind": "build", "isDefault": true},
             "problemMatcher": []
@@ -50,7 +50,7 @@ The same approach works for debug configurations via `preLaunchTask` in `launch.
             "request": "launch",
             "name": "Launch MyApp",
             "target": "MyApp",
-            "preLaunchTask": "Clean Build"
+            "preLaunchTask": "Clean Build Folder"
         }
     ]
 }

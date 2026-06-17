@@ -370,7 +370,7 @@ export function createSwiftTask(
  */
 export class SwiftTaskProvider implements vscode.TaskProvider {
     static readonly buildAllName = "Build All";
-    static readonly cleanBuildName = "Clean Build";
+    static readonly cleanBuildName = "Clean Build Folder";
     static readonly resolvePackageName = "Resolve Package Dependencies";
     static readonly updatePackageName = "Update Package Dependencies";
     static readonly showDependenciesName = "List Package Dependencies";
@@ -382,7 +382,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
      * Provides tasks to run the following commands:
      *
      * - `swift build`
-     * - `swift package clean` (Clean Build Folder)
+     * - `swift package clean`
      * - `swift package resolve`
      * - `swift package update`
      */
