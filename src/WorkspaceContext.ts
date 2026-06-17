@@ -333,7 +333,10 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
             } catch (error) {
                 // Make sure one observer does not stop all others from being called
                 this.logger.error(
-                    `Folder operation "${operation}" event observer failed for ${folder?.folder.fsPath}: ${error}`
+                    Error(
+                        `Folder operation "${operation}" event observer failed for ${folder?.folder.fsPath}`,
+                        { cause: error }
+                    )
                 );
             }
         }

@@ -479,3 +479,10 @@ export function destructuredPromise<T>(): {
     });
     return { promise: p, resolve: resolve!, reject: reject! };
 }
+
+export function capitalizeFirstLetter(str: string): string {
+    if (str.length === 0) {
+        return str;
+    }
+    return str.charAt(0).toLocaleUpperCase() + str.slice(1);
+}
