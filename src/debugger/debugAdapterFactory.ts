@@ -22,6 +22,7 @@ import { Disposable } from "../utilities/Disposable";
 import { fileExists } from "../utilities/filesystem";
 import { findBinaryInPath } from "../utilities/shell";
 import { getErrorDescription, swiftRuntimeEnv } from "../utilities/utilities";
+import { registerBreakpointVerificationTracker } from "./breakpointVerificationTracker";
 import { DebugAdapter, LaunchConfigType, SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
 import { getTargetBinaryPath, swiftPrelaunchBuildTaskArguments } from "./launch";
 import { getLLDBLibPath, updateLaunchConfigForCI } from "./lldb";
@@ -50,6 +51,7 @@ export function registerDebugger(api: InternalSwiftExtensionApi): Disposable {
 
     function register() {
         subscriptions.push(registerLoggingDebugAdapterTracker(api));
+        subscriptions.push(registerBreakpointVerificationTracker());
         subscriptions.push(registerLLDBDebugAdapter(api));
     }
 

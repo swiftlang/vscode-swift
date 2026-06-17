@@ -17,21 +17,12 @@ import type * as winston from "winston";
 import TransportStream = require("winston-transport");
 
 export class OutputChannelTransport extends TransportStream {
-    private appending: boolean = false;
-
     constructor(private readonly ouptutChannel: vscode.OutputChannel) {
         super();
     }
 
     public log(info: winston.Logform.TransformableInfo, next: () => void): void {
-        const logMessage = String(this.appending ? info.message : info[Symbol.for("message")]);
-        if (info.append) {
-            this.ouptutChannel.append(logMessage);
-            this.appending = true;
-        } else {
-            this.ouptutChannel.appendLine(logMessage);
-            this.appending = false;
-        }
+        this.ouptutChannel.appendLine(String(info[Symbol.for("message")]));
         next();
     }
 }

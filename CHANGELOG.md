@@ -2,11 +2,18 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+### Added
+
+- Toolchain changes will now automatically reload the workspace ([#2196](https://github.com/swiftlang/vscode-swift/pull/2196))
+
 ### Fixed
 
 - Loading large projects will no longer show the extension as unresponsive ([#1932](https://github.com/swiftlang/vscode-swift/pull/1932))
 - Reveal the task terminal when clicking the Swift build status item instead of showing a popup ([#2254](https://github.com/swiftlang/vscode-swift/pull/2254))
 - Update sourcekit-lsp schema logic for new branch structure ([#2270](https://github.com/swiftlang/vscode-swift/pull/2270))
+- Work around an issue in older lldb-dap binaries where breakpoints would show up as unresolved even when they were hit ([#2283](https://github.com/swiftlang/vscode-swift/pull/2283))
+- Capturing a diagnostics bundle will no longer fail if the extension fails to activate ([#2273](https://github.com/swiftlang/vscode-swift/pull/2273))
+- Stop assuming that `swift.path` will point at a directory named `bin` ([#2288](https://github.com/swiftlang/vscode-swift/pull/2288))
 
 ## 2.16.6 - 2026-06-04
 

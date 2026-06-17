@@ -2,7 +2,7 @@
 //
 // This source file is part of the VS Code Swift open source project
 //
-// Copyright (c) 2025 the VS Code Swift project authors
+// Copyright (c) 2025-2026 the VS Code Swift project authors
 // Licensed under Apache License v2.0
 //
 // See LICENSE.txt for license information
@@ -11,44 +11,67 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import { join } from "path";
+import * as fs from "fs/promises";
+import * as path from "path";
 import * as vscode from "vscode";
+import * as winston from "winston";
 
-import { TemporaryFolder } from "../utilities/tempFolder";
+import { FileTransport } from "./FileTransport";
+import { LoggedOutputChannel } from "./LoggedOutputChannel";
 import { SwiftLogger } from "./SwiftLogger";
-import { SwiftOutputChannel } from "./SwiftOutputChannel";
 
+/**
+ * Factory for creating {@link SwiftLogger} instances and output channels that write
+ * to log files within the shared extension log directory.
+ */
 export class SwiftLoggerFactory {
-    constructor(public readonly logFolderUri: vscode.Uri) {}
+    private _logFolderPath: Promise<string>;
 
-    create(name: string, logFilename: string): SwiftLogger;
-    create(
-        name: string,
-        logFilename: string,
-        options: { outputChannel: true; logConsole?: boolean }
-    ): SwiftOutputChannel;
-    create(
-        name: string,
-        logFilename: string,
-        options: { outputChannel: boolean; logConsole?: boolean } = { outputChannel: false }
-    ): SwiftLogger {
-        const logPath = this.logFilePath(logFilename);
-        const logOptions = { logConsole: options.logConsole };
-
-        return options?.outputChannel
-            ? new SwiftOutputChannel(name, logPath, undefined, logOptions)
-            : new SwiftLogger(name, logPath, undefined, logOptions);
+    /**
+     * @param logFolderUri URI of the directory where log files will be written.
+     * The directory is created if it does not already exist.
+     */
+    constructor(public readonly logFolderUri: vscode.Uri) {
+        this._logFolderPath = this.ensureLogFolderExists(logFolderUri);
     }
 
     /**
-     * This is mainly only intended for testing purposes
+     * Creates a new {@link SwiftLogger} that writes to the given log file.
+     *
+     * @param logFileName Relative path of the log file within the log directory.
+     * @param transports Additional Winston transports to attach to the logger.
+     * @returns A configured {@link SwiftLogger} instance.
+     * @throws If {@link logFileName} is an absolute path.
      */
-    async temp(name: string): Promise<SwiftLogger> {
-        const folder = await TemporaryFolder.create();
-        return new SwiftLogger(name, join(folder.path, `${name}.log`));
+    createLogger(logFileName: string, transports: winston.transport[] = []): SwiftLogger {
+        if (path.isAbsolute(logFileName)) {
+            throw Error(`Log file must be a relative path: "${logFileName}"`);
+        }
+        return new SwiftLogger([new FileTransport(this.logFilePath(logFileName)), ...transports]);
     }
 
-    private logFilePath(logFilename: string): string {
-        return join(this.logFolderUri.fsPath, logFilename);
+    /**
+     * Creates a VS Code output channel that mirrors its output to a log file.
+     *
+     * @param name Display name of the output channel.
+     * @param logFileName Relative path of the log file within the log directory.
+     * @returns A {@link vscode.OutputChannel} backed by a log file.
+     * @throws If {@link logFileName} is an absolute path.
+     */
+    createOutputChannel(name: string, logFileName: string): vscode.OutputChannel {
+        if (path.isAbsolute(logFileName)) {
+            throw Error(`Log file must be a relative path: "${logFileName}"`);
+        }
+        return new LoggedOutputChannel(name, this.logFilePath(logFileName));
+    }
+
+    private async ensureLogFolderExists(logFolderUri: vscode.Uri): Promise<string> {
+        await fs.mkdir(logFolderUri.fsPath, { recursive: true });
+        return logFolderUri.fsPath;
+    }
+
+    private async logFilePath(logFilename: string): Promise<string> {
+        const logFolderPath = await this._logFolderPath;
+        return path.join(logFolderPath, logFilename);
     }
 }
