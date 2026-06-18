@@ -32,6 +32,7 @@ import { CommentCompletionProviders } from "./editor/CommentCompletion";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { SwiftLoggerFactory } from "./logging/SwiftLoggerFactory";
 import { LanguageClientToolchainCoordinator } from "./sourcekit-lsp/LanguageClientToolchainCoordinator";
+import { SourceKitLanguageClient } from "./sourcekit-lsp/client/SourceKitLanguageClient";
 import { SwiftPluginTaskProvider } from "./tasks/SwiftPluginTaskProvider";
 import { SwiftTaskProvider } from "./tasks/SwiftTaskProvider";
 import { TaskManager } from "./tasks/TaskManager";
@@ -106,11 +107,15 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
         this.statusItem = new StatusItem();
         this.buildStatus = new SwiftBuildStatus(this.statusItem);
         this.languageClientManager = new LanguageClientToolchainCoordinator(this, {
-            onDocumentSymbols: (folder, document, symbols) => {
-                folder.onDocumentSymbols(document, symbols);
-            },
-            onDocumentCodeLens: (folder, document, codelens) => {
-                folder.onDocumentCodeLens(document, codelens);
+            createLanguageClient(toolchain, workspaceContext) {
+                return new SourceKitLanguageClient(toolchain, workspaceContext, {
+                    onDocumentSymbols: (folder, document, symbols) => {
+                        folder.onDocumentSymbols(document, symbols);
+                    },
+                    onDocumentCodeLens: (folder, document, codelens) => {
+                        folder.onDocumentCodeLens(document, codelens);
+                    },
+                });
             },
         });
         this.tasks = new TaskManager(this);

@@ -16,7 +16,6 @@ import { beforeEach } from "mocha";
 import * as vscode from "vscode";
 import * as p2c from "vscode-languageclient/lib/common/protocolConverter";
 import {
-    LanguageClient,
     Location,
     MessageSignature,
     Position,
@@ -28,7 +27,7 @@ import {
 import { SwiftPackage, Target, TargetType } from "@src/SwiftPackage";
 import { LSPTestDiscovery } from "@src/TestExplorer/LSPTestDiscovery";
 import { TestClass } from "@src/TestExplorer/TestDiscovery";
-import { LanguageClientManager } from "@src/sourcekit-lsp/LanguageClientManager";
+import { SourceKitLanguageClient } from "@src/sourcekit-lsp/client/SourceKitLanguageClient";
 import {
     LSPTestItem,
     TextDocumentTestsRequest,
@@ -40,19 +39,8 @@ import { instance, mockFn, mockObject } from "../../MockUtils";
 class TestLanguageClient {
     private responses = new Map<string, unknown>();
     private responseVersions = new Map<string, number>();
-    private client = mockObject<LanguageClient>({
-        initializeResult: {
-            capabilities: {
-                experimental: {
-                    "textDocument/tests": {
-                        version: this.responseVersions.get("textDocument/tests") ?? 999,
-                    },
-                    "workspace/tests": {
-                        version: this.responseVersions.get("workspace/tests") ?? 999,
-                    },
-                },
-            },
-        },
+    private client = mockObject<SourceKitLanguageClient>({
+        checkExperimentalCapability: mockFn(s => s.returns(true)),
         protocol2CodeConverter: p2c.createConverter(undefined, true, true),
         sendRequest: mockFn(s =>
             s.callsFake((type: MessageSignature): Promise<unknown> => {
@@ -62,9 +50,10 @@ class TestLanguageClient {
                     : Promise.reject("Method not implemented");
             })
         ),
+        useLanguageClient: mockFn(s => s.callsFake(fn => fn(instance(this.client)))),
     });
 
-    public get languageClient(): LanguageClient {
+    public get languageClient(): SourceKitLanguageClient {
         return instance(this.client);
     }
 
@@ -86,27 +75,14 @@ suite("LSPTestDiscovery Suite", () => {
     const file = vscode.Uri.file("/some/file.swift");
 
     beforeEach(async function () {
-        this.timeout(10000000);
+        this.timeout(60000);
         pkg = await SwiftPackage.create(file);
 
         // Provde an undefined target as a mock to avoid loading actual package info.
         pkg.getTarget = () => Promise.resolve(undefined);
 
         client = new TestLanguageClient();
-        discoverer = new LSPTestDiscovery(
-            instance(
-                mockObject<LanguageClientManager>({
-                    useLanguageClient: mockFn(s =>
-                        s.callsFake(process => {
-                            return process(
-                                client.languageClient,
-                                new vscode.CancellationTokenSource().token
-                            );
-                        })
-                    ),
-                })
-            )
-        );
+        discoverer = new LSPTestDiscovery(client.languageClient);
     });
 
     suite("Empty responses", () => {

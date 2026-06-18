@@ -17,13 +17,13 @@ import * as langclient from "vscode-languageclient/node";
 
 import { FolderContext } from "@src/FolderContext";
 import { WorkspaceContext } from "@src/WorkspaceContext";
-import { LanguageClientManager } from "@src/sourcekit-lsp/LanguageClientManager";
+import { SourceKitLanguageClient } from "@src/sourcekit-lsp/client/SourceKitLanguageClient";
 import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
 
 import { testAssetUri } from "../../fixtures";
 import { tag } from "../../tags";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
-import { waitForClientState } from "../utilities/lsputilities";
+import { waitForClientState, waitForIndex } from "../utilities/lsputilities";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 
 async function buildProject(ctx: WorkspaceContext, name: string) {
@@ -37,7 +37,7 @@ async function buildProject(ctx: WorkspaceContext, name: string) {
 }
 
 tag("large").suite("Language Client Integration Suite", function () {
-    let clientManager: LanguageClientManager;
+    let languageClient: SourceKitLanguageClient;
     let folderContext: FolderContext;
 
     activateExtensionForSuite({
@@ -45,20 +45,77 @@ tag("large").suite("Language Client Integration Suite", function () {
             const ctx = await api.waitForWorkspaceContext();
             if (process.platform === "win32") {
                 this.skip();
-                return;
             }
             folderContext = await buildProject(ctx, "defaultPackage");
-
-            // Ensure lsp client is ready
-            clientManager = ctx.languageClientManager.get(folderContext);
-            await clientManager.restart();
-            await waitForClientState(clientManager, langclient.State.Running);
-            await clientManager.waitForIndex();
+            languageClient = ctx.languageClientManager.getClient(folderContext);
+            await waitForClientState(languageClient, langclient.State.Running);
+            await waitForIndex(languageClient);
         },
     });
 
-    setup(async () => {
-        await clientManager.waitForIndex();
+    suite("CodeLens", () => {
+        test("adds VS Code iconography to Run and Debug CodeLenses", async () => {
+            const uri = testAssetUri("defaultPackage/Tests/PackageTests/PackageTests.swift");
+            const editor = await vscode.window.showTextDocument(uri);
+
+            const codeLenses = await vscode.commands.executeCommand<vscode.CodeLens[]>(
+                "vscode.executeCodeLensProvider",
+                editor.document.uri
+            );
+
+            const runLens = codeLenses?.find(cl => cl.command?.command === "swift.run");
+            const debugLens = codeLenses?.find(cl => cl.command?.command === "swift.debug");
+
+            if (runLens) {
+                expect(runLens.command!.title).to.match(/^\$\(play\)/);
+            }
+            if (debugLens) {
+                expect(debugLens.command!.title).to.match(/^\$\(debug\)/);
+            }
+        });
+    });
+
+    suite("Completions", () => {
+        test("adds parameter hints command to function completions", async () => {
+            const uri = testAssetUri("defaultPackage/Sources/PackageExe/main.swift");
+            const editor = await vscode.window.showTextDocument(uri);
+
+            const completions = await vscode.commands.executeCommand<vscode.CompletionList>(
+                "vscode.executeCompletionItemProvider",
+                editor.document.uri,
+                new vscode.Position(2, 5)
+            );
+
+            const functionItems = completions.items.filter(
+                item =>
+                    item.kind === vscode.CompletionItemKind.Function ||
+                    item.kind === vscode.CompletionItemKind.Method
+            );
+
+            expect(functionItems).to.have.length.greaterThan(0);
+            for (const item of functionItems) {
+                expect(item.command?.command).to.equal("editor.action.triggerParameterHints");
+            }
+        });
+
+        test("does not add parameter hints to property completions", async () => {
+            const uri = testAssetUri("defaultPackage/Sources/PackageExe/main.swift");
+            const editor = await vscode.window.showTextDocument(uri);
+
+            const completions = await vscode.commands.executeCommand<vscode.CompletionList>(
+                "vscode.executeCompletionItemProvider",
+                editor.document.uri,
+                new vscode.Position(2, 0)
+            );
+
+            const propertyItems = completions.items.filter(
+                item => item.kind === vscode.CompletionItemKind.Property
+            );
+
+            for (const item of propertyItems) {
+                expect(item.command?.command).to.not.equal("editor.action.triggerParameterHints");
+            }
+        });
     });
 
     suite("Symbols", () => {

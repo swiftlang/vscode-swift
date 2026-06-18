@@ -20,6 +20,7 @@ import { TestRunProxy } from "@src/TestExplorer/TestRunProxy";
 import { reduceTestItemChildren } from "@src/TestExplorer/TestUtils";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
+import { Disposable } from "@src/utilities/Disposable";
 
 import stripAnsi = require("strip-ansi");
 
@@ -170,9 +171,10 @@ export function syncPromise(callback: () => void): Promise<void> {
 }
 
 export function eventPromise<T>(event: vscode.Event<T>): Promise<T> {
-    return new Promise(resolve => {
-        event(t => resolve(t));
-    });
+    const subscriptions: Disposable[] = [];
+    return new Promise<T>(resolve => {
+        subscriptions.push(event(resolve));
+    }).finally(() => subscriptions.forEach(s => s.dispose()));
 }
 
 /**

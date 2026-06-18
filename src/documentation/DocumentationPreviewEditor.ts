@@ -17,7 +17,7 @@ import * as vscode from "vscode";
 import { LSPErrorCodes, ResponseError } from "vscode-languageclient";
 
 import { WorkspaceContext } from "../WorkspaceContext";
-import { DocCDocumentationRequest, DocCDocumentationResponse } from "../sourcekit-lsp/extensions";
+import { DocCDocumentationRequest } from "../sourcekit-lsp/extensions";
 import { Disposable } from "../utilities/Disposable";
 import { RenderNode, WebviewContent, WebviewMessage } from "./webview/WebviewMessage";
 
@@ -217,18 +217,16 @@ export class DocumentationPreviewEditor implements Disposable {
                 return;
             }
 
-            const languageClientManager = this.context.languageClientManager.get(folderContext);
             try {
-                const response = await languageClientManager.useLanguageClient(
-                    async (client): Promise<DocCDocumentationResponse> => {
-                        return await client.sendRequest(DocCDocumentationRequest.type, {
-                            textDocument: {
-                                uri: document.uri.toString(),
-                            },
-                            position: textEditor.selection.start,
-                        });
-                    }
-                );
+                const client = this.context.languageClientManager.getClient(folderContext);
+                const response = await client.useLanguageClient(async client => {
+                    return await client.sendRequest(DocCDocumentationRequest.type, {
+                        textDocument: {
+                            uri: document.uri.toString(),
+                        },
+                        position: textEditor.selection.start,
+                    });
+                });
                 this.postMessage({
                     type: "update-content",
                     content: {

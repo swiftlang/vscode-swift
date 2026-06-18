@@ -21,6 +21,11 @@ import configuration from "../configuration";
 
 export const validFileTypes = ["swift", "c", "cpp", "h", "hpp", "m", "mm"];
 
+export function isPathInDirectory(targetPath: string, parentDir: string) {
+    const relative = path.relative(parentDir, targetPath);
+    return !!relative && !relative.startsWith("..") && !path.isAbsolute(relative);
+}
+
 /**
  * Checks if a file, directory or symlink exists at the supplied path.
  * @param pathComponents The path to check for existence

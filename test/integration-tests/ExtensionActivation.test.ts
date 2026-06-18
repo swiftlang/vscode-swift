@@ -117,10 +117,8 @@ tag("medium").suite("Extension Activation/Deactivation Tests", () => {
             const folder = workspaceContext.folders[0];
             assert(folder);
 
-            const languageClient = workspaceContext.languageClientManager.get(folder);
-            const lspWorkspaces = languageClient.subFolderWorkspaces.map(
-                ({ folder }) => folder.fsPath
-            );
+            const languageClient = workspaceContext.languageClientManager.getClient(folder);
+            const lspWorkspaces = languageClient.addedFolders.map(({ folder }) => folder.fsPath);
             assertContains(lspWorkspaces, testAssetUri("cmake").fsPath);
         });
 
@@ -128,10 +126,8 @@ tag("medium").suite("Extension Activation/Deactivation Tests", () => {
             const folder = workspaceContext.folders[0];
             assert(folder);
 
-            const languageClient = workspaceContext.languageClientManager.get(folder);
-            const lspWorkspaces = languageClient.subFolderWorkspaces.map(
-                ({ folder }) => folder.fsPath
-            );
+            const languageClient = workspaceContext.languageClientManager.getClient(folder);
+            const lspWorkspaces = languageClient.addedFolders.map(({ folder }) => folder.fsPath);
             assertContains(lspWorkspaces, testAssetUri("cmake-compile-flags").fsPath);
         });
     });

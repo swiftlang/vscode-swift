@@ -12,10 +12,8 @@
 //
 //===----------------------------------------------------------------------===//
 import { FolderContext } from "../FolderContext";
-import { checkExperimentalCapability } from "../sourcekit-lsp/LanguageClientManager";
-import { LanguageClientManager } from "../sourcekit-lsp/LanguageClientManager";
+import { SourceKitLanguageClient } from "../sourcekit-lsp/client/SourceKitLanguageClient";
 import { Playground, WorkspacePlaygroundsRequest } from "../sourcekit-lsp/extensions";
-import { Version } from "../utilities/version";
 
 export { Playground };
 
@@ -26,12 +24,10 @@ export { Playground };
  * these results.
  */
 export class LSPPlaygroundsDiscovery {
-    private languageClient: LanguageClientManager;
-    private toolchainVersion: Version;
+    private languageClient: SourceKitLanguageClient;
 
     constructor(folderContext: FolderContext) {
-        this.languageClient = folderContext.languageClientManager;
-        this.toolchainVersion = folderContext.toolchain.swiftVersion;
+        this.languageClient = folderContext.languageClient;
     }
 
     /**
@@ -41,20 +37,16 @@ export class LSPPlaygroundsDiscovery {
         return await this.languageClient.useLanguageClient(async (client, token) => {
             // Only use the lsp for this request if it supports the
             // workspace/playgrounds method.
-            if (checkExperimentalCapability(client, WorkspacePlaygroundsRequest.method, 1)) {
-                return await client.sendRequest(WorkspacePlaygroundsRequest.type, token);
-            } else {
+            if (!client.checkExperimentalCapability(WorkspacePlaygroundsRequest.method, 1)) {
                 throw new Error(`${WorkspacePlaygroundsRequest.method} requests not supported`);
             }
+            return await client.sendRequest(WorkspacePlaygroundsRequest.type, token);
         });
     }
 
     async supportsPlaygrounds(): Promise<boolean> {
-        if (this.toolchainVersion.isLessThan(new Version(6, 3, 0))) {
-            return false;
-        }
-        return await this.languageClient.useLanguageClient(async client => {
-            return checkExperimentalCapability(client, WorkspacePlaygroundsRequest.method, 1);
+        return this.languageClient.useLanguageClient(async client => {
+            return client.checkExperimentalCapability(WorkspacePlaygroundsRequest.method, 1);
         });
     }
 }

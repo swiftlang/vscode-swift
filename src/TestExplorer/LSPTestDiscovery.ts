@@ -12,11 +12,9 @@
 //
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
-import { LanguageClient } from "vscode-languageclient/node";
 
 import { SwiftPackage } from "../SwiftPackage";
-import { checkExperimentalCapability } from "../sourcekit-lsp/LanguageClientManager";
-import { LanguageClientManager } from "../sourcekit-lsp/LanguageClientManager";
+import { SourceKitLanguageClient } from "../sourcekit-lsp/client/SourceKitLanguageClient";
 import {
     LSPTestItem,
     TextDocumentTestsRequest,
@@ -33,7 +31,7 @@ import * as TestDiscovery from "./TestDiscovery";
  * these results.
  */
 export class LSPTestDiscovery {
-    constructor(private languageClient: LanguageClientManager) {}
+    constructor(private languageClient: SourceKitLanguageClient) {}
 
     /**
      * Return a list of tests in the supplied document.
@@ -46,16 +44,15 @@ export class LSPTestDiscovery {
         return await this.languageClient.useLanguageClient(async (client, token) => {
             // Only use the lsp for this request if it supports the
             // textDocument/tests method, and is at least version 2.
-            if (checkExperimentalCapability(client, TextDocumentTestsRequest.method, 2)) {
-                const testsInDocument = await client.sendRequest(
-                    TextDocumentTestsRequest.type,
-                    { textDocument: { uri: document.toString() } },
-                    token
-                );
-                return this.transformToTestClass(client, swiftPackage, testsInDocument);
-            } else {
+            if (!client.checkExperimentalCapability(TextDocumentTestsRequest.method, 2)) {
                 throw new Error(`${TextDocumentTestsRequest.method} requests not supported`);
             }
+            const testsInDocument = await client.sendRequest(
+                TextDocumentTestsRequest.type,
+                { textDocument: { uri: document.toString() } },
+                token
+            );
+            return this.transformToTestClass(swiftPackage, testsInDocument);
         });
     }
 
@@ -67,12 +64,11 @@ export class LSPTestDiscovery {
         return await this.languageClient.useLanguageClient(async (client, token) => {
             // Only use the lsp for this request if it supports the
             // workspace/tests method, and is at least version 2.
-            if (checkExperimentalCapability(client, WorkspaceTestsRequest.method, 2)) {
-                const tests = await client.sendRequest(WorkspaceTestsRequest.type, token);
-                return await this.transformToTestClass(client, swiftPackage, tests);
-            } else {
+            if (!client.checkExperimentalCapability(WorkspaceTestsRequest.method, 2)) {
                 throw new Error(`${WorkspaceTestsRequest.method} requests not supported`);
             }
+            const tests = await client.sendRequest(WorkspaceTestsRequest.type, token);
+            return await this.transformToTestClass(swiftPackage, tests);
         });
     }
 
@@ -81,17 +77,18 @@ export class LSPTestDiscovery {
      * updating the format of the location.
      */
     private async transformToTestClass(
-        client: LanguageClient,
         swiftPackage: SwiftPackage,
         input: LSPTestItem[]
     ): Promise<TestDiscovery.TestClass[]> {
         return Promise.all(
             input.map(async item => {
-                const location = client.protocol2CodeConverter.asLocation(item.location);
+                const location = this.languageClient.protocol2CodeConverter.asLocation(
+                    item.location
+                );
                 return {
                     ...item,
                     id: await this.transformId(item, location, swiftPackage),
-                    children: await this.transformToTestClass(client, swiftPackage, item.children),
+                    children: await this.transformToTestClass(swiftPackage, item.children),
                     location,
                 };
             })

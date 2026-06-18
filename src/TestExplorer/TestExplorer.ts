@@ -151,7 +151,7 @@ export class TestExplorer {
      * Creates an LSPTestDiscovery client for the given folder context.
      */
     private configureLSPTestDiscovery(folderContext: FolderContext): LSPTestDiscovery {
-        return new LSPTestDiscovery(folderContext.languageClientManager);
+        return new LSPTestDiscovery(folderContext.languageClient);
     }
 
     /**
