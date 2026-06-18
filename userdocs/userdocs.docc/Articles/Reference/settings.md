@@ -135,6 +135,10 @@ On startup, SourceKit-LSP will read your project information from your `Package.
 
 You can enable or disable this feature with the [`swift.sourcekit-lsp.backgroundIndexing`](vscode://settings/swift.sourcekit-lsp.backgroundIndexing) setting.
 
+By default, background indexing uses a "lazy" prepare-for-indexing mode that produces stripped `.swiftmodule` files for upstream targets. This is faster, but can omit information added by macros or extensions, e.g. protocol conformances added by macros. 
+If you encounter `does not conform to protocol` errors in the editor that don't appear building the project, consider setting [`swift.sourcekit-lsp.backgroundPreparationMode`](vscode://settings/swift.sourcekit-lsp.backgroundPreparationMode) to `noLazy`, as this may resolve the issue with missing macro-generated conformances. 
+Set it to `disabled` to skip the preparation completely.
+
 ### Support for 'Expand Macro'
 
 If you are using a nightly (`main`) toolchain you can enable support for the "Peek Macro" Quick Action, accessible through the light bulb icon when the cursor is on a macro.

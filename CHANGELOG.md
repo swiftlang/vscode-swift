@@ -5,6 +5,7 @@
 ### Added
 
 - Toolchain changes will now automatically reload the workspace ([#2196](https://github.com/swiftlang/vscode-swift/pull/2196))
+- Add `swift.sourcekit-lsp.backgroundPreparationMode` setting to control SourceKit-LSP's prepare-for-indexing mode. ([#2291](https://github.com/swiftlang/vscode-swift/pull/2291))
 
 ### Fixed
 
