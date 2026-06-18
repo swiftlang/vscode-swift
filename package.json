@@ -957,6 +957,23 @@
             "order": 4,
             "scope": "machine-overridable"
           },
+          "swift.sourcekit-lsp.backgroundPreparationMode": {
+            "type": "string",
+            "enum": [
+              "enabled",
+              "noLazy",
+              "disabled"
+            ],
+            "enumDescriptions": [
+              "Lazy prepare-for-indexing (fastest; default).",
+              "Full prepare-for-indexing. Slower, but emits complete swiftmodules which may result in more precise/correct indexing, especially when macros add conformances to protocols.",
+              "Skip prepare-for-indexing entirely."
+            ],
+            "default": "enabled",
+            "markdownDescription": "Controls SourceKit-LSP's prepare-for-indexing mode. The `noLazy` mode may be necessary in projects where with extensive use of macros. Has no effect when `#swift.sourcekit-lsp.backgroundIndexing#` is `off` or for Swift versions prior to 6.0.",
+            "order": 5,
+            "scope": "machine-overridable"
+          },
           "swift.sourcekit-lsp.trace.server": {
             "type": "string",
             "default": "off",
@@ -966,14 +983,14 @@
               "verbose"
             ],
             "markdownDescription": "Controls logging the communication between VS Code and the SourceKit-LSP language server. Logs can be viewed in Output > SourceKit Language Server.",
-            "order": 5,
+            "order": 6,
             "scope": "machine-overridable"
           },
           "swift.sourcekit-lsp.disable": {
             "type": "boolean",
             "default": false,
             "markdownDescription": "Disable SourceKit-LSP. This will turn off features like code completion, error diagnostics and jump-to-definition. Features like swift-testing test discovery will not work correctly.",
-            "order": 6,
+            "order": 7,
             "scope": "machine-overridable"
           },
           "swift.sourcekit-lsp.includeDeclarationInFindAllReferences": {
@@ -990,7 +1007,7 @@
               "Never include the symbol declaration in `Find All References` results."
             ],
             "markdownDescription": "Controls whether the symbol declaration is included in the results of `Find All References`.",
-            "order": 7,
+            "order": 8,
             "scope": "machine-overridable"
           },
           "sourcekit-lsp.inlayHints.enabled": {

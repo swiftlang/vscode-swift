@@ -230,6 +230,7 @@ suite("LanguageClientManager Suite", () => {
         mockedConfig.path = "";
         mockedConfig.buildArguments = [];
         mockedConfig.backgroundIndexing = "off";
+        mockedConfig.backgroundPreparationMode = "enabled";
         mockedConfig.swiftEnvironmentVariables = {};
         mockedLspConfig.supportCFamily = "cpptools-inactive";
         mockedLspConfig.disable = false;
@@ -463,6 +464,86 @@ suite("LanguageClientManager Suite", () => {
             match.string,
             match.object,
             match.hasNested("initializationOptions.backgroundIndexing", match.truthy)
+        );
+    });
+
+    test("forwards backgroundPreparationMode default ('enabled')", async () => {
+        mockedFolder.swiftVersion = new Version(6, 1, 0);
+        mockedConfig.backgroundIndexing = "on";
+        mockedConfig.backgroundPreparationMode = "enabled";
+
+        coordinator = new LanguageClientToolchainCoordinator(
+            instance(mockedWorkspace),
+            {},
+            languageClientFactoryMock
+        );
+        await waitForReturnedPromises(languageClientMock.start);
+
+        expect(languageClientFactoryMock.createLanguageClient).to.have.been.calledOnceWith(
+            match.string,
+            match.string,
+            match.object,
+            match.hasNested("initializationOptions.backgroundPreparationMode", "enabled")
+        );
+    });
+
+    test("forwards backgroundPreparationMode 'noLazy'", async () => {
+        mockedFolder.swiftVersion = new Version(6, 1, 0);
+        mockedConfig.backgroundIndexing = "on";
+        mockedConfig.backgroundPreparationMode = "noLazy";
+
+        coordinator = new LanguageClientToolchainCoordinator(
+            instance(mockedWorkspace),
+            {},
+            languageClientFactoryMock
+        );
+        await waitForReturnedPromises(languageClientMock.start);
+
+        expect(languageClientFactoryMock.createLanguageClient).to.have.been.calledOnceWith(
+            match.string,
+            match.string,
+            match.object,
+            match.hasNested("initializationOptions.backgroundPreparationMode", "noLazy")
+        );
+    });
+
+    test("forwards backgroundPreparationMode 'disabled'", async () => {
+        mockedFolder.swiftVersion = new Version(6, 1, 0);
+        mockedConfig.backgroundIndexing = "on";
+        mockedConfig.backgroundPreparationMode = "disabled";
+
+        coordinator = new LanguageClientToolchainCoordinator(
+            instance(mockedWorkspace),
+            {},
+            languageClientFactoryMock
+        );
+        await waitForReturnedPromises(languageClientMock.start);
+
+        expect(languageClientFactoryMock.createLanguageClient).to.have.been.calledOnceWith(
+            match.string,
+            match.string,
+            match.object,
+            match.hasNested("initializationOptions.backgroundPreparationMode", "disabled")
+        );
+    });
+
+    test("does not send backgroundPreparationMode when backgroundIndexing is off", async () => {
+        mockedFolder.swiftVersion = new Version(6, 1, 0);
+        mockedConfig.backgroundIndexing = "off";
+        mockedConfig.backgroundPreparationMode = "noLazy";
+
+        coordinator = new LanguageClientToolchainCoordinator(
+            instance(mockedWorkspace),
+            {},
+            languageClientFactoryMock
+        );
+        await waitForReturnedPromises(languageClientMock.start);
+
+        expect(languageClientFactoryMock.createLanguageClient).to.have.been.calledOnceWith(
+            match.string,
+            match.string,
+            match.object,
+            match.hasNested("initializationOptions", doesNotHave("backgroundPreparationMode"))
         );
     });
 

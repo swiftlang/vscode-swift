@@ -73,7 +73,7 @@ function initializationOptions(swiftVersion: Version): Record<string, unknown> {
         options = {
             ...options,
             backgroundIndexing: true,
-            backgroundPreparationMode: "enabled",
+            backgroundPreparationMode: configuration.backgroundPreparationMode,
         };
     }
 

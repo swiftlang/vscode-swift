@@ -612,6 +612,15 @@ const configuration = {
             );
         }
     },
+    /** prepare-for-indexing mode used when background indexing is enabled */
+    get backgroundPreparationMode(): "enabled" | "noLazy" | "disabled" {
+        return validateStringSetting<"enabled" | "noLazy" | "disabled">(
+            vscode.workspace
+                .getConfiguration("swift.sourcekit-lsp")
+                .get<"enabled" | "noLazy" | "disabled">("backgroundPreparationMode", "enabled"),
+            "swift.sourcekit-lsp.backgroundPreparationMode"
+        );
+    },
     /** focus on problems view whenever there is a build error */
     get actionAfterBuildError(): ActionAfterBuildError {
         return validateStringSetting(
