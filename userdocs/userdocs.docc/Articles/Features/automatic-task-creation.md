@@ -56,4 +56,4 @@ The same approach works for debug configurations via `preLaunchTask` in `launch.
 }
 ```
 
-For more information, see the [VS Code Tasks](https://code.visualstudio.com/docs/editor/tasks) and [preLaunchTask](https://code.visualstudio.com/docs/editor/debugging#_launchjson-attributes) documentation.
+For more information, see the [VS Code Tasks](https://code.visualstudio.com/docs/editor/tasks) and [preLaunchTask](https://code.visualstudio.com/docs/debugtest/debugging-configuration) documentation.
