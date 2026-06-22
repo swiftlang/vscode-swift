@@ -18,23 +18,40 @@ import * as vscode from "vscode";
 
 import { FolderContext } from "@src/FolderContext";
 import { FolderEvent, FolderOperation, WorkspaceContext } from "@src/WorkspaceContext";
+import configuration from "@src/configuration";
 import { LanguageClientToolchainCoordinator } from "@src/sourcekit-lsp/LanguageClientToolchainCoordinator";
 import { SourceKitLanguageClient } from "@src/sourcekit-lsp/client/SourceKitLanguageClient";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
 import { Version } from "@src/utilities/version";
 
-import { AsyncEventEmitter, MockedObject, instance, mockFn, mockObject } from "../../MockUtils";
+import {
+    AsyncEventEmitter,
+    MockedObject,
+    instance,
+    mockFn,
+    mockGlobalEvent,
+    mockGlobalModule,
+    mockObject,
+} from "../../MockUtils";
 import { TestLogger } from "../../utilities/TestLogger";
 
 suite("LanguageClientToolchainCoordinator Unit Tests", () => {
+    const onDidChangeConfiguration = mockGlobalEvent(vscode.workspace, "onDidChangeConfiguration");
+    const mockedConfiguration = mockGlobalModule(configuration);
+
     let logger: TestLogger;
     let onDidChangeFolders: AsyncEventEmitter<FolderEvent>;
     let mockedWorkspace: MockedObject<WorkspaceContext>;
+    let mockedLspConfig: MockedObject<(typeof configuration)["lsp"]>;
     let coordinator: LanguageClientToolchainCoordinator;
 
     setup(() => {
         logger = new TestLogger();
         onDidChangeFolders = new AsyncEventEmitter();
+        mockedLspConfig = mockObject<(typeof configuration)["lsp"]>({
+            disable: false,
+        });
+        mockedConfiguration.lsp = mockedLspConfig;
         mockedWorkspace = mockObject<WorkspaceContext>({
             folders: [],
             globalToolchain: instance(
@@ -68,6 +85,7 @@ suite("LanguageClientToolchainCoordinator Unit Tests", () => {
                             addedFolders.splice(index, 1);
                         }),
                         start: mockFn(),
+                        restart: mockFn(s => s.resolves()),
                         dispose: mockFn(s => s.resolves()),
                     })
                 );
@@ -233,5 +251,76 @@ suite("LanguageClientToolchainCoordinator Unit Tests", () => {
         expect(coordinator.getAllClients()).to.have.length(0, "There should be no clients");
         expect(client1.dispose).to.have.been.calledOnce;
         expect(client2.dispose).to.have.been.calledOnce;
+    });
+
+    suite("Configuration Change Events", () => {
+        function fireConfigurationChange(...affected: string[]): Promise<void> {
+            return onDidChangeConfiguration.fire({
+                affectsConfiguration: (section: string) => affected.includes(section),
+            });
+        }
+
+        test("does nothing when the change does not affect swift.sourcekit-lsp", async function () {
+            const folder = await addFolderToWorkspace(new Version(6, 4, 0));
+            const client = coordinator.getClient(instance(folder));
+
+            await fireConfigurationChange("swift.path");
+
+            expect(client.restart).to.not.have.been.called;
+            expect(client.dispose).to.not.have.been.called;
+            expect(coordinator.getAllClients()).to.have.length(1);
+        });
+
+        test("restarts every client when a swift.sourcekit-lsp setting changes", async function () {
+            const folder1 = await addFolderToWorkspace(new Version(5, 10, 0));
+            const folder2 = await addFolderToWorkspace(new Version(6, 4, 0));
+            const client1 = coordinator.getClient(instance(folder1));
+            const client2 = coordinator.getClient(instance(folder2));
+
+            await fireConfigurationChange("swift.sourcekit-lsp");
+
+            expect(client1.restart).to.have.been.calledOnce;
+            expect(client2.restart).to.have.been.calledOnce;
+            expect(client1.dispose).to.not.have.been.called;
+            expect(client2.dispose).to.not.have.been.called;
+        });
+
+        test("disposes all clients when swift.sourcekit-lsp.disable is changed to true", async function () {
+            const folder1 = await addFolderToWorkspace(new Version(5, 10, 0));
+            const folder2 = await addFolderToWorkspace(new Version(6, 4, 0));
+            const client1 = coordinator.getClient(instance(folder1));
+            const client2 = coordinator.getClient(instance(folder2));
+
+            mockedLspConfig.disable = true;
+            await fireConfigurationChange("swift.sourcekit-lsp", "swift.sourcekit-lsp.disable");
+
+            expect(coordinator.getAllClients()).to.have.length(0);
+            expect(client1.dispose).to.have.been.calledOnce;
+            expect(client2.dispose).to.have.been.calledOnce;
+            expect(client1.restart).to.not.have.been.called;
+            expect(client2.restart).to.not.have.been.called;
+        });
+
+        test("re-creates clients for all folders when swift.sourcekit-lsp.disable is changed to false", async function () {
+            const folder1 = await addFolderToWorkspace(new Version(5, 10, 0));
+            const folder2 = await addFolderToWorkspace(new Version(6, 4, 0));
+            const originalClient1 = coordinator.getClient(instance(folder1));
+            const originalClient2 = coordinator.getClient(instance(folder2));
+
+            mockedLspConfig.disable = true;
+            await fireConfigurationChange("swift.sourcekit-lsp", "swift.sourcekit-lsp.disable");
+            expect(coordinator.getAllClients()).to.have.length(0);
+
+            mockedLspConfig.disable = false;
+            await fireConfigurationChange("swift.sourcekit-lsp", "swift.sourcekit-lsp.disable");
+
+            expect(coordinator.getAllClients()).to.have.length(2);
+            const newClient1 = coordinator.getClient(instance(folder1));
+            const newClient2 = coordinator.getClient(instance(folder2));
+            expect(newClient1).to.not.equal(originalClient1);
+            expect(newClient2).to.not.equal(originalClient2);
+            expect(newClient1.start).to.have.been.calledOnce;
+            expect(newClient2.start).to.have.been.calledOnce;
+        });
     });
 });
