@@ -18,16 +18,16 @@ import {
     MessageType,
     StaticFeature,
 } from "vscode-languageclient";
-import { LanguageClient } from "vscode-languageclient/node";
 
 import { Disposable } from "../../../utilities/Disposable";
 import { SourceKitLogMessageNotification, SourceKitLogMessageParams } from "../../extensions";
+import { SourceKitLanguageClient } from "../SourceKitLanguageClient";
 
 export class LoggingFeature implements StaticFeature {
     private outputChannels: Map<string, vscode.OutputChannel>;
     private subscriptions: Disposable[];
 
-    constructor(private readonly client: LanguageClient) {
+    constructor(private readonly client: SourceKitLanguageClient) {
         this.outputChannels = new Map();
         this.subscriptions = [];
     }
@@ -57,12 +57,13 @@ export class LoggingFeature implements StaticFeature {
     }
 
     private getOutputChannel(name: string): vscode.OutputChannel {
-        const existing = this.outputChannels.get(name);
+        const nameWithVersion = `${name} (${this.client.swiftVersion})`;
+        const existing = this.outputChannels.get(nameWithVersion);
         if (existing) {
             return existing;
         }
-        const channel = vscode.window.createOutputChannel(name, "swift");
-        this.outputChannels.set(name, channel);
+        const channel = vscode.window.createOutputChannel(nameWithVersion, "swift");
+        this.outputChannels.set(nameWithVersion, channel);
         return channel;
     }
 
