@@ -24,11 +24,11 @@ export { Playground };
  * these results.
  */
 export class LSPPlaygroundsDiscovery {
-    private languageClient: SourceKitLanguageClient;
-
-    constructor(folderContext: FolderContext) {
-        this.languageClient = folderContext.languageClient;
+    private get languageClient(): SourceKitLanguageClient {
+        return this.folderContext.languageClient;
     }
+
+    constructor(private folderContext: FolderContext) {}
 
     /**
      * Return list of workspace playgrounds
