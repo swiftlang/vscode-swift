@@ -296,6 +296,7 @@ export class SwiftPackage implements ExternalSwiftPackage, Disposable {
         folder: vscode.Uri,
         toolchain: SwiftToolchain,
         logger: SwiftLogger,
+        buildDirectory: string,
         disableSwiftPMIntegration: boolean = false
     ): Promise<PackagePlugin[]> {
         // When SwiftPM integration is disabled, return empty plugin list
@@ -304,9 +305,16 @@ export class SwiftPackage implements ExternalSwiftPackage, Disposable {
         }
 
         try {
-            const { stdout } = await execSwift(["package", "plugin", "--list"], toolchain, {
-                cwd: folder.fsPath,
-            });
+            // Pin the scratch path so `swift package plugin --list` regenerates
+            // workspace-state.json in the exact directory loadWorkspaceState
+            // reads it back from.
+            const { stdout } = await execSwift(
+                ["package", "--scratch-path", buildDirectory, "plugin", "--list"],
+                toolchain,
+                {
+                    cwd: folder.fsPath,
+                }
+            );
             const plugins: PackagePlugin[] = [];
             const lines = stdout.split(lineBreakRegex).map(item => item.trim());
             for (const line of lines) {
@@ -333,11 +341,12 @@ export class SwiftPackage implements ExternalSwiftPackage, Disposable {
      * @returns Workspace state
      */
     private static async loadWorkspaceState(
-        folder: vscode.Uri
+        folder: vscode.Uri,
+        buildDirectory: string = BuildFlags.buildDirectoryFromWorkspacePath(folder.fsPath, true)
     ): Promise<WorkspaceState | undefined> {
         try {
             const uri = vscode.Uri.joinPath(
-                vscode.Uri.file(BuildFlags.buildDirectoryFromWorkspacePath(folder.fsPath, true)),
+                vscode.Uri.file(buildDirectory),
                 "workspace-state.json"
             );
             const contents = await fs.readFile(uri.fsPath, "utf8");
@@ -384,13 +393,21 @@ export class SwiftPackage implements ExternalSwiftPackage, Disposable {
         // URL checks (see TrustedPlugins.ts) require the two fields to move
         // together.
         const next = this.pluginLoadQueue.then(async () => {
+            const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(
+                this.folder.fsPath,
+                true
+            );
             const newPlugins = await SwiftPackage.loadPlugins(
                 this.folder,
                 toolchain,
                 logger,
+                buildDirectory,
                 disableSwiftPMIntegration
             );
-            const newWorkspaceState = await SwiftPackage.loadWorkspaceState(this.folder);
+            const newWorkspaceState = await SwiftPackage.loadWorkspaceState(
+                this.folder,
+                buildDirectory
+            );
             this.plugins = newPlugins;
             this.workspaceState = newWorkspaceState;
         });
