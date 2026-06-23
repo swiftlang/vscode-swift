@@ -256,7 +256,10 @@ suite("LanguageClientToolchainCoordinator Unit Tests", () => {
     suite("Configuration Change Events", () => {
         function fireConfigurationChange(...affected: string[]): Promise<void> {
             return onDidChangeConfiguration.fire({
-                affectsConfiguration: (section: string) => affected.includes(section),
+                affectsConfiguration: (section: string) => {
+                    const index = affected.findIndex(s => s.startsWith(section));
+                    return index >= 0;
+                },
             });
         }
 
@@ -271,16 +274,102 @@ suite("LanguageClientToolchainCoordinator Unit Tests", () => {
             expect(coordinator.getAllClients()).to.have.length(1);
         });
 
-        test("restarts every client when a swift.sourcekit-lsp setting changes", async function () {
+        test("restarts every client when the swift.swiftSDK setting changes", async function () {
             const folder1 = await addFolderToWorkspace(new Version(5, 10, 0));
             const folder2 = await addFolderToWorkspace(new Version(6, 4, 0));
             const client1 = coordinator.getClient(instance(folder1));
             const client2 = coordinator.getClient(instance(folder2));
 
-            await fireConfigurationChange("swift.sourcekit-lsp");
+            await fireConfigurationChange("swift.swiftSDK");
 
             expect(client1.restart).to.have.been.calledOnce;
             expect(client2.restart).to.have.been.calledOnce;
+            expect(client1.dispose).to.not.have.been.called;
+            expect(client2.dispose).to.not.have.been.called;
+        });
+
+        test("restarts every client when the swift.sourcekit-lsp.serverPath setting changes", async function () {
+            const folder1 = await addFolderToWorkspace(new Version(5, 10, 0));
+            const folder2 = await addFolderToWorkspace(new Version(6, 4, 0));
+            const client1 = coordinator.getClient(instance(folder1));
+            const client2 = coordinator.getClient(instance(folder2));
+
+            await fireConfigurationChange("swift.sourcekit-lsp.serverPath");
+
+            expect(client1.restart).to.have.been.calledOnce;
+            expect(client2.restart).to.have.been.calledOnce;
+            expect(client1.dispose).to.not.have.been.called;
+            expect(client2.dispose).to.not.have.been.called;
+        });
+
+        test("restarts every client when the swift.sourcekit-lsp.serverArguments setting changes", async function () {
+            const folder1 = await addFolderToWorkspace(new Version(5, 10, 0));
+            const folder2 = await addFolderToWorkspace(new Version(6, 4, 0));
+            const client1 = coordinator.getClient(instance(folder1));
+            const client2 = coordinator.getClient(instance(folder2));
+
+            await fireConfigurationChange("swift.sourcekit-lsp.serverArguments");
+
+            expect(client1.restart).to.have.been.calledOnce;
+            expect(client2.restart).to.have.been.calledOnce;
+            expect(client1.dispose).to.not.have.been.called;
+            expect(client2.dispose).to.not.have.been.called;
+        });
+
+        test("restarts every client when the swift.sourcekit-lsp.supported-languages setting changes", async function () {
+            const folder1 = await addFolderToWorkspace(new Version(5, 10, 0));
+            const folder2 = await addFolderToWorkspace(new Version(6, 4, 0));
+            const client1 = coordinator.getClient(instance(folder1));
+            const client2 = coordinator.getClient(instance(folder2));
+
+            await fireConfigurationChange("swift.sourcekit-lsp.supported-languages");
+
+            expect(client1.restart).to.have.been.calledOnce;
+            expect(client2.restart).to.have.been.calledOnce;
+            expect(client1.dispose).to.not.have.been.called;
+            expect(client2.dispose).to.not.have.been.called;
+        });
+
+        test("restarts every client when the swift.sourcekit-lsp.backgroundIndexing setting changes", async function () {
+            const folder1 = await addFolderToWorkspace(new Version(5, 10, 0));
+            const folder2 = await addFolderToWorkspace(new Version(6, 4, 0));
+            const client1 = coordinator.getClient(instance(folder1));
+            const client2 = coordinator.getClient(instance(folder2));
+
+            await fireConfigurationChange("swift.sourcekit-lsp.backgroundIndexing");
+
+            expect(client1.restart).to.have.been.calledOnce;
+            expect(client2.restart).to.have.been.calledOnce;
+            expect(client1.dispose).to.not.have.been.called;
+            expect(client2.dispose).to.not.have.been.called;
+        });
+
+        test("restarts every client when the swift.sourcekit-lsp.support-c-cpp setting changes", async function () {
+            const folder1 = await addFolderToWorkspace(new Version(5, 10, 0));
+            const folder2 = await addFolderToWorkspace(new Version(6, 4, 0));
+            const client1 = coordinator.getClient(instance(folder1));
+            const client2 = coordinator.getClient(instance(folder2));
+
+            await fireConfigurationChange("swift.sourcekit-lsp.support-c-cpp");
+
+            expect(client1.restart).to.have.been.calledOnce;
+            expect(client2.restart).to.have.been.calledOnce;
+            expect(client1.dispose).to.not.have.been.called;
+            expect(client2.dispose).to.not.have.been.called;
+        });
+
+        test("does nothing when the swift.sourcekit-lsp.includeDeclarationInFindAllReferences setting changes", async function () {
+            const folder1 = await addFolderToWorkspace(new Version(5, 10, 0));
+            const folder2 = await addFolderToWorkspace(new Version(6, 4, 0));
+            const client1 = coordinator.getClient(instance(folder1));
+            const client2 = coordinator.getClient(instance(folder2));
+
+            await fireConfigurationChange(
+                "swift.sourcekit-lsp.includeDeclarationInFindAllReferences"
+            );
+
+            expect(client1.restart).to.not.have.been.called;
+            expect(client2.restart).to.not.have.been.called;
             expect(client1.dispose).to.not.have.been.called;
             expect(client2.dispose).to.not.have.been.called;
         });

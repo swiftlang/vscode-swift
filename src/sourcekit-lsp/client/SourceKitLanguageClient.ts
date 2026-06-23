@@ -11,6 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import { ChildProcess, spawn } from "child_process";
 import * as path from "path";
 import * as vscode from "vscode";
 import {
@@ -21,7 +22,7 @@ import {
     StaticFeature,
 } from "vscode-languageclient";
 import { WorkspaceFoldersFeature } from "vscode-languageclient/lib/common/workspaceFolder";
-import { Executable, LanguageClient, ServerOptions } from "vscode-languageclient/node";
+import { LanguageClient, ServerOptions } from "vscode-languageclient/node";
 
 import { DiagnosticsManager } from "../../DiagnosticsManager";
 import { FolderContext } from "../../FolderContext";
@@ -87,29 +88,31 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
         workspaceContext: WorkspaceContext,
         options: SourceKitLanguageClientOptions = {}
     ) {
-        const lspConfig = configuration.lsp;
-        const serverPathConfig = lspConfig.serverPath;
-        const buildFlags = toolchain.buildFlags;
-        const sdkArguments = [
-            ...buildFlags.swiftDriverSDKFlags(true),
-            ...buildFlags.swiftDriverTargetFlags(true),
-            ...BuildFlags.filterArguments(
-                configuration.buildArguments.concat(buildFlags.buildPathFlags()),
-                SourceKitLanguageClient.buildArgumentFilter
-            ),
-        ];
+        const serverOptions: ServerOptions = async (): Promise<ChildProcess> => {
+            const lspConfig = configuration.lsp;
+            const serverPathConfig = lspConfig.serverPath;
+            const buildFlags = toolchain.buildFlags;
+            const sdkArguments = [
+                ...buildFlags.swiftDriverSDKFlags(true),
+                ...buildFlags.swiftDriverTargetFlags(true),
+                ...BuildFlags.filterArguments(
+                    configuration.buildArguments.concat(buildFlags.buildPathFlags()),
+                    SourceKitLanguageClient.buildArgumentFilter
+                ),
+            ];
 
-        const inv = serverPathConfig
-            ? { command: serverPathConfig, args: [] }
-            : toolchain.getToolchainInvocation("sourcekit-lsp", []);
+            const inv = serverPathConfig
+                ? { command: serverPathConfig, args: [] }
+                : toolchain.getToolchainInvocation("sourcekit-lsp", [
+                      ...lspConfig.serverArguments,
+                      ...sdkArguments,
+                  ]);
 
-        const isCustomPath = Boolean(
-            serverPathConfig && !isPathInDirectory(serverPathConfig, toolchain.toolchainPath)
-        );
-        const lspExecutable: Executable = {
-            command: inv.command,
-            args: [...inv.args, ...lspConfig.serverArguments, ...sdkArguments],
-            options: {
+            const isCustomPath = Boolean(
+                serverPathConfig && !isPathInDirectory(serverPathConfig, toolchain.toolchainPath)
+            );
+            const proc = spawn(inv.command, inv.args, {
+                cwd: this.addedFolders.at(0)?.folder.fsPath,
                 env: {
                     // Custom builds of SourceKit-LSP need to be made aware of the toolchain path
                     SOURCEKIT_TOOLCHAIN_PATH: isCustomPath ? toolchain.toolchainPath : undefined,
@@ -117,10 +120,9 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
                     ...configuration.swiftEnvironmentVariables,
                     ...swiftRuntimeEnv(),
                 },
-            },
+            });
+            return proc;
         };
-
-        const serverOptions: ServerOptions = lspExecutable;
         const clientOptions: LanguageClientOptions = {
             documentSelector: LanguageClientDocumentSelectors.sourcekitLSPDocumentTypes(),
             revealOutputChannelOn: RevealOutputChannelOn.Never,

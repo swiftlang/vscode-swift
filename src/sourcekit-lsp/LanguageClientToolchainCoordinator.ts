@@ -57,10 +57,6 @@ export class LanguageClientToolchainCoordinator implements AsyncDisposable {
     private async handleConfigurationChangeEvent(
         event: vscode.ConfigurationChangeEvent
     ): Promise<void> {
-        if (!event.affectsConfiguration("swift.sourcekit-lsp")) {
-            return;
-        }
-
         if (event.affectsConfiguration("swift.sourcekit-lsp.disable")) {
             if (configuration.lsp.disable) {
                 await this.disposeAllClients();
@@ -74,7 +70,17 @@ export class LanguageClientToolchainCoordinator implements AsyncDisposable {
             return;
         }
 
-        this.clients.forEach(c => void c.restart());
+        const restartSettings = [
+            "swift.swiftSDK",
+            "swift.sourcekit-lsp.serverPath",
+            "swift.sourcekit-lsp.serverArguments",
+            "swift.sourcekit-lsp.supported-languages",
+            "swift.sourcekit-lsp.backgroundIndexing",
+            "swift.sourcekit-lsp.support-c-cpp",
+        ];
+        if (restartSettings.some(s => event.affectsConfiguration(s))) {
+            await Promise.all(this.clients.map(c => c.restart()));
+        }
     }
 
     private async handleFolderChangeEvent(
