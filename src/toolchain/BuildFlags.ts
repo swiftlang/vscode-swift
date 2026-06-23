@@ -43,27 +43,24 @@ export class BuildFlags {
     private withSwiftSDKFlags(args: string[]): string[] {
         switch (args[0]) {
             case "package": {
-                switch (args[1]) {
-                    case "plugin":
-                        // Don't append build path flags for `swift package plugin` commands
-                        return args;
-                    default: {
-                        const subcommand = args.splice(0, 2).concat(this.buildPathFlags());
-                        switch (subcommand[1]) {
-                            case "dump-symbol-graph":
-                            case "diagnose-api-breaking-changes":
-                            case "resolve": {
-                                // These two tools require building the package, so SDK
-                                // flags are needed. Destination control flags are
-                                // required to be placed before subcommand options.
-                                return [...subcommand, ...this.swiftpmSDKFlags(), ...args];
-                            }
-                            default:
-                                // Other swift-package subcommands operate on the host,
-                                // so it doesn't need to know about the destination.
-                                return subcommand.concat(args);
-                        }
-                    }
+                // Build-path and destination control flags belong on the parent
+                // `package` command, before any subcommand. Otherwise SwiftPM's
+                // argument parser rejects them when the subcommand has further
+                // subcommands or positional args (e.g. `swift package plugin --list`).
+                const command = args.splice(0, 1).concat(this.buildPathFlags());
+                const subcommand: string | undefined = args[0];
+                switch (subcommand) {
+                    case "dump-symbol-graph":
+                    case "diagnose-api-breaking-changes":
+                    case "resolve":
+                        // These two tools require building the package, so SDK
+                        // flags are needed. Destination control flags are
+                        // required to be placed before subcommand options.
+                        return [...command, ...this.swiftpmSDKFlags(), ...args];
+                    default:
+                        // Other swift-package subcommands operate on the host,
+                        // so they don't need to know about the destination.
+                        return command.concat(args);
                 }
             }
             case "build":
@@ -123,6 +120,27 @@ export class BuildFlags {
         }
     }
 
+    private static readonly scratchPathFlags = ["--scratch-path", "--build-path"];
+
+    private static validatePath(flagName: string, value: string): string {
+        if (value === "") {
+            throw new Error(`Invalid ${flagName}: path cannot be empty`);
+        }
+        if (value.startsWith("--")) {
+            throw new Error(`Invalid ${flagName}: expected a path but got another flag '${value}'`);
+        }
+        return value;
+    }
+
+    private static parseEqualsForm(arg: string): string | undefined {
+        for (const flag of BuildFlags.scratchPathFlags) {
+            if (arg.startsWith(`${flag}=`)) {
+                return BuildFlags.validatePath(flag, arg.substring(flag.length + 1));
+            }
+        }
+        return undefined;
+    }
+
     /**
      * Extract scratch-path or build-path value from an array of arguments
      * @param args Array of command-line arguments to search
@@ -131,31 +149,12 @@ export class BuildFlags {
     private static extractScratchPath(args: string[]): string | undefined {
         for (let i = 0; i < args.length; i++) {
             const arg = args[i];
-            if ((arg === "--scratch-path" || arg === "--build-path") && i + 1 < args.length) {
-                const path = args[i + 1];
-                if (path === "") {
-                    throw new Error(`Invalid ${arg}: path cannot be empty`);
-                }
-                if (path.startsWith("--")) {
-                    throw new Error(
-                        `Invalid ${arg}: expected a path but got another flag '${path}'`
-                    );
-                }
-                return path;
+            if (BuildFlags.scratchPathFlags.includes(arg) && i + 1 < args.length) {
+                return BuildFlags.validatePath(arg, args[i + 1]);
             }
-            if (arg.startsWith("--scratch-path=")) {
-                const path = arg.substring("--scratch-path=".length);
-                if (path === "") {
-                    throw new Error("Invalid --scratch-path: path cannot be empty");
-                }
-                return path;
-            }
-            if (arg.startsWith("--build-path=")) {
-                const path = arg.substring("--build-path=".length);
-                if (path === "") {
-                    throw new Error("Invalid --build-path: path cannot be empty");
-                }
-                return path;
+            const equalsResult = BuildFlags.parseEqualsForm(arg);
+            if (equalsResult !== undefined) {
+                return equalsResult;
             }
         }
         return undefined;
@@ -170,8 +169,11 @@ export class BuildFlags {
         absolute = false,
         platform?: "posix" | "win32"
     ): string {
-        const nodePath =
-            platform === "posix" ? path.posix : platform === "win32" ? path.win32 : path;
+        const platformPaths = {
+            posix: path.posix,
+            win32: path.win32,
+        };
+        const nodePath = platform ? platformPaths[platform] : path;
 
         const buildPath =
             BuildFlags.extractScratchPath(configuration.buildArguments) ??
@@ -257,7 +259,7 @@ export class BuildFlags {
         const disableSandboxFlags = ["--disable-sandbox", "-Xswiftc", "-disable-sandbox"];
         switch (args[0]) {
             case "package": {
-                if (args[1] === "plugin") {
+                if (BuildFlags.packageSubcommand(args) === "plugin") {
                     return args;
                 }
                 return [args[0], ...disableSandboxFlags, ...args.slice(1)];
@@ -271,6 +273,23 @@ export class BuildFlags {
                 // Do nothing for other commands
                 return args;
         }
+    }
+
+    /**
+     * Find the `swift package` subcommand in an argument list, skipping any
+     * leading global options (e.g. `--scratch-path PATH`, `--sdk PATH`,
+     * `--swift-sdk SDK`) that may have been inserted before it.
+     */
+    private static packageSubcommand(args: string[]): string | undefined {
+        let i = 1;
+        while (i < args.length) {
+            const arg = args[i];
+            if (!arg.startsWith("-")) {
+                return arg;
+            }
+            i += arg.includes("=") ? 1 : 2;
+        }
+        return undefined;
     }
 
     /**
@@ -358,42 +377,70 @@ export class BuildFlags {
         let pendingCount = 0;
 
         for (const arg of args) {
-            if (pendingCount > 0) {
-                if (!exclude) {
-                    filteredArguments.push(arg);
-                }
+            const isMatchedByPending = pendingCount > 0;
+            if (isMatchedByPending) {
                 pendingCount -= 1;
-                continue;
             }
 
-            // Check if this argument matches any filter
-            const matchingFilter = filter.find(item => item.argument === arg);
-            if (matchingFilter) {
-                if (!exclude) {
-                    filteredArguments.push(arg);
-                }
-                pendingCount = matchingFilter.include;
-                continue;
+            const exactMatch = isMatchedByPending
+                ? undefined
+                : this.findExactMatchingFilter(arg, filter);
+            if (exactMatch) {
+                pendingCount = exactMatch.include;
             }
 
-            // Check for arguments of form --arg=value (only for filters with include=1)
-            const combinedArgFilter = filter.find(
-                item => item.include === 1 && arg.startsWith(item.argument + "=")
-            );
-            if (combinedArgFilter) {
-                if (!exclude) {
-                    filteredArguments.push(arg);
-                }
-                continue;
-            }
-
-            // Handle unmatched arguments
-            if (exclude) {
+            const matched =
+                isMatchedByPending || !!exactMatch || this.isCombinedArgMatch(arg, filter);
+            if (matched !== exclude) {
                 filteredArguments.push(arg);
             }
-            // In include mode, unmatched arguments are not added
         }
 
         return filteredArguments;
+    }
+
+    private static findExactMatchingFilter(
+        arg: string,
+        filter: ArgumentFilter[]
+    ): ArgumentFilter | undefined {
+        return filter.find(item => item.argument === arg);
+    }
+
+    private static isCombinedArgMatch(arg: string, filter: ArgumentFilter[]): boolean {
+        return filter.some(item => item.include === 1 && arg.startsWith(item.argument + "="));
+    }
+
+    /**
+     * Find the value of the last occurrence of a flag in an argument list,
+     * supporting both `--flag value` and `--flag=value` formats.
+     *
+     * @param args The argument list to search
+     * @param flag The flag name to look for (e.g. `"--build-system"`)
+     * @param validate Optional type guard to restrict which values are accepted.
+     *                 When provided, occurrences whose value fails validation are
+     *                 skipped and the search continues to the next match.
+     * @returns The value of the last valid occurrence, or `undefined` if none match
+     */
+    static lastFlagValue<T extends string = string>(
+        args: readonly string[],
+        flag: string,
+        validate?: (value: string) => value is T
+    ): T | undefined {
+        for (let i = args.length - 1; i >= 0; i--) {
+            const arg = args[i];
+            const prefix = `${flag}=`;
+            if (arg.startsWith(prefix)) {
+                const value = arg.substring(prefix.length);
+                if (!validate || validate(value)) {
+                    return value as T;
+                }
+            } else if (arg === flag && i + 1 < args.length) {
+                const value = args[i + 1];
+                if (!validate || validate(value)) {
+                    return value as T;
+                }
+            }
+        }
+        return undefined;
     }
 }

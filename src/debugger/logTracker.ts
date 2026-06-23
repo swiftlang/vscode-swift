@@ -13,17 +13,41 @@
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
 
+import { InternalSwiftExtensionApi } from "../InternalSwiftExtensionApi";
 import { SwiftLogger } from "../logging/SwiftLogger";
+import { Disposable } from "../utilities/Disposable";
+import { Version } from "../utilities/version";
 import { LaunchConfigType } from "./debugAdapter";
 
 /**
  * Factory class for building LoggingDebugAdapterTracker
  */
 class LoggingDebugAdapterTrackerFactory implements vscode.DebugAdapterTrackerFactory {
+    constructor(private api: InternalSwiftExtensionApi) {}
+
     createDebugAdapterTracker(
         session: vscode.DebugSession
     ): vscode.ProviderResult<vscode.DebugAdapterTracker> {
-        return new LoggingDebugAdapterTracker(session.id);
+        const trackerOptions: LoggingDebugAdapterTrackerOptions = { ignoreConsoleOutput: true };
+        if (session.type === LaunchConfigType.LLDB_DAP && process.platform === "win32") {
+            // Normally, we ignore the console output category since it's reserved for messages from the
+            // debugger. However, in Swift 6.3 lldb-dap cannot properly distinguish between lldb's and the
+            // debuggee's output and will instead output everything under "console". Therefore, we need to
+            // include the "console" category with this configuration.
+            //
+            // This issue was fixed in Swift 6.4, but the change cannot be easily cherry picked back to 6.3.
+            const swiftVersion = this.api.workspaceContext?.folders.find(
+                f => f.workspaceFolder.uri.fsPath === session.workspaceFolder?.uri.fsPath
+            )?.swiftVersion;
+            if (
+                swiftVersion &&
+                swiftVersion.isGreaterThanOrEqual(new Version(6, 3, 0)) &&
+                swiftVersion.isLessThan(new Version(6, 4, 0))
+            ) {
+                trackerOptions.ignoreConsoleOutput = false;
+            }
+        }
+        return new LoggingDebugAdapterTracker(session.id, trackerOptions);
     }
 }
 
@@ -44,17 +68,21 @@ interface DebugMessage {
  * Register the LoggingDebugAdapterTrackerFactory with the VS Code debug adapter tracker
  * @returns A disposable to be disposed when the extension is deactivated
  */
-export function registerLoggingDebugAdapterTracker(): vscode.Disposable {
+export function registerLoggingDebugAdapterTracker(api: InternalSwiftExtensionApi): Disposable {
     // Register the factory for both lldb-dap and CodeLLDB since either could be used when
     // resolving a Swift launch configuration.
-    const trackerFactory = new LoggingDebugAdapterTrackerFactory();
-    const subscriptions: vscode.Disposable[] = [
+    const trackerFactory = new LoggingDebugAdapterTrackerFactory(api);
+    const subscriptions: Disposable[] = [
         vscode.debug.registerDebugAdapterTrackerFactory(LaunchConfigType.CODE_LLDB, trackerFactory),
         vscode.debug.registerDebugAdapterTrackerFactory(LaunchConfigType.LLDB_DAP, trackerFactory),
     ];
 
     // Return a disposable that cleans everything up.
-    return vscode.Disposable.from(...subscriptions);
+    return Disposable.from(...subscriptions);
+}
+
+interface LoggingDebugAdapterTrackerOptions {
+    ignoreConsoleOutput: boolean;
 }
 
 /**
@@ -68,9 +96,14 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
     private exitHandler?: (exitCode: number) => void;
     private output: string[] = [];
     private exitCode: number | undefined;
+    private ignoreConsoleOutput: boolean;
 
-    constructor(public id: string) {
+    constructor(
+        public id: string,
+        options: LoggingDebugAdapterTrackerOptions = { ignoreConsoleOutput: true }
+    ) {
         LoggingDebugAdapterTracker.debugSessionIdMap[id] = this;
+        this.ignoreConsoleOutput = options.ignoreConsoleOutput;
     }
 
     static setDebugSessionCallback(
@@ -113,17 +146,8 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
         if (debugMessage.event === "exited" && debugMessage.body.exitCode) {
             this.exitCode = debugMessage.body.exitCode;
             this.exitHandler?.(debugMessage.body.exitCode);
-        } else if (
-            debugMessage.type === "event" &&
-            debugMessage.event === "output" &&
-            debugMessage.body.category !== "console"
-        ) {
-            const output = debugMessage.body.output;
-            if (this.cb) {
-                this.cb(output);
-            } else {
-                this.output.push(output);
-            }
+        } else if (debugMessage.type === "event" && debugMessage.event === "output") {
+            this.handleProcessOutput(debugMessage);
         }
     }
 
@@ -133,5 +157,17 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
      */
     onWillStopSession(): void {
         delete LoggingDebugAdapterTracker.debugSessionIdMap[this.id];
+    }
+
+    private handleProcessOutput(message: DebugMessage): void {
+        if (this.ignoreConsoleOutput && message.body.category === "console") {
+            return;
+        }
+        const output = message.body.output;
+        if (this.cb) {
+            this.cb(output);
+        } else {
+            this.output.push(output);
+        }
     }
 }

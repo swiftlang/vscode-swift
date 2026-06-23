@@ -16,7 +16,7 @@ import * as path from "path";
 import { basename } from "path";
 import * as vscode from "vscode";
 
-import { folderExists, globDirectory, pathExists } from "./filesystem";
+import { globDirectory, pathExists } from "./filesystem";
 import { Version } from "./version";
 
 export async function searchForPackages(
@@ -95,11 +95,17 @@ export async function isValidWorkspaceFolder(
         return true;
     }
 
-    if (await folderExists(folder, "build")) {
+    // Check for compile_commands.json inside common build directories.
+    // The default search paths (root ".", "build/") match SourceKit-LSP
+    // and clangd behavior (see DetermineBuildServer.swift in sourcekit-lsp).
+    // We additionally check "out/" as a common CMake build directory name.
+    // Only match if the actual compile_commands.json file exists, not just
+    // the directory, to avoid false positives with non-Swift projects (e.g. Flutter).
+    if (await pathExists(folder, "build", "compile_commands.json")) {
         return true;
     }
 
-    if (await folderExists(folder, "out")) {
+    if (await pathExists(folder, "out", "compile_commands.json")) {
         return true;
     }
 

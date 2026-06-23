@@ -11,18 +11,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import * as fs from "fs/promises";
-import * as path from "path";
 import * as vscode from "vscode";
 
 import { FolderContext } from "./FolderContext";
 import { FolderOperation } from "./WorkspaceContext";
-import configuration from "./configuration";
-import { SwiftLogger } from "./logging/SwiftLogger";
 import { BuildFlags } from "./toolchain/BuildFlags";
-import { showReloadExtensionNotification } from "./ui/ReloadExtension";
+import { Disposable } from "./utilities/Disposable";
 import { fileExists } from "./utilities/filesystem";
-import { Version } from "./utilities/version";
+
+import debounce = require("lodash.debounce");
 
 /**
  * Watches for changes to **Package.swift** and **Package.resolved**.
@@ -32,17 +29,12 @@ import { Version } from "./utilities/version";
  */
 export class PackageWatcher {
     private packageFileWatcher?: vscode.FileSystemWatcher;
-    private resolvedChangedDisposable?: vscode.Disposable;
+    private resolvedChangedDisposable?: Disposable;
     private resolvedFileWatcher?: vscode.FileSystemWatcher;
     private workspaceStateFileWatcher?: vscode.FileSystemWatcher;
     private snippetWatcher?: vscode.FileSystemWatcher;
-    private swiftVersionFileWatcher?: vscode.FileSystemWatcher;
-    private currentVersion?: Version;
 
-    constructor(
-        private folderContext: FolderContext,
-        private logger: SwiftLogger
-    ) {}
+    constructor(private folderContext: FolderContext) {}
 
     /**
      * Creates and installs {@link vscode.FileSystemWatcher file system watchers} for
@@ -53,7 +45,6 @@ export class PackageWatcher {
         this.resolvedFileWatcher = this.createResolvedFileWatcher();
         this.workspaceStateFileWatcher = await this.createWorkspaceStateFileWatcher();
         this.snippetWatcher = this.createSnippetFileWatcher();
-        this.swiftVersionFileWatcher = await this.createSwiftVersionFileWatcher();
     }
 
     /**
@@ -61,12 +52,13 @@ export class PackageWatcher {
      * when the extension deactivates.
      */
     dispose() {
+        this.handlePackageSwiftChange.cancel();
+        this.handlePackageResolvedChange.cancel();
         this.packageFileWatcher?.dispose();
         this.resolvedChangedDisposable?.dispose();
         this.resolvedFileWatcher?.dispose();
         this.workspaceStateFileWatcher?.dispose();
         this.snippetWatcher?.dispose();
-        this.swiftVersionFileWatcher?.dispose();
     }
 
     private createPackageFileWatcher(): vscode.FileSystemWatcher {
@@ -124,71 +116,35 @@ export class PackageWatcher {
         return watcher;
     }
 
-    private async createSwiftVersionFileWatcher(): Promise<vscode.FileSystemWatcher> {
-        const watcher = vscode.workspace.createFileSystemWatcher(
-            new vscode.RelativePattern(this.folderContext.folder, ".swift-version")
-        );
-        watcher.onDidCreate(async () => await this.handleSwiftVersionFileChange());
-        watcher.onDidChange(async () => await this.handleSwiftVersionFileChange());
-        watcher.onDidDelete(async () => await this.handleSwiftVersionFileChange());
-        this.currentVersion =
-            (await this.readSwiftVersionFile()) ?? this.folderContext.toolchain.swiftVersion;
-        return watcher;
-    }
-
-    async handleSwiftVersionFileChange() {
-        const version = await this.readSwiftVersionFile();
-        if (
-            version?.toString() !== this.currentVersion?.toString() &&
-            !configuration.folder(this.folderContext.workspaceFolder).ignoreSwiftVersionFile
-        ) {
-            await this.folderContext.fireEvent(FolderOperation.swiftVersionUpdated);
-            await showReloadExtensionNotification(
-                "Changing the swift toolchain version requires the extension to be reloaded"
-            );
-        }
-        this.currentVersion = version ?? this.folderContext.toolchain.swiftVersion;
-    }
-
-    private async readSwiftVersionFile() {
-        const versionFile = path.join(this.folderContext.folder.fsPath, ".swift-version");
-        try {
-            const contents = await fs.readFile(versionFile);
-            return Version.fromString(contents.toString().trim());
-        } catch (error) {
-            if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-                this.logger.error(`Failed to read .swift-version file at ${versionFile}: ${error}`);
-            }
-        }
-        return undefined;
-    }
-
     /**
      * Handles a create or change event for **Package.swift**.
      *
      * This will reload the swift package description, update the
      * launch configuration if required and then resolve the package
      * dependencies.
+     *
+     * Debounced by 500ms to coalesce rapid file system events (e.g. during rebases).
      */
-    async handlePackageSwiftChange() {
-        // Load SwiftPM Package.swift description
+    handlePackageSwiftChange = debounce(async () => {
         await this.folderContext.reload();
         await this.folderContext.fireEvent(FolderOperation.packageUpdated);
-    }
+    }, 500);
 
     /**
      * Handles a create or change event for **Package.resolved**.
      *
      * This will resolve any changes in the Package.resolved.
+     *
+     * Debounced by 500ms to coalesce rapid file system events (e.g. during rebases).
      */
-    private async handlePackageResolvedChange() {
+    handlePackageResolvedChange = debounce(async () => {
         const packageResolvedHash = this.folderContext.swiftPackage.resolved?.fileHash;
         await this.folderContext.reloadPackageResolved();
         // if file contents has changed then send resolve updated message
         if (this.folderContext.swiftPackage.resolved?.fileHash !== packageResolvedHash) {
             await this.folderContext.fireEvent(FolderOperation.resolvedUpdated);
         }
-    }
+    }, 500);
 
     /**
      * Handles a create or change event for **.build/workspace-state.json**.

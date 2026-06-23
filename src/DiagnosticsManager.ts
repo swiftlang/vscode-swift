@@ -15,14 +15,13 @@ import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
 
-import { WorkspaceContext } from "./WorkspaceContext";
 import configuration from "./configuration";
+import { SwiftLogger } from "./logging/SwiftLogger";
 import { SwiftExecution } from "./tasks/SwiftExecution";
+import { TerminalEmulator } from "./terminal/TerminalEmulator";
+import { Disposable } from "./utilities/Disposable";
 import { validFileTypes } from "./utilities/filesystem";
-import { checkIfBuildComplete, lineBreakRegex } from "./utilities/tasks";
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-import stripAnsi = require("strip-ansi");
+import { checkIfBuildComplete } from "./utilities/tasks";
 
 interface ParsedDiagnostic {
     uri: string;
@@ -55,17 +54,17 @@ const isSourceKit: DiagnosticPredicate = diagnostic =>
  * external clients to call {@link handleDiagnostics} to provide
  * thier own diagnostics.
  */
-export class DiagnosticsManager implements vscode.Disposable {
-    private static swiftc: string = "swiftc";
-    static isSourcekit: SourcePredicate = source => this.swiftc !== source;
-    static isSwiftc: SourcePredicate = source => this.swiftc === source;
+export class DiagnosticsManager implements Disposable {
+    private static readonly swiftc: string = "swiftc";
+    static readonly isSourcekit: SourcePredicate = source => this.swiftc !== source;
+    static readonly isSwiftc: SourcePredicate = source => this.swiftc === source;
 
     private diagnosticCollection: vscode.DiagnosticCollection =
         vscode.languages.createDiagnosticCollection("swift");
     allDiagnostics: Map<string, vscode.Diagnostic[]> = new Map();
     private disposed = false;
 
-    constructor(context: WorkspaceContext) {
+    constructor(logger: SwiftLogger) {
         this.onDidChangeConfigurationDisposible = vscode.workspace.onDidChangeConfiguration(e => {
             if (e.affectsConfiguration("swift.diagnosticsCollection")) {
                 this.diagnosticCollection.clear();
@@ -100,7 +99,7 @@ export class DiagnosticsManager implements vscode.Disposable {
                         );
                     });
                 })
-                .catch(e => context.logger.error(`Failed to provide "swiftc" diagnostics: ${e}`));
+                .catch(e => logger.error(`Failed to provide "swiftc" diagnostics: ${e}`));
         });
         const fileTypes = validFileTypes.join(",");
         this.workspaceFileWatcher = vscode.workspace.createFileSystemWatcher(
@@ -298,97 +297,107 @@ export class DiagnosticsManager implements vscode.Disposable {
     private parseDiagnostics(swiftExecution: SwiftExecution): Promise<DiagnosticsMap> {
         return new Promise<DiagnosticsMap>(res => {
             const diagnostics = new Map();
-            const disposables: vscode.Disposable[] = [];
+            const disposables: Disposable[] = [];
             const done = () => {
                 disposables.forEach(d => d.dispose());
                 res(diagnostics);
             };
-            let remainingData: string | undefined;
             let lastDiagnostic: vscode.Diagnostic | undefined;
             let lastDiagnosticNeedsSaving = false;
+            const terminalEmulator = new TerminalEmulator(swiftExecution);
             disposables.push(
-                swiftExecution.onDidWrite(data => {
-                    const sanitizedData = (remainingData || "") + stripAnsi(data);
-                    const lines = sanitizedData.split(lineBreakRegex);
-                    // If ends with \n then will be "" and there's no affect.
-                    // Otherwise want to keep remaining data to pre-pend next write
-                    remainingData = lines.pop();
-                    for (const line of lines) {
-                        if (checkIfBuildComplete(line)) {
-                            done();
-                            return;
-                        }
-                        const result = this.parseDiagnostic(line);
-                        if (!result) {
-                            continue;
-                        }
-                        if (result instanceof vscode.DiagnosticRelatedInformation) {
-                            if (!lastDiagnostic) {
-                                continue;
-                            }
-                            const relatedInformation =
-                                result as vscode.DiagnosticRelatedInformation;
-                            if (
-                                lastDiagnostic.relatedInformation?.find(
-                                    d =>
-                                        d.message === relatedInformation.message &&
-                                        d.location.uri.fsPath ===
-                                            relatedInformation.location.uri.fsPath &&
-                                        d.location.range.isEqual(relatedInformation.location.range)
-                                )
-                            ) {
-                                // De-duplicate duplicate notes from SwiftPM
-                                // TODO remove when https://github.com/apple/swift/issues/73973 is fixed
-                                continue;
-                            }
-                            lastDiagnostic.relatedInformation = (
-                                lastDiagnostic.relatedInformation || []
-                            ).concat(relatedInformation);
-
-                            if (lastDiagnosticNeedsSaving) {
-                                const expandedUri = relatedInformation.location.uri.fsPath;
-                                const currentUriDiagnostics = diagnostics.get(expandedUri) || [];
-                                lastDiagnostic.range = relatedInformation.location.range;
-                                diagnostics.set(expandedUri, [
-                                    ...currentUriDiagnostics,
-                                    lastDiagnostic,
-                                ]);
-
-                                lastDiagnosticNeedsSaving = false;
-                            }
-                            continue;
-                        }
-                        const { uri, diagnostic } = result as ParsedDiagnostic;
-
-                        const currentUriDiagnostics: vscode.Diagnostic[] =
-                            diagnostics.get(uri) || [];
-                        if (
-                            currentUriDiagnostics.find(
-                                d =>
-                                    d.message === diagnostic.message &&
-                                    d.range.isEqual(diagnostic.range)
-                            )
-                        ) {
-                            // De-duplicate duplicate diagnostics from SwiftPM
-                            // TODO remove when https://github.com/apple/swift/issues/73973 is fixed
-                            lastDiagnostic = undefined;
-                            continue;
-                        }
-                        lastDiagnostic = diagnostic;
-
-                        // If the diagnostic comes from a macro expansion the URI is going to be an invalid URI.
-                        // Save the diagnostic for when we get the related information which has the macro expansion location
-                        // that should be used as the correct URI.
-                        if (this.isValidUri(uri)) {
-                            diagnostics.set(uri, [...currentUriDiagnostics, diagnostic]);
-                        } else {
-                            lastDiagnosticNeedsSaving = true;
-                        }
+                terminalEmulator,
+                terminalEmulator.onDidReceiveLineData(line => {
+                    if (checkIfBuildComplete(line)) {
+                        done();
+                        return;
                     }
+                    const result = this.parseDiagnostic(line);
+                    if (!result) {
+                        return;
+                    }
+                    if (result instanceof vscode.DiagnosticRelatedInformation) {
+                        lastDiagnosticNeedsSaving = this.handleRelatedInformation(
+                            result,
+                            lastDiagnostic,
+                            lastDiagnosticNeedsSaving,
+                            diagnostics
+                        );
+                        return;
+                    }
+                    const parsed = this.handleParsedDiagnostic(
+                        result as ParsedDiagnostic,
+                        diagnostics
+                    );
+                    lastDiagnostic = parsed.lastDiagnostic;
+                    lastDiagnosticNeedsSaving = parsed.needsSaving;
                 }),
-                swiftExecution.onDidClose(done)
+                terminalEmulator.onDidClose(done)
             );
         });
+    }
+
+    private handleRelatedInformation(
+        relatedInformation: vscode.DiagnosticRelatedInformation,
+        lastDiagnostic: vscode.Diagnostic | undefined,
+        needsSaving: boolean,
+        diagnostics: DiagnosticsMap
+    ): boolean {
+        if (!lastDiagnostic) {
+            return needsSaving;
+        }
+        // De-duplicate duplicate notes from SwiftPM
+        // TODO remove when https://github.com/apple/swift/issues/73973 is fixed
+        if (this.isDuplicateRelatedInfo(lastDiagnostic, relatedInformation)) {
+            return needsSaving;
+        }
+        lastDiagnostic.relatedInformation = (lastDiagnostic.relatedInformation || []).concat(
+            relatedInformation
+        );
+        if (!needsSaving) {
+            return false;
+        }
+        const expandedUri = relatedInformation.location.uri.fsPath;
+        const currentUriDiagnostics = diagnostics.get(expandedUri) || [];
+        lastDiagnostic.range = relatedInformation.location.range;
+        diagnostics.set(expandedUri, [...currentUriDiagnostics, lastDiagnostic]);
+        return false;
+    }
+
+    private isDuplicateRelatedInfo(
+        diagnostic: vscode.Diagnostic,
+        info: vscode.DiagnosticRelatedInformation
+    ): boolean {
+        return !!diagnostic.relatedInformation?.find(
+            d =>
+                d.message === info.message &&
+                d.location.uri.fsPath === info.location.uri.fsPath &&
+                d.location.range.isEqual(info.location.range)
+        );
+    }
+
+    private handleParsedDiagnostic(
+        { uri, diagnostic }: ParsedDiagnostic,
+        diagnostics: DiagnosticsMap
+    ): { lastDiagnostic: vscode.Diagnostic | undefined; needsSaving: boolean } {
+        const currentUriDiagnostics: vscode.Diagnostic[] = diagnostics.get(uri) || [];
+        // De-duplicate duplicate diagnostics from SwiftPM
+        // TODO remove when https://github.com/apple/swift/issues/73973 is fixed
+        if (
+            currentUriDiagnostics.find(
+                d => d.message === diagnostic.message && d.range.isEqual(diagnostic.range)
+            )
+        ) {
+            return { lastDiagnostic: undefined, needsSaving: false };
+        }
+        // If the diagnostic comes from a macro expansion the URI is going to be an invalid URI.
+        // Save the diagnostic for when we get the related information which has the macro expansion location
+        // that should be used as the correct URI.
+        if (this.isValidUri(uri)) {
+            diagnostics.set(uri, [...currentUriDiagnostics, diagnostic]);
+            return { lastDiagnostic: diagnostic, needsSaving: false };
+        }
+        return { lastDiagnostic: diagnostic, needsSaving: true };
     }
 
     private isValidUri(uri: string): boolean {
@@ -465,8 +474,8 @@ export class DiagnosticsManager implements vscode.Disposable {
         return diagnostic;
     };
 
-    private onDidStartTaskDisposible: vscode.Disposable;
-    private onDidChangeConfigurationDisposible: vscode.Disposable;
-    private onDidDeleteDisposible: vscode.Disposable;
+    private onDidStartTaskDisposible: Disposable;
+    private onDidChangeConfigurationDisposible: Disposable;
+    private onDidDeleteDisposible: Disposable;
     private workspaceFileWatcher: vscode.FileSystemWatcher;
 }

@@ -25,7 +25,8 @@ tag("medium").suite("TaskManager Test Suite", () => {
     let taskManager: TaskManager;
 
     activateExtensionForSuite({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             workspaceContext = ctx;
             taskManager = workspaceContext.tasks;
             assert.notEqual(workspaceContext.folders.length, 0);

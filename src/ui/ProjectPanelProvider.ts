@@ -24,6 +24,7 @@ import { FolderOperation } from "../WorkspaceContext";
 import configuration from "../configuration";
 import { Playground } from "../playgrounds/PlaygroundProvider";
 import { SwiftTask, TaskPlatformSpecificConfig } from "../tasks/SwiftTaskProvider";
+import { Disposable } from "../utilities/Disposable";
 import { getPlatformConfig, resolveTaskCwd } from "../utilities/tasks";
 import { Version } from "../utilities/version";
 
@@ -113,7 +114,8 @@ export class PackageNode {
      * So instead we'll check for this set boolean property. Even if the implementation of the
      * {@link PackageNode} class changes, this property should not need to change
      */
-    static isPackageNode = (item: { __isPackageNode?: boolean }) => item.__isPackageNode ?? false;
+    static readonly isPackageNode = (item: { __isPackageNode?: boolean }) =>
+        item.__isPackageNode ?? false;
     __isPackageNode = true;
 
     constructor(
@@ -424,7 +426,7 @@ export class PlaygroundNode {
      * So instead we'll check for this set boolean property. Even if the implementation of the
      * {@link PlaygroundNode} class changes, this property should not need to change
      */
-    static isPlaygroundNode = (item: { __isPlaygroundNode?: boolean }) =>
+    static readonly isPlaygroundNode = (item: { __isPlaygroundNode?: boolean }) =>
         item.__isPlaygroundNode ?? false;
     __isPlaygroundNode = true;
 
@@ -543,13 +545,13 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
     private didChangeTreeDataEmitter = new vscode.EventEmitter<
         TreeNode | undefined | null | void
     >();
-    private workspaceObserver?: vscode.Disposable;
-    private disposables: vscode.Disposable[] = [];
+    private workspaceObserver?: Disposable;
+    private disposables: Disposable[] = [];
     private activeTasks: Set<string> = new Set();
     private lastComputedNodes: TreeNode[] = [];
     private buildPluginOutputWatcher?: vscode.FileSystemWatcher;
-    private buildPluginFolderWatcher?: vscode.Disposable;
-    private playgroundWatcher?: vscode.Disposable;
+    private buildPluginFolderWatcher?: Disposable;
+    private playgroundWatcher?: Disposable;
 
     onDidChangeTreeData = this.didChangeTreeDataEmitter.event;
 
@@ -938,13 +940,14 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
  * A simple task poller that checks for changes in the tasks every 5 seconds.
  * This is a workaround for the lack of an event when tasks are added or removed.
  */
-class TaskPoller implements vscode.Disposable {
+class TaskPoller implements Disposable {
     private previousTasks: SwiftTask[] = [];
-    private timeout?: NodeJS.Timeout;
+    private interval: NodeJS.Timeout | undefined;
     private static POLL_INTERVAL = 5000;
 
     constructor(private onTasksChanged: () => void) {
         void this.pollTasks();
+        this.interval = setInterval(() => void this.pollTasks(), TaskPoller.POLL_INTERVAL);
     }
 
     private async pollTasks() {
@@ -972,13 +975,12 @@ class TaskPoller implements vscode.Disposable {
         } catch {
             // ignore errors
         }
-        this.timeout = setTimeout(() => this.pollTasks(), TaskPoller.POLL_INTERVAL);
     }
 
     dispose() {
-        if (this.timeout) {
-            clearTimeout(this.timeout);
-            this.timeout = undefined;
+        if (this.interval) {
+            clearInterval(this.interval);
+            this.interval = undefined;
         }
     }
 }
@@ -991,7 +993,7 @@ function watchForFolder(
     folderPath: string,
     onAvailable: () => void,
     onDeleted: () => void
-): vscode.Disposable {
+): Disposable {
     const POLL_INTERVAL = 2500;
     let folderExists = existsSync(folderPath);
 

@@ -18,15 +18,18 @@ import { match } from "sinon";
 import * as vscode from "vscode";
 
 import { FolderContext } from "@src/FolderContext";
+import { PackagePlugin } from "@src/SwiftPackage";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import configuration from "@src/configuration";
 import { SwiftExecution } from "@src/tasks/SwiftExecution";
 import { SwiftPluginTaskProvider } from "@src/tasks/SwiftPluginTaskProvider";
+import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
 import { BuildFlags } from "@src/toolchain/BuildFlags";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
 import { Version } from "@src/utilities/version";
 
 import { MockedObject, instance, mockFn, mockGlobalValue, mockObject } from "../../MockUtils";
+import { makeWorkspaceState } from "./fixtures/pluginFixtures";
 
 suite("SwiftPluginTaskProvider Unit Test Suite", () => {
     let workspaceContext: MockedObject<WorkspaceContext>;
@@ -41,7 +44,12 @@ suite("SwiftPluginTaskProvider Unit Test Suite", () => {
         toolchain = mockObject<SwiftToolchain>({
             swiftVersion: new Version(6, 0, 0),
             buildFlags: instance(buildFlags),
-            getToolchainExecutable: mockFn(s => s.withArgs("swift").returns("/path/to/bin/swift")),
+            getToolchainInvocation: mockFn(s =>
+                s.withArgs("swift", match.any).callsFake((_exe: string, args: string[]) => ({
+                    command: "/path/to/bin/swift",
+                    args,
+                }))
+            ),
         });
         const folderContext = mockObject<FolderContext>({
             workspaceContext: instance(workspaceContext),
@@ -320,6 +328,83 @@ suite("SwiftPluginTaskProvider Unit Test Suite", () => {
             );
             const swiftExecution = resolvedTask.execution as SwiftExecution;
             assert.equal(swiftExecution.options.env?.FOO, "bar");
+        });
+    });
+
+    suite("createSwiftPluginTask trusted-plugin auto-elevation", () => {
+        // Integration-level checks that getTaskDefinition's spread correctly
+        // forwards the result of getTrustedPluginPermissions to the resolved
+        // task. The exhaustive matrix lives in TrustedPlugins.test.ts.
+        type WorkspaceStateFixture = ReturnType<typeof makeWorkspaceState>;
+
+        function buildTask(
+            plugin: PackagePlugin,
+            workspaceState?: WorkspaceStateFixture
+        ): SwiftTask {
+            const taskProvider = new SwiftPluginTaskProvider(instance(workspaceContext));
+            return taskProvider.createSwiftPluginTask(plugin, instance(toolchain), {
+                cwd: workspaceFolder.uri,
+                scope: workspaceFolder,
+                workspaceState,
+            });
+        }
+
+        function flagsFromTask(task: SwiftTask): string[] {
+            return (task.execution as SwiftExecution).args;
+        }
+
+        test("auto-elevates SwiftDocCPlugin/preview-documentation from the canonical URL", () => {
+            const task = buildTask(
+                {
+                    command: "preview-documentation",
+                    name: "Swift-DocC",
+                    package: "SwiftDocCPlugin",
+                },
+                makeWorkspaceState([
+                    {
+                        name: "SwiftDocCPlugin",
+                        location: "https://github.com/swiftlang/swift-docc-plugin",
+                    },
+                ])
+            );
+            expect(flagsFromTask(task)).to.include.members([
+                "--disable-sandbox",
+                "--allow-writing-to-package-directory",
+            ]);
+        });
+
+        test("surfaces disableTaskQueue on the task definition for swift-aws-lambda-runtime/archive", () => {
+            // disableTaskQueue is not a CLI flag; it lives on the task
+            // definition. Pin that the spread merges it through correctly.
+            const task = buildTask(
+                {
+                    command: "archive",
+                    name: "AWSLambdaPackager",
+                    package: "swift-aws-lambda-runtime",
+                },
+                makeWorkspaceState([
+                    {
+                        name: "swift-aws-lambda-runtime",
+                        location: "https://github.com/swift-server/swift-aws-lambda-runtime",
+                    },
+                ])
+            );
+            expect(task.definition.disableTaskQueue).to.equal(true);
+        });
+
+        test("does NOT auto-elevate when a root package spoofs the SwiftDocCPlugin name", () => {
+            const flags = flagsFromTask(
+                buildTask(
+                    {
+                        command: "preview-documentation",
+                        name: "Trojan",
+                        package: "SwiftDocCPlugin",
+                    },
+                    makeWorkspaceState([])
+                )
+            );
+            expect(flags).to.not.include("--disable-sandbox");
+            expect(flags).to.not.include("--allow-writing-to-package-directory");
         });
     });
 });

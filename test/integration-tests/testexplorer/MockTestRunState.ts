@@ -34,6 +34,10 @@ export interface TestRunTestItem {
         location?: vscode.Location;
         diff?: TestIssueDiff;
     }[];
+    warnings?: {
+        message: string;
+        location?: vscode.Location;
+    }[];
     timing?: { duration: number } | { timestamp: number };
     output: string[];
 }
@@ -86,6 +90,7 @@ export class TestRunState implements ITestRunState {
     }
 
     constructor(darwin: boolean) {
+        // eslint-disable-next-line sonarjs/no-selector-parameter
         if (darwin) {
             this.testItemFinder = new DarwinTestItemFinder();
         } else {
@@ -121,6 +126,13 @@ export class TestRunState implements ITestRunState {
             { message, location, isKnown, diff },
         ];
         this.testItemFinder.tests[index].status = TestStatus.failed;
+    }
+
+    recordWarning(index: number, message: string, location?: vscode.Location): void {
+        this.testItemFinder.tests[index].warnings = [
+            ...(this.testItemFinder.tests[index].warnings ?? []),
+            { message, location },
+        ];
     }
 
     skipped(index: number): void {

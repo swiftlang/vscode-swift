@@ -187,13 +187,15 @@ export class TestRunArguments {
         const isTestTarget = !!testItem.tags.find(tag => tag.id === "test-target");
 
         if (isTestTarget) {
-            // We cannot simplify away test suites leaving only the target if we are debugging,
-            // since the exact names of test suites to run need to be passed to the xctest binary.
-            // It will not debug all tests with only the target name.
             if (isDebug) {
+                // XCTests require exact suite names to be passed to the xctest binary
+                // when debugging, so we cannot simplify them to the target level.
+                // Swift-testing uses regex filters and supports target-level wildcards,
+                // allowing us to reduce the number of --filter arguments. Without this,
+                // large projects produce so many args that the debug adapter can crash.
                 return {
                     xcTestResult: xcTestArgs,
-                    swiftTestResult: swiftTestArgs,
+                    swiftTestResult: swiftTestArgs.length > 0 ? [testItem] : [],
                 };
             }
             return {

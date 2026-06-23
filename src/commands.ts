@@ -14,9 +14,10 @@
 import * as path from "path";
 import * as vscode from "vscode";
 
+import { InternalSwiftExtensionApi } from "./InternalSwiftExtensionApi";
 import { debugSnippet, runSnippet } from "./SwiftSnippets";
 import { TestKind } from "./TestExplorer/TestKind";
-import { WorkspaceContext } from "./WorkspaceContext";
+import { clearTestWarningDiagnostics } from "./TestExplorer/TestRunProxy";
 import { attachDebugger } from "./commands/attachDebugger";
 import { cleanBuild, debugBuild, runBuild } from "./commands/build";
 import { captureDiagnostics } from "./commands/captureDiagnostics";
@@ -42,6 +43,7 @@ import { pickProcess } from "./commands/pickProcess";
 import { reindexProject } from "./commands/reindexProject";
 import { resetPackage } from "./commands/resetPackage";
 import restartLSPServer from "./commands/restartLSPServer";
+import { revealTaskTerminal } from "./commands/revealTaskTerminal";
 import { runAllTests } from "./commands/runAllTests";
 import { runPlayground } from "./commands/runPlayground";
 import { runPluginTask } from "./commands/runPluginTask";
@@ -50,9 +52,9 @@ import { runTask } from "./commands/runTask";
 import { runTest } from "./commands/runTest";
 import { switchPlatform } from "./commands/switchPlatform";
 import { extractTestItemsAndCount, runTestMultipleTimes } from "./commands/testMultipleTimes";
-import { SwiftLogger } from "./logging/SwiftLogger";
 import { PackageNode, PlaygroundNode } from "./ui/ProjectPanelProvider";
 import { showToolchainSelectionQuickPick } from "./ui/ToolchainSelection";
+import { Disposable } from "./utilities/Disposable";
 
 /**
  * References:
@@ -62,31 +64,6 @@ import { showToolchainSelectionQuickPick } from "./ui/ToolchainSelection";
  * - Implementing commands:
  *   https://code.visualstudio.com/api/extension-guides/command
  */
-
-export function registerToolchainCommands(
-    ctx: WorkspaceContext | undefined,
-    logger: SwiftLogger,
-    extensionPath: string
-): vscode.Disposable[] {
-    return [
-        vscode.commands.registerCommand("swift.createNewProject", () =>
-            createNewProject(ctx?.globalToolchain)
-        ),
-        vscode.commands.registerCommand("swift.selectToolchain", () =>
-            showToolchainSelectionQuickPick(
-                ctx?.currentFolder?.toolchain ?? ctx?.globalToolchain,
-                logger,
-                ctx?.currentFolder?.folder
-            )
-        ),
-        vscode.commands.registerCommand("swift.pickProcess", configuration =>
-            pickProcess(configuration)
-        ),
-        vscode.commands.registerCommand("swift.installSwiftly", () =>
-            handleMissingSwiftly(["latest"], extensionPath, logger, true)
-        ),
-    ];
-}
 
 export enum Commands {
     RUN = "swift.run",
@@ -122,51 +99,75 @@ export enum Commands {
     INSTALL_SWIFTLY_TOOLCHAIN = "swift.installSwiftlyToolchain",
     INSTALL_SWIFTLY_SNAPSHOT_TOOLCHAIN = "swift.installSwiftlySnapshotToolchain",
     GENERATE_SOURCEKIT_CONFIG = "swift.generateSourcekitConfiguration",
+    REVEAL_TASK_TERMINAL = "swift.revealTaskTerminal",
 }
 
 /**
  * Registers this extension's commands in the given {@link vscode.ExtensionContext context}.
  */
-export function register(ctx: WorkspaceContext): vscode.Disposable[] {
+export function registerCommands(api: InternalSwiftExtensionApi): Disposable[] {
     return [
-        vscode.commands.registerCommand(
-            "swift.generateLaunchConfigurations",
-            async () => await generateLaunchConfigurations(ctx)
+        vscode.commands.registerCommand("swift.createNewProject", () =>
+            api.withWorkspaceContext<void>(ctx => createNewProject(ctx.globalToolchain))
         ),
-        vscode.commands.registerCommand("swift.newFile", async uri => await newSwiftFile(uri)),
-        vscode.commands.registerCommand(
-            Commands.RESOLVE_DEPENDENCIES,
-            async () => await resolveDependencies(ctx)
+        vscode.commands.registerCommand("swift.selectToolchain", () =>
+            api.withWorkspaceContext(ctx =>
+                showToolchainSelectionQuickPick(
+                    ctx.currentFolder?.toolchain ?? ctx.globalToolchain,
+                    api.logger,
+                    ctx.currentFolder?.folder
+                )
+            )
         ),
-        vscode.commands.registerCommand(
-            Commands.UPDATE_DEPENDENCIES,
-            async () => await updateDependencies(ctx)
+        vscode.commands.registerCommand("swift.pickProcess", configuration =>
+            pickProcess(configuration)
         ),
-        vscode.commands.registerCommand(
-            Commands.RUN,
-            async target => await runBuild(ctx, ...unwrapTreeItem(target))
+        vscode.commands.registerCommand("swift.installSwiftly", () =>
+            handleMissingSwiftly(["latest"], api.extensionPath, api.logger, true)
         ),
-        vscode.commands.registerCommand(
-            Commands.DEBUG,
-            async target => await debugBuild(ctx, ...unwrapTreeItem(target))
+        vscode.commands.registerCommand("swift.generateLaunchConfigurations", () =>
+            api.withWorkspaceContext(ctx => generateLaunchConfigurations(ctx))
         ),
-        vscode.commands.registerCommand(Commands.PLAY, async target => {
-            const folder = ctx.currentFolder;
-            if (!folder || !target) {
-                return false;
-            }
-            return await runPlayground(
-                folder,
-                ctx.tasks,
-                PlaygroundNode.isPlaygroundNode(target) ? target.playground : target
-            );
-        }),
-        vscode.commands.registerCommand(Commands.CLEAN_BUILD, async () => await cleanBuild(ctx)),
+        vscode.commands.registerCommand("swift.newFile", uri => newSwiftFile(uri)),
+        vscode.commands.registerCommand(Commands.REVEAL_TASK_TERMINAL, (task?: vscode.Task) =>
+            revealTaskTerminal(task)
+        ),
+        vscode.commands.registerCommand(Commands.RESOLVE_DEPENDENCIES, () =>
+            api.withWorkspaceContext(ctx => resolveDependencies(ctx))
+        ),
+        vscode.commands.registerCommand(Commands.UPDATE_DEPENDENCIES, () =>
+            api.withWorkspaceContext(ctx => updateDependencies(ctx))
+        ),
+        vscode.commands.registerCommand(Commands.RUN, target =>
+            api.withWorkspaceContext(ctx => runBuild(ctx, ...unwrapTreeItem(target)))
+        ),
+        vscode.commands.registerCommand(Commands.DEBUG, target =>
+            api.withWorkspaceContext(ctx => debugBuild(ctx, ...unwrapTreeItem(target)))
+        ),
+        vscode.commands.registerCommand(Commands.PLAY, target =>
+            api.withWorkspaceContext(async ctx => {
+                const folder = ctx.currentFolder;
+                if (!folder || !target) {
+                    return false;
+                }
+                return await runPlayground(
+                    folder,
+                    ctx.tasks,
+                    PlaygroundNode.isPlaygroundNode(target) ? target.playground : target
+                );
+            })
+        ),
+        vscode.commands.registerCommand(Commands.CLEAN_BUILD, () =>
+            api.withWorkspaceContext(ctx => cleanBuild(ctx))
+        ),
         vscode.commands.registerCommand(
             Commands.RUN_TESTS_MULTIPLE_TIMES,
-            async (...args: (vscode.TestItem | number)[]) => {
+            (...args: (vscode.TestItem | number)[]) => {
                 const { testItems, count } = extractTestItemsAndCount(...args);
-                if (ctx.currentFolder) {
+                return api.withWorkspaceContext(async ctx => {
+                    if (!ctx.currentFolder) {
+                        return undefined;
+                    }
                     return await runTestMultipleTimes(
                         ctx.currentFolder,
                         testItems,
@@ -174,14 +175,17 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
                         TestKind.standard,
                         count
                     );
-                }
+                });
             }
         ),
         vscode.commands.registerCommand(
             Commands.RUN_TESTS_UNTIL_FAILURE,
             async (...args: (vscode.TestItem | number)[]) => {
                 const { testItems, count } = extractTestItemsAndCount(...args);
-                if (ctx.currentFolder) {
+                return api.withWorkspaceContext(async ctx => {
+                    if (!ctx.currentFolder) {
+                        return undefined;
+                    }
                     return await runTestMultipleTimes(
                         ctx.currentFolder,
                         testItems,
@@ -189,7 +193,7 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
                         TestKind.standard,
                         count
                     );
-                }
+                });
             }
         ),
 
@@ -197,7 +201,10 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             Commands.DEBUG_TESTS_MULTIPLE_TIMES,
             async (...args: (vscode.TestItem | number)[]) => {
                 const { testItems, count } = extractTestItemsAndCount(...args);
-                if (ctx.currentFolder) {
+                return api.withWorkspaceContext(async ctx => {
+                    if (!ctx.currentFolder) {
+                        return undefined;
+                    }
                     return await runTestMultipleTimes(
                         ctx.currentFolder,
                         testItems,
@@ -205,14 +212,17 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
                         TestKind.debug,
                         count
                     );
-                }
+                });
             }
         ),
         vscode.commands.registerCommand(
             Commands.DEBUG_TESTS_UNTIL_FAILURE,
             async (...args: (vscode.TestItem | number)[]) => {
                 const { testItems, count } = extractTestItemsAndCount(...args);
-                if (ctx.currentFolder) {
+                return api.withWorkspaceContext(async ctx => {
+                    if (!ctx.currentFolder) {
+                        return undefined;
+                    }
                     return await runTestMultipleTimes(
                         ctx.currentFolder,
                         testItems,
@@ -220,77 +230,81 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
                         TestKind.debug,
                         count
                     );
-                }
+                });
             }
         ),
         // Note: switchPlatform is only available on macOS and Swift 6.1 or later
         // (gated in `package.json`) because it's the only OS and toolchain combination that
         // has Darwin SDKs available and supports code editing with SourceKit-LSP
-        vscode.commands.registerCommand(
-            "swift.switchPlatform",
-            async () => await switchPlatform(ctx)
+        vscode.commands.registerCommand("swift.switchPlatform", () =>
+            api.withWorkspaceContext(ctx => switchPlatform(ctx))
         ),
-        vscode.commands.registerCommand(
-            Commands.RESET_PACKAGE,
-            async (_ /* Ignore context */, folder) => await resetPackage(ctx, folder)
+        vscode.commands.registerCommand(Commands.RESET_PACKAGE, (_ /* Ignore context */, folder) =>
+            api.withWorkspaceContext(ctx => resetPackage(ctx, folder))
         ),
-        vscode.commands.registerCommand("swift.runScript", async () => {
-            if (ctx && vscode.window.activeTextEditor?.document) {
-                await runSwiftScript(
+        vscode.commands.registerCommand("swift.runScript", () =>
+            api.withWorkspaceContext(async ctx => {
+                if (!ctx || !vscode.window.activeTextEditor?.document) {
+                    return undefined;
+                }
+                return await runSwiftScript(
                     vscode.window.activeTextEditor.document,
                     ctx.tasks,
                     ctx.currentFolder?.toolchain ?? ctx.globalToolchain
                 );
-            }
-        }),
-        vscode.commands.registerCommand("swift.openPackage", async () => {
-            if (ctx.currentFolder) {
-                return await openPackage(ctx.currentFolder.swiftVersion, ctx.currentFolder.folder);
-            }
-        }),
-        vscode.commands.registerCommand(
-            Commands.RUN_SNIPPET,
-            async target => await runSnippet(ctx, ...unwrapTreeItem(target))
+            })
         ),
-        vscode.commands.registerCommand(
-            Commands.DEBUG_SNIPPET,
-            async target => await debugSnippet(ctx, ...unwrapTreeItem(target))
+        vscode.commands.registerCommand("swift.openPackage", () =>
+            api.withWorkspaceContext(async ctx => {
+                if (ctx.currentFolder) {
+                    return await openPackage(
+                        ctx.currentFolder.swiftVersion,
+                        ctx.currentFolder.folder
+                    );
+                }
+            })
         ),
-        vscode.commands.registerCommand(
-            Commands.RUN_PLUGIN_TASK,
-            async () => await runPluginTask()
+        vscode.commands.registerCommand(Commands.RUN_SNIPPET, target =>
+            api.withWorkspaceContext(ctx => runSnippet(ctx, ...unwrapTreeItem(target)))
         ),
-        vscode.commands.registerCommand(Commands.RUN_TASK, async name => await runTask(ctx, name)),
-        vscode.commands.registerCommand(
-            Commands.RESTART_LSP,
-            async () => await restartLSPServer(ctx)
+        vscode.commands.registerCommand(Commands.DEBUG_SNIPPET, target =>
+            api.withWorkspaceContext(ctx => debugSnippet(ctx, ...unwrapTreeItem(target)))
         ),
-        vscode.commands.registerCommand(
-            "swift.reindexProject",
-            async () => await reindexProject(ctx)
+        vscode.commands.registerCommand(Commands.RUN_PLUGIN_TASK, () => runPluginTask()),
+        vscode.commands.registerCommand(Commands.RUN_TASK, name => runTask(api, name)),
+        vscode.commands.registerCommand(Commands.RESTART_LSP, () =>
+            api.withWorkspaceContext(ctx => restartLSPServer(ctx))
         ),
-        vscode.commands.registerCommand(
-            "swift.insertFunctionComment",
-            async () => await insertFunctionComment(ctx)
+        vscode.commands.registerCommand("swift.reindexProject", () =>
+            api.withWorkspaceContext(ctx => reindexProject(ctx))
         ),
-        vscode.commands.registerCommand(Commands.USE_LOCAL_DEPENDENCY, async (item, dep) => {
+        vscode.commands.registerCommand("swift.insertFunctionComment", () =>
+            api.withWorkspaceContext(ctx => insertFunctionComment(ctx))
+        ),
+        vscode.commands.registerCommand(Commands.USE_LOCAL_DEPENDENCY, (item, dep) =>
+            api.withWorkspaceContext(async ctx => {
+                if (PackageNode.isPackageNode(item)) {
+                    return await useLocalDependency(item.name, ctx, dep);
+                }
+            })
+        ),
+        vscode.commands.registerCommand("swift.editDependency", (item, folder) =>
+            api.withWorkspaceContext(async ctx => {
+                if (PackageNode.isPackageNode(item)) {
+                    return await editDependency(item.name, ctx, folder);
+                }
+            })
+        ),
+        vscode.commands.registerCommand(Commands.UNEDIT_DEPENDENCY, (item, folder) =>
+            api.withWorkspaceContext(async ctx => {
+                if (PackageNode.isPackageNode(item)) {
+                    return await uneditDependency(item.name, ctx, folder);
+                }
+            })
+        ),
+        vscode.commands.registerCommand("swift.openInWorkspace", item => {
             if (PackageNode.isPackageNode(item)) {
-                return await useLocalDependency(item.name, ctx, dep);
-            }
-        }),
-        vscode.commands.registerCommand("swift.editDependency", async (item, folder) => {
-            if (PackageNode.isPackageNode(item)) {
-                return await editDependency(item.name, ctx, folder);
-            }
-        }),
-        vscode.commands.registerCommand(Commands.UNEDIT_DEPENDENCY, async (item, folder) => {
-            if (PackageNode.isPackageNode(item)) {
-                return await uneditDependency(item.name, ctx, folder);
-            }
-        }),
-        vscode.commands.registerCommand("swift.openInWorkspace", async item => {
-            if (PackageNode.isPackageNode(item)) {
-                return await openInWorkspace(item);
+                return openInWorkspace(item);
             }
         }),
         vscode.commands.registerCommand("swift.openExternal", item => {
@@ -299,50 +313,58 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             }
         }),
         vscode.commands.registerCommand("swift.attachDebugger", attachDebugger),
-        vscode.commands.registerCommand("swift.clearDiagnosticsCollection", () =>
-            ctx.diagnostics.clear()
+        vscode.commands.registerCommand("swift.clearDiagnosticsCollection", async () => {
+            clearTestWarningDiagnostics();
+            await api.withWorkspaceContext(ctx => ctx.diagnostics.clear());
+        }),
+        vscode.commands.registerCommand("swift.captureDiagnostics", () =>
+            captureDiagnostics(
+                {
+                    logFolderUri: api.loggerFactory.logFolderUri,
+                    globalToolchain: api.workspaceContext?.globalToolchain,
+                    folders: api.workspaceContext?.folders,
+                    showSwiftOutputChannel: () => api.outputChannel.show(),
+                },
+                api.logger
+            )
         ),
-        vscode.commands.registerCommand(
-            "swift.captureDiagnostics",
-            async () => await captureDiagnostics(ctx)
+        vscode.commands.registerCommand(Commands.RUN_ALL_TESTS_PARALLEL, item =>
+            api.withWorkspaceContext(ctx =>
+                runAllTests(ctx, TestKind.parallel, ...unwrapTreeItem(item))
+            )
         ),
-        vscode.commands.registerCommand(
-            Commands.RUN_ALL_TESTS_PARALLEL,
-            async item => await runAllTests(ctx, TestKind.parallel, ...unwrapTreeItem(item))
+        vscode.commands.registerCommand(Commands.RUN_ALL_TESTS, item =>
+            api.withWorkspaceContext(ctx =>
+                runAllTests(ctx, TestKind.standard, ...unwrapTreeItem(item))
+            )
         ),
-        vscode.commands.registerCommand(
-            Commands.RUN_ALL_TESTS,
-            async item => await runAllTests(ctx, TestKind.standard, ...unwrapTreeItem(item))
+        vscode.commands.registerCommand(Commands.DEBUG_ALL_TESTS, item =>
+            api.withWorkspaceContext(ctx =>
+                runAllTests(ctx, TestKind.debug, ...unwrapTreeItem(item))
+            )
         ),
-        vscode.commands.registerCommand(
-            Commands.DEBUG_ALL_TESTS,
-            async item => await runAllTests(ctx, TestKind.debug, ...unwrapTreeItem(item))
+        vscode.commands.registerCommand(Commands.COVER_ALL_TESTS, item =>
+            api.withWorkspaceContext(ctx =>
+                runAllTests(ctx, TestKind.coverage, ...unwrapTreeItem(item))
+            )
         ),
-        vscode.commands.registerCommand(
-            Commands.COVER_ALL_TESTS,
-            async item => await runAllTests(ctx, TestKind.coverage, ...unwrapTreeItem(item))
+        vscode.commands.registerCommand(Commands.RUN_TEST, item =>
+            api.withWorkspaceContext(ctx => runTest(ctx, TestKind.standard, item))
         ),
-        vscode.commands.registerCommand(
-            Commands.RUN_TEST,
-            async item => await runTest(ctx, TestKind.standard, item)
+        vscode.commands.registerCommand(Commands.DEBUG_TEST, item =>
+            api.withWorkspaceContext(ctx => runTest(ctx, TestKind.debug, item))
         ),
-        vscode.commands.registerCommand(
-            Commands.DEBUG_TEST,
-            async item => await runTest(ctx, TestKind.debug, item)
+        vscode.commands.registerCommand(Commands.RUN_TEST_WITH_COVERAGE, item =>
+            api.withWorkspaceContext(ctx => runTest(ctx, TestKind.coverage, item))
         ),
-        vscode.commands.registerCommand(
-            Commands.RUN_TEST_WITH_COVERAGE,
-            async item => await runTest(ctx, TestKind.coverage, item)
-        ),
-        vscode.commands.registerCommand(
-            Commands.PREVIEW_DOCUMENTATION,
-            async () => await ctx.documentation.launchDocumentationPreview()
+        vscode.commands.registerCommand(Commands.PREVIEW_DOCUMENTATION, () =>
+            api.withWorkspaceContext(ctx => ctx.documentation.launchDocumentationPreview())
         ),
         vscode.commands.registerCommand(Commands.SHOW_FLAT_DEPENDENCIES_LIST, () =>
-            updateDependenciesViewList(ctx, true)
+            api.withWorkspaceContext(ctx => updateDependenciesViewList(ctx, true))
         ),
         vscode.commands.registerCommand(Commands.SHOW_NESTED_DEPENDENCIES_LIST, () =>
-            updateDependenciesViewList(ctx, false)
+            api.withWorkspaceContext(ctx => updateDependenciesViewList(ctx, false))
         ),
         vscode.commands.registerCommand("swift.openEducationalNote", uri =>
             openEducationalNote(uri)
@@ -352,9 +374,8 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
             await vscode.commands.executeCommand("vscode.open", vscode.Uri.file(packagePath));
         }),
         vscode.commands.registerCommand("swift.openDocumentation", () => openDocumentation()),
-        vscode.commands.registerCommand(
-            Commands.GENERATE_SOURCEKIT_CONFIG,
-            async () => await generateSourcekitConfiguration(ctx)
+        vscode.commands.registerCommand(Commands.GENERATE_SOURCEKIT_CONFIG, () =>
+            api.withWorkspaceContext(ctx => generateSourcekitConfiguration(ctx))
         ),
         vscode.commands.registerCommand(
             "swift.showCommands",
@@ -369,13 +390,11 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
                     "@ext:swiftlang.swift-vscode "
                 )
         ),
-        vscode.commands.registerCommand(
-            Commands.INSTALL_SWIFTLY_TOOLCHAIN,
-            async () => await promptToInstallSwiftlyToolchain(ctx, "stable")
+        vscode.commands.registerCommand(Commands.INSTALL_SWIFTLY_TOOLCHAIN, () =>
+            api.withWorkspaceContext(ctx => promptToInstallSwiftlyToolchain(ctx, "stable"))
         ),
-        vscode.commands.registerCommand(
-            Commands.INSTALL_SWIFTLY_SNAPSHOT_TOOLCHAIN,
-            async () => await promptToInstallSwiftlyToolchain(ctx, "snapshot")
+        vscode.commands.registerCommand(Commands.INSTALL_SWIFTLY_SNAPSHOT_TOOLCHAIN, () =>
+            api.withWorkspaceContext(ctx => promptToInstallSwiftlyToolchain(ctx, "snapshot"))
         ),
     ];
 }
@@ -385,7 +404,7 @@ export function register(ctx: WorkspaceContext): vscode.Disposable[] {
  * If the command is called via a command palette or other means, the target will be a string.
  */
 function unwrapTreeItem(target?: string | { args: string[] }): string[] {
-    if (typeof target === "object" && target !== null && "args" in target) {
+    if (!!target && typeof target === "object" && "args" in target) {
         return target.args ?? [];
     } else if (typeof target === "string") {
         return [target];

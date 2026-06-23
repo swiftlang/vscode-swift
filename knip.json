@@ -7,7 +7,7 @@
     "test/**/*.ts"
   ],
   "project": ["src/**/*.ts", "scripts/**/*.ts", "test/**/*.ts"],
-  "ignore": ["dist/**", "out/**", "assets/**", "**/*.d.ts"],
+  "ignore": ["**/*.d.ts"],
   "ignoreDependencies": [
     "node-pty",
     "@vscode/codicons",
@@ -17,8 +17,12 @@
     "@types/ttf2woff"
   ],
   "ignoreBinaries": ["scripts/soundness.sh"],
+  "ignoreIssues": {
+    "src/sourcekit-lsp/**": ["namespaceMembers"]
+  },
   "rules": {
     "types": "warn",
-    "enumMembers": "warn"
+    "enumMembers": "warn",
+    "exports": "off"
   }
 }

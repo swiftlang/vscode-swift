@@ -14,9 +14,12 @@
 import * as vscode from "vscode";
 
 import { FolderContext } from "../../FolderContext";
-import { PackageContents, SwiftPackage } from "../../SwiftPackage";
+import { PackageContents } from "../../SwiftPackage";
+import configuration from "../../configuration";
+import { ReadOnlySwiftProcess } from "../../tasks/SwiftProcess";
 import { SwiftTaskProvider, createSwiftTask } from "../../tasks/SwiftTaskProvider";
 import { packageName } from "../../utilities/tasks";
+import { swiftRuntimeEnv } from "../../utilities/utilities";
 import { executeTaskWithUI, updateAfterError } from "../utilities";
 
 /**
@@ -44,6 +47,26 @@ export async function executeSwiftPackageCommand<T>(
     config: SwiftPackageCommandConfig,
     token?: vscode.CancellationToken
 ): Promise<T> {
+    const args = folderContext.toolchain.buildFlags.withAdditionalFlags(config.args);
+    const inv = folderContext.toolchain.getToolchainInvocation("swift", args);
+
+    const swiftProcess = new ReadOnlySwiftProcess(inv.command, inv.args, {
+        cwd: folderContext.folder.fsPath,
+        env: {
+            ...swiftRuntimeEnv(),
+            ...configuration.swiftEnvironmentVariables,
+        },
+    });
+
+    const stdoutChunks: string[] = [];
+    const stderrChunks: string[] = [];
+    const stdoutDisposable = swiftProcess.onDidWriteStdout(data => {
+        stdoutChunks.push(data);
+    });
+    const stderrDisposable = swiftProcess.onDidWriteStderr(data => {
+        stderrChunks.push(data);
+    });
+
     const task = createSwiftTask(
         config.args,
         config.taskName,
@@ -57,48 +80,44 @@ export async function executeSwiftPackageCommand<T>(
         },
         folderContext.toolchain,
         undefined,
-        { readOnlyTerminal: true }
+        { readOnlyTerminal: true },
+        swiftProcess
     );
-
-    const outputChunks: string[] = [];
-    task.execution.onDidWrite((data: string) => {
-        outputChunks.push(data);
-    });
-
-    const success = await executeTaskWithUI(
-        task,
-        config.uiMessage,
-        folderContext,
-        false,
-        false,
-        token
-    );
-    updateAfterError(success, folderContext);
-
-    const output = outputChunks.join("");
-
-    if (!success) {
-        throw new Error(output);
-    }
-
-    if (!output.trim()) {
-        throw new Error(`No output received from swift ${config.commandName} command`);
-    }
 
     try {
-        const trimmedOutput = SwiftPackage.trimStdout(output);
-        const parsedOutput = JSON.parse(trimmedOutput);
+        const success = await executeTaskWithUI(
+            task,
+            config.uiMessage,
+            folderContext,
+            false,
+            false,
+            token
+        );
+        updateAfterError(success, folderContext);
 
-        // Validate the parsed output is an object
+        const stdout = stdoutChunks.join("");
+        const stderr = stderrChunks.join("");
+
+        if (!success) {
+            throw new Error(stderr || stdout);
+        }
+
+        if (!stdout.trim()) {
+            throw new Error(`No output received from swift ${config.commandName} command`);
+        }
+
+        const parsedOutput: unknown = JSON.parse(stdout);
+
         if (!parsedOutput || typeof parsedOutput !== "object") {
             throw new Error(`Invalid format received from swift ${config.commandName} command`);
         }
 
         return parsedOutput as T;
     } catch (parseError) {
-        throw new Error(
-            `Failed to parse ${config.commandName} output: ${parseError instanceof Error ? parseError.message : "Unknown error"}`
-        );
+        throw new Error(`Failed to parse ${config.commandName} output`, { cause: parseError });
+    } finally {
+        stdoutDisposable.dispose();
+        stderrDisposable.dispose();
     }
 }
 

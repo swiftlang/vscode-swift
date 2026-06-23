@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
-import * as mockFS from "mock-fs";
 import * as sinon from "sinon";
 
 import * as lldb from "@src/debugger/lldb";
@@ -28,6 +27,8 @@ import {
     mockObject,
 } from "../../MockUtils";
 
+import mockFS = require("mock-fs");
+
 suite("debugger.lldb Tests", () => {
     suite("getLLDBLibPath()", () => {
         let mockToolchain: MockedObject<SwiftToolchain>;
@@ -40,7 +41,12 @@ suite("debugger.lldb Tests", () => {
             mockToolchain = mockObject<SwiftToolchain>({
                 swiftFolderPath: "/usr/bin",
                 toolchainPath: "/toolchain",
-                getLLDB: mockFn(s => s.resolves("/toolchain/bin/lldb")),
+                getDebuggerToolchainInvocation: mockFn(s =>
+                    s.callsFake((_exe: string, args: string[]) => ({
+                        command: "/toolchain/bin/lldb",
+                        args,
+                    }))
+                ),
             });
         });
 

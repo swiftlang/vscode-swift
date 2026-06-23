@@ -38,6 +38,8 @@ class TestEventStream {
         });
         readable.push(null);
     }
+
+    async stop() {}
 }
 
 suite("SwiftTestingOutputParser Suite", () => {
@@ -53,12 +55,14 @@ suite("SwiftTestingOutputParser Suite", () => {
     });
 
     type ExtractPayload<T> = T extends { payload: infer E } ? E : never;
+    type IssueOverrides = { isFailure?: boolean; severity?: string };
     function testEvent(
         name: ExtractPayload<EventRecord>["kind"],
         testID?: string,
         messages?: EventMessage[],
         sourceLocation?: SourceLocation,
-        testCaseID?: string
+        testCaseID?: string,
+        issueOverrides?: IssueOverrides
     ): EventRecord {
         return {
             kind: "event",
@@ -68,7 +72,9 @@ suite("SwiftTestingOutputParser Suite", () => {
                 instant: { absolute: 0, since1970: 0 },
                 messages: messages ?? [],
                 ...{ testID, sourceLocation },
-                ...(messages ? { issue: { sourceLocation, isKnown: false } } : {}),
+                ...(messages
+                    ? { issue: { sourceLocation, isKnown: false, ...issueOverrides } }
+                    : {}),
                 _testCase: {
                     id: testCaseID ?? testID,
                     displayName: testCaseID ?? testID,
@@ -304,24 +310,23 @@ suite("SwiftTestingOutputParser Suite", () => {
         ]);
     });
 
-    test("Issue with isFailure: false isn't recorded", async () => {
+    test("Issue with isFailure: false is recorded as a warning", async () => {
         const issueLocation = {
             _filePath: "file:///some/file.swift",
             line: 1,
             column: 2,
         };
-        const issueEvent = testEvent(
-            "issueRecorded",
-            "MyTests.MyTests/testWarning()",
-            [{ text: "This is a warning", symbol: TestSymbol.warning }],
-            issueLocation
-        );
-        (issueEvent.payload as any).issue.isFailure = false;
-
         const events = new TestEventStream([
             testEvent("runStarted"),
             testEvent("testCaseStarted", "MyTests.MyTests/testWarning()"),
-            issueEvent,
+            testEvent(
+                "issueRecorded",
+                "MyTests.MyTests/testWarning()",
+                [{ text: "This is a warning", symbol: TestSymbol.warning }],
+                issueLocation,
+                undefined,
+                { isFailure: false }
+            ),
             testEvent("testCaseEnded", "MyTests.MyTests/testWarning()"),
             testEvent("runEnded"),
         ]);
@@ -334,7 +339,94 @@ suite("SwiftTestingOutputParser Suite", () => {
                 status: TestStatus.passed,
                 timing: { timestamp: 0 },
                 output: [],
+                warnings: [
+                    {
+                        message: "This is a warning",
+                        location: new vscode.Location(
+                            vscode.Uri.file(issueLocation._filePath),
+                            new vscode.Position(issueLocation.line - 1, issueLocation.column)
+                        ),
+                    },
+                ],
             },
         ]);
+    });
+
+    test("Issue with severity: warning is recorded as a warning and the test passes", async () => {
+        const issueLocation = {
+            _filePath: "file:///some/file.swift",
+            line: 4,
+            column: 7,
+        };
+        const events = new TestEventStream([
+            testEvent("runStarted"),
+            testEvent("testCaseStarted", "MyTests.MyTests/testWarning()"),
+            testEvent(
+                "issueRecorded",
+                "MyTests.MyTests/testWarning()",
+                [{ text: "Deprecated API used", symbol: TestSymbol.warning }],
+                issueLocation,
+                undefined,
+                { severity: "warning", isFailure: false }
+            ),
+            testEvent("testCaseEnded", "MyTests.MyTests/testWarning()"),
+            testEvent("runEnded"),
+        ]);
+
+        await outputParser.watch("file:///mock/named/pipe", testRunState, events);
+
+        assert.deepEqual(testRunState.tests, [
+            {
+                name: "MyTests.MyTests/testWarning()",
+                status: TestStatus.passed,
+                timing: { timestamp: 0 },
+                output: [],
+                warnings: [
+                    {
+                        message: "Deprecated API used",
+                        location: new vscode.Location(
+                            vscode.Uri.file(issueLocation._filePath),
+                            new vscode.Position(issueLocation.line - 1, issueLocation.column)
+                        ),
+                    },
+                ],
+            },
+        ]);
+    });
+
+    test("A test with both a warning and a failing issue still fails", async () => {
+        const issueLocation = {
+            _filePath: "file:///some/file.swift",
+            line: 1,
+            column: 2,
+        };
+        const events = new TestEventStream([
+            testEvent("runStarted"),
+            testEvent("testCaseStarted", "MyTests.MyTests/testMixed()"),
+            testEvent(
+                "issueRecorded",
+                "MyTests.MyTests/testMixed()",
+                [{ text: "A warning", symbol: TestSymbol.warning }],
+                issueLocation,
+                undefined,
+                { severity: "warning", isFailure: false }
+            ),
+            testEvent(
+                "issueRecorded",
+                "MyTests.MyTests/testMixed()",
+                [{ text: "Expectation failed: bar == foo", symbol: TestSymbol.fail }],
+                issueLocation
+            ),
+            testEvent("testCaseEnded", "MyTests.MyTests/testMixed()"),
+            testEvent("runEnded"),
+        ]);
+
+        await outputParser.watch("file:///mock/named/pipe", testRunState, events);
+
+        assert.equal(testRunState.tests.length, 1);
+        assert.equal(testRunState.tests[0].status, TestStatus.failed);
+        assert.equal(testRunState.tests[0].warnings?.length, 1);
+        assert.equal(testRunState.tests[0].warnings?.[0].message, "A warning");
+        assert.equal(testRunState.tests[0].issues?.length, 1);
     });
 });

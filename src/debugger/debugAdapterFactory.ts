@@ -14,12 +14,15 @@
 import * as path from "path";
 import * as vscode from "vscode";
 
-import { WorkspaceContext } from "../WorkspaceContext";
+import { FolderContext } from "../FolderContext";
+import { InternalSwiftExtensionApi } from "../InternalSwiftExtensionApi";
 import configuration from "../configuration";
-import { SwiftLogger } from "../logging/SwiftLogger";
 import { SwiftToolchain } from "../toolchain/toolchain";
+import { Disposable } from "../utilities/Disposable";
 import { fileExists } from "../utilities/filesystem";
+import { findBinaryInPath } from "../utilities/shell";
 import { getErrorDescription, swiftRuntimeEnv } from "../utilities/utilities";
+import { registerBreakpointVerificationTracker } from "./breakpointVerificationTracker";
 import { DebugAdapter, LaunchConfigType, SWIFT_LAUNCH_CONFIG_TYPE } from "./debugAdapter";
 import { getTargetBinaryPath, swiftPrelaunchBuildTaskArguments } from "./launch";
 import { getLLDBLibPath, updateLaunchConfigForCI } from "./lldb";
@@ -28,17 +31,17 @@ import { registerLoggingDebugAdapterTracker } from "./logTracker";
 /**
  * Registers the active debugger with the extension, and reregisters it
  * when the debugger settings change.
- * @param workspaceContext  The workspace context
+ * @param api  The Swift extension API
  * @returns A disposable to be disposed when the extension is deactivated
  */
-export function registerDebugger(workspaceContext: WorkspaceContext): vscode.Disposable {
-    let subscriptions: vscode.Disposable[] = [];
+export function registerDebugger(api: InternalSwiftExtensionApi): Disposable {
+    let subscriptions: Disposable[] = [];
 
     // Monitor the swift.debugger.disable setting and register automatically
     // when the setting is changed to enable.
     const configurationEvent = vscode.workspace.onDidChangeConfiguration(event => {
         if (event.affectsConfiguration("swift.debugger.disable")) {
-            subscriptions.map(sub => sub.dispose());
+            subscriptions.forEach(sub => sub.dispose());
             subscriptions = [];
             if (!configuration.debugger.disable) {
                 register();
@@ -47,26 +50,27 @@ export function registerDebugger(workspaceContext: WorkspaceContext): vscode.Dis
     });
 
     function register() {
-        subscriptions.push(registerLoggingDebugAdapterTracker());
-        subscriptions.push(registerLLDBDebugAdapter(workspaceContext));
+        subscriptions.push(registerLoggingDebugAdapterTracker(api));
+        subscriptions.push(registerBreakpointVerificationTracker());
+        subscriptions.push(registerLLDBDebugAdapter(api));
     }
 
     if (!configuration.debugger.disable) {
         register();
     }
 
-    return vscode.Disposable.from(configurationEvent, ...subscriptions);
+    return Disposable.from(configurationEvent, ...subscriptions);
 }
 
 /**
  * Registers the LLDB debug adapter with the VS Code debug adapter descriptor factory.
- * @param workspaceContext The workspace context
+ * @param api The Swift extension API
  * @returns A disposable to be disposed when the extension is deactivated
  */
-function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vscode.Disposable {
+function registerLLDBDebugAdapter(api: InternalSwiftExtensionApi): Disposable {
     return vscode.debug.registerDebugConfigurationProvider(
         SWIFT_LAUNCH_CONFIG_TYPE,
-        workspaceContext.launchProvider
+        new LLDBDebugConfigurationProvider(process.platform, api)
     );
 }
 
@@ -82,20 +86,58 @@ function registerLLDBDebugAdapter(workspaceContext: WorkspaceContext): vscode.Di
 export class LLDBDebugConfigurationProvider implements vscode.DebugConfigurationProvider {
     constructor(
         private platform: NodeJS.Platform,
-        private workspaceContext: WorkspaceContext,
-        private logger: SwiftLogger
+        private api: InternalSwiftExtensionApi
     ) {}
 
     async resolveDebugConfigurationWithSubstitutedVariables(
         folder: vscode.WorkspaceFolder | undefined,
         launchConfig: vscode.DebugConfiguration
     ): Promise<vscode.DebugConfiguration | undefined | null> {
-        const folderContext = this.workspaceContext.folders.find(
+        // First attempt to find a folder context that matches the provided "folder".
+        const workspaceContext = await this.api.waitForWorkspaceContext();
+        let folderContext = workspaceContext.folders.find(
             f => f.workspaceFolder.uri.fsPath === folder?.uri.fsPath
         );
-        const toolchain = folderContext?.toolchain ?? this.workspaceContext.globalToolchain;
 
-        // "launch" requests must have either a "target" or "program" property
+        // If we can't find it we're likely in a multi-root workspace and we should
+        // attempt to find a folder context that matches the "cwd" in the launch configuration.
+        if (!folderContext && launchConfig.cwd) {
+            folderContext = workspaceContext.folders.find(f => {
+                const folderPath = path.normalize(f.workspaceFolder.uri.fsPath);
+                const cwdPath = path.normalize(launchConfig.cwd);
+                return this.platform === "win32"
+                    ? folderPath.localeCompare(cwdPath, undefined, { sensitivity: "accent" }) === 0
+                    : folderPath === cwdPath;
+            });
+        }
+
+        this.validateLaunchRequest(launchConfig);
+
+        await this.resolveTargetToProgram(launchConfig, folderContext);
+
+        await this.resolveBinPathVariable(launchConfig, folderContext);
+
+        this.fixWindowsProgramPath(launchConfig);
+
+        const pidResult = await this.resolvePidProperty(launchConfig);
+        if (pidResult !== true) {
+            return pidResult;
+        }
+
+        this.mergeRuntimeEnvironment(launchConfig);
+
+        const toolchain = folderContext?.toolchain ?? workspaceContext.globalToolchain;
+        launchConfig.type = DebugAdapter.getLaunchConfigType(toolchain.swiftVersion);
+
+        const adapterResult = await this.configureDebugAdapter(launchConfig, toolchain);
+        if (adapterResult !== true) {
+            return adapterResult;
+        }
+
+        return updateLaunchConfigForCI(launchConfig);
+    }
+
+    private validateLaunchRequest(launchConfig: vscode.DebugConfiguration): void {
         if (
             launchConfig.request === "launch" &&
             !("program" in launchConfig) &&
@@ -105,108 +147,186 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
                 "You must specify either a 'program' or a 'target' when 'request' is set to 'launch' in a Swift debug configuration. Please update your debug configuration."
             );
         }
+    }
 
-        // Convert the "target" and "configuration" properties to a "program"
-        if (typeof launchConfig.target === "string") {
-            if ("program" in launchConfig) {
-                throw new Error(
-                    `Unable to set both "target" and "program" on the same Swift debug configuration. Please remove one of them from your debug configuration.`
-                );
-            }
-            const targetName = launchConfig.target;
-            if (!folderContext) {
-                throw new Error(
-                    `Unable to resolve target "${targetName}". No Swift package is available to search within.`
-                );
-            }
-            const buildConfiguration = launchConfig.configuration ?? "debug";
-            if (!["debug", "release"].includes(buildConfiguration)) {
-                throw new Error(
-                    `Unknown configuration property "${buildConfiguration}" in Swift debug configuration. Valid options are "debug" or "release. Please update your debug configuration.`
-                );
-            }
-            launchConfig.program = await getTargetBinaryPath(
-                targetName,
-                buildConfiguration,
-                folderContext,
-                await swiftPrelaunchBuildTaskArguments(launchConfig, folderContext.workspaceFolder)
+    private async resolveTargetToProgram(
+        launchConfig: vscode.DebugConfiguration,
+        folderContext: FolderContext | undefined
+    ): Promise<void> {
+        if (typeof launchConfig.target !== "string") {
+            return;
+        }
+
+        if ("program" in launchConfig) {
+            throw new Error(
+                `Unable to set both "target" and "program" on the same Swift debug configuration. Please remove one of them from your debug configuration.`
             );
-            delete launchConfig.target;
         }
 
-        // Fix the program path on Windows to include the ".exe" extension
+        const targetName = launchConfig.target;
+        if (!folderContext) {
+            throw new Error(
+                `Unable to resolve target "${targetName}". No Swift package is available to search within.`
+            );
+        }
+
+        const buildConfiguration = launchConfig.configuration ?? "debug";
+        if (!["debug", "release"].includes(buildConfiguration)) {
+            throw new Error(
+                `Unknown configuration property "${buildConfiguration}" in Swift debug configuration. Valid options are "debug" or "release. Please update your debug configuration.`
+            );
+        }
+
+        launchConfig.program = await getTargetBinaryPath(
+            targetName,
+            buildConfiguration,
+            folderContext,
+            await swiftPrelaunchBuildTaskArguments(launchConfig, folderContext.workspaceFolder)
+        );
+        delete launchConfig.target;
+    }
+
+    private async resolveBinPathVariable(
+        launchConfig: vscode.DebugConfiguration,
+        folderContext: FolderContext | undefined
+    ): Promise<void> {
         if (
-            this.platform === "win32" &&
-            launchConfig.testType === undefined &&
-            path.extname(launchConfig.program) !== ".exe" &&
-            path.extname(launchConfig.program) !== ".xctest"
+            typeof launchConfig.program !== "string" ||
+            !launchConfig.program.includes("${binPath}") ||
+            !folderContext
         ) {
-            launchConfig.program += ".exe";
+            return;
         }
 
-        // Convert "pid" property from a string to a number to make the process picker work.
-        if ("pid" in launchConfig) {
-            const pid = Number.parseInt(launchConfig.pid, 10);
-            if (isNaN(pid)) {
-                return await vscode.window
-                    .showErrorMessage(
-                        "Failed to launch debug session",
-                        {
-                            modal: true,
-                            detail: `Invalid process ID: "${launchConfig.pid}" is not a valid integer. Please update your launch configuration`,
-                        },
-                        "Configure"
-                    )
-                    .then(userSelection => {
-                        if (userSelection === "Configure") {
-                            return null; // Opens the launch configuration when returned from a DebugConfigurationProvider
-                        }
-                        return undefined; // Only stops the debug session from starting
-                    });
-            }
+        const buildConfiguration = launchConfig.configuration ?? "debug";
+        const binPath = await folderContext.toolchain.buildFlags.getBuildBinaryPath(
+            folderContext.folder.fsPath,
+            buildConfiguration,
+            folderContext.workspaceContext.logger
+        );
+        const relativeBinPath = path.relative(folderContext.folder.fsPath, binPath);
+        launchConfig.program = launchConfig.program.replaceAll("${binPath}", relativeBinPath);
+    }
+
+    private fixWindowsProgramPath(launchConfig: vscode.DebugConfiguration): void {
+        if (this.platform !== "win32") {
+            return;
+        }
+        if (launchConfig.testType !== undefined) {
+            return;
+        }
+        const ext = path.extname(launchConfig.program);
+        if (ext === ".exe" || ext === ".xctest") {
+            return;
+        }
+        launchConfig.program += ".exe";
+    }
+
+    private async resolvePidProperty(
+        launchConfig: vscode.DebugConfiguration
+    ): Promise<true | undefined | null> {
+        if (!("pid" in launchConfig)) {
+            return true;
+        }
+
+        const pid = Number.parseInt(launchConfig.pid, 10);
+        if (!isNaN(pid)) {
             launchConfig.pid = pid;
+            return true;
         }
 
-        // Merge in the Swift runtime environment variables
-        const runtimeEnv = swiftRuntimeEnv(true);
-        if (runtimeEnv) {
-            const existingEnv = launchConfig.env ?? {};
-            launchConfig.env = { ...runtimeEnv, existingEnv };
-        }
-
-        // Delegate to the appropriate debug adapter extension
-        launchConfig.type = DebugAdapter.getLaunchConfigType(toolchain.swiftVersion);
-        if (launchConfig.type === LaunchConfigType.CODE_LLDB) {
-            launchConfig.sourceLanguages = ["swift"];
-            if (!vscode.extensions.getExtension("vadimcn.vscode-lldb")) {
-                if (!(await this.promptToInstallCodeLLDB())) {
-                    return undefined;
+        return vscode.window
+            .showErrorMessage(
+                "Failed to launch debug session",
+                {
+                    modal: true,
+                    detail: `Invalid process ID: "${launchConfig.pid}" is not a valid integer. Please update your launch configuration`,
+                },
+                "Configure"
+            )
+            .then(userSelection => {
+                if (userSelection === "Configure") {
+                    return null;
                 }
-            }
+                return undefined;
+            });
+    }
 
-            await this.promptForCodeLldbSettingsIfRequired(toolchain);
+    private mergeRuntimeEnvironment(launchConfig: vscode.DebugConfiguration): void {
+        const runtimeEnv = swiftRuntimeEnv(true);
+        if (!runtimeEnv) {
+            return;
+        }
+        const existingEnv = launchConfig.env ?? {};
+        launchConfig.env = { ...runtimeEnv, existingEnv };
+    }
 
-            // Rename lldb-dap's "terminateCommands" to "preTerminateCommands" for CodeLLDB
-            if ("terminateCommands" in launchConfig) {
-                launchConfig["preTerminateCommands"] = launchConfig["terminateCommands"];
-                delete launchConfig["terminateCommands"];
+    private async configureDebugAdapter(
+        launchConfig: vscode.DebugConfiguration,
+        toolchain: SwiftToolchain
+    ): Promise<true | undefined> {
+        if (launchConfig.type === LaunchConfigType.CODE_LLDB) {
+            return this.configureCodeLLDB(launchConfig, toolchain);
+        }
+
+        if (launchConfig.type === LaunchConfigType.LLDB_DAP) {
+            return this.configureLLDBDap(launchConfig, toolchain);
+        }
+
+        return true;
+    }
+
+    private async configureCodeLLDB(
+        launchConfig: vscode.DebugConfiguration,
+        toolchain: SwiftToolchain
+    ): Promise<true | undefined> {
+        launchConfig.sourceLanguages = ["swift"];
+
+        if (!vscode.extensions.getExtension("vadimcn.vscode-lldb")) {
+            if (!(await this.promptToInstallCodeLLDB())) {
+                return undefined;
             }
-        } else if (launchConfig.type === LaunchConfigType.LLDB_DAP) {
-            if (launchConfig.env) {
-                launchConfig.env = this.convertEnvironmentVariables(launchConfig.env);
-            }
-            const lldbDapPath = await DebugAdapter.getLLDBDebugAdapterPath(toolchain);
-            // Verify that the debug adapter exists or bail otherwise
-            if (!(await fileExists(lldbDapPath))) {
+        }
+
+        await this.promptForCodeLldbSettingsIfRequired(toolchain);
+
+        if ("terminateCommands" in launchConfig) {
+            launchConfig["preTerminateCommands"] = launchConfig["terminateCommands"];
+            delete launchConfig["terminateCommands"];
+        }
+
+        return true;
+    }
+
+    private async configureLLDBDap(
+        launchConfig: vscode.DebugConfiguration,
+        toolchain: SwiftToolchain
+    ): Promise<true | undefined> {
+        if (launchConfig.env) {
+            launchConfig.env = this.convertEnvironmentVariables(launchConfig.env);
+        }
+
+        const customDebugAdapterPath = configuration.debugger.customDebugAdapterPath;
+        if (customDebugAdapterPath) {
+            if (!(await fileExists(customDebugAdapterPath))) {
                 void vscode.window.showErrorMessage(
-                    `Cannot find the LLDB debug adapter in your Swift toolchain: No such file or directory "${lldbDapPath}"`
+                    `Cannot find the LLDB debug adapter: No such file or directory "${customDebugAdapterPath}"`
                 );
                 return undefined;
             }
-            launchConfig.debugAdapterExecutable = lldbDapPath;
+
+            launchConfig.debugAdapterExecutable = customDebugAdapterPath;
+            return true;
         }
 
-        return updateLaunchConfigForCI(launchConfig);
+        const inv = await toolchain.getDebuggerToolchainInvocation("lldb-dap", []);
+        // lldb-dap requires that the debugAdapterExecutable always be an absolute path.
+        if (!path.isAbsolute(inv.command)) {
+            inv.command = await findBinaryInPath(inv.command);
+        }
+        launchConfig.debugAdapterExecutable = inv.command;
+        launchConfig.debugAdapterArgs = inv.args;
+        return true;
     }
 
     private async promptToInstallCodeLLDB(): Promise<boolean> {
@@ -245,7 +365,7 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
             void vscode.window.showWarningMessage(
                 `Failed to setup CodeLLDB for debugging of Swift code. Debugging may produce unexpected results. ${errorMessage}`
             );
-            this.logger.error(`Failed to setup CodeLLDB: ${errorMessage}`);
+            this.api.logger.error(`Failed to setup CodeLLDB: ${errorMessage}`);
             return;
         }
         const libLldbPath = libLldbPathResult.success;

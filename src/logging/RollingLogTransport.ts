@@ -11,27 +11,19 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import * as TransportType from "winston-transport";
+import type * as winston from "winston";
 
 import { RollingLog } from "./RollingLog";
 
-// Compile error if don't use "require": https://github.com/swiftlang/vscode-swift/actions/runs/16529946578/job/46752753379?pr=1746
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const Transport: typeof TransportType = require("winston-transport");
+import TransportStream = require("winston-transport");
 
-export class RollingLogTransport extends Transport {
+export class RollingLogTransport extends TransportStream {
     constructor(private rollingLog: RollingLog) {
-        super();
-        this.level = "debug";
+        super({ level: "debug" });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    public log(info: any, next: () => void): void {
-        if (info.append) {
-            this.rollingLog.append(info.message);
-        } else {
-            this.rollingLog.appendLine(info.message);
-        }
+    public log(info: winston.Logform.TransformableInfo, next: () => void): void {
+        this.rollingLog.appendLine(String(info[Symbol.for("message")]));
         next();
     }
 }

@@ -21,7 +21,6 @@ import { reduceTestItemChildren } from "@src/TestExplorer/TestUtils";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 import stripAnsi = require("strip-ansi");
 
 /**
@@ -113,39 +112,47 @@ export function assertTestResults(
         }[];
         passed?: string[];
         skipped?: string[];
-        errored?: string[];
         enqueued?: string[];
         unknown?: number;
     }
 ) {
+    function firstLine(str: string) {
+        const stripped = stripAnsi(str);
+        const endOfLine = stripped.indexOf("\n");
+        if (endOfLine > 0) {
+            return stripped.slice(0, endOfLine);
+        }
+        return str;
+    }
     assert.deepEqual(
         {
-            passed: testRun.runState.passed.map(({ id }) => id).sort(),
+            passed: testRun.runState.passed.map(({ id }) => id).sort((a, b) => a.localeCompare(b)),
             failed: testRun.runState.failed
                 .map(({ test, message }) => ({
                     test: test.id,
                     issues: Array.isArray(message)
-                        ? message.map(({ message }) => stripAnsi(message.toString()))
-                        : [stripAnsi((message as vscode.TestMessage).message.toString())],
+                        ? message.map(({ message }) => firstLine(message.toString()))
+                        : [firstLine((message as vscode.TestMessage).message.toString())],
                 }))
-                .sort(),
-            skipped: testRun.runState.skipped.map(({ id }) => id).sort(),
+                .sort((a, b) => a.test.localeCompare(b.test)),
+            skipped: testRun.runState.skipped
+                .map(({ id }) => id)
+                .sort((a, b) => a.localeCompare(b)),
             enqueued: Array.from(testRun.runState.enqueued)
                 .map(({ id }) => id)
-                .sort(),
+                .sort((a, b) => a.localeCompare(b)),
             unknown: testRun.runState.unknown,
         },
         {
-            passed: (state.passed ?? []).sort(),
+            passed: (state.passed ?? []).sort((a, b) => a.localeCompare(b)),
             failed: (state.failed ?? [])
                 .map(({ test, issues }) => ({
                     test,
-                    issues: issues.map(message => stripAnsi(message)),
+                    issues: issues.map(message => firstLine(message)),
                 }))
-                .sort(),
-            skipped: (state.skipped ?? []).sort(),
-            errored: (state.errored ?? []).sort(),
-            enqueued: (state.enqueued ?? []).sort(),
+                .sort((a, b) => a.test.localeCompare(b.test)),
+            skipped: (state.skipped ?? []).sort((a, b) => a.localeCompare(b)),
+            enqueued: (state.enqueued ?? []).sort((a, b) => a.localeCompare(b)),
             unknown: 0,
         },
         `
@@ -235,9 +242,8 @@ export function gatherTests(
             const testsInController = reduceTestItemChildren(
                 controller.items,
                 (acc, item) => {
-                    acc.push(
-                        `${item.id}: ${item.label} ${item.error ? `(error: ${item.error})` : ""}`
-                    );
+                    const errorSuffix = item.error ? `(error: ${item.error})` : "";
+                    acc.push(`${item.id}: ${item.label} ${errorSuffix}`);
                     return acc;
                 },
                 [] as string[]

@@ -28,7 +28,7 @@ suite("newSwiftFile Command Test Suite", () => {
     const languagesMock = mockGlobalObject(vscode, "languages");
 
     test("Creates a blank file if no URI is provided", async () => {
-        await newSwiftFile(undefined);
+        await newSwiftFile();
 
         expect(workspaceMock.openTextDocument).to.have.been.calledWith({ language: "swift" });
         expect(windowMock.showTextDocument).to.have.been.calledOnce;

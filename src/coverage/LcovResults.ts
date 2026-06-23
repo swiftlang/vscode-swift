@@ -11,22 +11,22 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-
-import * as vscode from "vscode";
-import * as lcov from "lcov-parse";
 import * as asyncfs from "fs/promises";
+import * as lcov from "lcov-parse";
 import * as path from "path";
 import { Writable } from "stream";
 import { promisify } from "util";
-import configuration from "../configuration";
+import * as vscode from "vscode";
+
 import { FolderContext } from "../FolderContext";
-import { execFileStreamOutput } from "../utilities/utilities";
-import { BuildFlags } from "../toolchain/BuildFlags";
-import { TestLibrary } from "../TestExplorer/TestRunner";
-import { DisposableFileCollection, TemporaryFolder } from "../utilities/tempFolder";
 import { TargetType } from "../SwiftPackage";
-import { TestingConfigurationFactory } from "../debugger/buildConfig";
 import { TestKind } from "../TestExplorer/TestKind";
+import { TestLibrary } from "../TestExplorer/TestRunner";
+import configuration from "../configuration";
+import { TestingConfigurationFactory, effectiveBuildSystem } from "../debugger/buildConfig";
+import { BuildFlags } from "../toolchain/BuildFlags";
+import { DisposableFileCollection, TemporaryFolder } from "../utilities/tempFolder";
+import { execFileStreamOutput } from "../utilities/utilities";
 
 interface CodeCovFile {
     testLibrary: TestLibrary;
@@ -95,10 +95,16 @@ export class TestCoverage {
     private async mergeProfdata(profDataFiles: string[]) {
         const filename = (await this.lcovTmpFiles()).file("merged", "profdata");
         const toolchain = this.folderContext.toolchain;
-        const llvmProfdata = toolchain.getToolchainExecutable("llvm-profdata");
+        const inv = toolchain.getToolchainInvocation("llvm-profdata", [
+            "merge",
+            "-sparse",
+            "-o",
+            filename,
+            ...profDataFiles,
+        ]);
         await execFileStreamOutput(
-            llvmProfdata,
-            ["merge", "-sparse", "-o", filename, ...profDataFiles],
+            inv.command,
+            inv.args,
             null,
             null,
             null,
@@ -140,6 +146,51 @@ export class TestCoverage {
      * Exports a `.profdata` file using `llvm-cov export`, returning the result as a `Buffer`.
      */
     private async exportProfdata(types: TestLibrary[], mergedProfileFile: string): Promise<Buffer> {
+        const allBuildArgs = [
+            ...configuration.buildArguments,
+            ...configuration.folder(this.folderContext.workspaceFolder).additionalTestArguments,
+        ];
+        const buildSystem = effectiveBuildSystem(this.folderContext.swiftVersion, allBuildArgs);
+
+        const coveredBinaries =
+            buildSystem === "swiftbuild"
+                ? await this.swiftbuildCoveredBinaries(types)
+                : await this.nativeCoveredBinaries(types);
+
+        let buffer = Buffer.alloc(0);
+        const writableStream = new Writable({
+            write(chunk, _encoding, callback) {
+                buffer = Buffer.concat([buffer, chunk]);
+                callback();
+            },
+        });
+
+        const llvmCovInv = this.folderContext.toolchain.getToolchainInvocation("llvm-cov", [
+            "export",
+            "--format",
+            "lcov",
+            ...coveredBinaries,
+            `--ignore-filename-regex=${await this.ignoredFilenamesRegex()}`,
+            `--instr-profile=${mergedProfileFile}`,
+        ]);
+        await execFileStreamOutput(
+            llvmCovInv.command,
+            llvmCovInv.args,
+            writableStream,
+            writableStream,
+            null,
+            {
+                env: { ...process.env, ...configuration.swiftEnvironmentVariables },
+                maxBuffer: 16 * 1024 * 1024,
+            },
+            this.folderContext
+        );
+
+        return buffer;
+    }
+
+    // Collects coverage binary paths for the native build system (one binary per package).
+    private async nativeCoveredBinaries(types: TestLibrary[]): Promise<string[]> {
         const coveredBinaries = new Set<string>();
         if (types.includes(TestLibrary.xctest)) {
             let xcTestBinary = await TestingConfigurationFactory.testExecutableOutputPath(
@@ -163,35 +214,40 @@ export class TestCoverage {
             coveredBinaries.add(swiftTestBinary);
         }
 
-        let buffer = Buffer.alloc(0);
-        const writableStream = new Writable({
-            write(chunk, _encoding, callback) {
-                buffer = Buffer.concat([buffer, chunk]);
-                callback();
-            },
-        });
+        return [...coveredBinaries];
+    }
 
-        await execFileStreamOutput(
-            this.folderContext.toolchain.getToolchainExecutable("llvm-cov"),
-            [
-                "export",
-                "--format",
-                "lcov",
-                ...coveredBinaries,
-                `--ignore-filename-regex=${await this.ignoredFilenamesRegex()}`,
-                `--instr-profile=${mergedProfileFile}`,
-            ],
-            writableStream,
-            writableStream,
-            null,
-            {
-                env: { ...process.env, ...configuration.swiftEnvironmentVariables },
-                maxBuffer: 16 * 1024 * 1024,
-            },
-            this.folderContext
-        );
+    // Collects coverage binary paths for the swiftbuild build system (one binary per test target).
+    private async swiftbuildCoveredBinaries(types: TestLibrary[]): Promise<string[]> {
+        const testTargets = await this.folderContext.swiftPackage.getTargets(TargetType.test);
+        const coveredBinaries = new Set<string>();
 
-        return buffer;
+        for (const target of testTargets) {
+            if (types.includes(TestLibrary.xctest)) {
+                let xcTestBinary = await TestingConfigurationFactory.testExecutableOutputPath(
+                    this.folderContext,
+                    TestKind.coverage,
+                    TestLibrary.xctest,
+                    target.name
+                );
+                if (process.platform === "darwin") {
+                    xcTestBinary += `/Contents/MacOS/${target.name}`;
+                }
+                coveredBinaries.add(xcTestBinary);
+            }
+
+            if (types.includes(TestLibrary.swiftTesting)) {
+                const swiftTestBinary = await TestingConfigurationFactory.testExecutableOutputPath(
+                    this.folderContext,
+                    TestKind.coverage,
+                    TestLibrary.swiftTesting,
+                    target.name
+                );
+                coveredBinaries.add(swiftTestBinary);
+            }
+        }
+
+        return [...coveredBinaries];
     }
 
     /**

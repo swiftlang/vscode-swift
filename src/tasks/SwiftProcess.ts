@@ -15,11 +15,13 @@ import * as child_process from "child_process";
 import type * as nodePty from "node-pty";
 import * as vscode from "vscode";
 
+import { Disposable } from "../utilities/Disposable";
+import { safeBareRepositoryEnvironmentOverride } from "../utilities/gitConfig";
 import { requireNativeModule } from "../utilities/native";
 
 const { spawn } = requireNativeModule<typeof nodePty>("node-pty");
 
-export interface SwiftProcess extends vscode.Disposable {
+export interface SwiftProcess extends Disposable {
     /**
      * Resolved path to the `swift` executable
      */
@@ -73,7 +75,7 @@ export interface SwiftProcess extends vscode.Disposable {
     setDimensions(dimensions: vscode.TerminalDimensions): void;
 }
 
-class CloseHandler implements vscode.Disposable {
+class CloseHandler implements Disposable {
     private readonly closeEmitter: vscode.EventEmitter<number | void> = new vscode.EventEmitter<
         number | void
     >();
@@ -114,7 +116,7 @@ export class SwiftPtyProcess implements SwiftProcess {
     private readonly writeEmitter: vscode.EventEmitter<string> = new vscode.EventEmitter<string>();
     private readonly errorEmitter: vscode.EventEmitter<Error> = new vscode.EventEmitter<Error>();
     private readonly closeHandler: CloseHandler = new CloseHandler();
-    private disposables: vscode.Disposable[] = [];
+    private disposables: Disposable[] = [];
 
     private spawnedProcess?: nodePty.IPty;
 
@@ -137,9 +139,10 @@ export class SwiftPtyProcess implements SwiftProcess {
             // The pty process hangs on Windows when debugging the extension if we use conpty
             // See https://github.com/microsoft/node-pty/issues/640
             const useConpty = isWindows && process.env["VSCODE_DEBUG"] === "1" ? false : true;
+            const env = { ...process.env, ...this.options.env };
             this.spawnedProcess = spawn(this.command, this.args, {
                 cwd: this.options.cwd,
-                env: { ...process.env, ...this.options.env },
+                env: { ...env, ...safeBareRepositoryEnvironmentOverride(env) },
                 useConpty,
                 // https://github.com/swiftlang/vscode-swift/issues/1074
                 // Causing weird truncation issues
@@ -216,9 +219,11 @@ export class SwiftPtyProcess implements SwiftProcess {
 export class ReadOnlySwiftProcess implements SwiftProcess {
     private readonly spawnEmitter: vscode.EventEmitter<void> = new vscode.EventEmitter<void>();
     private readonly writeEmitter: vscode.EventEmitter<string> = new vscode.EventEmitter<string>();
+    private readonly stdoutEmitter: vscode.EventEmitter<string> = new vscode.EventEmitter<string>();
+    private readonly stderrEmitter: vscode.EventEmitter<string> = new vscode.EventEmitter<string>();
     private readonly errorEmitter: vscode.EventEmitter<Error> = new vscode.EventEmitter<Error>();
     private readonly closeHandler: CloseHandler = new CloseHandler();
-    private disposables: vscode.Disposable[] = [];
+    private disposables: Disposable[] = [];
 
     private spawnedProcess: child_process.ChildProcessWithoutNullStreams | undefined;
 
@@ -230,6 +235,8 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
         this.disposables.push(
             this.spawnEmitter,
             this.writeEmitter,
+            this.stdoutEmitter,
+            this.stderrEmitter,
             this.errorEmitter,
             this.closeHandler
         );
@@ -237,19 +244,24 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
 
     spawn(): void {
         try {
+            const env = { ...process.env, ...this.options.env };
             this.spawnedProcess = child_process.spawn(this.command, this.args, {
                 cwd: this.options.cwd,
-                env: { ...process.env, ...this.options.env },
+                env: { ...env, ...safeBareRepositoryEnvironmentOverride(env) },
             });
             this.spawnEmitter.fire();
 
             this.spawnedProcess.stdout.on("data", data => {
-                this.writeEmitter.fire(data.toString());
+                const text = data.toString();
+                this.stdoutEmitter.fire(text);
+                this.writeEmitter.fire(text);
                 this.closeHandler.reset();
             });
 
             this.spawnedProcess.stderr.on("data", data => {
-                this.writeEmitter.fire(data.toString());
+                const text = data.toString();
+                this.stderrEmitter.fire(text);
+                this.writeEmitter.fire(text);
                 this.closeHandler.reset();
             });
 
@@ -299,6 +311,16 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
     onDidSpawn: vscode.Event<void> = this.spawnEmitter.event;
 
     onDidWrite: vscode.Event<string> = this.writeEmitter.event;
+
+    /**
+     * Listen for stdout-only output from the child process. Use this when
+     * parsing structured output (e.g. JSON) — `onDidWrite` interleaves stderr
+     * which corrupts the parse.
+     */
+    onDidWriteStdout: vscode.Event<string> = this.stdoutEmitter.event;
+
+    /** Listen for stderr-only output from the child process. */
+    onDidWriteStderr: vscode.Event<string> = this.stderrEmitter.event;
 
     onDidThrowError: vscode.Event<Error> = this.errorEmitter.event;
 

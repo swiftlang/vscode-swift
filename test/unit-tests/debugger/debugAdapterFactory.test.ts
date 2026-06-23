@@ -12,10 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
-import * as mockFS from "mock-fs";
 import * as vscode from "vscode";
 
 import { FolderContext } from "@src/FolderContext";
+import { InternalSwiftExtensionApi } from "@src/InternalSwiftExtensionApi";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import configuration from "@src/configuration";
 import { LaunchConfigType, SWIFT_LAUNCH_CONFIG_TYPE } from "@src/debugger/debugAdapter";
@@ -26,6 +26,7 @@ import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { BuildFlags } from "@src/toolchain/BuildFlags";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
 import { Result } from "@src/utilities/result";
+import * as shell from "@src/utilities/shell";
 import { Version } from "@src/utilities/version";
 
 import {
@@ -34,22 +35,38 @@ import {
     mockFn,
     mockGlobalModule,
     mockGlobalObject,
+    mockGlobalValue,
     mockObject,
 } from "../../MockUtils";
 
+import mockFS = require("mock-fs");
+
 suite("LLDBDebugConfigurationProvider Tests", () => {
+    let mockExtensionApi: MockedObject<InternalSwiftExtensionApi>;
     let mockWorkspaceContext: MockedObject<WorkspaceContext>;
     let mockToolchain: MockedObject<SwiftToolchain>;
     let mockBuildFlags: MockedObject<BuildFlags>;
     let mockLogger: MockedObject<SwiftLogger>;
+    const mockShellUtil = mockGlobalModule(shell);
     const mockDebugAdapter = mockGlobalObject(debugAdapter, "DebugAdapter");
     const mockWindow = mockGlobalObject(vscode, "window");
 
     setup(() => {
+        mockShellUtil.findBinaryInPath.rejects(
+            Error("findBinaryInPath() was not correctly mocked for this test.")
+        );
+        mockShellUtil.findBinaryInPath.withArgs("swiftly").resolves("/path/to/swiftly");
         mockBuildFlags = mockObject<BuildFlags>({ getBuildBinaryPath: mockFn() });
         mockToolchain = mockObject<SwiftToolchain>({
             swiftVersion: new Version(6, 0, 0),
             buildFlags: instance(mockBuildFlags),
+            manager: "unknown",
+            getDebuggerToolchainInvocation: mockFn(s =>
+                s.callsFake((executable: string, args: string[]) => ({
+                    command: `/path/to/${executable}`,
+                    args,
+                }))
+            ),
         });
         mockLogger = mockObject<SwiftLogger>({
             info: mockFn(),
@@ -61,13 +78,20 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             subscriptions: [],
             folders: [],
         });
+        mockExtensionApi = mockObject<InternalSwiftExtensionApi>({
+            workspaceContext: instance(mockWorkspaceContext),
+            logger: instance(mockLogger),
+            withWorkspaceContext: mockFn(s =>
+                s.callsFake(async task => task(instance(mockWorkspaceContext)))
+            ),
+            waitForWorkspaceContext: mockFn(s => s.resolves(instance(mockWorkspaceContext))),
+        });
     });
 
     test("allows specifying a 'pid' in the launch configuration", async () => {
         const configProvider = new LLDBDebugConfigurationProvider(
             "darwin",
-            instance(mockWorkspaceContext),
-            instance(mockLogger)
+            instance(mockExtensionApi)
         );
         const launchConfig = await configProvider.resolveDebugConfigurationWithSubstitutedVariables(
             undefined,
@@ -84,8 +108,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
     test("converts 'pid' property from a string to a number", async () => {
         const configProvider = new LLDBDebugConfigurationProvider(
             "darwin",
-            instance(mockWorkspaceContext),
-            instance(mockLogger)
+            instance(mockExtensionApi)
         );
         const launchConfig = await configProvider.resolveDebugConfigurationWithSubstitutedVariables(
             undefined,
@@ -105,8 +128,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
 
         const configProvider = new LLDBDebugConfigurationProvider(
             "darwin",
-            instance(mockWorkspaceContext),
-            instance(mockLogger)
+            instance(mockExtensionApi)
         );
         const launchConfig = await configProvider.resolveDebugConfigurationWithSubstitutedVariables(
             undefined,
@@ -126,8 +148,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
 
         const configProvider = new LLDBDebugConfigurationProvider(
             "darwin",
-            instance(mockWorkspaceContext),
-            instance(mockLogger)
+            instance(mockExtensionApi)
         );
         const launchConfig = await configProvider.resolveDebugConfigurationWithSubstitutedVariables(
             undefined,
@@ -160,8 +181,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         mockWorkspaceContext.folders = [instance(mockedFolderCtx)];
         const configProvider = new LLDBDebugConfigurationProvider(
             "darwin",
-            instance(mockWorkspaceContext),
-            instance(mockLogger)
+            instance(mockExtensionApi)
         );
         const launchConfig = await configProvider.resolveDebugConfigurationWithSubstitutedVariables(
             folder,
@@ -170,6 +190,81 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 type: SWIFT_LAUNCH_CONFIG_TYPE,
                 request: "launch",
                 target: "executable",
+            }
+        );
+        expect(launchConfig)
+            .to.have.property("program")
+            .that.equalsPath(
+                "/path/to/swift-executable/.build/arm64-apple-macosx/debug/executable"
+            );
+    });
+
+    test("resolves ${binPath} in program path", async () => {
+        mockBuildFlags.getBuildBinaryPath.resolves(
+            "/path/to/swift-executable/.build/arm64-apple-macosx/debug/"
+        );
+        const folder: vscode.WorkspaceFolder = {
+            index: 0,
+            name: "swift-executable",
+            uri: vscode.Uri.file("/path/to/swift-executable"),
+        };
+        const mockedFolderCtx = mockObject<FolderContext>({
+            workspaceContext: instance(mockWorkspaceContext),
+            workspaceFolder: folder,
+            folder: folder.uri,
+            toolchain: instance(mockToolchain),
+            relativePath: "./",
+        });
+        mockWorkspaceContext.folders = [instance(mockedFolderCtx)];
+        const configProvider = new LLDBDebugConfigurationProvider(
+            "darwin",
+            instance(mockExtensionApi)
+        );
+        const launchConfig = await configProvider.resolveDebugConfigurationWithSubstitutedVariables(
+            folder,
+            {
+                name: "Test Launch Config",
+                type: SWIFT_LAUNCH_CONFIG_TYPE,
+                request: "launch",
+                program: "/path/to/swift-executable/${binPath}/executable",
+            }
+        );
+        expect(launchConfig)
+            .to.have.property("program")
+            .that.equalsPath(
+                "/path/to/swift-executable/.build/arm64-apple-macosx/debug/executable"
+            );
+    });
+
+    test("uses 'cwd' to find folder context when folder is undefined in multi-root workspace", async () => {
+        mockBuildFlags.getBuildBinaryPath.resolves(
+            "/path/to/swift-executable/.build/arm64-apple-macosx/debug/"
+        );
+        const folder: vscode.WorkspaceFolder = {
+            index: 0,
+            name: "swift-executable",
+            uri: vscode.Uri.file("/path/to/swift-executable"),
+        };
+        const mockedFolderCtx = mockObject<FolderContext>({
+            workspaceContext: instance(mockWorkspaceContext),
+            workspaceFolder: folder,
+            folder: folder.uri,
+            toolchain: instance(mockToolchain),
+            relativePath: "./",
+        });
+        mockWorkspaceContext.folders = [instance(mockedFolderCtx)];
+        const configProvider = new LLDBDebugConfigurationProvider(
+            "darwin",
+            instance(mockExtensionApi)
+        );
+        const launchConfig = await configProvider.resolveDebugConfigurationWithSubstitutedVariables(
+            undefined,
+            {
+                name: "Test Launch Config",
+                type: SWIFT_LAUNCH_CONFIG_TYPE,
+                request: "launch",
+                target: "executable",
+                cwd: "/path/to/swift-executable",
             }
         );
         expect(launchConfig)
@@ -212,8 +307,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         test("returns a launch configuration that uses CodeLLDB as the debug adapter", async () => {
             const configProvider = new LLDBDebugConfigurationProvider(
                 "darwin",
-                instance(mockWorkspaceContext),
-                instance(mockLogger)
+                instance(mockExtensionApi)
             );
             const launchConfig =
                 await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -230,8 +324,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             mockWindow.showErrorMessage.resolves("Install CodeLLDB" as any);
             const configProvider = new LLDBDebugConfigurationProvider(
                 "darwin",
-                instance(mockWorkspaceContext),
-                instance(mockLogger)
+                instance(mockExtensionApi)
             );
             await expect(
                 configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -252,8 +345,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             mockWindow.showInformationMessage.resolves("Global" as any);
             const configProvider = new LLDBDebugConfigurationProvider(
                 "darwin",
-                instance(mockWorkspaceContext),
-                instance(mockLogger)
+                instance(mockExtensionApi)
             );
             await expect(
                 configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -270,13 +362,29 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             );
         });
 
+        test("swiftly-managed toolchain uses CodeLLDB path and does not set debug adapter executable", async () => {
+            mockToolchain.manager = "swiftly";
+            const configProvider = new LLDBDebugConfigurationProvider(
+                "darwin",
+                instance(mockExtensionApi)
+            );
+            const launchConfig =
+                await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
+                    name: "Test Launch Config",
+                    type: SWIFT_LAUNCH_CONFIG_TYPE,
+                    request: "launch",
+                    program: "${workspaceFolder}/.build/debug/executable",
+                });
+            expect(launchConfig).to.containSubset({ type: LaunchConfigType.CODE_LLDB });
+            expect(launchConfig).to.not.have.property("debugAdapterExecutable");
+        });
+
         test("avoids prompting the user about CodeLLDB if requested in settings", async () => {
             mockDebuggerConfig.setupCodeLLDB = "alwaysUpdateGlobal";
             mockLldbConfiguration.get.withArgs("library").returns(undefined);
             const configProvider = new LLDBDebugConfigurationProvider(
                 "darwin",
-                instance(mockWorkspaceContext),
-                instance(mockLogger)
+                instance(mockExtensionApi)
             );
             await expect(
                 configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -295,12 +403,11 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
     });
 
     suite("lldb-dap selected in settings", () => {
+        const mockDebuggerConfig = mockGlobalValue(configuration, "debugger");
+
         setup(() => {
             mockDebugAdapter.getLaunchConfigType.returns(LaunchConfigType.LLDB_DAP);
-            mockDebugAdapter.getLLDBDebugAdapterPath.resolves("/path/to/lldb-dap");
-            mockFS({
-                "/path/to/lldb-dap": mockFS.file({ content: "", mode: 0o770 }),
-            });
+            mockFS({});
         });
 
         teardown(() => {
@@ -310,8 +417,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         test("returns a launch configuration that uses lldb-dap as the debug adapter", async () => {
             const configProvider = new LLDBDebugConfigurationProvider(
                 "darwin",
-                instance(mockWorkspaceContext),
-                instance(mockLogger)
+                instance(mockExtensionApi)
             );
             const launchConfig =
                 await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -323,15 +429,17 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             expect(launchConfig).to.containSubset({
                 type: LaunchConfigType.LLDB_DAP,
                 debugAdapterExecutable: "/path/to/lldb-dap",
+                debugAdapterArgs: [],
             });
         });
 
-        test("fails if the path to lldb-dap could not be found", async () => {
-            mockFS({}); // Reset mockFS so that no files exist
+        test("fails if the custom path to lldb-dap could not be found", async () => {
+            mockDebuggerConfig.setValue({
+                customDebugAdapterPath: "/missing/lldb-dap",
+            } as typeof configuration.debugger);
             const configProvider = new LLDBDebugConfigurationProvider(
                 "darwin",
-                instance(mockWorkspaceContext),
-                instance(mockLogger)
+                instance(mockExtensionApi)
             );
             await expect(
                 configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -347,8 +455,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         test("modifies program to add file extension on Windows", async () => {
             const configProvider = new LLDBDebugConfigurationProvider(
                 "win32",
-                instance(mockWorkspaceContext),
-                instance(mockLogger)
+                instance(mockExtensionApi)
             );
             const launchConfig =
                 await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -365,8 +472,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         test("does not modify program on Windows if file extension is already present", async () => {
             const configProvider = new LLDBDebugConfigurationProvider(
                 "win32",
-                instance(mockWorkspaceContext),
-                instance(mockLogger)
+                instance(mockExtensionApi)
             );
             const launchConfig =
                 await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -383,8 +489,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         test("does not modify program on macOS", async () => {
             const configProvider = new LLDBDebugConfigurationProvider(
                 "darwin",
-                instance(mockWorkspaceContext),
-                instance(mockLogger)
+                instance(mockExtensionApi)
             );
             const launchConfig =
                 await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -401,8 +506,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         test("does not modify program on Linux", async () => {
             const configProvider = new LLDBDebugConfigurationProvider(
                 "linux",
-                instance(mockWorkspaceContext),
-                instance(mockLogger)
+                instance(mockExtensionApi)
             );
             const launchConfig =
                 await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -419,8 +523,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         test("should convert environment variables to string[] format when using lldb-dap", async () => {
             const configProvider = new LLDBDebugConfigurationProvider(
                 "darwin",
-                instance(mockWorkspaceContext),
-                instance(mockLogger)
+                instance(mockExtensionApi)
             );
             const launchConfig =
                 await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -441,8 +544,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         test("should leave env undefined when environment variables are undefined and using lldb-dap", async () => {
             const configProvider = new LLDBDebugConfigurationProvider(
                 "darwin",
-                instance(mockWorkspaceContext),
-                instance(mockLogger)
+                instance(mockExtensionApi)
             );
             const launchConfig =
                 await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -457,8 +559,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         test("should convert empty environment variables when using lldb-dap", async () => {
             const configProvider = new LLDBDebugConfigurationProvider(
                 "darwin",
-                instance(mockWorkspaceContext),
-                instance(mockLogger)
+                instance(mockExtensionApi)
             );
             const launchConfig =
                 await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -480,8 +581,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
             }
             const configProvider = new LLDBDebugConfigurationProvider(
                 "darwin",
-                instance(mockWorkspaceContext),
-                instance(mockLogger)
+                instance(mockExtensionApi)
             );
             const launchConfig =
                 await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
@@ -498,15 +598,101 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         });
     });
 
+    suite("swiftly-managed toolchain", () => {
+        const mockDebuggerConfig = mockGlobalValue(configuration, "debugger");
+
+        setup(() => {
+            mockDebugAdapter.getLaunchConfigType.returns(LaunchConfigType.LLDB_DAP);
+            (mockToolchain as any).getDebuggerToolchainInvocation = mockFn(s =>
+                s
+                    .withArgs("lldb-dap", [])
+                    .returns({ command: "swiftly", args: ["run", "lldb-dap"] })
+            );
+            mockFS({});
+            mockToolchain.manager = "swiftly";
+        });
+
+        teardown(() => {
+            mockFS.restore();
+        });
+
+        test("uses lldb-dap launch type with swiftly as the runtime executable", async () => {
+            const configProvider = new LLDBDebugConfigurationProvider(
+                "linux",
+                instance(mockExtensionApi)
+            );
+            const launchConfig =
+                await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
+                    name: "Test Launch Config",
+                    type: SWIFT_LAUNCH_CONFIG_TYPE,
+                    request: "launch",
+                    program: "/home/user/myproject/.build/debug/MyApp",
+                });
+            expect(launchConfig).to.containSubset({
+                type: LaunchConfigType.LLDB_DAP,
+                debugAdapterExecutable: "/path/to/swiftly",
+                debugAdapterArgs: ["run", "lldb-dap"],
+            });
+        });
+
+        test("does not check the filesystem for toolchain-provided lldb-dap", async () => {
+            mockFS({});
+            const configProvider = new LLDBDebugConfigurationProvider(
+                "linux",
+                instance(mockExtensionApi)
+            );
+            const launchConfig =
+                await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
+                    name: "Test Launch Config",
+                    type: SWIFT_LAUNCH_CONFIG_TYPE,
+                    request: "launch",
+                    program: "/home/user/myproject/.build/debug/MyApp",
+                });
+            expect(launchConfig).to.containSubset({
+                debugAdapterExecutable: "/path/to/swiftly",
+                debugAdapterArgs: ["run", "lldb-dap"],
+            });
+            expect(mockWindow.showErrorMessage).to.not.have.been.called;
+        });
+
+        test("uses custom debug adapter path when configured", async () => {
+            const customPath = "/custom/lldb-dap";
+            mockDebuggerConfig.setValue({
+                customDebugAdapterPath: customPath,
+            } as typeof configuration.debugger);
+            mockFS({
+                [customPath]: mockFS.file({ content: "", mode: 0o770 }),
+            });
+            const configProvider = new LLDBDebugConfigurationProvider(
+                "linux",
+                instance(mockExtensionApi)
+            );
+            const launchConfig =
+                await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
+                    name: "Test Launch Config",
+                    type: SWIFT_LAUNCH_CONFIG_TYPE,
+                    request: "launch",
+                    program: "/home/user/myproject/.build/debug/MyApp",
+                });
+            expect(launchConfig).to.containSubset({
+                type: LaunchConfigType.LLDB_DAP,
+                debugAdapterExecutable: customPath,
+            });
+            expect(launchConfig).to.not.have.property("debugAdapterArgs");
+        });
+    });
+
     test("debugs with the toolchain of the supplied folder", async () => {
         const debugAdapterPath = "/path/to/lldb-dap";
         mockDebugAdapter.getLaunchConfigType.returns(LaunchConfigType.LLDB_DAP);
-        mockDebugAdapter.getLLDBDebugAdapterPath.calledOnceWithExactly(mockToolchain);
-        mockDebugAdapter.getLLDBDebugAdapterPath.resolves(debugAdapterPath);
-        mockFS({
-            [debugAdapterPath]: mockFS.file({ content: "", mode: 0o770 }),
+        mockFS({});
+        mockToolchain = mockObject<SwiftToolchain>({
+            swiftVersion: new Version(5, 10, 0),
+            manager: "unknown",
+            getDebuggerToolchainInvocation: mockFn(s =>
+                s.withArgs("lldb-dap", []).returns({ command: debugAdapterPath, args: [] })
+            ),
         });
-        mockToolchain = mockObject<SwiftToolchain>({ swiftVersion: new Version(5, 10, 0) });
         const mockFolder = mockObject<FolderContext>({
             isRootFolder: false,
             folder: vscode.Uri.file("/folder"),
@@ -520,8 +706,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         mockWorkspaceContext.folders.push(instance(mockFolder));
         const configProvider = new LLDBDebugConfigurationProvider(
             "darwin",
-            instance(mockWorkspaceContext),
-            instance(mockLogger)
+            instance(mockExtensionApi)
         );
         const launchConfig = await configProvider.resolveDebugConfigurationWithSubstitutedVariables(
             {
@@ -538,6 +723,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
         );
         expect(launchConfig).to.containSubset({
             debugAdapterExecutable: debugAdapterPath,
+            debugAdapterArgs: [],
         });
     });
 });

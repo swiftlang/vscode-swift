@@ -1,0 +1,38 @@
+name: Test failure
+description: A test failed in CI
+labels: ["testing infrastructure"]
+body:
+  - type: input
+    id: test
+    attributes:
+      label: Failing test
+      description: The full name of the test that failed including its Test Suite.
+      placeholder: Test Suite Name → test that failed
+    validations:
+      required: true
+  - type: input
+    id: jobs
+    attributes:
+      label: Job(s) where the test failed
+      description: The name of the job(s) that the test failed against.
+      placeholder: Windows (6.0), Linux (nightly-main)
+    validations:
+      required: true
+  - type: textarea
+    id: failure-logs
+    attributes:
+      label: Failure logs
+      description: Test failure output from the GitHub Actions logs.
+    validations:
+      required: true
+  - type: input
+    id: actions-link
+    attributes:
+      label: Link to Failed Run
+      description: URL to the GitHub Actions run that failed.
+      placeholder: https://github.com/swiftlang/vscode-swift/actions/runs/...
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here. This could include things such as changes that may have caused this issue or extension logs from integration test failures.

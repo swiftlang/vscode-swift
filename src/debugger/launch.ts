@@ -55,7 +55,34 @@ export async function makeDebugConfigurations(
         : vscode.workspace.getConfiguration("launch", ctx.folder);
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
 
-    // Determine which launch configurations need updating/creating
+    const { configsToCreate, configsToUpdate } = await classifyConfigurations(ctx, launchConfigs);
+
+    const needsUpdate = await applyConfigurationChanges(
+        ctx,
+        launchConfigs,
+        configsToCreate,
+        configsToUpdate,
+        options
+    );
+
+    if (!needsUpdate) {
+        return false;
+    }
+
+    await wsLaunchSection.update(
+        "configurations",
+        launchConfigs,
+        vscode.workspace.workspaceFile
+            ? vscode.ConfigurationTarget.Workspace
+            : vscode.ConfigurationTarget.WorkspaceFolder
+    );
+    return true;
+}
+
+async function classifyConfigurations(
+    ctx: FolderContext,
+    launchConfigs: vscode.DebugConfiguration[]
+) {
     const configsToCreate: vscode.DebugConfiguration[] = [];
     const configsToUpdate: { index: number; config: vscode.DebugConfiguration }[] = [];
     for (const generatedConfig of await createExecutableConfigurations(ctx)) {
@@ -65,7 +92,6 @@ export async function makeDebugConfigurations(
             continue;
         }
 
-        // deep clone the existing config and update with keys from generated config
         const config = structuredClone(launchConfigs[index]);
         updateConfigWithNewKeys(config, generatedConfig, [
             "program",
@@ -76,13 +102,20 @@ export async function makeDebugConfigurations(
             "type",
         ]);
 
-        // Check to see if the config has changed
         if (!isDeepStrictEqual(launchConfigs[index], config)) {
             configsToUpdate.push({ index, config });
         }
     }
+    return { configsToCreate, configsToUpdate };
+}
 
-    // Create/Update launch configurations if necessary
+async function applyConfigurationChanges(
+    ctx: FolderContext,
+    launchConfigs: vscode.DebugConfiguration[],
+    configsToCreate: vscode.DebugConfiguration[],
+    configsToUpdate: { index: number; config: vscode.DebugConfiguration }[],
+    options: WriteLaunchConfigurationsOptions
+): Promise<boolean> {
     let needsUpdate = false;
     if (configsToCreate.length > 0) {
         launchConfigs.push(...configsToCreate);
@@ -107,19 +140,7 @@ export async function makeDebugConfigurations(
             needsUpdate = true;
         }
     }
-
-    if (!needsUpdate) {
-        return false;
-    }
-
-    await wsLaunchSection.update(
-        "configurations",
-        launchConfigs,
-        vscode.workspace.workspaceFile
-            ? vscode.ConfigurationTarget.Workspace
-            : vscode.ConfigurationTarget.WorkspaceFolder
-    );
-    return true;
+    return needsUpdate;
 }
 
 export async function getTargetBinaryPath(
@@ -157,8 +178,11 @@ function getLegacyTargetBinaryPath(
 }
 
 /** Expands VS Code variables such as ${workspaceFolder} in the given string. */
-function expandVariables(str: string): string {
+function expandVariables(str: string, binPath?: string): string {
     let expandedStr = str;
+    if (binPath !== undefined) {
+        expandedStr = expandedStr.replaceAll("${binPath}", binPath);
+    }
     const availableWorkspaceFolders = vscode.workspace.workspaceFolders ?? [];
     // Expand the top level VS Code workspace folder.
     if (availableWorkspaceFolders.length > 0) {
@@ -189,6 +213,8 @@ export async function getLaunchConfiguration(
     const launchConfigs = wsLaunchSection.get<vscode.DebugConfiguration[]>("configurations") || [];
     const targetPath = await getTargetBinaryPath(target, buildConfiguration, folderCtx);
     const legacyTargetPath = getLegacyTargetBinaryPath(target, buildConfiguration, folderCtx);
+    const relativeBinPath = path.relative(folderCtx.folder.fsPath, path.dirname(targetPath));
+
     return launchConfigs.find(config => {
         // Newer launch configs use "target" and "configuration" properties which are easier to query.
         if (config.target) {
@@ -196,13 +222,27 @@ export async function getLaunchConfiguration(
             return config.target === target && configBuildConfiguration === buildConfiguration;
         }
         // Users could be on different platforms with different path annotations, so normalize before we compare.
-        const normalizedConfigPath = path.normalize(expandVariables(config.program));
+        const normalizedConfigPath = path.normalize(
+            expandVariables(config.program, relativeBinPath)
+        );
         const normalizedTargetPath = path.normalize(targetPath);
         const normalizedLegacyTargetPath = path.normalize(legacyTargetPath);
         // Old launch configs had program paths that looked like "${workspaceFolder:test}/defaultPackage/.build/debug",
         // where `debug` was a symlink to the <host-triple-folder>/debug. We want to support both old and new, so we're
         // comparing against both to find a match.
-        return [normalizedTargetPath, normalizedLegacyTargetPath].includes(normalizedConfigPath);
+        const pathMatches =
+            process.platform === "win32"
+                ? [normalizedTargetPath, normalizedLegacyTargetPath].some(
+                      p =>
+                          p.localeCompare(normalizedConfigPath, undefined, {
+                              sensitivity: "accent",
+                          }) === 0
+                  )
+                : [normalizedTargetPath, normalizedLegacyTargetPath].includes(normalizedConfigPath);
+        if (pathMatches && config.configuration) {
+            return config.configuration === buildConfiguration;
+        }
+        return pathMatches;
     });
 }
 

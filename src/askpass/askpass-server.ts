@@ -66,19 +66,16 @@ export async function withAskpassServer<T>(
     });
 
     return new Promise((resolve, reject) => {
-        server.listen(0, "localhost", async () => {
-            try {
-                const address = server.address();
-                if (!address || typeof address === "string") {
-                    throw new Error("Failed to get server port");
-                }
-                const port = address.port;
-                resolve(await task(nonce, port));
-            } catch (error) {
-                reject(error);
-            } finally {
-                server.close();
+        server.listen(0, "localhost", () => {
+            const address = server.address();
+            if (!address || typeof address === "string") {
+                reject(new Error("Failed to get server port"));
+                return;
             }
+            const port = address.port;
+            task(nonce, port)
+                .then(resolve, reject)
+                .finally(() => server.close());
         });
 
         server.on("error", error => {

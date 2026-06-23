@@ -18,9 +18,9 @@ import { LSPErrorCodes, ResponseError } from "vscode-languageclient";
 
 import { WorkspaceContext } from "../WorkspaceContext";
 import { DocCDocumentationRequest, DocCDocumentationResponse } from "../sourcekit-lsp/extensions";
+import { Disposable } from "../utilities/Disposable";
 import { RenderNode, WebviewContent, WebviewMessage } from "./webview/WebviewMessage";
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 import throttle = require("lodash.throttle");
 
 export enum PreviewEditorConstant {
@@ -29,7 +29,7 @@ export enum PreviewEditorConstant {
     UNSUPPORTED_EDITOR_ERROR_MESSAGE = "The active text editor does not support Swift Documentation Live Preview",
 }
 
-export class DocumentationPreviewEditor implements vscode.Disposable {
+export class DocumentationPreviewEditor implements Disposable {
     static async create(
         extension: vscode.ExtensionContext,
         context: WorkspaceContext
@@ -98,7 +98,7 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
 
     private activeTextEditor?: vscode.TextEditor;
     private activeTextEditorSelection?: vscode.Selection;
-    private subscriptions: vscode.Disposable[] = [];
+    private subscriptions: Disposable[] = [];
     private isDisposed: boolean = false;
 
     private disposeEmitter = new vscode.EventEmitter<void>();
@@ -245,17 +245,14 @@ export class DocumentationPreviewEditor implements vscode.Disposable {
                         // We can safely ignore cancellations
                         return undefined;
                     }
-                    switch (error.code) {
-                        case LSPErrorCodes.RequestFailed:
-                            // RequestFailed response errors can be shown to the user
-                            livePreviewErrorMessage = error.message;
-                            break;
-                        default:
-                            // We should log additional info for other response errors
-                            this.context.logger.error(
-                                baseLogErrorMessage + JSON.stringify(error.toJson(), undefined, 2)
-                            );
-                            break;
+                    if (error.code === LSPErrorCodes.RequestFailed) {
+                        // RequestFailed response errors can be shown to the user
+                        livePreviewErrorMessage = error.message;
+                    } else {
+                        // We should log additional info for other response errors
+                        this.context.logger.error(
+                            baseLogErrorMessage + JSON.stringify(error.toJson(), undefined, 2)
+                        );
                     }
                 } else {
                     this.context.logger.error(baseLogErrorMessage + `${error}`);
