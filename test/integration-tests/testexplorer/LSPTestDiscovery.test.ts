@@ -24,6 +24,7 @@ import {
     RequestType,
 } from "vscode-languageclient/node";
 
+import { FolderContext } from "@src/FolderContext";
 import { SwiftPackage, Target, TargetType } from "@src/SwiftPackage";
 import { LSPTestDiscovery } from "@src/TestExplorer/LSPTestDiscovery";
 import { TestClass } from "@src/TestExplorer/TestDiscovery";
@@ -34,7 +35,7 @@ import {
     WorkspaceTestsRequest,
 } from "@src/sourcekit-lsp/extensions";
 
-import { instance, mockFn, mockObject } from "../../MockUtils";
+import { MockedObject, instance, mockFn, mockObject } from "../../MockUtils";
 
 class TestLanguageClient {
     private responses = new Map<string, unknown>();
@@ -70,6 +71,7 @@ class TestLanguageClient {
 
 suite("LSPTestDiscovery Suite", () => {
     let client: TestLanguageClient;
+    let folder: MockedObject<FolderContext>;
     let discoverer: LSPTestDiscovery;
     let pkg: SwiftPackage;
     const file = vscode.Uri.file("/some/file.swift");
@@ -82,7 +84,8 @@ suite("LSPTestDiscovery Suite", () => {
         pkg.getTarget = () => Promise.resolve(undefined);
 
         client = new TestLanguageClient();
-        discoverer = new LSPTestDiscovery(client.languageClient);
+        folder = mockObject<FolderContext>({ languageClient: client.languageClient });
+        discoverer = new LSPTestDiscovery(instance(folder));
     });
 
     suite("Empty responses", () => {

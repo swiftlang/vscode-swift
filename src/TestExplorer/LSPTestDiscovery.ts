@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
 
+import { FolderContext } from "../FolderContext";
 import { SwiftPackage } from "../SwiftPackage";
 import { SourceKitLanguageClient } from "../sourcekit-lsp/client/SourceKitLanguageClient";
 import {
@@ -31,7 +32,11 @@ import * as TestDiscovery from "./TestDiscovery";
  * these results.
  */
 export class LSPTestDiscovery {
-    constructor(private languageClient: SourceKitLanguageClient) {}
+    private get languageClient(): SourceKitLanguageClient {
+        return this.folderContext.languageClient;
+    }
+
+    constructor(private folderContext: FolderContext) {}
 
     /**
      * Return a list of tests in the supplied document.
