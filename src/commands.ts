@@ -21,6 +21,7 @@ import { clearTestWarningDiagnostics } from "./TestExplorer/TestRunProxy";
 import { attachDebugger } from "./commands/attachDebugger";
 import { cleanBuild, debugBuild, runBuild } from "./commands/build";
 import { captureDiagnostics } from "./commands/captureDiagnostics";
+import { createDocumentationCatalog } from "./commands/createDocumentationCatalog";
 import { createNewProject } from "./commands/createNewProject";
 import { editDependency } from "./commands/dependencies/edit";
 import { resolveDependencies } from "./commands/dependencies/resolve";
@@ -372,6 +373,10 @@ export function registerCommands(api: InternalSwiftExtensionApi): Disposable[] {
         vscode.commands.registerCommand("swift.openDocumentation", () => openDocumentation()),
         vscode.commands.registerCommand(Commands.GENERATE_SOURCEKIT_CONFIG, () =>
             api.withWorkspaceContext(ctx => generateSourcekitConfiguration(ctx))
+        ),
+        vscode.commands.registerCommand(
+            "swift.createDocumentationCatalog",
+            async () => await createDocumentationCatalog(ctx)
         ),
         vscode.commands.registerCommand(
             "swift.showCommands",
