@@ -36,6 +36,7 @@ import { Version } from "@src/utilities/version";
 
 import { tag } from "../../tags";
 import { executeTaskAndWaitForResult } from "../../utilities/tasks";
+import { waitForIndex } from "../utilities/lsputilities";
 import {
     activateExtensionForSuite,
     folderInRootWorkspace,
@@ -43,6 +44,7 @@ import {
     withLogging,
 } from "../utilities/testutilities";
 import {
+    NormalizedTestHierarchy,
     assertContains,
     assertContainsTrimmed,
     assertTestControllerHierarchy,
@@ -93,11 +95,28 @@ tag("large").suite("Test Explorer Suite", function () {
                 executeTaskAndWaitForResult(await createBuildAllTask(folderContext))
             );
 
-            // Set up the listener before bringing the text explorer in to focus,
-            // which starts searching the workspace for tests.
-            await logger("Waiting for test explorer to be ready", () =>
-                waitForTestExplorerReady(testExplorer, workspaceContext.logger)
+            await logger("Waiting for SourceKit-LSP to finish indexing", async () =>
+                waitForIndex(folderContext.languageClient)
             );
+
+            await logger("Waiting for test explorer to be ready", () => {
+                const expectedTestIDs: string[] = [
+                    "PackageTests.PassingXCTestSuite/testPassing",
+                    "PackageTests.CrashingXCTests/testCrashing",
+                ];
+                const swiftVersion = workspaceContext.globalToolchain.swiftVersion;
+                if (swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
+                    expectedTestIDs.push(
+                        "PackageTests.topLevelTestPassing()",
+                        "PackageTests2.secondTargetTestPassing()"
+                    );
+                }
+                return waitForTestExplorerReady(
+                    testExplorer,
+                    expectedTestIDs,
+                    workspaceContext.logger
+                );
+            });
         },
         requiresLSP: true,
         requiresDebugger: true,
@@ -202,61 +221,75 @@ tag("large").suite("Test Explorer Suite", function () {
     suite("Standard", () => {
         test("Finds Tests", async function () {
             if (folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
-                // 6.0 uses the LSP which returns tests in the order they're declared.
-                // Includes swift-testing tests.
+                // 6.0 uses the LSP. Includes swift-testing tests.
                 assertTestControllerHierarchy(testExplorer.controller, [
-                    "PackageTests2",
-                    ["secondTargetTestPassing()", "SecondTargetSuite", ["testPassing()"]],
-                    "PackageTests",
-                    [
-                        "PassingXCTestSuite",
-                        ["testPassing()"],
-                        "PassingXCTestSuite2",
-                        ["testPassing()"],
-                        "FailingXCTestSuite",
-                        ["testFailing()"],
-                        "MixedXCTestSuite",
-                        ["testPassing()", "testFailing()"],
-                        "DebugReleaseTestSuite",
-                        ["testRelease()", "testDebug()"],
-                        "topLevelTestPassing()",
-                        "topLevelTestFailing()",
-                        "parameterizedTest(_:)",
-                        "testRelease()",
-                        "testDebug()",
-                        "MixedSwiftTestingSuite",
-                        ["testPassing()", "testFailing()", "testDisabled()"],
-                        "testWithKnownIssue()",
-                        "testWithKnownIssueAndUnknownIssue()",
-                        "testLotsOfOutput()",
-                        "testCrashing()",
-                        "DuplicateSuffixTests",
-                        ["testPassing()", "testPassingSuffix()"],
-                        "CrashingXCTests",
-                        ["testCrashing()"],
-                    ],
+                    {
+                        label: "PackageTests2",
+                        children: [
+                            "secondTargetTestPassing()",
+                            { label: "SecondTargetSuite", children: ["testPassing()"] },
+                        ],
+                    },
+                    {
+                        label: "PackageTests",
+                        children: [
+                            { label: "PassingXCTestSuite", children: ["testPassing()"] },
+                            {
+                                label: "PassingXCTestSuite2",
+                                children: ["testPassing()"],
+                            },
+                            { label: "FailingXCTestSuite", children: ["testFailing()"] },
+                            {
+                                label: "MixedXCTestSuite",
+                                children: ["testPassing()", "testFailing()"],
+                            },
+                            {
+                                label: "DebugReleaseTestSuite",
+                                children: ["testRelease()", "testDebug()"],
+                            },
+                            "topLevelTestPassing()",
+                            "topLevelTestFailing()",
+                            "parameterizedTest(_:)",
+                            "testRelease()",
+                            "testDebug()",
+                            {
+                                label: "MixedSwiftTestingSuite",
+                                children: ["testPassing()", "testFailing()", "testDisabled()"],
+                            },
+                            "testWithKnownIssue()",
+                            "testWithKnownIssueAndUnknownIssue()",
+                            "testLotsOfOutput()",
+                            "testCrashing()",
+                            {
+                                label: "DuplicateSuffixTests",
+                                children: ["testPassing()", "testPassingSuffix()"],
+                            },
+                            { label: "CrashingXCTests", children: ["testCrashing()"] },
+                        ],
+                    },
                 ]);
             } else if (folderContext.swiftVersion.isLessThanOrEqual(new Version(6, 0, 0))) {
-                // 5.10 uses `swift test list` which returns test alphabetically, without the round brackets.
+                // 5.10 uses `swift test list` which returns test without the round brackets.
                 // Does not include swift-testing tests.
                 assertTestControllerHierarchy(testExplorer.controller, [
-                    "PackageTests",
-                    [
-                        "CrashingXCTests",
-                        ["testCrashing"],
-                        "DebugReleaseTestSuite",
-                        ["testDebug", "testRelease"],
-                        "DuplicateSuffixTests",
-                        ["testPassing", "testPassingSuffix"],
-                        "FailingXCTestSuite",
-                        ["testFailing"],
-                        "MixedXCTestSuite",
-                        ["testFailing", "testPassing"],
-                        "PassingXCTestSuite",
-                        ["testPassing"],
-                        "PassingXCTestSuite2",
-                        ["testPassing"],
-                    ],
+                    {
+                        label: "PackageTests",
+                        children: [
+                            { label: "CrashingXCTests", children: ["testCrashing"] },
+                            {
+                                label: "DebugReleaseTestSuite",
+                                children: ["testDebug", "testRelease"],
+                            },
+                            {
+                                label: "DuplicateSuffixTests",
+                                children: ["testPassing", "testPassingSuffix"],
+                            },
+                            { label: "FailingXCTestSuite", children: ["testFailing"] },
+                            { label: "MixedXCTestSuite", children: ["testFailing", "testPassing"] },
+                            { label: "PassingXCTestSuite", children: ["testPassing"] },
+                            { label: "PassingXCTestSuite2", children: ["testPassing"] },
+                        ],
+                    },
                 ]);
             }
         });
@@ -1005,23 +1038,19 @@ tag("large").suite("Test Explorer Suite", function () {
             return document;
         }
 
-        type TestHierarchy = string | TestHierarchy[];
-
-        function packageTestsChildren(testItems: TestHierarchy): TestHierarchy[] {
-            if (!Array.isArray(testItems)) {
-                return [];
+        function packageTestsChildren(testItems: NormalizedTestHierarchy): string[] {
+            const packageTests = testItems.find(item => item.label === "PackageTests");
+            if (packageTests) {
+                return packageTests.children.map(child => child.label);
             }
-            const index = testItems.indexOf("PackageTests");
-            return index >= 0 && Array.isArray(testItems[index + 1])
-                ? (testItems[index + 1] as TestHierarchy[])
-                : [];
+            return [];
         }
 
         // Because we're at the whim of how often VS Code/the LSP provide document symbols
         // we can't assume that changes to test items will be reflected in the next onTestItemsDidChange
         // so poll until the condition is met.
-        async function validate(validator: (testItems: TestHierarchy) => boolean) {
-            let testItems: TestHierarchy = [];
+        async function validate(validator: (testItems: NormalizedTestHierarchy) => boolean) {
+            let testItems: NormalizedTestHierarchy = [];
             const startTime = Date.now();
             while (Date.now() - startTime < 5000) {
                 testItems = buildStateFromController(testExplorer.controller.items);

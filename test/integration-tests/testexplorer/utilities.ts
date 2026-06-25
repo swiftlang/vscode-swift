@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 import * as assert from "assert";
+import { expect } from "chai";
 import * as vscode from "vscode";
 
 import { TestExplorer } from "@src/TestExplorer/TestExplorer";
@@ -44,19 +45,29 @@ export function testExplorerFor(
     return targetFolder.testExplorer;
 }
 
-type TestHierarchy = string | TestHierarchy[];
+export type TestHierarchy = ExpectedTestItem[];
+type ExpectedTestItem =
+    | string
+    | {
+          label: string;
+          children: TestHierarchy;
+      };
 
 /**
  * Builds a tree of text items from a TestItemCollection
  */
-export const buildStateFromController = (items: vscode.TestItemCollection): TestHierarchy =>
-    reduceTestItemChildren(
-        items,
-        (acc, item) => {
-            const children = buildStateFromController(item.children);
-            return [...acc, item.label, ...(children.length ? [children] : [])];
-        },
-        [] as TestHierarchy
+export const buildStateFromController = (
+    items: vscode.TestItemCollection
+): NormalizedTestHierarchy =>
+    normalizeTestHierarchy(
+        reduceTestItemChildren<TestHierarchy>(
+            items,
+            (acc, item) => {
+                const children = buildStateFromController(item.children);
+                return [...acc, { label: item.label, children }];
+            },
+            []
+        )
     );
 
 /**
@@ -67,11 +78,34 @@ export function assertTestControllerHierarchy(
     controller: vscode.TestController,
     state: TestHierarchy
 ) {
-    assert.deepEqual(
+    expect(
         buildStateFromController(controller.items),
-        state,
-        "Expected TextExplorer to have a different state"
-    );
+        "Expected TestExplorer to have a different state"
+    ).to.deep.equal(normalizeTestHierarchy(state));
+}
+
+export type NormalizedTestHierarchy = NormalizedTestItem[];
+interface NormalizedTestItem {
+    label: string;
+    children: NormalizedTestHierarchy;
+}
+
+/**
+ * Ensures that all test items in the hierarchy are objects whose children are sorted
+ * by label. Used to make assertions simpler and improve error output.
+ *
+ * @param hierarchy A {@link TestHierarchy} to normalize
+ * @returns A {@link NormalizedTestHierarchy}
+ */
+function normalizeTestHierarchy(hierarchy: TestHierarchy): NormalizedTestHierarchy {
+    return hierarchy
+        .map(item => {
+            if (typeof item === "string") {
+                return { label: item, children: [] };
+            }
+            return { label: item.label, children: normalizeTestHierarchy(item.children) };
+        })
+        .sort((a, b) => a.label.localeCompare(b.label));
 }
 
 /**
@@ -179,25 +213,51 @@ export function eventPromise<T>(event: vscode.Event<T>): Promise<T> {
 
 /**
  * After extension activation the test explorer needs to be initialized before the controller is ready.
- * Use this method to wait for the test explorer be available for test items
- * to be populated.
+ * Use this method to wait for the test explorer be available for test items to be populated.
  *
  * @param testExplorer The test explorer to wait on
+ * @param itemIds The list of test IDs to wait for
  * @returns The initialized test controller
  */
 export async function waitForTestExplorerReady(
     testExplorer: TestExplorer,
+    itemIds: string[],
     logger: SwiftLogger
 ): Promise<vscode.TestController> {
+    if (itemIds.length === 0) {
+        throw Error("Must provide at least one test ID to wait for.");
+    }
     await vscode.commands.executeCommand("workbench.view.testing.focus");
-    const noExistingTests = testExplorer.controller.items.size === 0;
-    logger.info(
-        `waitForTestExplorerReady: Found ${testExplorer.controller.items.size} existing top level test(s)`
-    );
-    const controller = await (noExistingTests
-        ? eventPromise(testExplorer.onTestItemsDidChange)
-        : Promise.resolve(testExplorer.controller));
-    return controller;
+    let missingTests = checkTestItems(testExplorer.controller, ...itemIds);
+    while (missingTests.length > 0) {
+        logger.info(`Waiting for [${missingTests.join(", ")}] to appear in TestExplorer`, {
+            label: "waitForTestExplorerReady",
+        });
+        await eventPromise(testExplorer.onTestItemsDidChange);
+        missingTests = checkTestItems(testExplorer.controller, ...itemIds);
+    }
+    logger.info(`Found tests in TestExplorer: ${itemIds.join(", ")}`, {
+        label: "waitForTestExplorerReady",
+    });
+    return testExplorer.controller;
+}
+
+/**
+ * Check whether or not the provided test IDs exist within the test controller and return
+ * the list of missing IDs (if any).
+ *
+ * @param controller The {@link vscode.TestController}
+ * @param itemIds An array of test IDs
+ * @returns An array of missing test IDs
+ */
+function checkTestItems(controller: vscode.TestController, ...itemIds: string[]): string[] {
+    const missingItems: string[] = [];
+    for (const itemId of itemIds) {
+        if (!getTestItem(controller, itemId)) {
+            missingItems.push(itemId);
+        }
+    }
+    return missingItems;
 }
 
 /**
