@@ -16,7 +16,7 @@ import { promisify } from "util";
 
 const exec = promisify(child_process.exec);
 
-export async function swiftInstalled(): Promise<boolean> {
+export async function isSwiftInstalled(): Promise<boolean> {
     try {
         await exec("swift --version");
         return true;

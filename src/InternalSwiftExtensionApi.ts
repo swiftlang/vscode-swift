@@ -23,7 +23,7 @@ import { Commands, registerCommands } from "./commands";
 import { resolveFolderDependencies } from "./commands/dependencies/resolve";
 import { registerSourceKitSchemaWatcher } from "./commands/generateSourcekitConfiguration";
 import { handleMissingSwiftly } from "./commands/installSwiftly";
-import { swiftInstalled } from "./commands/swiftInstalled";
+import { isSwiftInstalled } from "./commands/isSwiftInstalled";
 import configuration, { ConfigurationValidationError } from "./configuration";
 import { registerDebugger } from "./debugger/debugAdapterFactory";
 import { makeDebugConfigurations } from "./debugger/launch";
@@ -479,7 +479,7 @@ export async function checkForSwiftlyInstallation(
  * available on the system.
  */
 export async function checkForSwiftLangInstallation(): Promise<void> {
-    const isInstalled = await swiftInstalled();
+    const isInstalled = await isSwiftInstalled();
     await vscode.commands.executeCommand("setContext", "swiftInstalled", isInstalled);
 }
 
