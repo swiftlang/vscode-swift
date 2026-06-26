@@ -165,6 +165,13 @@ export interface Version extends VersionInterface {
     /** Convert this version number to a string of the form "{major}.{minor}.{patch}". */
     toString(): string;
 
+    /**
+     * Whether or not this version is equal to the provided version.
+     *
+     * @since 1.0.0
+     */
+    isEqualTo(rhs: VersionInterface): boolean;
+
     /** Whether or not this version is less than the provided version. */
     isLessThan(rhs: VersionInterface): boolean;
 

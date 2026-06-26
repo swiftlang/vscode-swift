@@ -13,8 +13,8 @@
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
 
-import { FolderContext } from "../FolderContext";
 import { WorkspaceContext } from "../WorkspaceContext";
+import { SourceKitLanguageClient } from "../sourcekit-lsp/client/SourceKitLanguageClient";
 
 /**
  * Restart the sourcekit-lsp server. If multiple sourcekit-lsp instances
@@ -23,42 +23,51 @@ import { WorkspaceContext } from "../WorkspaceContext";
  * If no instances are running, this command will do nothing.
  * @param ctx The workspace context
  */
-export default async function restartLSPServer(ctx: WorkspaceContext) {
-    let toolchains = toolchainQuickPickItems(ctx);
+export default async function restartLSPServer(ctx: WorkspaceContext): Promise<void> {
+    const toolchains = toolchainQuickPickItems(ctx);
     if (toolchains.length === 0) {
-        return undefined;
+        return;
     } else if (toolchains.length === 1) {
         // Skip picking a toolchain if there is only one option to pick
-        return restartLSP(ctx, toolchains[0].label);
-    } else {
-        toolchains = [
-            ...toolchains,
+        return toolchains[0].client.restart();
+    }
+
+    const selected = await vscode.window.showQuickPick<
+        RestartAllQuickPickItem | ToolchainQuickPickItem
+    >(
+        [
             {
                 label: "All",
                 description: "Restart all sourcekit-lsp instances",
                 detail: toolchains.map(tc => tc.detail).join(", "),
+                client: "restart-all",
             },
-        ];
-    }
-
-    const selected = await vscode.window.showQuickPick(toolchains, {
-        title: "Restart LSP server",
-        placeHolder: "Select a sourcekit-lsp instance to restart",
-        canPickMany: false,
-    });
+            ...toolchains,
+        ],
+        {
+            title: "Restart LSP server",
+            placeHolder: "Select a sourcekit-lsp instance to restart",
+            canPickMany: false,
+        }
+    );
 
     if (!selected) {
         return undefined;
     }
 
-    if (selected.label === "All") {
-        const originalToolchains = toolchains.slice(0, -1);
-        for (const toolchain of originalToolchains) {
-            return restartLSP(ctx, toolchain.label);
-        }
-    } else {
-        return restartLSP(ctx, selected.label);
+    if (selected.client === "restart-all") {
+        await Promise.all(toolchains.map(toolchain => toolchain.client.restart()));
+        return;
     }
+    return selected.client.restart();
+}
+
+interface RestartAllQuickPickItem extends vscode.QuickPickItem {
+    client: "restart-all";
+}
+
+interface ToolchainQuickPickItem extends vscode.QuickPickItem {
+    client: SourceKitLanguageClient;
 }
 
 /**
@@ -66,32 +75,18 @@ export default async function restartLSPServer(ctx: WorkspaceContext) {
  * @param ctx The workspace context
  * @returns An array of quick pick items for each toolchain
  */
-function toolchainQuickPickItems(ctx: WorkspaceContext): vscode.QuickPickItem[] {
-    const toolchainLookup = ctx.folders.reduce(
-        (acc, folder) => {
-            acc[folder.swiftVersion.toString()] = acc[folder.swiftVersion.toString()] ?? [];
-            acc[folder.swiftVersion.toString()].push({
-                folder,
-                fullToolchainName: folder.toolchain.swiftVersionString,
-            });
-            return acc;
-        },
-        {} as Record<string, { folder: FolderContext; fullToolchainName: string }[]>
-    );
-
-    return Object.keys(toolchainLookup).map(key => ({
-        label: key,
-        description: toolchainLookup[key][0].fullToolchainName,
-        detail: toolchainLookup[key].map(({ folder }) => folder.name).join(", "),
-    }));
-}
-
-/**
- * Restart the LSP server for a specific toolchain version
- * @param ctx The workspace context
- * @param version The toolchain version to restart
- */
-async function restartLSP(ctx: WorkspaceContext, version: string) {
-    const languageClientManager = ctx.languageClientManager.getByVersion(version);
-    await languageClientManager.restart();
+function toolchainQuickPickItems(ctx: WorkspaceContext): ToolchainQuickPickItem[] {
+    return ctx.languageClientManager
+        .getAllClients()
+        .reduce<ToolchainQuickPickItem[]>((acc, client) => {
+            return [
+                ...acc,
+                {
+                    client,
+                    label: client.swiftVersion.toString(),
+                    description: client.toolchain.swiftVersionString,
+                    detail: client.addedFolders.map(folder => folder.name).join(", "),
+                },
+            ];
+        }, []);
 }

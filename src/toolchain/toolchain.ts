@@ -153,6 +153,7 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
         );
         const targetInfo = await this.getSwiftTargetInfo(
             this._getToolchainExecutable(swiftFolderPath, "swift"),
+            folder?.fsPath,
             logger
         );
         const swiftVersion = this.getSwiftVersion(targetInfo);
@@ -859,11 +860,16 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
     /** @returns swift target info */
     private static async getSwiftTargetInfo(
         swiftExecutable: string,
+        cwd?: string,
         logger?: SwiftLogger
     ): Promise<SwiftTargetInfo> {
         try {
             try {
-                const { stdout } = await execSwift(["-print-target-info"], { swiftExecutable });
+                const { stdout } = await execSwift(
+                    ["-print-target-info"],
+                    { swiftExecutable },
+                    { cwd }
+                );
                 const targetInfo = JSON.parse(stdout.trimEnd()) as SwiftTargetInfo;
                 if (!targetInfo.target) {
                     logger?.warn(

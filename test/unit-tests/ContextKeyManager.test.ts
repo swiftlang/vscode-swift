@@ -18,10 +18,11 @@ import * as vscode from "vscode";
 import { ContextKeyManager } from "@src/ContextKeyManager";
 import { FolderContext } from "@src/FolderContext";
 import { SwiftPackage } from "@src/SwiftPackage";
-import { LanguageClientManager } from "@src/sourcekit-lsp/LanguageClientManager";
+import { SourceKitLanguageClient } from "@src/sourcekit-lsp/client/SourceKitLanguageClient";
+import { DocCDocumentationRequest, ReIndexProjectRequest } from "@src/sourcekit-lsp/extensions";
 import { Version } from "@src/utilities/version";
 
-import { instance, mockObject } from "../MockUtils";
+import { instance, mockFn, mockObject } from "../MockUtils";
 
 suite("ContextKeyManager Suite", () => {
     let manager: ContextKeyManager;
@@ -185,8 +186,8 @@ suite("ContextKeyManager Suite", () => {
                 null,
                 null,
                 instance(
-                    mockObject<{ get(folder: FolderContext): LanguageClientManager }>({
-                        get: () => ({}) as LanguageClientManager,
+                    mockObject<{ getClient(folder: FolderContext): SourceKitLanguageClient }>({
+                        getClient: () => ({}) as SourceKitLanguageClient,
                     })
                 )
             );
@@ -202,8 +203,8 @@ suite("ContextKeyManager Suite", () => {
                 mockUri,
                 null,
                 instance(
-                    mockObject<{ get(folder: FolderContext): LanguageClientManager }>({
-                        get: () => ({}) as LanguageClientManager,
+                    mockObject<{ getClient(folder: FolderContext): SourceKitLanguageClient }>({
+                        getClient: () => ({}) as SourceKitLanguageClient,
                     })
                 )
             );
@@ -234,17 +235,15 @@ suite("ContextKeyManager Suite", () => {
                 swiftVersion: new Version(5, 7, 0),
                 folder: mockUri,
             });
-            const mockLanguageClient = mockObject<LanguageClientManager>({
-                useLanguageClient: async <Return>(_fn: any): Promise<Return> => {
-                    return undefined as Return;
-                },
+            const mockLanguageClient = mockObject<SourceKitLanguageClient>({
+                checkExperimentalCapability: mockFn(s => s.returns(false)),
+                useLanguageClient: mockFn(s => s.callsFake(fn => fn(instance(mockLanguageClient)))),
             });
             const mockLanguageClientManager = mockObject<{
-                get(folder: FolderContext): LanguageClientManager;
+                getClient(folder: FolderContext): SourceKitLanguageClient;
             }>({
-                get: () => instance(mockLanguageClient),
+                getClient: mockFn(s => s.returns(instance(mockLanguageClient))),
             });
-            mockLanguageClientManager.get.returns(instance(mockLanguageClient));
 
             await manager.updateForFile(
                 mockUri,
@@ -266,23 +265,19 @@ suite("ContextKeyManager Suite", () => {
                 swiftVersion: new Version(5, 7, 0),
                 folder: mockUri,
             });
-            const mockLanguageClient = {
-                useLanguageClient: async (fn: any) => {
-                    await fn({
-                        initializeResult: {
-                            capabilities: {
-                                experimental: {
-                                    "workspace/triggerReindex": {},
-                                    "textDocument/doccDocumentation": {},
-                                },
-                            },
-                        },
-                    });
-                },
-            };
-            const mockLanguageClientManager = {
-                get: () => mockLanguageClient,
-            };
+            const mockLanguageClient = mockObject<SourceKitLanguageClient>({
+                checkExperimentalCapability: mockFn(s => {
+                    s.withArgs(ReIndexProjectRequest.method, 1).returns(true);
+                    s.withArgs(DocCDocumentationRequest.method, 1).returns(true);
+                    return s;
+                }),
+                useLanguageClient: mockFn(s => s.callsFake(fn => fn(instance(mockLanguageClient)))),
+            });
+            const mockLanguageClientManager = mockObject<{
+                getClient(folder: FolderContext): SourceKitLanguageClient;
+            }>({
+                getClient: mockFn(s => s.returns(instance(mockLanguageClient))),
+            });
 
             await manager.updateForFile(
                 mockUri,
@@ -308,18 +303,15 @@ suite("ContextKeyManager Suite", () => {
                 swiftVersion: new Version(5, 7, 0),
                 folder: mockUri,
             });
-            const mockLanguageClient = {
-                useLanguageClient: async (fn: any) => {
-                    await fn({
-                        initializeResult: {
-                            capabilities: {},
-                        },
-                    });
-                },
-            };
-            const mockLanguageClientManager = {
-                get: () => mockLanguageClient,
-            };
+            const mockLanguageClient = mockObject<SourceKitLanguageClient>({
+                checkExperimentalCapability: mockFn(s => s.returns(false)),
+                useLanguageClient: mockFn(s => s.callsFake(fn => fn(instance(mockLanguageClient)))),
+            });
+            const mockLanguageClientManager = mockObject<{
+                getClient(folder: FolderContext): SourceKitLanguageClient;
+            }>({
+                getClient: mockFn(s => s.returns(instance(mockLanguageClient))),
+            });
 
             await manager.updateForFile(
                 mockUri,
@@ -343,17 +335,15 @@ suite("ContextKeyManager Suite", () => {
                 swiftVersion: new Version(5, 7, 0),
                 folder: mockFolderUri,
             });
-            const mockLanguageClient = mockObject<LanguageClientManager>({
-                useLanguageClient: async <Return>(_fn: any): Promise<Return> => {
-                    return undefined as Return;
-                },
+            const mockLanguageClient = mockObject<SourceKitLanguageClient>({
+                checkExperimentalCapability: mockFn(s => s.returns(false)),
+                useLanguageClient: mockFn(s => s.callsFake(fn => fn(instance(mockLanguageClient)))),
             });
             const mockLanguageClientManager = mockObject<{
-                get(folder: FolderContext): LanguageClientManager;
+                getClient(folder: FolderContext): SourceKitLanguageClient;
             }>({
-                get: () => instance(mockLanguageClient),
+                getClient: mockFn(s => s.returns(instance(mockLanguageClient))),
             });
-            mockLanguageClientManager.get.returns(instance(mockLanguageClient));
 
             await manager.updateForFile(
                 mockUri,
@@ -376,12 +366,15 @@ suite("ContextKeyManager Suite", () => {
                 swiftVersion: new Version(5, 6, 0),
                 folder: mockFolderUri,
             });
-            const mockLanguageClient = {
-                useLanguageClient: async (_fn: any) => {},
-            };
-            const mockLanguageClientManager = {
-                get: () => mockLanguageClient,
-            };
+            const mockLanguageClient = mockObject<SourceKitLanguageClient>({
+                checkExperimentalCapability: mockFn(s => s.returns(false)),
+                useLanguageClient: mockFn(s => s.callsFake(fn => fn(instance(mockLanguageClient)))),
+            });
+            const mockLanguageClientManager = mockObject<{
+                getClient(folder: FolderContext): SourceKitLanguageClient;
+            }>({
+                getClient: mockFn(s => s.returns(instance(mockLanguageClient))),
+            });
 
             await manager.updateForFile(
                 mockUri,
@@ -406,17 +399,15 @@ suite("ContextKeyManager Suite", () => {
                 swiftVersion: new Version(5, 7, 0),
                 folder: mockFolderUri,
             });
-            const mockLanguageClient = mockObject<LanguageClientManager>({
-                useLanguageClient: async <Return>(_fn: any): Promise<Return> => {
-                    return undefined as Return;
-                },
+            const mockLanguageClient = mockObject<SourceKitLanguageClient>({
+                checkExperimentalCapability: mockFn(s => s.returns(false)),
+                useLanguageClient: mockFn(s => s.callsFake(fn => fn(instance(mockLanguageClient)))),
             });
             const mockLanguageClientManager = mockObject<{
-                get(folder: FolderContext): LanguageClientManager;
+                getClient(folder: FolderContext): SourceKitLanguageClient;
             }>({
-                get: () => instance(mockLanguageClient),
+                getClient: mockFn(s => s.returns(instance(mockLanguageClient))),
             });
-            mockLanguageClientManager.get.returns(instance(mockLanguageClient));
 
             await manager.updateForFile(
                 mockUri,

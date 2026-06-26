@@ -16,7 +16,7 @@ import { Command } from "vscode-languageclient";
 
 import { FolderOperation, WorkspaceContext } from "../WorkspaceContext";
 import { Commands } from "../commands";
-import { LanguagerClientDocumentSelectors } from "../sourcekit-lsp/LanguageClientConfiguration";
+import { LanguageClientDocumentSelectors } from "../sourcekit-lsp/LanguageClientDocumentSelectors";
 import { Disposable } from "../utilities/Disposable";
 
 export class LanguageStatusItems implements Disposable {
@@ -24,7 +24,7 @@ export class LanguageStatusItems implements Disposable {
         // Swift language version item
         const swiftVersionItem = vscode.languages.createLanguageStatusItem(
             "swiftlang-version",
-            LanguagerClientDocumentSelectors.allHandledDocumentTypes()
+            LanguageClientDocumentSelectors.allHandledDocumentTypes()
         );
         const toolchain =
             workspaceContext.currentFolder?.toolchain ?? workspaceContext.globalToolchain;
@@ -37,8 +37,8 @@ export class LanguageStatusItems implements Disposable {
 
         // Package.swift item
         const packageSwiftItem = vscode.languages.createLanguageStatusItem("swiftlang-package", [
-            ...LanguagerClientDocumentSelectors.appleLangDocumentSelector,
-            ...LanguagerClientDocumentSelectors.cFamilyDocumentSelector,
+            ...LanguageClientDocumentSelectors.appleLangDocumentSelector,
+            ...LanguageClientDocumentSelectors.cFamilyDocumentSelector,
         ]);
         packageSwiftItem.text = "No Package.swift";
         packageSwiftItem.accessibilityInformation = { label: "There is no Package.swift" };
