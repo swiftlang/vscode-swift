@@ -186,7 +186,10 @@ export class FolderContext implements ExternalFolderContext, Disposable {
                 `Failed to discover Swift toolchain for ${FolderContext.uriName(folder)}: ${error}`,
                 { label: FolderContext.uriName(folder) }
             );
-            const userMadeSelection = await showToolchainError(folder);
+            const userMadeSelection = await showToolchainError(
+                workspaceContext.extensionContext.extensionPath,
+                folder
+            );
             if (userMadeSelection) {
                 // User updated toolchain settings, retry once
                 try {

@@ -17,8 +17,8 @@ import * as vscode from "vscode";
 import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { Swiftly } from "../toolchain/swiftly";
-import { promptToRestartAfterInstallation } from "../ui/RestartEditor";
-import { installSwiftlyToolchainWithProgress } from "./installSwiftlyToolchain";
+import { Workbench } from "../utilities/commands";
+import { installSwiftlyToolchainWithProgressAndErrorMsgs } from "./installSwiftlyToolchain";
 
 /**
  * Prompts user for Swiftly installation with directory customization options
@@ -79,7 +79,7 @@ This process involves updating your shell profile in order to add swiftly to you
  * @param logger Optional logger
  * @returns Promise<boolean> true if installation succeeded
  */
-async function installSwiftlyWithProgress(logger?: SwiftLogger): Promise<boolean> {
+export async function installSwiftlyWithProgress(logger?: SwiftLogger): Promise<boolean> {
     try {
         await vscode.window.withProgress(
             {
@@ -100,9 +100,84 @@ async function installSwiftlyWithProgress(logger?: SwiftLogger): Promise<boolean
     }
 }
 
+async function promptToRestartVSCode(): Promise<void> {
+    const editorName = vscode.env.appName;
+    const selection = await vscode.window.showInformationMessage(
+        `Restart ${editorName}`,
+        {
+            modal: true,
+            detail: `You must restart ${editorName} in order for the Swiftly installation to take effect. \n\nWhen you reopen ${editorName}, you will be prompted to install the Swift toolchain now that you have Swiftly installed.`,
+        },
+        `Quit ${editorName}`
+    );
+    if (selection === `Quit ${editorName}`) {
+        await vscode.commands.executeCommand(Workbench.ACTION_QUIT);
+    }
+}
+
+/**
+ * Installs Swiftly itself, prompting the user first unless suppressed or skipped, then
+ * asks the user to restart the editor so the installation can take effect.
+ * @returns Promise<boolean> true if Swiftly was installed
+ */
+async function installSwiftlyAndPromptRestart(
+    logger?: SwiftLogger,
+    skipPrompt: boolean = false
+): Promise<boolean> {
+    if (configuration.folder(undefined).disableSwiftlyInstallPrompt) {
+        logger?.debug("Swiftly installation prompt is suppressed");
+        return false;
+    }
+
+    if (!skipPrompt && !(await promptForSwiftlyInstallation(logger))) {
+        return false;
+    }
+
+    if (!(await installSwiftlyWithProgress(logger))) {
+        return false;
+    }
+
+    await promptToRestartVSCode();
+    return true;
+}
+
+/**
+ * Installs the requested Swift toolchain versions using an already installed Swiftly.
+ * @returns Promise<boolean> true if every toolchain installed successfully
+ */
+async function installToolchainsViaSwiftly(
+    swiftVersions: string[],
+    extensionRoot: string,
+    logger?: SwiftLogger
+): Promise<boolean> {
+    const swiftlyPath = path.join(Swiftly.defaultHomeDir(), "bin/swiftly");
+    for (const version of swiftVersions) {
+        const result = await installSwiftlyToolchainWithProgressAndErrorMsgs(
+            version,
+            extensionRoot,
+            logger,
+            swiftlyPath
+        );
+
+        if (result.success) {
+            continue;
+        }
+
+        if (result.errorMsg) {
+            await vscode.window.showErrorMessage("Installation failed", {
+                modal: true,
+                detail: result.errorMsg,
+            });
+        }
+        return false;
+    }
+
+    return true;
+}
+
 /**
  * Main function to handle missing Swiftly detection and installation
- * @param swiftVersionFiles A list of swift version files that will need to be installed
+ * @param swiftVersions A list of swift versions that will need to be installed
  * @param logger Optional logger
  * @returns Promise<boolean> true if Swiftly was installed or already exists
  */
@@ -112,30 +187,9 @@ export async function handleMissingSwiftly(
     logger?: SwiftLogger,
     skipPrompt: boolean = false
 ): Promise<boolean> {
-    if (configuration.folder(undefined).disableSwiftlyInstallPrompt) {
-        logger?.debug("Swiftly installation prompt is suppressed");
-        return false;
+    if (!(await Swiftly.isInstalled())) {
+        return installSwiftlyAndPromptRestart(logger, skipPrompt);
     }
 
-    if (!skipPrompt) {
-        // Prompt user for installation
-        if (!(await promptForSwiftlyInstallation(logger))) {
-            return false;
-        }
-    }
-
-    // Install Swiftly
-    if (!(await installSwiftlyWithProgress(logger))) {
-        return false;
-    }
-
-    // Install toolchains
-    const swiftlyPath = path.join(Swiftly.defaultHomeDir(), "bin/swiftly");
-    for (const version of swiftVersions) {
-        await installSwiftlyToolchainWithProgress(version, extensionRoot, logger, swiftlyPath);
-    }
-
-    // VS Code needs to be restarted after installing swiftly
-    await promptToRestartAfterInstallation("Swiftly");
-    return true;
+    return installToolchainsViaSwiftly(swiftVersions, extensionRoot, logger);
 }

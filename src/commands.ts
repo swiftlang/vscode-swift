@@ -108,7 +108,9 @@ export enum Commands {
 export function registerCommands(api: InternalSwiftExtensionApi): Disposable[] {
     return [
         vscode.commands.registerCommand("swift.createNewProject", () =>
-            api.withWorkspaceContext<void>(ctx => createNewProject(ctx.globalToolchain))
+            api.withWorkspaceContext<void>(ctx =>
+                createNewProject(ctx.extensionContext.extensionPath, ctx.globalToolchain)
+            )
         ),
         vscode.commands.registerCommand("swift.selectToolchain", () =>
             api.withWorkspaceContext(ctx =>

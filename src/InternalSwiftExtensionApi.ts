@@ -450,6 +450,7 @@ export async function checkForSwiftlyInstallation(
 
     // Don't block extension activation waiting for Swiftly checks
     const isSwiftlyInstalled = await Swiftly.isInstalled();
+    await vscode.commands.executeCommand("setContext", "swiftlyInstalled", isSwiftlyInstalled);
     try {
         if (!isSwiftlyInstalled) {
             logger.debug("Swiftly is not installed on this system.");
@@ -625,7 +626,7 @@ async function createActiveToolchain(
         contextKeys.updateKeysBasedOnActiveVersion(toolchain.swiftVersion);
         return toolchain;
     } catch (error) {
-        if (!(await showToolchainError())) {
+        if (!(await showToolchainError(extensionPath))) {
             throw error;
         }
         return await createActiveToolchain(extensionPath, contextKeys, logger);
