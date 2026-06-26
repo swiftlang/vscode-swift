@@ -31,6 +31,7 @@ import { useLocalDependency } from "./commands/dependencies/useLocal";
 import { generateLaunchConfigurations } from "./commands/generateLaunchConfigurations";
 import { generateSourcekitConfiguration } from "./commands/generateSourcekitConfiguration";
 import { insertFunctionComment } from "./commands/insertFunctionComment";
+import { handleMissingSwiftly } from "./commands/installSwiftly";
 import { promptToInstallSwiftlyToolchain } from "./commands/installSwiftlyToolchain";
 import { newSwiftFile } from "./commands/newFile";
 import { openDocumentation } from "./commands/openDocumentation";
@@ -120,6 +121,9 @@ export function registerCommands(api: InternalSwiftExtensionApi): Disposable[] {
         ),
         vscode.commands.registerCommand("swift.pickProcess", configuration =>
             pickProcess(configuration)
+        ),
+        vscode.commands.registerCommand("swift.installSwiftly", () =>
+            handleMissingSwiftly(["latest"], api.extensionPath, api.logger, true)
         ),
         vscode.commands.registerCommand("swift.generateLaunchConfigurations", () =>
             api.withWorkspaceContext(ctx => generateLaunchConfigurations(ctx))
