@@ -11,195 +11,272 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import * as assert from "assert";
 import { expect } from "chai";
-import * as decompress from "decompress";
-import { mkdir, rm } from "fs/promises";
-import * as os from "os";
-import * as path from "path";
+import * as fs from "fs/promises";
 import * as vscode from "vscode";
+import * as yauzl from "yauzl";
 
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { captureDiagnostics } from "@src/commands/captureDiagnostics";
+import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
+import { unwrapPromise } from "@src/utilities/utilities";
 import { Version } from "@src/utilities/version";
 
-import { mockGlobalObject } from "../../MockUtils";
+import { mockFn, mockGlobalObject } from "../../MockUtils";
 import { tag } from "../../tags";
-import {
-    activateExtensionForSuite,
-    folderInRootWorkspace,
-    updateSettings,
-} from "../utilities/testutilities";
+import { TestLogger } from "../../utilities/TestLogger";
+import { executeTaskAndWaitForResult } from "../../utilities/tasks";
+import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 
-tag("medium").suite("captureDiagnostics Test Suite", () => {
+tag("medium").suite("captureDiagnostics() Test Suite", function () {
     let workspaceContext: WorkspaceContext;
+    let zipFilePath: string | undefined;
     const mockWindow = mockGlobalObject(vscode, "window");
+    const progressReport = { report: () => {} } as vscode.Progress<{ message?: string }>;
 
-    suite("Minimal", () => {
-        activateExtensionForSuite({
-            async setup(ctx) {
-                workspaceContext = ctx;
-            },
-            testAssets: ["defaultPackage"],
-        });
+    activateExtensionForSuite({
+        async setup(api) {
+            workspaceContext = await api.waitForWorkspaceContext();
+        },
+        testAssets: ["defaultPackage", "dependencies"],
+    });
 
-        setup(() => {
-            mockWindow.showInformationMessage.resolves("Capture Minimal Diagnostics" as any);
-        });
-
-        test("Should capture dianostics to a zip file", async () => {
-            const zipPath = await captureDiagnostics(workspaceContext);
-            expect(zipPath).to.not.be.undefined;
-        });
-
-        test("Should validate a single folder project zip file has contents", async () => {
-            const zipPath = await captureDiagnostics(workspaceContext);
-            expect(zipPath).to.not.be.undefined;
-
-            const { files, folder } = await decompressZip(zipPath as string);
-
-            validate(
-                files.map(file => file.path),
-                ["swift-vscode-extension.log", "defaultPackage-[a-z0-9]+-settings.txt"]
-            );
-
-            await rm(folder, { recursive: true, force: true });
-        });
-
-        suite("Multiple folder project", () => {
-            setup(async () => {
-                await folderInRootWorkspace("dependencies", workspaceContext);
-            });
-
-            test("Should validate a multiple folder project zip file has contents", async () => {
-                const zipPath = await captureDiagnostics(workspaceContext);
-                expect(zipPath).to.not.be.undefined;
-
-                const { files, folder } = await decompressZip(zipPath as string);
-                validate(
-                    files.map(file => file.path),
-                    [
-                        "swift-vscode-extension.log",
-                        "defaultPackage/",
-                        "defaultPackage/defaultPackage-[a-z0-9]+-settings.txt",
-                        "dependencies/",
-                        "dependencies/dependencies-[a-z0-9]+-settings.txt",
-                    ]
-                );
-                await rm(folder, { recursive: true, force: true });
-            });
+    setup(() => {
+        mockWindow.showInformationMessage.resolves("Capture Minimal Diagnostics" as any);
+        mockWindow.withProgress.callsFake(async (_options, task) => {
+            return await task(progressReport, new vscode.CancellationTokenSource().token);
         });
     });
 
-    tag("large").suite("Full", function () {
-        activateExtensionForSuite({
-            async setup(ctx) {
-                workspaceContext = ctx;
+    teardown(async () => {
+        if (!zipFilePath) {
+            return;
+        }
+
+        await fs.rm(zipFilePath);
+        zipFilePath = undefined;
+    });
+
+    test("Does not offer minimal capture when requiresFullDiagnostics is true", async () => {
+        mockWindow.showInformationMessage.resolves(undefined);
+
+        zipFilePath = await captureDiagnostics(
+            {
+                logFolderUri: workspaceContext.loggerFactory.logFolderUri,
+                globalToolchain: workspaceContext.globalToolchain,
+                folders: workspaceContext.folders,
+                requiresFullDiagnostics: true,
+                showSwiftOutputChannel: mockFn(),
             },
-            testAssets: ["defaultPackage"],
+            new TestLogger()
+        );
+
+        expect(mockWindow.showInformationMessage).to.have.been.calledOnce;
+        const showInfoArgs = mockWindow.showInformationMessage.firstCall.args;
+        expect(showInfoArgs).to.not.include("Capture Minimal Diagnostics");
+        expect(showInfoArgs).to.include("Capture Full Diagnostics");
+    });
+
+    test("Offers both capture modes when requiresFullDiagnostics is false", async () => {
+        mockWindow.showInformationMessage.resolves(undefined);
+
+        zipFilePath = await captureDiagnostics(
+            {
+                logFolderUri: workspaceContext.loggerFactory.logFolderUri,
+                globalToolchain: workspaceContext.globalToolchain,
+                folders: workspaceContext.folders,
+                requiresFullDiagnostics: false,
+                showSwiftOutputChannel: mockFn(),
+            },
+            new TestLogger()
+        );
+
+        expect(mockWindow.showInformationMessage).to.have.been.calledOnce;
+        const showInfoArgs = mockWindow.showInformationMessage.firstCall.args;
+        expect(showInfoArgs).to.include("Capture Minimal Diagnostics");
+        expect(showInfoArgs).to.include("Capture Full Diagnostics");
+    });
+
+    test("Returns undefined when user dismisses the diagnostics mode prompt", async () => {
+        mockWindow.showInformationMessage.resolves(undefined);
+        mockWindow.withProgress.callsFake(async (_options, task) => {
+            return await task(progressReport, new vscode.CancellationTokenSource().token);
+        });
+
+        zipFilePath = await captureDiagnostics(
+            {
+                logFolderUri: workspaceContext.loggerFactory.logFolderUri,
+                globalToolchain: workspaceContext.globalToolchain,
+                folders: workspaceContext.folders,
+                showSwiftOutputChannel: mockFn(),
+            },
+            new TestLogger()
+        );
+
+        expect(zipFilePath).to.be.undefined;
+    });
+
+    test("Returns a path to a zip file on disk", async () => {
+        zipFilePath = await captureDiagnostics(
+            {
+                logFolderUri: workspaceContext.loggerFactory.logFolderUri,
+                globalToolchain: workspaceContext.globalToolchain,
+                folders: workspaceContext.folders,
+                showSwiftOutputChannel: mockFn(),
+            },
+            new TestLogger()
+        );
+
+        expect(zipFilePath).to.match(/\.zip$/);
+        const stat = await fs.stat(zipFilePath!);
+        expect(stat.isFile()).to.be.true;
+        expect(stat.size).to.be.greaterThan(0);
+    });
+
+    test("Should capture extension log and per-folder settings", async () => {
+        zipFilePath = await captureDiagnostics(
+            {
+                logFolderUri: workspaceContext.loggerFactory.logFolderUri,
+                globalToolchain: workspaceContext.globalToolchain,
+                folders: workspaceContext.folders,
+                showSwiftOutputChannel: mockFn(),
+            },
+            new TestLogger()
+        );
+        assert.ok(zipFilePath);
+
+        const entries = await readZipEntries(zipFilePath!);
+        expect(entries).to.include("swift-vscode-extension.log");
+        expect(entries).to.includeMatch(/^sourcekit-lsp-[0-9.]+\.log$/);
+        expect(entries).to.includeMatch(/^defaultPackage-[a-z0-9]+\/settings\.txt$/);
+        expect(entries).to.includeMatch(/^dependencies-[a-z0-9]+\/settings\.txt$/);
+    });
+
+    test("Should not include source-code diagnostics or sourcekit-lsp diagnose output", async () => {
+        zipFilePath = await captureDiagnostics(
+            {
+                logFolderUri: workspaceContext.loggerFactory.logFolderUri,
+                globalToolchain: workspaceContext.globalToolchain,
+                folders: workspaceContext.folders,
+                showSwiftOutputChannel: mockFn(),
+            },
+            new TestLogger()
+        );
+        assert.ok(zipFilePath);
+
+        const entries = await readZipEntries(zipFilePath!);
+        expect(entries).to.not.includeMatch(/^source-code-diagnostics\.txt$/);
+        expect(entries).to.not.includeMatch(/^defaultPackage-[a-z0-9]+\/sourcekit-lsp\//);
+        expect(entries).to.not.includeMatch(/^dependencies-[a-z0-9]+\/sourcekit-lsp\//);
+    });
+
+    test("Shows an error message and returns undefined on failure", async () => {
+        mockWindow.showInformationMessage.resolves("Capture Minimal Diagnostics" as any);
+        mockWindow.showErrorMessage.resolves(undefined);
+
+        const badUri = vscode.Uri.file("/nonexistent/path/that/should/not/exist");
+        const logger = new TestLogger();
+        zipFilePath = await captureDiagnostics(
+            {
+                logFolderUri: badUri,
+                globalToolchain: workspaceContext.globalToolchain,
+                folders: workspaceContext.folders,
+                showSwiftOutputChannel: mockFn(),
+            },
+            logger
+        );
+
+        expect(zipFilePath).to.be.undefined;
+        expect(mockWindow.showErrorMessage).to.have.been.calledOnce;
+    });
+
+    test("Logs the error when capture fails", async () => {
+        mockWindow.showInformationMessage.resolves("Capture Minimal Diagnostics" as any);
+        mockWindow.showErrorMessage.resolves(undefined);
+
+        const badUri = vscode.Uri.file("/nonexistent/path/that/should/not/exist");
+        const logger = new TestLogger();
+        zipFilePath = await captureDiagnostics(
+            {
+                logFolderUri: badUri,
+                globalToolchain: workspaceContext.globalToolchain,
+                folders: workspaceContext.folders,
+                showSwiftOutputChannel: mockFn(),
+            },
+            logger
+        );
+
+        expect(logger.logs).to.includeMatch(/Failed to capture/);
+    });
+
+    tag("large").suite("Capture Full Diagnostics", function () {
+        suiteSetup(async () => {
+            // Trigger diagnostics to appear
+            const diagnosticsFolder = await folderInRootWorkspace("diagnostics", workspaceContext);
+            await executeTaskAndWaitForResult(await createBuildAllTask(diagnosticsFolder));
         });
 
         setup(async () => {
             mockWindow.showInformationMessage.resolves("Capture Full Diagnostics" as any);
-            resetSettings = await updateSettings({
-                "lldb-dap.logFolder": "logs",
-            });
         });
 
-        let resetSettings: (() => Promise<void>) | undefined;
-        teardown(async () => {
-            if (resetSettings) {
-                await resetSettings();
-            }
-        });
-
-        test("Should validate a single folder project zip file has contents", async () => {
-            const zipPath = await captureDiagnostics(workspaceContext, false);
-            expect(zipPath).to.not.be.undefined;
-
-            const { files, folder } = await decompressZip(zipPath as string);
-
-            const post60Logs = workspaceContext.globalToolchainSwiftVersion.isGreaterThanOrEqual(
-                new Version(6, 0, 0)
-            )
-                ? ["sourcekit-lsp/", "lldb-dap-session-123456789.log", "LLDB-DAP.log"]
-                : [];
-
-            validate(
-                files.map(file => file.path),
-                [
-                    "swift-vscode-extension.log",
-                    "defaultPackage-[a-z0-9]+-settings.txt",
-                    ...post60Logs,
-                ],
-                false // Sometime are diagnostics, sometimes not but not point of this test
+        test("Includes source-code diagnostics file for each folder", async () => {
+            zipFilePath = await captureDiagnostics(
+                {
+                    logFolderUri: workspaceContext.loggerFactory.logFolderUri,
+                    globalToolchain: workspaceContext.globalToolchain,
+                    folders: workspaceContext.folders,
+                    showSwiftOutputChannel: mockFn(),
+                },
+                new TestLogger()
             );
+            assert.ok(zipFilePath);
 
-            await rm(folder, { recursive: true, force: true });
+            const entries = await readZipEntries(zipFilePath!);
+            expect(entries).to.includeMatch(
+                /^diagnostics-[a-z0-9]+\/source-code-diagnostics\.txt$/
+            );
         });
 
-        suite("Multiple folder project", () => {
-            setup(async () => {
-                await folderInRootWorkspace("dependencies", workspaceContext);
-            });
+        test("Includes sourcekit-lsp diagnose output on Swift 6+", async function () {
+            const swiftVersion = workspaceContext.globalToolchainSwiftVersion;
+            if (swiftVersion.isLessThan(new Version(6, 0, 0))) {
+                this.skip();
+            }
 
-            test("Should validate a multiple folder project zip file has contents", async () => {
-                const zipPath = await captureDiagnostics(workspaceContext, false);
-                expect(zipPath).to.not.be.undefined;
+            zipFilePath = await captureDiagnostics(
+                {
+                    logFolderUri: workspaceContext.loggerFactory.logFolderUri,
+                    globalToolchain: workspaceContext.globalToolchain,
+                    folders: workspaceContext.folders,
+                    showSwiftOutputChannel: mockFn(),
+                },
+                new TestLogger()
+            );
+            assert.ok(zipFilePath);
 
-                const { files, folder } = await decompressZip(zipPath as string);
-
-                const post60Logs =
-                    workspaceContext.globalToolchainSwiftVersion.isGreaterThanOrEqual(
-                        new Version(6, 0, 0)
-                    )
-                        ? [
-                              "dependencies/sourcekit-lsp/",
-                              "LLDB-DAP.log",
-                              "lldb-dap-session-123456789.log",
-                              "defaultPackage/sourcekit-lsp/",
-                          ]
-                        : [];
-
-                validate(
-                    files.map(file => file.path),
-                    [
-                        "swift-vscode-extension.log",
-                        "defaultPackage/",
-                        "defaultPackage/defaultPackage-[a-z0-9]+-settings.txt",
-                        "dependencies/",
-                        "dependencies/dependencies-[a-z0-9]+-settings.txt",
-                        ...post60Logs,
-                    ],
-                    false // Sometime are diagnostics, sometimes not but not point of this test
-                );
-                await rm(folder, { recursive: true, force: true });
-            });
+            const entries = await readZipEntries(zipFilePath!);
+            expect(entries).to.includeMatch(/^dependencies-[a-z0-9]+\/sourcekit-lsp\/.*$/);
         });
     });
 
-    async function decompressZip(
-        zipPath: string
-    ): Promise<{ folder: string; files: decompress.File[] }> {
-        const tempDir = path.join(
-            os.tmpdir(),
-            `vscode-swift-test-${Math.random().toString(36).substring(7)}`
-        );
-        await mkdir(tempDir, { recursive: true });
-        return { folder: tempDir, files: await decompress(zipPath as string, tempDir) };
-    }
+    function readZipEntries(zipFilePath: string): Promise<string[]> {
+        const { promise, resolve, reject } = unwrapPromise<string[]>();
+        yauzl.open(zipFilePath, { lazyEntries: true }, (err, zipFile) => {
+            if (err || !zipFile) {
+                return reject(err);
+            }
 
-    function validate(paths: string[], patterns: string[], matchCount: boolean = true): void {
-        if (matchCount) {
-            expect(paths.length).to.equal(
-                patterns.length,
-                `Expected ${patterns.length} files: ${JSON.stringify(patterns)}\n\n...but found ${paths.length}: ${JSON.stringify(paths)}`
-            );
-        }
-        const regexes = patterns.map(pattern => new RegExp(`^${pattern}$`));
-        for (const regex of regexes) {
-            const matched = paths.some(path => regex.test(path));
-            expect(matched, `No path matches the pattern: ${regex}, got paths: ${paths}`).to.be
-                .true;
-        }
+            const entries: string[] = [];
+            zipFile.readEntry();
+            zipFile.on("entry", (entry: { fileName: string }) => {
+                entries.push(entry.fileName);
+                zipFile.readEntry();
+            });
+            zipFile.on("end", () => resolve(entries));
+            zipFile.on("error", reject);
+        });
+        return promise;
     }
 });

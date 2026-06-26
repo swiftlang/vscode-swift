@@ -31,6 +31,7 @@ import { Version } from "@src/utilities/version";
 
 import { testAssetPath } from "../../fixtures";
 import { tag } from "../../tags";
+import { TestLogger } from "../../utilities/TestLogger";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
 import {
     activateExtensionForSuite,
@@ -43,19 +44,22 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
     let treeProvider: ProjectPanelProvider;
 
     activateExtensionForSuite({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             workspaceContext = ctx;
 
             const folderContext = await folderInRootWorkspace("targets", workspaceContext);
             await vscode.workspace.openTextDocument(
                 path.join(folderContext.folder.fsPath, "Package.swift")
             );
-            const logger = await ctx.loggerFactory.temp("ProjectPanelProvider.tests");
-            await folderContext.loadSwiftPlugins(logger);
-            if (logger.logs.length > 0) {
-                expect.fail(
-                    `Expected no output channel logs: ${JSON.stringify(logger.logs, undefined, 2)}`
-                );
+            const logger = new TestLogger();
+            try {
+                ctx.logger.info("Loading swift plugins");
+                await folderContext.loadSwiftPlugins(logger);
+                expect(logger.logs, "loadSwiftPlugins() should not log anything").to.be.empty;
+                expect(workspaceContext.folders).to.not.have.lengthOf(0);
+            } finally {
+                logger.dispose();
             }
 
             treeProvider = ctx.projectPanel;

@@ -19,6 +19,9 @@
         "--security-opt",
         "seccomp=unconfined"
     ],
+    "remoteEnv": {
+        "DEVELOPER_DIR": null
+    },
     // Configure tool-specific properties.
     "customizations": {
         // Configure properties specific to VS Code.
@@ -26,7 +29,7 @@
             // Add the IDs of extensions you want installed when the container is created.
             "extensions": [
                 "dbaeumer.vscode-eslint",
-                "prettier.prettier-vscode",
+                "esbenp.prettier-vscode",
                 "llvm-vs-code-extensions.lldb-dap"
             ]
         }

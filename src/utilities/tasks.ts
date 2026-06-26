@@ -42,7 +42,7 @@ function getScopeWorkspaceFolder(task: vscode.Task): string | undefined {
         const scopeWorkspaceFolder = task.scope as vscode.WorkspaceFolder;
         return scopeWorkspaceFolder.uri.fsPath;
     }
-    return;
+    return undefined;
 }
 
 export function getPlatformConfig<T>(task: vscode.Task): T | undefined {
@@ -84,4 +84,12 @@ export function resolveScope(scope: vscode.WorkspaceFolder | vscode.TaskScope) {
         return vscode.TaskScope.Workspace;
     }
     return scope;
+}
+
+// VS Code has no API to map a task to its terminal, so match by name. Swift tasks surface with
+// the "swift: " source prefix (e.g. "swift: Build All"), so match that exactly or the bare name.
+export function findTaskTerminal(task: vscode.Task): vscode.Terminal | undefined {
+    return vscode.window.terminals.find(
+        terminal => terminal.name === task.name || terminal.name === `swift: ${task.name}`
+    );
 }

@@ -26,7 +26,7 @@ export const config: IconConfiguration = {
  * Config used by scripts/compile_icons.ts to generate the SVG icons and
  * icon font file.
  */
-export interface IconConfiguration {
+interface IconConfiguration {
     icons: {
         [key: string]: {
             /**
@@ -49,4 +49,4 @@ export interface IconConfiguration {
     };
 }
 
-export type IconColor = string | { light: string; dark: string };
+type IconColor = string | { light: string; dark: string };

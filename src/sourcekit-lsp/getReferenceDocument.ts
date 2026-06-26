@@ -14,9 +14,10 @@
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
 
+import { Disposable } from "../utilities/Disposable";
 import { GetReferenceDocumentParams, GetReferenceDocumentRequest } from "./extensions";
 
-export function activateGetReferenceDocument(client: langclient.LanguageClient): vscode.Disposable {
+export function activateGetReferenceDocument(client: langclient.LanguageClient): Disposable {
     const getReferenceDocument = vscode.workspace.registerTextDocumentContentProvider(
         "sourcekit-lsp",
         {

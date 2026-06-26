@@ -12,13 +12,14 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
-import * as mockFS from "mock-fs";
 
 import configuration from "@src/configuration";
 import { DebugAdapter, LaunchConfigType } from "@src/debugger/debugAdapter";
 import { Version } from "@src/utilities/version";
 
 import { MockedObject, instance, mockGlobalModule, mockObject } from "../../MockUtils";
+
+import mockFS = require("mock-fs");
 
 suite("DebugAdapter Unit Test Suite", () => {
     const mockConfiguration = mockGlobalModule(configuration);

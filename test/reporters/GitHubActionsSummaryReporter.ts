@@ -11,20 +11,24 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import * as chai from "chai";
 import { diffLines } from "diff";
 import * as fs from "fs";
 import * as mocha from "mocha";
 
+import { getCapturedLogs } from "./utilities";
+
+const EOL = "\r\n";
 const SUMMARY_ENV_VAR = "GITHUB_STEP_SUMMARY";
 
 interface AssertionError extends Error {
     showDiff?: boolean;
-    actual: string;
-    expected: string;
+    actual: unknown;
+    expected: unknown;
 }
 
 function isAssertionError(err: Error): err is AssertionError {
-    return typeof (err as any).actual === "string" && typeof (err as any).expected === "string";
+    return Object.hasOwn(err, "actual") && Object.hasOwn(err, "expected");
 }
 
 module.exports = class GitHubActionsSummaryReporter extends mocha.reporters.Base {
@@ -58,6 +62,7 @@ module.exports = class GitHubActionsSummaryReporter extends mocha.reporters.Base
         runner.on(EVENT_RUN_END, () => {
             const title = options.reporterOption.title ?? "Test Summary";
             this.appendSummary(createMarkdownSummary(title, this.stats, this.failures));
+            printCapturedLogsToConsole(this.failures);
         });
     }
 
@@ -73,32 +78,53 @@ module.exports = class GitHubActionsSummaryReporter extends mocha.reporters.Base
 
 function fullTitle(test: Mocha.Test | Mocha.Suite): string {
     if (test.parent && test.parent.title) {
-        return fullTitle(test.parent) + " | " + test.title;
+        return fullTitle(test.parent) + " → " + test.title;
     }
     return test.title;
+}
+
+/**
+ * Prints the captured extension logs for each failure to stdout. The
+ * GitHubActionsSummaryReporter normally only surfaces these in the job summary
+ * page, which is easy to miss; printing them to the console ensures they also
+ * appear in the raw CI logs alongside the failure.
+ */
+function printCapturedLogsToConsole(failures: Mocha.Test[]): void {
+    for (const failure of failures) {
+        const logs = getCapturedLogs(failure);
+        if (!logs || logs.length === 0) {
+            continue;
+        }
+        const header = `===== Captured extension logs: ${fullTitle(failure)} =====`;
+        console.log(`\n${header}\n${logs.join("\n")}\n${"=".repeat(header.length)}\n`);
+    }
 }
 
 function generateErrorMessage(failure: Mocha.Test): string {
     if (!failure.err) {
         return "The test did not report what the error was.";
     }
+    return convertErrorToString(failure.err);
+}
 
+function convertErrorToString(error: Error): string {
     const stackTraceFilter = mocha.utils.stackTraceFilter();
-    if (isAssertionError(failure.err) && failure.err.showDiff) {
-        const { message, stack } = splitStackTrace(failure.err);
-        return (
-            message +
-            eol() +
-            generateDiff(failure.err.actual, failure.err.expected) +
-            eol() +
-            eol() +
-            stackTraceFilter(stack)
-        );
+    const { message, stack } = splitStackTrace(error);
+    let result = message;
+    if (isAssertionError(error)) {
+        const oneLineActualValue = prettyPrint(error.actual, { multiline: false });
+        const actualValueWasTruncated = oneLineActualValue.length > chai.config.truncateThreshold;
+        if (error.showDiff) {
+            result += EOL + generateDiff(error);
+        } else if (actualValueWasTruncated) {
+            result += EOL + "The full actual value was:" + EOL + prettyPrint(error.actual);
+        }
     }
-    if (failure.err.stack) {
-        return stackTraceFilter(failure.err.stack);
+    result += EOL + stackTraceFilter(stack);
+    if (error.cause instanceof Error) {
+        result += EOL + "Caused By: " + EOL + convertErrorToString(error.cause);
     }
-    return mocha.utils.stringify(failure.err);
+    return result.replaceAll(/\r?\n/g, EOL);
 }
 
 function splitStackTrace(error: Error): { message: string; stack: string } {
@@ -114,9 +140,25 @@ function splitStackTrace(error: Error): { message: string; stack: string } {
     };
 }
 
-function generateDiff(actual: string, expected: string) {
+function prettyPrint(obj: unknown, options: { multiline: boolean } = { multiline: true }): string {
+    if (obj === undefined) {
+        return "undefined";
+    }
+
+    if (obj === null) {
+        return "null";
+    }
+
+    const spaces = options.multiline ? 2 : undefined;
+    const prettyPrintedObj = JSON.stringify(obj, undefined, spaces) ?? "";
+    return prettyPrintedObj.replaceAll(/\r?\n/g, EOL);
+}
+
+function generateDiff(error: AssertionError) {
+    const actual = prettyPrint(error.actual);
+    const expected = prettyPrint(error.expected);
     return [
-        "🟩 expected 🟥 actual\n\n",
+        "🟩 expected 🟥 actual" + EOL + EOL,
         ...diffLines(expected, actual).map(part => {
             if (part.added) {
                 return "🟩" + part.value;
@@ -130,50 +172,61 @@ function generateDiff(actual: string, expected: string) {
 }
 
 function tag(tag: string, attributes: string[], content: string): string {
-    return `<${tag}${attributes.length > 0 ? ` ${attributes.join(" ")}` : ""}>${content}</${tag}>`;
+    const attributeString = attributes.length > 0 ? " " + attributes.join(" ") : "";
+    return `<${tag}${attributeString}>${content}</${tag}>`;
 }
 
 function details(summary: string, open: boolean, content: string): string {
     return tag(
         "details",
         open ? ["open"] : [],
-        eol() + tag("summary", [], summary) + eol() + content + eol()
+        EOL + tag("summary", [], summary) + EOL + content + EOL
     );
 }
 
 function list(lines: string[]): string {
-    return tag("ul", [], eol() + lines.map(line => tag("li", [], line)).join(eol()) + eol());
+    return tag("ul", [], EOL + lines.map(line => tag("li", [], line)).join(EOL) + EOL);
 }
 
-function eol(): string {
-    if (process.platform === "win32") {
-        return "\r\n";
-    }
-    return "\n";
+function fixLineEndings(str: string): string {
+    return str.replace(/\r?\n/g, EOL);
 }
 
 function createMarkdownSummary(title: string, stats: Mocha.Stats, failures: Mocha.Test[]): string {
     const isFailedRun = stats.failures > 0;
-    let summary = tag("h3", [], "Summary") + eol();
+    let summary = tag("h3", [], "Summary");
+    summary += EOL;
     summary += list([
         ...(stats.passes > 0 ? [`✅ ${stats.passes} passing test(s)`] : []),
         ...(stats.failures > 0 ? [`❌ ${stats.failures} failing test(s)`] : []),
         ...(stats.pending > 0 ? [`⚠️ ${stats.pending} pending test(s)`] : []),
     ]);
+    summary += EOL;
     if (isFailedRun) {
         summary += tag("h3", [], "Test Failures");
+        summary += EOL;
         summary += list(
             failures.map(failure => {
                 const errorMessage = generateErrorMessage(failure);
-                return (
-                    eol() +
+                let content =
+                    EOL +
                     tag("h5", [], fullTitle(failure)) +
-                    eol() +
-                    tag("pre", [], eol() + errorMessage + eol()) +
-                    eol()
-                );
+                    EOL +
+                    tag("pre", [], fixLineEndings(errorMessage)) +
+                    EOL;
+                const logs = getCapturedLogs(failure);
+                if (logs && logs.length > 0) {
+                    content +=
+                        details(
+                            "Captured Extension Logs",
+                            true,
+                            tag("pre", [], fixLineEndings(logs.join("\n")))
+                        ) + EOL;
+                }
+                return content;
             })
         );
+        summary += EOL;
     }
-    return details(`${isFailedRun ? "❌" : "✅"} ${title}`, isFailedRun, summary) + eol();
+    return details(`${isFailedRun ? "❌" : "✅"} ${title}`, isFailedRun, summary) + EOL;
 }

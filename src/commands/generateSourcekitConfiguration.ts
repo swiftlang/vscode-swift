@@ -18,10 +18,11 @@ import { FolderContext } from "../FolderContext";
 import { WorkspaceContext } from "../WorkspaceContext";
 import configuration from "../configuration";
 import { selectFolder } from "../ui/SelectFolderQuickPick";
+import { Disposable } from "../utilities/Disposable";
 import restartLSPServer from "./restartLSPServer";
 
-export const sourcekitDotFolder: string = ".sourcekit-lsp";
-export const sourcekitConfigFileName: string = "config.json";
+const sourcekitDotFolder: string = ".sourcekit-lsp";
+const sourcekitConfigFileName: string = "config.json";
 
 export async function generateSourcekitConfiguration(ctx: WorkspaceContext): Promise<boolean> {
     if (ctx.folders.length === 0) {
@@ -127,15 +128,28 @@ async function checkURLExists(url: string): Promise<boolean> {
     }
 }
 
+// Resolves the sourcekit-lsp config schema URL for the toolchain, trying
+// release branches in order (e.g. release/6.4.x, release/6.4) and falling
+// back to main when none of the candidates exist on GitHub.
 export async function determineSchemaURL(folderContext: FolderContext): Promise<string> {
     const version = folderContext.toolchain.swiftVersion;
     const versionString = `${version.major}.${version.minor}`;
-    let branch =
-        configuration.lspConfigurationBranch || (version.dev ? "main" : `release/${versionString}`);
-    if (!(await checkURLExists(schemaURL(branch)))) {
-        branch = "main";
+    let candidates: string[];
+    if (configuration.lspConfigurationBranch) {
+        candidates = [configuration.lspConfigurationBranch, "main"];
+    } else if (version.dev) {
+        candidates = ["main"];
+    } else {
+        candidates = [`release/${versionString}.x`, `release/${versionString}`, "main"];
     }
-    return schemaURL(branch);
+    let resolved = "main";
+    for (const branch of candidates) {
+        if (await checkURLExists(schemaURL(branch))) {
+            resolved = branch;
+            break;
+        }
+    }
+    return schemaURL(resolved);
 }
 
 async function getValidatedFolderContext(
@@ -203,7 +217,6 @@ async function checkDocumentSchema(doc: vscode.TextDocument, workspaceContext: W
             doc.uri,
             Buffer.from(JSON.stringify(config, undefined, 2))
         );
-        return;
     } else if (result === "Don't Ask Again") {
         configuration.checkLspConfigurationSchema = false;
         return;
@@ -220,9 +233,7 @@ export async function handleSchemaUpdate(
     await checkDocumentSchema(doc, workspaceContext);
 }
 
-export function registerSourceKitSchemaWatcher(
-    workspaceContext: WorkspaceContext
-): vscode.Disposable {
+export function registerSourceKitSchemaWatcher(workspaceContext: WorkspaceContext): Disposable {
     const onDidOpenDisposable = vscode.workspace.onDidOpenTextDocument(doc => {
         void handleSchemaUpdate(doc, workspaceContext);
     });
@@ -238,7 +249,7 @@ export function registerSourceKitSchemaWatcher(
     const onDidCreateDisposable = configFileWatcher.onDidCreate(async uri => {
         await handleConfigFileChange(uri, workspaceContext);
     });
-    return vscode.Disposable.from(
+    return Disposable.from(
         onDidOpenDisposable,
         configFileWatcher,
         onDidChangeDisposable,

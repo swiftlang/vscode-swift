@@ -11,7 +11,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-/* eslint-disable no-console */
 import { FontAssetType, generateFonts } from "@twbs/fantasticon";
 import { CodepointsMap } from "@twbs/fantasticon/lib/utils/codepoints";
 import { mkdir, readFile, readdir, rm, writeFile } from "fs/promises";

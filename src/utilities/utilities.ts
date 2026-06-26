@@ -19,6 +19,8 @@ import * as vscode from "vscode";
 import { FolderContext } from "../FolderContext";
 import configuration from "../configuration";
 import { SwiftToolchain } from "../toolchain/toolchain";
+import { Disposable } from "./Disposable";
+import { safeBareRepositoryEnvironmentOverride } from "./gitConfig";
 
 /**
  * Whether or not this is a production build.
@@ -52,9 +54,9 @@ export const IS_RUNNING_UNDER_TEST = process.env.RUNNING_UNDER_VSCODE_TEST_CLI =
 
 /**
  * Determined by the presence of the `VSCODE_DEBUG` environment variable, set by the
- * launch.json when starting the extension in development.
+ * launch.json when debugging the extension.
  */
-export const IS_RUNNING_IN_DEVELOPMENT_MODE = process.env["VSCODE_DEBUG"] === "1";
+export const IS_RUNNING_UNDER_DEBUGGER = process.env["VSCODE_DEBUG"] === "1";
 
 /** Determines whether the provided object has any properties set to non-null values. */
 export function isEmptyObject(obj: { [key: string]: unknown }): boolean {
@@ -143,10 +145,9 @@ export async function execFile(
     folderContext?: FolderContext,
     customSwiftRuntime = true
 ): Promise<{ stdout: string; stderr: string }> {
-    folderContext?.workspaceContext.logger.debug(
-        `Exec: ${executable} ${args.join(" ")}`,
-        folderContext.name
-    );
+    folderContext?.workspaceContext.logger.debug(`Exec: ${executable} ${args.join(" ")}`, {
+        label: folderContext.name,
+    });
     if (customSwiftRuntime) {
         const runtimeEnv = swiftRuntimeEnv(options.env);
         if (runtimeEnv && Object.keys(runtimeEnv).length > 0) {
@@ -160,6 +161,10 @@ export async function execFile(
             ...(options.env ?? process.env),
             ...configuration.swiftEnvironmentVariables,
         };
+    }
+    const bareRepositoryOverride = safeBareRepositoryEnvironmentOverride(options.env);
+    if (Object.keys(bareRepositoryOverride).length > 0) {
+        options.env = { ...(options.env ?? process.env), ...bareRepositoryOverride };
     }
     options = {
         ...options,
@@ -192,11 +197,7 @@ enum Color {
 }
 
 export function colorize(text: string, color: keyof typeof Color): string {
-    const colorCode = Color[color];
-    if (colorCode !== undefined) {
-        return `\x1b[${colorCode}m${text}\x1b[0m`;
-    }
-    return text;
+    return `\x1b[${Color[color]}m${text}\x1b[0m`;
 }
 
 export async function execFileStreamOutput(
@@ -210,18 +211,21 @@ export async function execFileStreamOutput(
     customSwiftRuntime = true,
     killSignal: NodeJS.Signals = "SIGTERM"
 ): Promise<void> {
-    folderContext?.workspaceContext.logger.debug(
-        `Exec: ${executable} ${args.join(" ")}`,
-        folderContext.name
-    );
+    folderContext?.workspaceContext.logger.debug(`Exec: ${executable} ${args.join(" ")}`, {
+        label: folderContext.name,
+    });
     if (customSwiftRuntime) {
         const runtimeEnv = swiftRuntimeEnv(options.env);
         if (runtimeEnv && Object.keys(runtimeEnv).length > 0) {
             options.env = { ...(options.env ?? process.env), ...runtimeEnv };
         }
     }
+    const bareRepositoryOverride = safeBareRepositoryEnvironmentOverride(options.env);
+    if (Object.keys(bareRepositoryOverride).length > 0) {
+        options.env = { ...(options.env ?? process.env), ...bareRepositoryOverride };
+    }
     return new Promise<void>((resolve, reject) => {
-        let cancellation: vscode.Disposable;
+        let cancellation: Disposable;
         const p = cp.execFile(executable, args, options, error => {
             if (error) {
                 reject(error);
@@ -256,24 +260,28 @@ export async function execFileStreamOutput(
  */
 export async function execSwift(
     args: string[],
-    toolchain: SwiftToolchain | "default" | { swiftExecutable: string },
+    toolchain: SwiftToolchain | { swiftExecutable: string },
     options: cp.ExecFileOptions = {},
     folderContext?: FolderContext
 ): Promise<{ stdout: string; stderr: string }> {
-    let swift: string;
+    let command: string;
+    let commandArgs: string[];
     if (typeof toolchain === "object" && "swiftExecutable" in toolchain) {
-        swift = toolchain.swiftExecutable;
-    } else if (toolchain === "default") {
-        swift = getSwiftExecutable();
+        command = toolchain.swiftExecutable;
+        commandArgs = args;
     } else {
-        swift = toolchain.getToolchainExecutable("swift");
-        args = toolchain.buildFlags.withAdditionalFlags(args);
+        const inv = toolchain.getToolchainInvocation(
+            "swift",
+            toolchain.buildFlags.withAdditionalFlags(args)
+        );
+        command = inv.command;
+        commandArgs = inv.args;
     }
     options = {
         ...options,
         maxBuffer: options.maxBuffer ?? 1024 * 1024 * 64, // 64MB
     };
-    return await execFile(swift, args, options, folderContext);
+    return await execFile(command, commandArgs, options, folderContext);
 }
 
 /**
@@ -354,7 +362,7 @@ export function getRepositoryName(url: string): string {
     // - at the end of the URL: $
     const pattern = /([^/]*)\/?$/;
     // The capture group in this pattern will match the last path component of the URL.
-    let lastPathComponent = url.match(pattern)![1];
+    let lastPathComponent = pattern.exec(url)![1];
     // Trim the optional .git extension.
     if (lastPathComponent.endsWith(".git")) {
         lastPathComponent = lastPathComponent.replace(/\.git$/, "");
@@ -367,8 +375,9 @@ export function getRepositoryName(url: string): string {
  * @param length Length of string to return (max 16)
  * @returns Random string
  */
-export function randomString(length = 8): string {
-    return Math.random().toString(16).substring(2, length);
+export function randomString(length = 8, radix = 16): string {
+    // eslint-disable-next-line sonarjs/pseudo-random
+    return Math.random().toString(radix).substring(2, length);
 }
 
 /**
@@ -453,7 +462,6 @@ export function regexEscapedString(string: string, omitting?: Set<string>): stri
     return result;
 }
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Creates a promise that can be resolved or rejected outside the promise executor.
  * @returns An object containing a promise, a resolve function, and a reject function.
@@ -461,14 +469,20 @@ export function regexEscapedString(string: string, omitting?: Set<string>): stri
 export function destructuredPromise<T>(): {
     promise: Promise<T>;
     resolve: (value: T) => void;
-    reject: (reason?: any) => void;
+    reject: (reason?: unknown) => void;
 } {
     let resolve: (value: T) => void;
-    let reject: (reason?: any) => void;
+    let reject: (reason?: unknown) => void;
     const p = new Promise<T>((res, rej) => {
         resolve = res;
         reject = rej;
     });
     return { promise: p, resolve: resolve!, reject: reject! };
 }
-/* eslint-enable @typescript-eslint/no-explicit-any */
+
+export function capitalizeFirstLetter(str: string): string {
+    if (str.length === 0) {
+        return str;
+    }
+    return str.charAt(0).toLocaleUpperCase() + str.slice(1);
+}

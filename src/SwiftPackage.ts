@@ -33,20 +33,13 @@ import { showPackageDependencies } from "./commands/dependencies/show";
 import { SwiftLogger } from "./logging/SwiftLogger";
 import { BuildFlags } from "./toolchain/BuildFlags";
 import { SwiftToolchain } from "./toolchain/toolchain";
-import { isPathInsidePath } from "./utilities/filesystem";
+import { Disposable } from "./utilities/Disposable";
+import { fileExists, isPathInsidePath } from "./utilities/filesystem";
 import { lineBreakRegex } from "./utilities/tasks";
-import { execSwift, getErrorDescription, hashString, unwrapPromise } from "./utilities/utilities";
+import { execSwift, hashString, unwrapPromise } from "./utilities/utilities";
 
 // Re-export some types from the external API for convenience.
-export {
-    Dependency,
-    PackagePlugin,
-    PackageResolvedPin,
-    PackageResolvedPinState,
-    ResolvedDependency,
-    Target,
-    TargetType,
-};
+export { Dependency, PackagePlugin, ResolvedDependency, Target, TargetType };
 
 // Need to re-export the Product interface with internal types
 export interface Product extends ExternalProduct {
@@ -66,7 +59,7 @@ export function isAutomatic(product: Product): boolean {
 }
 
 /** Swift Package.resolved file */
-export class PackageResolved implements ExternalPackageResolved {
+class PackageResolved implements ExternalPackageResolved {
     readonly fileHash: number;
     readonly pins: PackageResolvedPin[];
     readonly version: number;
@@ -134,13 +127,13 @@ export interface WorkspaceState {
 /** revision + (branch || version)
  * ref: https://github.com/apple/swift-package-manager/blob/e25a590dc455baa430f2ec97eacc30257c172be2/Sources/Workspace/CheckoutState.swift#L19:L23
  */
-export interface CheckoutState {
+interface CheckoutState {
     revision: string;
     branch: string | null;
     version: string | null;
 }
 
-export interface WorkspaceStateDependency {
+interface WorkspaceStateDependency {
     packageRef: { identity: string; kind: string; location: string; name: string };
     state: { name: string; path?: string; checkoutState?: CheckoutState; version?: string };
     subpath: string;
@@ -157,7 +150,7 @@ function isPackage(state: SwiftPackageState): state is PackageContents {
     if (state === undefined) {
         return false;
     }
-    return (state as PackageContents).products !== undefined;
+    return "products" in state;
 }
 
 function isError(state: SwiftPackageState): state is Error {
@@ -170,12 +163,13 @@ function isError(state: SwiftPackageState): state is Error {
 /**
  * Class holding Swift Package Manager Package
  */
-export class SwiftPackage implements ExternalSwiftPackage, vscode.Disposable {
+export class SwiftPackage implements ExternalSwiftPackage, Disposable {
     public plugins: PackagePlugin[] = [];
     private _contents: SwiftPackageState | undefined;
     private contentsPromise: Promise<SwiftPackageState>;
     private contentsResolve: (value: SwiftPackageState | PromiseLike<SwiftPackageState>) => void;
     private tokenSource: vscode.CancellationTokenSource = new vscode.CancellationTokenSource();
+    private pluginLoadQueue: Promise<void> = Promise.resolve();
 
     /**
      * SwiftPackage Constructor
@@ -250,6 +244,14 @@ export class SwiftPackage implements ExternalSwiftPackage, vscode.Disposable {
             return undefined;
         }
 
+        // Check for Package.swift existence upfront to avoid running
+        // `swift package describe` unnecessarily in non-SwiftPM projects
+        // (e.g. projects with only compile_commands.json or BSP config).
+        const packageSwiftPath = path.join(folderContext.folder.fsPath, "Package.swift");
+        if (!(await fileExists(packageSwiftPath))) {
+            return undefined;
+        }
+
         // If there is an existing package load, cancel any running tasks first before loading a new one.
         this.tokenSource.cancel();
         this.tokenSource.dispose();
@@ -270,19 +272,10 @@ export class SwiftPackage implements ExternalSwiftPackage, vscode.Disposable {
             };
 
             return packageState;
-        } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            // if caught error and it begins with "error: root manifest" then there is no Package.swift
-            if (
-                errorMessage.startsWith("error: root manifest") ||
-                errorMessage.startsWith("error: Could not find Package.swift")
-            ) {
-                return undefined;
-            } else {
-                // otherwise it is an error loading the Package.swift so return `null` indicating
-                // we have a package but we failed to load it
-                return Error(getErrorDescription(error));
-            }
+        } catch (error) {
+            const parsingError = Error("Error parsing Package.swift", { cause: error });
+            folderContext.logger.error(parsingError);
+            return parsingError;
         }
     }
 
@@ -384,12 +377,25 @@ export class SwiftPackage implements ExternalSwiftPackage, vscode.Disposable {
         logger: SwiftLogger,
         disableSwiftPMIntegration: boolean = false
     ) {
-        this.plugins = await SwiftPackage.loadPlugins(
-            this.folder,
-            toolchain,
-            logger,
-            disableSwiftPMIntegration
-        );
+        // Serialize concurrent invocations so each call observes a consistent
+        // (plugins, workspaceState) pair from the SAME SwiftPM resolve. Read
+        // workspace-state.json BEFORE assigning either field, since `swift
+        // package plugin --list` regenerates it as a side effect and trusted-plugin
+        // URL checks (see TrustedPlugins.ts) require the two fields to move
+        // together.
+        const next = this.pluginLoadQueue.then(async () => {
+            const newPlugins = await SwiftPackage.loadPlugins(
+                this.folder,
+                toolchain,
+                logger,
+                disableSwiftPMIntegration
+            );
+            const newWorkspaceState = await SwiftPackage.loadWorkspaceState(this.folder);
+            this.plugins = newPlugins;
+            this.workspaceState = newWorkspaceState;
+        });
+        this.pluginLoadQueue = next.catch(() => undefined);
+        await next;
     }
 
     /** Return if has valid contents */
@@ -540,15 +546,6 @@ export class SwiftPackage implements ExternalSwiftPackage, vscode.Disposable {
         return this.targets.then(targets =>
             targets.find(target => isPathInsidePath(filePath, target.path))
         );
-    }
-
-    static trimStdout(stdout: string): string {
-        // remove lines from `swift package describe` until we find a "{"
-        while (!stdout.startsWith("{")) {
-            const firstNewLine = stdout.indexOf("\n");
-            stdout = stdout.slice(firstNewLine + 1);
-        }
-        return stdout;
     }
 
     dispose() {

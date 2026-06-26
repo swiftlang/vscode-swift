@@ -50,7 +50,7 @@ export async function cleanBuild(ctx: WorkspaceContext) {
  * Run `swift package clean` inside a folder
  * @param folderContext folder to run update inside
  */
-export async function folderCleanBuild(folderContext: FolderContext) {
+async function folderCleanBuild(folderContext: FolderContext) {
     const task = createSwiftTask(
         ["package", "clean"],
         SwiftTaskProvider.cleanBuildName,
@@ -70,7 +70,7 @@ export async function folderCleanBuild(folderContext: FolderContext) {
 /**
  * Executes a {@link vscode.Task task} to debug swift target.
  */
-export async function debugBuildWithOptions(
+async function debugBuildWithOptions(
     ctx: WorkspaceContext,
     options: vscode.DebugSessionOptions,
     targetName: string | undefined

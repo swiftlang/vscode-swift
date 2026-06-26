@@ -33,7 +33,7 @@ export async function uneditDependency(
         ctx.logger.debug("currentFolder is not set.");
         return false;
     }
-    ctx.logger.debug(`unedit dependency ${identifier}`, currentFolder.name);
+    ctx.logger.debug(`unedit dependency ${identifier}`, { label: currentFolder.name });
     const status = `Reverting edited dependency ${identifier} (${currentFolder.name})`;
     return await ctx.statusItem.showStatusWhileRunning(status, async () => {
         return await uneditFolderDependency(currentFolder, identifier, ctx);
@@ -81,7 +81,7 @@ async function uneditFolderDependency(
     } catch (error) {
         const execError = error as { stderr: string };
         // if error contains "has uncommited changes" then ask if user wants to force the unedit
-        if (execError.stderr.match(/has uncommited changes/)) {
+        if (/has uncommited changes/.exec(execError.stderr)) {
             const result = await vscode.window.showWarningMessage(
                 `${identifier} has uncommitted changes. Are you sure you want to continue?`,
                 "Yes",
@@ -89,12 +89,12 @@ async function uneditFolderDependency(
             );
 
             if (result === "No") {
-                ctx.logger.error(execError.stderr, folder.name);
+                ctx.logger.error(execError.stderr, { label: folder.name });
                 return false;
             }
             await uneditFolderDependency(folder, identifier, ctx, ["--force"]);
         } else {
-            ctx.logger.error(execError.stderr, folder.name);
+            ctx.logger.error(execError.stderr, { label: folder.name });
             void vscode.window.showErrorMessage(`${execError.stderr}`);
         }
         return false;

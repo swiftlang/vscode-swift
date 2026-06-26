@@ -15,9 +15,10 @@ import * as vscode from "vscode";
 
 import { FolderContext } from "../FolderContext";
 import { WorkspaceContext } from "../WorkspaceContext";
+import { Disposable } from "../utilities/Disposable";
 import { execSwift, poll } from "../utilities/utilities";
 
-export interface SwiftOperationOptions {
+interface SwiftOperationOptions {
     // Should I show a status item
     showStatusItem: boolean;
     // Should I check if an instance of this task is already running
@@ -26,7 +27,7 @@ export interface SwiftOperationOptions {
     log?: string;
 }
 /** Swift operation to add to TaskQueue */
-export interface SwiftOperation {
+interface SwiftOperation {
     // options
     options: SwiftOperationOptions;
     // identifier for statusitem
@@ -163,7 +164,7 @@ class QueuedOperation {
  *
  * Queue swift task operations to be executed serially
  */
-export class TaskQueue implements vscode.Disposable {
+export class TaskQueue implements Disposable {
     queue: QueuedOperation[];
     activeOperation?: QueuedOperation;
     workspaceContext: WorkspaceContext;
@@ -240,62 +241,50 @@ export class TaskQueue implements vscode.Disposable {
             const operation = this.queue.shift();
 
             if (operation) {
-                //const task = operation.task;
                 this.activeOperation = operation;
-                // show active task status item
-                if (operation.showStatusItem === true) {
-                    this.workspaceContext.statusItem.start(operation.operation.statusItemId);
-                }
                 // wait while queue is disabled before running task
                 await this.waitWhileDisabled();
                 // log start
                 if (operation.log) {
-                    this.workspaceContext.logger.info(
-                        `${operation.log}: starting ... `,
-                        this.folderContext.name
-                    );
-                }
-                operation
-                    .run(this.workspaceContext)
-                    .then(result => {
-                        // log result
-                        if (operation.log && !operation.token?.isCancellationRequested) {
-                            switch (result) {
-                                case 0:
-                                    this.workspaceContext.logger.info(
-                                        `${operation.log}: ... done.`,
-                                        this.folderContext.name
-                                    );
-                                    break;
-                                default:
-                                    this.workspaceContext.logger.error(
-                                        `${operation.log}: ... failed.`,
-                                        this.folderContext.name
-                                    );
-                                    break;
-                            }
-                        }
-                        this.finishTask(operation, { success: result });
-                    })
-                    .catch(error => {
-                        // log error
-                        if (operation.log) {
-                            this.workspaceContext.logger.error(
-                                `${operation.log}: ${error}`,
-                                this.folderContext.name
-                            );
-                        }
-                        this.finishTask(operation, { fail: error });
+                    this.workspaceContext.logger.info(`${operation.log}: starting ... `, {
+                        label: this.folderContext.name,
                     });
+                }
+                const run = operation.showStatusItem
+                    ? this.workspaceContext.statusItem.showStatusWhileRunning(
+                          operation.operation.statusItemId,
+                          () => operation.run(this.workspaceContext)
+                      )
+                    : operation.run(this.workspaceContext);
+                run.then(result => {
+                    // log result
+                    if (operation.log && !operation.token?.isCancellationRequested) {
+                        if (result === 0) {
+                            this.workspaceContext.logger.info(`${operation.log}: ... done.`, {
+                                label: this.folderContext.name,
+                            });
+                        } else {
+                            this.workspaceContext.logger.error(`${operation.log}: ... failed.`, {
+                                label: this.folderContext.name,
+                            });
+                        }
+                    }
+                    this.finishTask(operation, { success: result as number | undefined });
+                }).catch(error => {
+                    // log error
+                    if (operation.log) {
+                        this.workspaceContext.logger.error(`${operation.log}: ${error}`, {
+                            label: this.folderContext.name,
+                        });
+                    }
+                    this.finishTask(operation, { fail: error });
+                });
             }
         }
     }
 
     private finishTask(operation: QueuedOperation, result: TaskQueueResult) {
         operation.cb(result);
-        if (operation.showStatusItem === true) {
-            this.workspaceContext.statusItem.end(operation.operation.statusItemId);
-        }
         this.activeOperation = undefined;
         void this.processQueue();
     }

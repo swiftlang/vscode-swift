@@ -36,7 +36,7 @@ const SystemVersion = z.object({
     type: z.literal("system"),
     name: z.string(),
 });
-export type SystemVersion = z.infer<typeof SystemVersion>;
+type SystemVersion = z.infer<typeof SystemVersion>;
 
 const StableVersion = z.object({
     type: z.literal("stable"),
@@ -46,7 +46,7 @@ const StableVersion = z.object({
     minor: z.number(),
     patch: z.number(),
 });
-export type StableVersion = z.infer<typeof StableVersion>;
+type StableVersion = z.infer<typeof StableVersion>;
 
 const SnapshotVersion = z.object({
     type: z.literal("snapshot"),
@@ -57,18 +57,18 @@ const SnapshotVersion = z.object({
     branch: z.string(),
     date: z.string(),
 });
-export type SnapshotVersion = z.infer<typeof SnapshotVersion>;
+type SnapshotVersion = z.infer<typeof SnapshotVersion>;
 
-export type ToolchainVersion = SystemVersion | StableVersion | SnapshotVersion;
+type ToolchainVersion = SystemVersion | StableVersion | SnapshotVersion;
 
-export interface AvailableToolchain {
+interface AvailableToolchain {
     inUse: boolean;
     installed: boolean;
     isDefault: boolean;
     version: ToolchainVersion;
 }
 
-export interface InstalledToolchain {
+interface InstalledToolchain {
     name: string;
     location?: string;
 }
@@ -109,7 +109,7 @@ const SwiftlyListAvailableResult = z.object({
 });
 
 const InUseVersionResult = z.object({
-    version: z.string(),
+    version: z.optional(z.string()),
 });
 
 const SwiftlyProgressData = z.object({
@@ -128,13 +128,14 @@ const SwiftlyProgressData = z.object({
 
 export type SwiftlyProgressData = z.infer<typeof SwiftlyProgressData>;
 
-export interface PostInstallValidationResult {
+interface PostInstallValidationResult {
     isValid: boolean;
     summary: string;
+    scriptContent: string;
     invalidCommands?: string[];
 }
 
-export interface MissingToolchainError {
+interface MissingToolchainError {
     version: string;
     originalError: string;
 }
@@ -148,7 +149,7 @@ export function parseSwiftlyMissingToolchainError(
     stderr: string
 ): MissingToolchainError | undefined {
     // Parse error message like: "uses toolchain version 6.1.2, but it doesn't match any of the installed toolchains"
-    const versionMatch = stderr.match(/uses toolchain version ([0-9.]+(?:-[a-zA-Z0-9-]+)*)/);
+    const versionMatch = /uses toolchain version ([0-9.]+(?:-[a-zA-Z0-9-]+)*)/.exec(stderr);
     if (versionMatch && stderr.includes("doesn't match any of the installed toolchains")) {
         return {
             version: versionMatch[1],
@@ -187,19 +188,16 @@ export async function handleMissingSwiftlyToolchain(
 }
 
 export class Swiftly {
-    public static cancellationMessage = "Installation cancelled by user";
+    public static readonly cancellationMessage = "Installation cancelled by user";
 
     public static defaultHomeDir(): string {
-        switch (process.platform) {
-            case "linux": {
-                if (process.env["XDG_DATA_HOME"]) {
-                    return path.join(process.env["XDG_DATA_HOME"], "swiftly");
-                }
-                return path.join(os.homedir(), ".local/share/swiftly");
+        if (process.platform === "linux") {
+            if (process.env["XDG_DATA_HOME"]) {
+                return path.join(process.env["XDG_DATA_HOME"], "swiftly");
             }
-            default:
-                return path.join(os.homedir(), ".swiftly");
+            return path.join(os.homedir(), ".local/share/swiftly");
         }
+        return path.join(os.homedir(), ".swiftly");
     }
 
     /**
@@ -254,7 +252,7 @@ export class Swiftly {
             logger?.info("Swiftly installation and initialization completed successfully");
         } catch (error) {
             logger?.error(`Failed to install Swiftly: ${error}`);
-            throw new Error(`Failed to install Swiftly on macOS: ${(error as Error).message}`);
+            throw new Error("Failed to install Swiftly on macOS", { cause: error });
         } finally {
             try {
                 await fs.unlink(downloadedPkgPath);
@@ -302,7 +300,7 @@ export class Swiftly {
             logger?.info("Swiftly installation completed successfully on Linux");
         } catch (error) {
             logger?.error(`Failed to install Swiftly on Linux: ${error}`);
-            throw new Error(`Failed to install Swiftly on Linux: ${(error as Error).message}`);
+            throw new Error("Failed to install Swiftly on Linux.", { cause: error });
         } finally {
             if (tmpDir) {
                 try {
@@ -310,6 +308,75 @@ export class Swiftly {
                 } catch {
                     // Ignore cleanup errors
                 }
+            }
+        }
+    }
+
+    private static async streamResponseToFile(
+        reader: ReadableStreamDefaultReader<Uint8Array>,
+        fileStream: fsSync.WriteStream,
+        totalLength: number,
+        progress: vscode.Progress<{ message?: string; increment?: number }>
+    ): Promise<void> {
+        let downloadedLength = 0;
+        let lastReportedPercent = 0;
+
+        try {
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) {
+                    break;
+                }
+
+                downloadedLength += value.length;
+                fileStream.write(value);
+
+                if (totalLength > 0) {
+                    const percent = Math.floor((downloadedLength / totalLength) * 100);
+                    if (percent > lastReportedPercent && percent % 10 === 0) {
+                        progress.report({
+                            message: `Downloading Swiftly installer... ${percent}%`,
+                            increment: percent - lastReportedPercent,
+                        });
+                        lastReportedPercent = percent;
+                    }
+                }
+            }
+        } finally {
+            reader.releaseLock();
+            fileStream.end();
+        }
+
+        await new Promise<void>((resolve, reject) => {
+            fileStream.on("finish", () => {
+                fileStream.close(err => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
+                });
+            });
+            fileStream.on("error", reject);
+        });
+    }
+
+    private static async cleanupDownload(
+        filePath: string | undefined,
+        tmpDir: string | undefined
+    ): Promise<void> {
+        if (filePath) {
+            try {
+                await fs.unlink(filePath);
+            } catch {
+                // Swallow cleanup errors
+            }
+        }
+        if (tmpDir) {
+            try {
+                await fs.rm(tmpDir, { recursive: true });
+            } catch {
+                // Swallow cleanup errors
             }
         }
     }
@@ -340,73 +407,17 @@ export class Swiftly {
 
             const contentLength = response.headers.get("content-length");
             const totalLength = contentLength ? parseInt(contentLength, 10) : 0;
-            let downloadedLength = 0;
-            let lastReportedPercent = 0;
-
             const fileStream = fsSync.createWriteStream(filePath);
             const reader = response.body.getReader();
 
-            try {
-                // eslint-disable-next-line no-constant-condition
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) {
-                        break;
-                    }
-
-                    downloadedLength += value.length;
-                    fileStream.write(value);
-
-                    if (totalLength > 0) {
-                        const percent = Math.floor((downloadedLength / totalLength) * 100);
-                        if (percent > lastReportedPercent && percent % 10 === 0) {
-                            progress.report({
-                                message: `Downloading Swiftly installer... ${percent}%`,
-                                increment: percent - lastReportedPercent,
-                            });
-                            lastReportedPercent = percent;
-                        }
-                    }
-                }
-            } finally {
-                reader.releaseLock();
-                fileStream.end();
-            }
-
-            await new Promise<void>((resolve, reject) => {
-                fileStream.on("finish", () => {
-                    fileStream.close(err => {
-                        if (err) {
-                            reject(err);
-                        } else {
-                            resolve();
-                        }
-                    });
-                });
-                fileStream.on("error", reject);
-            });
+            await this.streamResponseToFile(reader, fileStream, totalLength, progress);
 
             progress.report({ message: "Download completed" });
             logger?.info(`Swiftly installer downloaded to: ${filePath}`);
 
             return filePath;
         } catch (error) {
-            // Cleanup temporary resources on error
-            if (filePath) {
-                try {
-                    await fs.unlink(filePath);
-                } catch {
-                    // Swallow cleanup errors
-                }
-            }
-            if (tmpDir) {
-                try {
-                    await fs.rm(tmpDir, { recursive: true });
-                } catch {
-                    // Swallow cleanup errors
-                }
-            }
-
+            await this.cleanupDownload(filePath, tmpDir);
             logger?.error(`Failed to download Swiftly installer: ${error}`);
             throw error;
         }
@@ -521,9 +532,9 @@ export class Swiftly {
             );
         } catch (error) {
             logger?.error(`Failed to retrieve Swiftly installations: ${error}`);
-            throw new Error(
-                `Failed to retrieve Swiftly installations from disk: ${(error as Error).message}`
-            );
+            throw new Error("Failed to retrieve Swiftly installations from disk.", {
+                cause: error,
+            });
         }
     }
 
@@ -555,6 +566,7 @@ export class Swiftly {
      */
     public static async inUseVersion(
         swiftlyPath: string = "swiftly",
+        logger?: SwiftLogger,
         cwd?: vscode.Uri
     ): Promise<string | undefined> {
         if (!this.isSupported()) {
@@ -568,8 +580,20 @@ export class Swiftly {
         const { stdout } = await execFile(swiftlyPath, ["use", "--format=json"], {
             cwd: cwd?.fsPath,
         });
-        const result = InUseVersionResult.parse(JSON.parse(stdout));
-        return result.version;
+        if (stdout.trim() === "") {
+            return undefined;
+        }
+        try {
+            const result = InUseVersionResult.parse(JSON.parse(stdout));
+            return result.version;
+        } catch (error) {
+            logger?.error(
+                Error(`Failed to parse swiftly JSON output: ${JSON.stringify(stdout)}`, {
+                    cause: error,
+                })
+            );
+            return undefined;
+        }
     }
 
     /**
@@ -610,8 +634,8 @@ export class Swiftly {
 
     public static async getActiveToolchain(
         extensionRoot: string,
-        cwd?: vscode.Uri,
-        logger?: SwiftLogger
+        logger: SwiftLogger,
+        cwd?: vscode.Uri
     ): Promise<string> {
         try {
             return await Swiftly.inUseLocation("swiftly", cwd);
@@ -629,7 +653,11 @@ export class Swiftly {
                     );
                     if (installed) {
                         // Retry toolchain location after successful installation
-                        return await this.getActiveToolchain(extensionRoot, cwd, logger);
+                        return await this.getActiveToolchain(extensionRoot, logger, cwd);
+                    } else if (cwd) {
+                        // If the user dismisses the installation prompt then fall back
+                        // to using the global toolchain
+                        return await Swiftly.getActiveToolchain(extensionRoot, logger);
                     }
                 }
             }
@@ -819,6 +847,7 @@ export class Swiftly {
                 (error as Error).message.includes(Swiftly.cancellationMessage)
             ) {
                 logger?.info(`Installation of ${version} was cancelled by user`);
+                // eslint-disable-next-line preserve-caught-error
                 throw new Error(Swiftly.cancellationMessage);
             }
             throw error;
@@ -949,6 +978,7 @@ export class Swiftly {
             return {
                 isValid,
                 summary,
+                scriptContent,
                 invalidCommands: invalidCommands.length > 0 ? invalidCommands : undefined,
             };
         } catch (error) {
@@ -956,13 +986,14 @@ export class Swiftly {
             return {
                 isValid: false,
                 summary: "Failed to read post-install script",
+                scriptContent: "",
                 invalidCommands: ["Unable to read script file"],
             };
         }
     }
 
     /**
-     * Shows confirmation dialog to user for executing post-install script
+     * Shows confirmation dialog to user for running the post-install commands.
      *
      * @param version The toolchain version being installed
      * @param validation The validation result
@@ -974,26 +1005,40 @@ export class Swiftly {
         validation: PostInstallValidationResult,
         logger?: SwiftLogger
     ): Promise<boolean> {
-        const summaryLines = validation.summary.split("\n");
-        const firstTwoLines = summaryLines.slice(0, 2).join("\n");
+        const detail =
+            `Swift ${version} installation requires additional system packages to be installed:\n\n` +
+            `${this.formatCommandsForReview(validation.scriptContent)}\n\n` +
+            `Would you like to install these packages? ` +
+            `You will be prompted for administrator privileges.`;
 
-        const message =
-            `Swift ${version} installation requires additional system packages to be installed. ` +
-            `This will require administrator privileges.\n\n${firstTwoLines}\n\n` +
-            `Do you want to proceed with running the post-install script?`;
-
-        logger?.warn(
-            `User confirmation required to execute post-install script for Swift ${version} installation,
-            this requires ${firstTwoLines} permissions.`
-        );
+        logger?.warn(`User confirmation required to install system packages for Swift ${version}.`);
         const choice = await vscode.window.showWarningMessage(
-            message,
-            { modal: true },
-            "Execute Script",
-            "Cancel"
+            "Install System Packages",
+            { modal: true, detail },
+            "Install"
         );
 
-        return choice === "Execute Script";
+        return choice === "Install";
+    }
+
+    /**
+     * Formats the post-install commands for display in the confirmation
+     * dialog's detail area. Commands are indented for readability and the
+     * list is truncated if it grows too long for the modal.
+     */
+    private static formatCommandsForReview(scriptContent: string): string {
+        const trimmedScriptContent = scriptContent.trim();
+        if (trimmedScriptContent === "") {
+            return "(no commands)";
+        }
+
+        let lines = trimmedScriptContent.split("\n");
+        const maxLines = 10;
+        if (lines.length > maxLines) {
+            lines = lines.slice(0, maxLines - 1);
+            lines.push("… (truncated for display)");
+        }
+        return lines.map(line => `    ${line}`).join("\n");
     }
 
     /**

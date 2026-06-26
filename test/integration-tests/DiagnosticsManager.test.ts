@@ -26,47 +26,20 @@ import { Version } from "@src/utilities/version";
 import { testAssetUri, testSwiftTask } from "../fixtures";
 import { tag } from "../tags";
 import {
-    executeTaskAndWaitForResult,
-    waitForNoRunningTasks,
-    waitForStartTaskProcess,
-} from "../utilities/tasks";
+    ExpectedDiagnostics,
+    assertHasDiagnostic,
+    assertWithoutDiagnostic,
+    diagnosticMatcher,
+    executeTaskAndWaitForDiagnostics,
+    waitForDiagnostics,
+    waitForDiagnosticsCleared,
+} from "../utilities/diagnostics";
+import { waitForNoRunningTasks, waitForStartTaskProcess } from "../utilities/tasks";
 import {
     activateExtensionForSuite,
     folderInRootWorkspace,
     updateSettings,
 } from "./utilities/testutilities";
-
-const isEqual = (d1: vscode.Diagnostic, d2: vscode.Diagnostic) => {
-    return (
-        d1.severity === d2.severity &&
-        d1.source === d2.source &&
-        d1.message === d2.message &&
-        d1.range.isEqual(d2.range)
-    );
-};
-
-const findDiagnostic = (expected: vscode.Diagnostic) => (d: vscode.Diagnostic) =>
-    isEqual(d, expected);
-
-function assertHasDiagnostic(uri: vscode.Uri, expected: vscode.Diagnostic): vscode.Diagnostic {
-    const diagnostics = vscode.languages.getDiagnostics(uri);
-    const diagnostic = diagnostics.find(findDiagnostic(expected));
-    assert.notEqual(
-        diagnostic,
-        undefined,
-        `Could not find diagnostic matching:\n${JSON.stringify(expected)}\nDiagnostics found:\n${JSON.stringify(diagnostics)}`
-    );
-    return diagnostic!;
-}
-
-function assertWithoutDiagnostic(uri: vscode.Uri, expected: vscode.Diagnostic) {
-    const diagnostics = vscode.languages.getDiagnostics(uri);
-    assert.equal(
-        diagnostics.find(findDiagnostic(expected)),
-        undefined,
-        `Unexpected diagnostic matching:\n${JSON.stringify(expected)}\nDiagnostics:\n${JSON.stringify(diagnostics)}`
-    );
-}
 
 tag("medium").suite("DiagnosticsManager Test Suite", function () {
     let workspaceContext: WorkspaceContext;
@@ -80,54 +53,10 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
     let cUri: vscode.Uri;
     let cppUri: vscode.Uri;
     let cppHeaderUri: vscode.Uri;
-    let diagnosticWaiterDisposable: vscode.Disposable | undefined;
-    let remainingExpectedDiagnostics: {
-        [uri: string]: vscode.Diagnostic[];
-    };
-
-    // Wait for all the expected diagnostics to be recieved. This may happen over several `onChangeDiagnostics` events.
-    type ExpectedDiagnostics = { [uri: string]: vscode.Diagnostic[] };
-    const waitForDiagnostics = (expectedDiagnostics: ExpectedDiagnostics) => {
-        return new Promise<void>(resolve => {
-            if (diagnosticWaiterDisposable) {
-                console.warn(
-                    "Wait for diagnostics was called before the previous wait was resolved. Only one waitForDiagnostics should run per test."
-                );
-                diagnosticWaiterDisposable?.dispose();
-            }
-            // Keep a lookup of diagnostics we haven't encountered yet. When all array values in
-            // this lookup are empty then we've seen all diagnostics and we can resolve successfully.
-            remainingExpectedDiagnostics = { ...expectedDiagnostics };
-            diagnosticWaiterDisposable = vscode.languages.onDidChangeDiagnostics(e => {
-                const matchingPaths = Object.keys(expectedDiagnostics).filter(uri =>
-                    e.uris.some(u => u.fsPath === uri)
-                );
-                for (const uri of matchingPaths) {
-                    const actualDiagnostics = vscode.languages.getDiagnostics(vscode.Uri.file(uri));
-                    for (const actualDiagnostic of actualDiagnostics) {
-                        remainingExpectedDiagnostics[uri] = remainingExpectedDiagnostics[
-                            uri
-                        ].filter(expectedDiagnostic => {
-                            return !isEqual(actualDiagnostic, expectedDiagnostic);
-                        });
-                    }
-                }
-
-                const allDiagnosticsFulfilled = Object.values(remainingExpectedDiagnostics).every(
-                    diagnostics => diagnostics.length === 0
-                );
-
-                if (allDiagnosticsFulfilled) {
-                    diagnosticWaiterDisposable?.dispose();
-                    diagnosticWaiterDisposable = undefined;
-                    resolve();
-                }
-            });
-        });
-    };
 
     activateExtensionForSuite({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             workspaceContext = ctx;
             toolchain = workspaceContext.globalToolchain;
             folderContext = await folderInRootWorkspace("diagnostics", workspaceContext);
@@ -139,24 +68,6 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
             cppUri = testAssetUri("diagnosticsCpp/Sources/MyPoint/MyPoint.cpp");
             cppHeaderUri = testAssetUri("diagnosticsCpp/Sources/MyPoint/include/MyPoint.h");
         },
-    });
-
-    teardown(function () {
-        diagnosticWaiterDisposable?.dispose();
-        diagnosticWaiterDisposable = undefined;
-        const allDiagnosticsFulfilled = Object.values(remainingExpectedDiagnostics ?? {}).every(
-            diagnostics => diagnostics.length === 0
-        );
-        if (!allDiagnosticsFulfilled) {
-            const title = this.currentTest?.fullTitle() ?? "<unknown test>";
-            const remainingDiagnostics = Object.entries(remainingExpectedDiagnostics ?? {}).filter(
-                ([_uri, diagnostics]) => diagnostics.length > 0
-            );
-            console.error(
-                `${title} - Not all diagnostics were fulfilled. Remaining:`,
-                JSON.stringify(remainingDiagnostics, undefined, " ")
-            );
-        }
     });
 
     suite("Parse diagnostics", function () {
@@ -208,10 +119,10 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
 
             function runTestDiagnosticStyle(
                 style: DiagnosticStyle,
-                expected: () => ExpectedDiagnostics,
+                createExpectedDiagnostics: () => ExpectedDiagnostics,
                 callback?: () => void
             ) {
-                suite(`${style} diagnosticsStyle`, async function () {
+                suite(`${style} diagnosticsStyle`, function () {
                     let resetSettings: (() => Promise<void>) | undefined;
                     suiteTeardown(async () => {
                         if (resetSettings) {
@@ -238,20 +149,13 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
 
                         resetSettings = await updateSettings({
                             "swift.diagnosticsStyle": style,
-                            "swift.buildArguments": ["-Xswiftc", `-DDIAGNOSTIC_STYLE=${style}`],
+                            // Force the re-computing of diagnostics by adding a define to the build arguments
+                            "swift.buildArguments": ["-Xswiftc", `-DDIAGNOSTIC_STYLE__${style}`],
                         });
 
                         // Clean up any lingering diagnostics
                         if (vscode.languages.getDiagnostics(mainUri).length > 0) {
-                            const clearPromise = new Promise<void>(resolve => {
-                                const diagnosticDisposable =
-                                    vscode.languages.onDidChangeDiagnostics(() => {
-                                        if (vscode.languages.getDiagnostics(mainUri).length === 0) {
-                                            diagnosticDisposable?.dispose();
-                                            resolve();
-                                        }
-                                    });
-                            });
+                            const clearPromise = waitForDiagnosticsCleared(mainUri);
                             workspaceContext.diagnostics.clear();
                             await clearPromise;
                         }
@@ -262,12 +166,10 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                     });
 
                     test("succeeds", async function () {
-                        await Promise.all([
-                            waitForDiagnostics(expected()),
-                            createBuildAllTask(folderContext).then(task =>
-                                executeTaskAndWaitForResult(task)
-                            ),
-                        ]);
+                        await executeTaskAndWaitForDiagnostics(
+                            createBuildAllTask(folderContext, true),
+                            createExpectedDiagnostics()
+                        );
                     });
 
                     callback && callback();
@@ -383,15 +285,12 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                         );
                         expectedDiagnostic2.source = "swiftc";
 
-                        await Promise.all([
-                            waitForDiagnostics({
+                        await executeTaskAndWaitForDiagnostics(
+                            createBuildAllTask(cFolderContext, true),
+                            {
                                 [cUri.fsPath]: [expectedDiagnostic1, expectedDiagnostic2],
-                            }),
-                            createBuildAllTask(cFolderContext).then(task =>
-                                executeTaskAndWaitForResult(task)
-                            ),
-                        ]);
-                        await waitForNoRunningTasks();
+                            }
+                        );
                     });
 
                     test("Parses C++ diagnostics", async function () {
@@ -426,19 +325,20 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                         );
                         expectedDiagnostic3.source = "swiftc";
 
-                        await Promise.all([
-                            waitForDiagnostics({
+                        const is64OrLater =
+                            folderContext.toolchain.swiftVersion.isGreaterThanOrEqual(
+                                new Version(6, 4, 0)
+                            );
+                        await executeTaskAndWaitForDiagnostics(
+                            createBuildAllTask(cppFolderContext, true),
+                            {
                                 [cppUri.fsPath]: [
                                     expectedDiagnostic1,
                                     expectedDiagnostic2,
-                                    expectedDiagnostic3,
+                                    ...(is64OrLater ? [] : [expectedDiagnostic3]),
                                 ],
-                            }),
-                            createBuildAllTask(cppFolderContext).then(task =>
-                                executeTaskAndWaitForResult(task)
-                            ),
-                        ]);
-                        await waitForNoRunningTasks();
+                            }
+                        );
 
                         const diagnostic = assertHasDiagnostic(cppUri, expectedDiagnostic2);
                         assert.equal(
@@ -476,17 +376,15 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
 
             test("Parse partial line", async () => {
                 const fixture = testSwiftTask("swift", ["build"], workspaceFolder, toolchain);
-                const startPromise = waitForStartTaskProcess(fixture.task);
                 await vscode.tasks.executeTask(fixture.task);
-                await startPromise;
+                await waitForStartTaskProcess(fixture.task);
                 // Wait to spawn before writing
                 fixture.process.write(`${mainUri.fsPath}:13:5: err`, "");
                 fixture.process.write("or: Cannot find 'fo", "");
                 fixture.process.write("o' in scope");
                 fixture.process.close(1);
                 await waitForNoRunningTasks();
-                // Should have parsed
-                assertHasDiagnostic(mainUri, outputDiagnostic);
+                await waitForDiagnostics({ [mainUri.fsPath]: [outputDiagnostic] });
             });
 
             // https://github.com/apple/swift/issues/73973
@@ -502,10 +400,9 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                 fixture.process.write(output);
                 fixture.process.close(1);
                 await waitForNoRunningTasks();
-                const diagnostics = vscode.languages.getDiagnostics(mainUri);
+                await waitForDiagnostics({ [mainUri.fsPath]: [outputDiagnostic] });
                 // Should only include one
-                assert.equal(diagnostics.length, 1);
-                assertHasDiagnostic(mainUri, outputDiagnostic);
+                expect(vscode.languages.getDiagnostics(mainUri)).to.have.length(1);
             });
 
             test("New set of swiftc diagnostics clear old list", async () => {
@@ -517,21 +414,21 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                 fixture.process.write(`${mainUri.fsPath}:13:5: error: Cannot find 'foo' in scope`);
                 fixture.process.close(1);
                 await waitForNoRunningTasks();
-                let diagnostics = vscode.languages.getDiagnostics(mainUri);
+                await waitForDiagnostics({ [mainUri.fsPath]: [outputDiagnostic] });
                 // Should only include one
-                assert.equal(diagnostics.length, 1);
-                assertHasDiagnostic(mainUri, outputDiagnostic);
+                expect(vscode.languages.getDiagnostics(mainUri)).to.have.length(1);
 
                 // Run again but no diagnostics returned
                 fixture = testSwiftTask("swift", ["build"], workspaceFolder, toolchain);
                 startPromise = waitForStartTaskProcess(fixture.task);
+                const clearPromise = waitForDiagnosticsCleared(mainUri);
                 await vscode.tasks.executeTask(fixture.task);
                 await startPromise;
                 fixture.process.close(0);
                 await waitForNoRunningTasks();
-                diagnostics = vscode.languages.getDiagnostics(mainUri);
+                await clearPromise;
                 // Should have cleaned up
-                assert.equal(diagnostics.length, 0);
+                expect(vscode.languages.getDiagnostics(mainUri)).to.have.length(0);
             });
 
             // https://github.com/apple/swift/issues/73973
@@ -546,9 +443,8 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                 );
                 fixture.process.close(1);
                 await waitForNoRunningTasks();
-                const diagnostics = vscode.languages.getDiagnostics(testUri);
                 // Should be empty
-                assert.equal(diagnostics.length, 0);
+                expect(vscode.languages.getDiagnostics(testUri)).to.have.length(0);
             });
         });
     });
@@ -643,7 +539,7 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                 assertHasDiagnostic(mainUri, diagnostic);
 
                 const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                const matchingDiagnostic = diagnostics.find(findDiagnostic(diagnostic));
+                const matchingDiagnostic = diagnostics.find(diagnosticMatcher(diagnostic));
 
                 expect(matchingDiagnostic).to.have.property("code", "string");
             });
@@ -662,7 +558,7 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                 assertHasDiagnostic(mainUri, diagnostic);
 
                 const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                const matchingDiagnostic = diagnostics.find(findDiagnostic(diagnostic));
+                const matchingDiagnostic = diagnostics.find(diagnosticMatcher(diagnostic));
 
                 expect(matchingDiagnostic).to.have.property("code", 1);
             });
@@ -685,7 +581,7 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                 assertHasDiagnostic(mainUri, diagnostic);
 
                 const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                const matchingDiagnostic = diagnostics.find(findDiagnostic(diagnostic));
+                const matchingDiagnostic = diagnostics.find(diagnosticMatcher(diagnostic));
 
                 expect(matchingDiagnostic).to.have.property("code", diagnostic.code);
             });
@@ -704,7 +600,7 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                 );
 
                 const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                const matchingDiagnostic = diagnostics.find(findDiagnostic(diagnostic));
+                const matchingDiagnostic = diagnostics.find(diagnosticMatcher(diagnostic));
 
                 expect(matchingDiagnostic).to.have.property("code");
                 expect(matchingDiagnostic?.code).to.have.property("value", "More Information...");
@@ -742,7 +638,7 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                 );
 
                 const diagnostics = vscode.languages.getDiagnostics(mainUri);
-                const matchingDiagnostic = diagnostics.find(findDiagnostic(diagnostic));
+                const matchingDiagnostic = diagnostics.find(diagnosticMatcher(diagnostic));
 
                 expect(matchingDiagnostic).to.have.property("code");
                 expect(matchingDiagnostic?.code).to.have.property("value", "More Information...");

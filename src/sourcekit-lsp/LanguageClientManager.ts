@@ -28,8 +28,8 @@ import { Executable, LanguageClient, ServerOptions } from "vscode-languageclient
 
 import { FolderContext } from "../FolderContext";
 import configuration from "../configuration";
-import { SwiftOutputChannel } from "../logging/SwiftOutputChannel";
 import { ArgumentFilter, BuildFlags } from "../toolchain/BuildFlags";
+import { AsyncDisposable, Disposable } from "../utilities/Disposable";
 import { swiftRuntimeEnv } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { LSPLogger, LSPOutputChannel } from "./LSPOutputChannel";
@@ -63,12 +63,12 @@ interface LanguageClientManageOptions {
  * Manages the creation and destruction of Language clients as we move between
  * workspace folders
  */
-export class LanguageClientManager implements vscode.Disposable {
+export class LanguageClientManager implements AsyncDisposable {
     // known log names
-    static indexingLogName = "SourceKit-LSP: Indexing";
+    static readonly indexingLogName = "SourceKit-LSP: Indexing";
 
     // build argument to sourcekit-lsp filter
-    static buildArgumentFilter: ArgumentFilter[] = [
+    static readonly buildArgumentFilter: ArgumentFilter[] = [
         { argument: "--build-path", include: 1 },
         { argument: "--scratch-path", include: 1 },
         { argument: "-Xswiftc", include: 1 },
@@ -87,10 +87,10 @@ export class LanguageClientManager implements vscode.Disposable {
      */
     private languageClient: LanguageClient | null | undefined;
     private cancellationToken?: vscode.CancellationTokenSource;
-    private legacyInlayHints?: vscode.Disposable;
-    private peekDocuments?: vscode.Disposable;
-    private getReferenceDocument?: vscode.Disposable;
-    private didChangeActiveDocument?: vscode.Disposable;
+    private legacyInlayHints?: Disposable;
+    private peekDocuments?: Disposable;
+    private getReferenceDocument?: Disposable;
+    private didChangeActiveDocument?: Disposable;
     private restartedPromise?: Promise<void>;
     private currentWorkspaceFolder?: FolderContext;
     private waitingOnRestartCount: number;
@@ -99,7 +99,7 @@ export class LanguageClientManager implements vscode.Disposable {
         document: vscode.TextDocument,
         symbols: vscode.DocumentSymbol[] | null | undefined
     ) => void;
-    private subscriptions: vscode.Disposable[];
+    private subscriptions: Disposable[];
     private singleServerSupport: boolean;
     // used by single server support to keep a record of the project folders
     // that are not at the root of their workspace
@@ -175,18 +175,18 @@ export class LanguageClientManager implements vscode.Disposable {
         this.cancellationToken = new vscode.CancellationTokenSource();
     }
 
-    // The language client stops asnyhronously, so we need to wait for it to stop
+    // The language client stops asynchronously, so we need to wait for it to stop
     // instead of doing it in dispose, which must be synchronous.
     async stop(dispose: boolean = true) {
         if (this.languageClient && this.languageClient.state === State.Running) {
-            await this.languageClient.stop(15000);
+            await this.languageClient.stop();
             if (dispose) {
                 await this.languageClient.dispose();
             }
         }
     }
 
-    dispose() {
+    async dispose(): Promise<void> {
         this.cancellationToken?.cancel();
         this.cancellationToken?.dispose();
         this.legacyInlayHints?.dispose();
@@ -194,6 +194,12 @@ export class LanguageClientManager implements vscode.Disposable {
         this.getReferenceDocument?.dispose();
         this.subscriptions.forEach(item => item.dispose());
         this.namedOutputChannels.forEach(channel => channel.dispose());
+        await this.stop(true).catch(error => {
+            // Stopping the language server can sometimes time out. Especially in tests.
+            this.folderContext.logger.error(
+                Error("Failed to dispose of language client", { cause: error })
+            );
+        });
     }
 
     /**
@@ -226,8 +232,8 @@ export class LanguageClientManager implements vscode.Disposable {
         await this.setLanguageClientFolder(this.folderContext, true);
     }
 
-    get languageClientOutputChannel(): SwiftOutputChannel | undefined {
-        return this.languageClient?.outputChannel as SwiftOutputChannel | undefined;
+    get languageClientOutputChannel(): vscode.OutputChannel | undefined {
+        return this.languageClient?.outputChannel;
     }
 
     async addFolder(folderContext: FolderContext) {
@@ -296,7 +302,6 @@ export class LanguageClientManager implements vscode.Disposable {
                     })
                 );
             });
-            return;
         } else {
             // don't check for undefined uri's or if the current workspace is the same if we are
             // running a single server. The only way we can get here while using a single server
@@ -407,10 +412,10 @@ export class LanguageClientManager implements vscode.Disposable {
         errorHandler: SourceKitLSPErrorHandler;
     } {
         const toolchain = folder.toolchain;
-        const toolchainSourceKitLSP = toolchain.getToolchainExecutable("sourcekit-lsp");
+        // Raw path kept for the SOURCEKIT_TOOLCHAIN_PATH comparison below.
+        const toolchainSourceKitLSPPath = toolchain.getToolchainExecutablePath("sourcekit-lsp");
         const lspConfig = configuration.lsp;
         const serverPathConfig = lspConfig.serverPath;
-        const serverPath = serverPathConfig.length > 0 ? serverPathConfig : toolchainSourceKitLSP;
         const buildFlags = toolchain.buildFlags;
         const sdkArguments = [
             ...buildFlags.swiftDriverSDKFlags(true),
@@ -421,9 +426,14 @@ export class LanguageClientManager implements vscode.Disposable {
             ),
         ];
 
+        const inv =
+            serverPathConfig.length > 0
+                ? { command: serverPathConfig, args: [] }
+                : toolchain.getToolchainInvocation("sourcekit-lsp", []);
+
         const sourcekit: Executable = {
-            command: serverPath,
-            args: lspConfig.serverArguments.concat(sdkArguments),
+            command: inv.command,
+            args: [...inv.args, ...lspConfig.serverArguments, ...sdkArguments],
             options: {
                 env: {
                     ...process.env,
@@ -438,9 +448,8 @@ export class LanguageClientManager implements vscode.Disposable {
         if (
             serverPathConfig.length > 0 &&
             configuration.path.length > 0 &&
-            serverPathConfig !== toolchainSourceKitLSP
+            serverPathConfig !== toolchainSourceKitLSPPath
         ) {
-            // eslint-disable-next-line @typescript-eslint/naming-convention
             sourcekit.options = {
                 env: {
                     ...sourcekit.options?.env,
@@ -471,8 +480,8 @@ export class LanguageClientManager implements vscode.Disposable {
                     folderContext => document.uri.fsPath.startsWith(folderContext.folder.fsPath)
                 );
                 if (!documentFolderContext) {
-                    this.languageClientOutputChannel?.warn(
-                        "Unable to find folder for document: " + document.uri.fsPath
+                    this.languageClientOutputChannel?.appendLine(
+                        "[warn] Unable to find folder for document: " + document.uri.fsPath
                     );
                     return;
                 }
@@ -483,8 +492,8 @@ export class LanguageClientManager implements vscode.Disposable {
                     folderContext => document.uri.fsPath.startsWith(folderContext.folder.fsPath)
                 );
                 if (!documentFolderContext) {
-                    this.languageClientOutputChannel?.warn(
-                        "Unable to find folder for document: " + document.uri.fsPath
+                    this.languageClientOutputChannel?.appendLine(
+                        "[warn] Unable to find folder for document: " + document.uri.fsPath
                     );
                     return;
                 }
@@ -693,7 +702,7 @@ export class SourceKitLSPErrorHandler implements ErrorHandler {
 }
 
 /** Language client errors */
-export const enum LanguageClientError {
+const enum LanguageClientError {
     LanguageClientUnavailable = "Language Client Unavailable",
 }
 

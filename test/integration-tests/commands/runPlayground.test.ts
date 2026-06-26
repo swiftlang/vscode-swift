@@ -33,8 +33,8 @@ suite("Run Playground Command", function () {
     let mockTaskManager: MockedObject<TaskManager>;
 
     activateExtensionForSuite({
-        async setup(ctx) {
-            workspaceContext = ctx;
+        async setup(api) {
+            workspaceContext = await api.waitForWorkspaceContext();
             folderContext = await folderInRootWorkspace("defaultPackage", workspaceContext);
         },
     });
@@ -93,7 +93,10 @@ suite("Run Playground Command", function () {
             expect(mockTaskManager.executeTaskAndWait).to.have.been.calledOnce;
 
             const task = mockTaskManager.executeTaskAndWait.args[0][0] as SwiftTask;
-            expect(task.execution.args).to.deep.equal(["play", "PackageLib/PackageLib.swift:3"]);
+            expect(task.execution.args).to.include.members([
+                "play",
+                "PackageLib/PackageLib.swift:3",
+            ]);
             expect(task.execution.options.cwd).to.equal(folderContext.folder.fsPath);
         });
 
@@ -106,7 +109,10 @@ suite("Run Playground Command", function () {
             expect(mockTaskManager.executeTaskAndWait).to.have.been.calledOnce;
 
             const task = mockTaskManager.executeTaskAndWait.args[0][0] as SwiftTask;
-            expect(task.execution.args).to.deep.equal(["play", "PackageLib/Package Lib.swift:3"]);
+            expect(task.execution.args).to.include.members([
+                "play",
+                "PackageLib/Package Lib.swift:3",
+            ]);
             expect(task.execution.options.cwd).to.equal(folderContext.folder.fsPath);
         });
 
@@ -120,7 +126,7 @@ suite("Run Playground Command", function () {
             expect(mockTaskManager.executeTaskAndWait).to.have.been.calledOnce;
 
             const task = mockTaskManager.executeTaskAndWait.args[0][0] as SwiftTask;
-            expect(task.execution.args).to.deep.equal(["play", "bar"]);
+            expect(task.execution.args).to.include.members(["play", "bar"]);
             expect(task.execution.options.cwd).to.equal(folderContext.folder.fsPath);
         });
     });

@@ -76,7 +76,7 @@ export enum DarwinCompatibleTarget {
     visionOS = "xrOS",
 }
 
-export function getDarwinSDKName(target: DarwinCompatibleTarget): string {
+function getDarwinSDKName(target: DarwinCompatibleTarget): string {
     switch (target) {
         case DarwinCompatibleTarget.iOS:
             return "iphoneos";
@@ -100,6 +100,19 @@ export function getDarwinTargetTriple(target: DarwinCompatibleTarget): string | 
         case DarwinCompatibleTarget.visionOS:
             return "arm64-apple-xros";
     }
+}
+
+/**
+ * The effective command and arguments needed to launch a toolchain executable.
+ *
+ * - For normal toolchains: `command` is the binary path and `args` are the
+ *   caller-supplied arguments verbatim.
+ * - For swiftly-managed toolchains: `command` is `"swiftly"` and `args` are
+ *   `["run", "<tool>", ...callerArgs]`.
+ */
+interface ToolchainInvocation {
+    command: string;
+    args: string[];
 }
 
 export class SwiftToolchain implements ExternalSwiftToolchain {
@@ -127,18 +140,19 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
 
     static async create(
         extensionRoot: string,
-        folder?: vscode.Uri,
-        logger?: SwiftLogger
+        logger: SwiftLogger,
+        folder?: vscode.Uri
     ): Promise<SwiftToolchain> {
         const swiftBinaryPath = await this.findSwiftBinaryInPath();
+        const swiftFolderPath = path.dirname(swiftBinaryPath);
         const { toolchainPath, toolchainManager } = await this.getToolchainPath(
             swiftBinaryPath,
             extensionRoot,
-            folder,
-            logger
+            logger,
+            folder
         );
         const targetInfo = await this.getSwiftTargetInfo(
-            this._getToolchainExecutable(toolchainPath, "swift"),
+            this._getToolchainExecutable(swiftFolderPath, "swift"),
             logger
         );
         const swiftVersion = this.getSwiftVersion(targetInfo);
@@ -168,7 +182,7 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
 
         return new SwiftToolchain(
             toolchainManager,
-            path.dirname(swiftBinaryPath),
+            swiftFolderPath,
             toolchainPath,
             targetInfo,
             swiftVersion,
@@ -297,7 +311,7 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
                 (await fs.readdir(directory, { withFileTypes: true }))
                     .filter(dirent => dirent.name.startsWith("swift-"))
                     .map(async dirent => {
-                        const toolchainPath = path.join(dirent.path, dirent.name);
+                        const toolchainPath = path.join(dirent.parentPath, dirent.name);
                         const toolchainSwiftPath = path.join(toolchainPath, "usr", "bin", "swift");
                         if (!(await pathExists(toolchainSwiftPath))) {
                             return null;
@@ -320,7 +334,7 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
      */
     public async getProjectTemplates(): Promise<SwiftProjectTemplate[]> {
         // Parse the output from `swift package init --help`
-        const { stdout } = await execSwift(["package", "init", "--help"], "default");
+        const { stdout } = await execSwift(["package", "init", "--help"], this);
         const lines = stdout.split(/\r?\n/g);
         // Determine where the `--type` option is documented
         let position = lines.findIndex(line => line.trim().startsWith("--type"));
@@ -330,7 +344,7 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
         // Loop through the possible project types in the output
         position += 1;
         const result: SwiftProjectTemplate[] = [];
-        const typeRegex = /^\s*([a-zA-z-]+)\s+-\s+(.+)$/;
+        const typeRegex = /^\s*([a-zA-Z-]+)\s+-\s+(.+)$/;
         for (; position < lines.length; position++) {
             const line = lines[position];
             // Stop if we hit a new command line option
@@ -338,7 +352,7 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
                 break;
             }
             // Check if this is the start of a new project type
-            const match = line.match(typeRegex);
+            const match = typeRegex.exec(line);
             if (match) {
                 const nameSegments = match[1].split("-");
                 result.push({
@@ -373,16 +387,71 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
     }
 
     /**
-     * Return fullpath for toolchain executable
+     * Return fullpath for toolchain executable.
+     * Use this only when a raw filesystem path is needed (diagnostics,
+     * `--toolchain` arguments, existence checks). For process spawning use
+     * {@link getToolchainInvocation} instead.
      */
-    public getToolchainExecutable(executable: string): string {
-        return SwiftToolchain._getToolchainExecutable(this.toolchainPath, executable);
+    public getToolchainExecutablePath(executable: string): string {
+        return SwiftToolchain._getToolchainExecutable(this.swiftFolderPath, executable);
     }
 
-    private static _getToolchainExecutable(toolchainPath: string, executable: string): string {
+    /**
+     * Returns the effective command and arguments for spawning a toolchain
+     * executable. For swiftly-managed toolchains this wraps the call as
+     * `swiftly run <tool> …`; for all other managers it uses the direct
+     * binary path.
+     *
+     * @param executable The toolchain binary name (e.g. `"swift"`, `"sourcekit-lsp"`).
+     * @param args Arguments to pass to the executable (after any manager prefix).
+     */
+    public getToolchainInvocation(executable: string, args: string[]): ToolchainInvocation {
+        if (["lldb", "lldb-dap"].includes(executable)) {
+            throw Error("Use getAlternativeToolchainInvocation() for lldb related binaries.");
+        }
+        switch (this.manager) {
+            case "swiftly":
+                return { command: "swiftly", args: ["run", executable, ...args] };
+            case "xcrun":
+                return { command: "xcrun", args: [executable, ...args] };
+            default:
+                return { command: this.getToolchainExecutablePath(executable), args };
+        }
+    }
+
+    /**
+     * Returns the command and arguments needed for running a given executable from the toolchain.
+     *
+     * The difference between this and {@link getToolchainInvocation} is that it will query xcrun if swiftly reports
+     * that it's using an xcode toolchain. This was added as a workaround until the upstream swiftly bug
+     * [swiftlang/swiftly#521](https://github.com/swiftlang/swiftly/issues/521) is fixed.
+     *
+     * @param executable The name of the executable to run
+     * @param args The arguments to pass to the executable
+     * @returns A Promise that resolves to the {@link ToolchainInvocation}
+     */
+    public async getDebuggerToolchainInvocation(
+        executable: "lldb" | "lldb-dap",
+        args: string[]
+    ): Promise<ToolchainInvocation> {
+        switch (this.manager) {
+            case "swiftly": {
+                if ((await Swiftly.inUseVersion()) === "xcode") {
+                    return { command: "xcrun", args: [executable, ...args] };
+                }
+                return { command: "swiftly", args: ["run", executable, ...args] };
+            }
+            case "xcrun":
+                return { command: "xcrun", args: [executable, ...args] };
+            default:
+                return { command: this.getToolchainExecutablePath(executable), args };
+        }
+    }
+
+    private static _getToolchainExecutable(swiftFolderPath: string, executable: string): string {
         // should we add `.exe` at the end of the executable name
         const executableSuffix = process.platform === "win32" ? ".exe" : "";
-        return path.join(toolchainPath, "bin", executable + executableSuffix);
+        return path.join(swiftFolderPath, executable + executableSuffix);
     }
 
     /**
@@ -400,53 +469,6 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
             xcodeDirectory = path.dirname(xcodeDirectory);
         }
         return xcodeDirectory;
-    }
-
-    /**
-     * Returns the path to the LLDB executable inside the selected toolchain.
-     * If the user is on macOS and has no OSS toolchain selected, also search
-     * inside Xcode.
-     * @returns The path to the `lldb` executable
-     * @throws Throws an error if the executable cannot be found
-     */
-    public async getLLDB(): Promise<string> {
-        return this.findToolchainExecutable("lldb");
-    }
-
-    /**
-     * Returns the path to the LLDB debug adapter executable inside the selected
-     * toolchain. If the user is on macOS and has no OSS toolchain selected, also
-     * search inside Xcode.
-     * @returns The path to the `lldb-dap` executable
-     * @throws Throws an error if the executable cannot be found
-     */
-    public async getLLDBDebugAdapter(): Promise<string> {
-        return this.findToolchainExecutable("lldb-dap");
-    }
-
-    /**
-     * Search for the supplied executable in the toolchain.
-     */
-    private async findToolchainExecutable(executable: string): Promise<string> {
-        let cause: unknown = undefined;
-        try {
-            if (process.platform === "win32") {
-                executable += ".exe";
-            }
-            // First search the toolchain's 'bin' directory
-            const toolchainExecutablePath = path.join(this.toolchainPath, "bin", executable);
-            if (await pathExists(toolchainExecutablePath)) {
-                return toolchainExecutablePath;
-            }
-            // Fallback to using xcrun if we're on macOS
-            if (process.platform === "darwin") {
-                const { stdout } = await execFile("xcrun", ["--find", executable]);
-                return stdout.trim();
-            }
-        } catch (error) {
-            cause = error;
-        }
-        throw new Error(`Failed to find ${executable} within Swift toolchain`, { cause });
     }
 
     private basePlatformDeveloperPath(): string | undefined {
@@ -550,8 +572,8 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
     private static async getToolchainPath(
         swiftBinaryPath: string,
         extensionRoot: string,
-        cwd?: vscode.Uri,
-        logger?: SwiftLogger
+        logger: SwiftLogger,
+        cwd?: vscode.Uri
     ): Promise<{
         toolchainPath: string;
         toolchainManager: ToolchainManager;
@@ -574,7 +596,11 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
             }
             // Check if the swift binary is managed by swiftly
             if (await Swiftly.isManagedBySwiftly(swiftBinaryPath)) {
-                const swiftlyToolchainPath = await Swiftly.getActiveToolchain(extensionRoot, cwd);
+                const swiftlyToolchainPath = await Swiftly.getActiveToolchain(
+                    extensionRoot,
+                    logger,
+                    cwd
+                );
                 return {
                     toolchainPath: path.resolve(swiftlyToolchainPath, "usr"),
                     toolchainManager: "swiftly",
@@ -779,7 +805,12 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
         try {
             infoPlist = plist.parse(data) as unknown as InfoPlist;
         } catch (error) {
-            void vscode.window.showWarningMessage(`Unable to parse ${platformManifest}: ${error}`);
+            const parsingError = Error(
+                `Unable to parse ${platformManifest}. Tests explorer won't work as expected.`,
+                { cause: error }
+            );
+            logger?.error(parsingError);
+            void vscode.window.showWarningMessage(parsingError.message);
             return undefined;
         }
         const plistKey = type === "XCTest" ? "XCTEST_VERSION" : "SWIFT_TESTING_VERSION";
@@ -856,7 +887,8 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
         } catch (error) {
             logger?.warn(`Error while running 'swift --version': ${error}`);
             throw Error(
-                "Failed to get swift version from either '-print-target-info' or '--version'."
+                "Failed to get swift version from either '-print-target-info' or '--version'.",
+                { cause: error }
             );
         }
     }
@@ -866,7 +898,7 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
      * @returns swift version object
      */
     private static getSwiftVersion(targetInfo: SwiftTargetInfo): Version {
-        const match = targetInfo.compilerVersion.match(/Swift version ([\S]+)/);
+        const match = /Swift version (\S+)/.exec(targetInfo.compilerVersion);
         let version: Version | undefined;
         if (match) {
             version = Version.fromString(match[1]);

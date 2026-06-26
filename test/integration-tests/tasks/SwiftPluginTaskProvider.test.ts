@@ -11,13 +11,15 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import * as assert from "assert";
 import { expect } from "chai";
 import { afterEach, beforeEach } from "mocha";
 import * as vscode from "vscode";
 
 import { FolderContext } from "@src/FolderContext";
 import { WorkspaceContext } from "@src/WorkspaceContext";
+import { RollingLog } from "@src/logging/RollingLog";
+import { RollingLogTransport } from "@src/logging/RollingLogTransport";
+import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { SwiftExecution } from "@src/tasks/SwiftExecution";
 import { SwiftPluginTaskProvider } from "@src/tasks/SwiftPluginTaskProvider";
 import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
@@ -35,30 +37,31 @@ import {
     updateSettings,
 } from "../utilities/testutilities";
 
+import assert = require("assert");
+
 tag("medium").suite("SwiftPluginTaskProvider Test Suite", function () {
     let workspaceContext: WorkspaceContext;
     let folderContext: FolderContext;
 
     activateExtensionForSuite({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             workspaceContext = ctx;
             ctx.logger.info("Locating command-plugin folder in root workspace");
             folderContext = await folderInRootWorkspace("command-plugin", workspaceContext);
             ctx.logger.info(
                 "Located command-plugin folder in root workspace at " + folderContext.folder.fsPath
             );
-            const logger = await ctx.loggerFactory.temp("SwiftPluginTaskProvider.tests");
-            ctx.logger.info("Loading swift plugins");
-            await folderContext.loadSwiftPlugins(logger);
-            ctx.logger.info(
-                "Finished loading swift plugins, captured logs should be empty: " + logger.logs
-            );
-            if (logger.logs.length > 0) {
-                expect.fail(
-                    `Expected no output channel logs: ${JSON.stringify(logger.logs, undefined, 2)}`
-                );
+            const rollingLog = new RollingLog(100);
+            const logger = new SwiftLogger([new RollingLogTransport(rollingLog)]);
+            try {
+                ctx.logger.info("Loading swift plugins");
+                await folderContext.loadSwiftPlugins(logger);
+                expect(rollingLog.logs, "loadSwiftPlugins() should not log anything").to.be.empty;
+                expect(workspaceContext.folders).to.not.have.lengthOf(0);
+            } finally {
+                logger.dispose();
             }
-            expect(workspaceContext.folders).to.not.have.lengthOf(0);
         },
     });
 
@@ -193,8 +196,7 @@ tag("medium").suite("SwiftPluginTaskProvider Test Suite", function () {
 
                 const swiftExecution = task?.execution as SwiftExecution;
                 expect(swiftExecution).to.not.be.undefined;
-                assert.deepEqual(
-                    swiftExecution.args,
+                expect(swiftExecution.args).to.include.members(
                     workspaceContext.globalToolchain.buildFlags.withAdditionalFlags([
                         "package",
                         ...expected,
@@ -256,7 +258,7 @@ tag("medium").suite("SwiftPluginTaskProvider Test Suite", function () {
                 });
 
                 test("provides", () => {
-                    expect(task?.execution.args).to.deep.equal(
+                    expect(task?.execution.args).to.include.members(
                         folderContext.toolchain.buildFlags.withAdditionalFlags([
                             "package",
                             "command_plugin",
@@ -287,7 +289,7 @@ tag("medium").suite("SwiftPluginTaskProvider Test Suite", function () {
                 });
 
                 test("provides", () => {
-                    expect(task?.execution.args).to.deep.equal(
+                    expect(task?.execution.args).to.include.members(
                         folderContext.toolchain.buildFlags.withAdditionalFlags([
                             "package",
                             "--disable-sandbox",

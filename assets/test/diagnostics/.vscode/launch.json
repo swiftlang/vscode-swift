@@ -6,7 +6,8 @@
             "args": [],
             "cwd": "${workspaceFolder:diagnostics}",
             "name": "Debug diagnostics",
-            "program": "${workspaceFolder:diagnostics}/.build/debug/diagnostics",
+            "program": "${workspaceFolder:diagnostics}/${binPath}/diagnostics",
+            "configuration": "debug",
             "preLaunchTask": "swift: Build Debug diagnostics"
         },
         {
@@ -15,7 +16,8 @@
             "args": [],
             "cwd": "${workspaceFolder:diagnostics}",
             "name": "Release diagnostics",
-            "program": "${workspaceFolder:diagnostics}/.build/release/diagnostics",
+            "program": "${workspaceFolder:diagnostics}/${binPath}/diagnostics",
+            "configuration": "release",
             "preLaunchTask": "swift: Build Release diagnostics"
         },
         {
@@ -24,7 +26,8 @@
             "args": [],
             "cwd": "${workspaceFolder:diagnostics}",
             "name": "Debug diagnostics",
-            "program": "${workspaceFolder:diagnostics}/.build/debug/diagnostics",
+            "program": "${workspaceFolder:diagnostics}/${binPath}/diagnostics",
+            "configuration": "debug",
             "preLaunchTask": "swift: Build Debug diagnostics"
         },
         {
@@ -33,7 +36,8 @@
             "args": [],
             "cwd": "${workspaceFolder:diagnostics}",
             "name": "Release diagnostics",
-            "program": "${workspaceFolder:diagnostics}/.build/release/diagnostics",
+            "program": "${workspaceFolder:diagnostics}/${binPath}/diagnostics",
+            "configuration": "release",
             "preLaunchTask": "swift: Build Release diagnostics"
         }
     ]

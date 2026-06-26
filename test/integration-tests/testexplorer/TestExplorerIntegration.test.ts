@@ -65,7 +65,8 @@ tag("large").suite("Test Explorer Suite", function () {
     ) => Promise<TestRunProxy>;
 
     activateExtensionForSuite({
-        async setup(ctx) {
+        async setup(api) {
+            const ctx = await api.waitForWorkspaceContext();
             // It can take a very long time for sourcekit-lsp to index tests on Windows,
             // especially w/ Swift 6.0. Wait for up to 25 minutes for the indexing to complete.
             if (process.platform === "win32") {
@@ -150,23 +151,7 @@ tag("large").suite("Test Explorer Suite", function () {
                 }
             });
 
-            test("Debugs specified XCTest test", async function () {
-                // This test is failing consistently on Windows nightly-main (6.3-dev).
-                // Skip it until a fix is made.
-                //
-                // GitHub Issue: https://github.com/swiftlang/vscode-swift/issues/1986
-                if (
-                    workspaceContext.globalToolchain.swiftVersion.dev &&
-                    workspaceContext.globalToolchain.swiftVersion.isGreaterThanOrEqual({
-                        major: 6,
-                        minor: 3,
-                        patch: 0,
-                    })
-                ) {
-                    this.skip();
-                }
-                await runXCTest.call(this);
-            });
+            test("Debugs specified XCTest test", runXCTest);
 
             test("Debugs specified swift-testing test", async function () {
                 await runSwiftTesting.call(this);
@@ -220,6 +205,8 @@ tag("large").suite("Test Explorer Suite", function () {
                 // 6.0 uses the LSP which returns tests in the order they're declared.
                 // Includes swift-testing tests.
                 assertTestControllerHierarchy(testExplorer.controller, [
+                    "PackageTests2",
+                    ["secondTargetTestPassing()", "SecondTargetSuite", ["testPassing()"]],
                     "PackageTests",
                     [
                         "PassingXCTestSuite",
@@ -339,9 +326,10 @@ tag("large").suite("Test Explorer Suite", function () {
                     name: folder,
                     time: fs.statSync(path.join(attachments, folder)).mtime.getTime(),
                 }));
-                assert(attachmentFolders.length > 0, "Attachments directory is empty");
+                assert.equal(attachmentFolders.length > 0, true, "Attachments directory is empty");
 
-                const latestFolder = attachmentFolders.sort((a, b) => b.time - a.time)[0];
+                attachmentFolders.sort((a, b) => b.time - a.time);
+                const latestFolder = attachmentFolders[0];
                 const latestFolderPath = path.join(attachments, latestFolder.name);
                 const latestFolderContents = fs.readdirSync(latestFolderPath);
                 assert.deepStrictEqual(latestFolderContents, ["hello.txt"]);
@@ -454,6 +442,22 @@ tag("large").suite("Test Explorer Suite", function () {
                             test: "PackageTests.testRelease()",
                             issues: [issueText],
                         },
+                    ],
+                });
+            });
+
+            test("runs tests across multiple targets in one invocation", async () => {
+                const testRun = await runTest(
+                    testExplorer,
+                    TestKind.standard,
+                    "PackageTests.topLevelTestPassing()",
+                    "PackageTests2.secondTargetTestPassing()"
+                );
+
+                assertTestResults(testRun, {
+                    passed: [
+                        "PackageTests.topLevelTestPassing()",
+                        "PackageTests2.secondTargetTestPassing()",
                     ],
                 });
             });
@@ -579,16 +583,16 @@ tag("large").suite("Test Explorer Suite", function () {
                 const secondRunTokenSource = new vscode.CancellationTokenSource();
                 // Wait for the next tick to cancel the test run so that
                 // handlers have time to set up.
-                await new Promise<void>(resolve => {
-                    setImmediate(async () => {
+                await new Promise<void>((resolve, reject) => {
+                    setImmediate(() => {
                         const secondRunOnCreate = eventPromise(testExplorer.onCreateTestRun);
                         // Start the second test run, which will trigger the mockWindow to resolve with
                         // the request to cancel and start a new run. Then wait for the second run to start,
                         // and cancel it as if VS Code requested it.
                         void targetProfile.runHandler(request, secondRunTokenSource.token);
-                        await secondRunOnCreate;
-                        secondRunTokenSource.cancel();
-                        resolve();
+                        secondRunOnCreate
+                            .then(() => resolve(), reject)
+                            .finally(() => secondRunTokenSource.cancel());
                     });
                 });
 
@@ -662,7 +666,7 @@ tag("large").suite("Test Explorer Suite", function () {
         [TestKind.standard, TestKind.parallel, TestKind.coverage].forEach(runProfile => {
             let xcTestFailureMessage: string;
 
-            beforeEach(() => {
+            beforeEach(function () {
                 // From 5.7 to 5.10 running with the --parallel option dumps the test results out
                 // to the console with no newlines, so it isn't possible to distinguish where errors
                 // begin and end. Consequently we can't record them, and so we manually mark them
@@ -757,7 +761,15 @@ tag("large").suite("Test Explorer Suite", function () {
 
                         let passed: string[];
                         let failedId: string;
-                        if (folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 2, 0))) {
+                        if (folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 4, 0))) {
+                            passed = [
+                                `${testId}/PackageTests.swift:59:2/Parameterized test case ID: argumentIDs: [Testing.Test.Case.Argument.ID(bytes: [107, 134, 178, 115, 255, 52, 252, 225, 157, 107, 128, 78, 255, 90, 63, 87, 71, 173, 164, 234, 162, 47, 29, 73, 192, 30, 82, 221, 183, 135, 91, 75])], discriminator: 0, isStable: true`,
+                                `${testId}/PackageTests.swift:59:2/Parameterized test case ID: argumentIDs: [Testing.Test.Case.Argument.ID(bytes: [78, 7, 64, 133, 98, 190, 219, 139, 96, 206, 5, 193, 222, 207, 227, 173, 22, 183, 34, 48, 150, 125, 224, 31, 100, 11, 126, 71, 41, 180, 159, 206])], discriminator: 0, isStable: true`,
+                            ];
+                            failedId = `${testId}/PackageTests.swift:59:2/Parameterized test case ID: argumentIDs: [Testing.Test.Case.Argument.ID(bytes: [212, 115, 94, 58, 38, 94, 22, 238, 224, 63, 89, 113, 139, 155, 93, 3, 1, 156, 7, 216, 182, 197, 31, 144, 218, 58, 102, 110, 236, 19, 171, 53])], discriminator: 0, isStable: true`;
+                        } else if (
+                            folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 2, 0))
+                        ) {
                             passed = [
                                 `${testId}/PackageTests.swift:59:2/Parameterized test case ID: argumentIDs: [Testing.Test.Case.Argument.ID(bytes: [49])], discriminator: 0, isStable: true`,
                                 `${testId}/PackageTests.swift:59:2/Parameterized test case ID: argumentIDs: [Testing.Test.Case.Argument.ID(bytes: [51])], discriminator: 0, isStable: true`,
@@ -778,7 +790,11 @@ tag("large").suite("Test Explorer Suite", function () {
                                     issues: [
                                         `2 \u{203A} ${MessageRenderer.render({
                                             symbol: TestSymbol.fail,
-                                            text: "Expectation failed: (arg → 2) != 2",
+                                            text: folderContext.toolchain.swiftVersion.isGreaterThanOrEqual(
+                                                new Version(6, 4, 0)
+                                            )
+                                                ? "Expectation failed: arg != 2"
+                                                : "Expectation failed: (arg → 2) != 2",
                                         })}`,
                                     ],
                                     test: failedId,
@@ -991,6 +1007,16 @@ tag("large").suite("Test Explorer Suite", function () {
 
         type TestHierarchy = string | TestHierarchy[];
 
+        function packageTestsChildren(testItems: TestHierarchy): TestHierarchy[] {
+            if (!Array.isArray(testItems)) {
+                return [];
+            }
+            const index = testItems.indexOf("PackageTests");
+            return index >= 0 && Array.isArray(testItems[index + 1])
+                ? (testItems[index + 1] as TestHierarchy[])
+                : [];
+        }
+
         // Because we're at the whim of how often VS Code/the LSP provide document symbols
         // we can't assume that changes to test items will be reflected in the next onTestItemsDidChange
         // so poll until the condition is met.
@@ -1016,14 +1042,14 @@ tag("large").suite("Test Explorer Suite", function () {
                 appendSource(newTest),
             ]);
 
-            await validate(testItems => testItems[1].includes(testName));
+            await validate(testItems => packageTestsChildren(testItems).includes(testName));
 
             await Promise.all([
                 eventPromise(testExplorer.onTestItemsDidChange),
                 setSource(originalSource),
             ]);
 
-            await validate(testItems => !testItems[1].includes(testName));
+            await validate(testItems => !packageTestsChildren(testItems).includes(testName));
         });
 
         test("Test explorer updates when a suite is added and removed", async () => {
@@ -1033,13 +1059,13 @@ tag("large").suite("Test Explorer Suite", function () {
                 eventPromise(testExplorer.onTestItemsDidChange),
                 appendSource(newSuite),
             ]);
-            await validate(testItems => testItems[1].includes(suiteName));
+            await validate(testItems => packageTestsChildren(testItems).includes(suiteName));
 
             await Promise.all([
                 eventPromise(testExplorer.onTestItemsDidChange),
                 setSource(originalSource),
             ]);
-            await validate(testItems => !testItems[1].includes(suiteName));
+            await validate(testItems => !packageTestsChildren(testItems).includes(suiteName));
         });
 
         afterEach(async () => {

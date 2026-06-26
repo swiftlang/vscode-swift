@@ -22,7 +22,7 @@ import {
 } from "vscode-languageclient";
 
 /** Parameters used to make a {@link LegacyInlayHintRequest}. */
-export interface LegacyInlayHintsParams {
+interface LegacyInlayHintsParams {
     /**
      * The text document.
      */
@@ -43,7 +43,7 @@ export interface LegacyInlayHintsParams {
 }
 
 /** Inlay Hint (pre Swift 5.6) */
-export interface LegacyInlayHint {
+interface LegacyInlayHint {
     /**
      * The position within the code that this hint is
      * attached to.

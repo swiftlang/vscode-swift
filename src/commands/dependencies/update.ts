@@ -25,7 +25,7 @@ import { executeTaskWithUI, updateAfterError } from "./../utilities";
 export async function updateDependencies(ctx: WorkspaceContext) {
     const current = ctx.currentFolder;
     if (!current) {
-        ctx.logger.debug("currentFolder is not set.", "updateDependencies");
+        ctx.logger.debug("currentFolder is not set.", { label: "updateDependencies" });
         return false;
     }
     return await updateFolderDependencies(current);
@@ -35,7 +35,7 @@ export async function updateDependencies(ctx: WorkspaceContext) {
  * Run `swift package update` inside a folder
  * @param folderContext folder to run update inside
  */
-export async function updateFolderDependencies(folderContext: FolderContext) {
+async function updateFolderDependencies(folderContext: FolderContext) {
     const task = createSwiftTask(
         ["package", "update"],
         SwiftTaskProvider.updatePackageName,

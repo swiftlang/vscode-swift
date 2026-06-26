@@ -40,7 +40,7 @@ export interface PeekDocumentsParams {
 }
 
 /** Response to indicate the `success` of the {@link PeekDocumentsRequest}. */
-export interface PeekDocumentsResponse {
+interface PeekDocumentsResponse {
     success: boolean;
 }
 

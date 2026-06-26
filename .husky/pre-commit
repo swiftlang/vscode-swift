@@ -23,3 +23,6 @@ if [ $UNSTAGED_CHANGES -eq 1 ]; then
   echo "Please stage the modified files and try committing again."
   exit 1
 fi
+
+echo "Running knip to check for unused code..."
+npx knip

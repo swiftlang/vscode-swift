@@ -92,7 +92,7 @@ export namespace WorkspaceTestsRequest {
 }
 
 /** Parameters used to make a {@link TextDocumentTestsRequest}. */
-export interface TextDocumentTestsParams {
+interface TextDocumentTestsParams {
     textDocument: TextDocumentIdentifier;
 }
 

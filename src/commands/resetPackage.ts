@@ -34,7 +34,7 @@ export async function resetPackage(ctx: WorkspaceContext, folder: FolderContext 
  * Run `swift package reset` inside a folder
  * @param folderContext folder to run update inside
  */
-export async function folderResetPackage(folderContext: FolderContext) {
+async function folderResetPackage(folderContext: FolderContext) {
     const task = createSwiftTask(
         folderContext.toolchain.buildFlags.withAdditionalFlags(["package", "reset"]),
         "Reset Package Dependencies",

@@ -372,9 +372,9 @@ suite("BuildFlags Test Suite", () => {
                     buildFlags.withAdditionalFlags(["package", sub, "--disable-sandbox"])
                 ).to.deep.equal([
                     "package",
-                    sub,
                     "--sdk",
                     "/some/full/path/to/sdk",
+                    sub,
                     "--disable-sandbox",
                 ]);
             }
@@ -411,17 +411,50 @@ suite("BuildFlags Test Suite", () => {
             buildPathConfig.setValue("/some/build/path");
             expect(
                 buildFlags.withAdditionalFlags(["package", "plugin", "my-plugin", "--verbose"])
-            ).to.deep.equal(["package", "plugin", "my-plugin", "--verbose"]);
+            ).to.deep.equal([
+                "package",
+                "--scratch-path",
+                "/some/build/path",
+                "plugin",
+                "my-plugin",
+                "--verbose",
+            ]);
 
             sdkConfig.setValue("/some/full/path/to/sdk");
             expect(
                 buildFlags.withAdditionalFlags(["package", "plugin", "my-plugin"])
-            ).to.deep.equal(["package", "plugin", "my-plugin"]);
+            ).to.deep.equal([
+                "package",
+                "--scratch-path",
+                "/some/build/path",
+                "plugin",
+                "my-plugin",
+            ]);
 
             sandboxConfig.setValue(true);
             expect(
                 buildFlags.withAdditionalFlags(["package", "plugin", "my-plugin"])
-            ).to.deep.equal(["package", "plugin", "my-plugin"]);
+            ).to.deep.equal([
+                "package",
+                "--scratch-path",
+                "/some/build/path",
+                "plugin",
+                "my-plugin",
+            ]);
+        });
+
+        test("package plugin --list with buildPath", () => {
+            // Regression test for https://github.com/swiftlang/vscode-swift/issues/2234
+            // The build-path flag must be placed before the `plugin` subcommand,
+            // otherwise SwiftPM rejects it as an unknown plugin option.
+            buildPathConfig.setValue("/tmp/scratch");
+            expect(buildFlags.withAdditionalFlags(["package", "plugin", "--list"])).to.deep.equal([
+                "package",
+                "--scratch-path",
+                "/tmp/scratch",
+                "plugin",
+                "--list",
+            ]);
         });
 
         test("build", () => {
@@ -702,6 +735,94 @@ suite("BuildFlags Test Suite", () => {
             // Next calls should execute again
             await buildFlags.getBuildBinaryPath("cwd", "debug", instance(logger));
             expect(execSwiftSpy).to.have.been.calledThrice;
+        });
+    });
+
+    suite("lastFlagValue", () => {
+        test("returns undefined for empty args", () => {
+            expect(BuildFlags.lastFlagValue([], "--build-system")).to.be.undefined;
+        });
+
+        test("returns undefined when flag is not present", () => {
+            expect(BuildFlags.lastFlagValue(["--other-flag", "value"], "--build-system")).to.be
+                .undefined;
+        });
+
+        test("finds value in --flag value format", () => {
+            expect(
+                BuildFlags.lastFlagValue(["--build-system", "native"], "--build-system")
+            ).to.equal("native");
+        });
+
+        test("finds value in --flag=value format", () => {
+            expect(BuildFlags.lastFlagValue(["--build-system=native"], "--build-system")).to.equal(
+                "native"
+            );
+        });
+
+        test("returns last occurrence when flag appears multiple times (--flag value)", () => {
+            expect(
+                BuildFlags.lastFlagValue(
+                    ["--build-system", "xcode", "--build-system", "native"],
+                    "--build-system"
+                )
+            ).to.equal("native");
+        });
+
+        test("returns last occurrence when flag appears multiple times (--flag=value)", () => {
+            expect(
+                BuildFlags.lastFlagValue(
+                    ["--build-system=xcode", "--build-system=native"],
+                    "--build-system"
+                )
+            ).to.equal("native");
+        });
+
+        test("returns last valid occurrence when validate skips invalid values", () => {
+            const isNative = (v: string): v is "native" => v === "native";
+            expect(
+                BuildFlags.lastFlagValue(
+                    ["--build-system", "native", "--build-system", "unknown"],
+                    "--build-system",
+                    isNative
+                )
+            ).to.equal("native");
+        });
+
+        test("returns undefined when all occurrences fail validation", () => {
+            const isNative = (v: string): v is "native" => v === "native";
+            expect(
+                BuildFlags.lastFlagValue(["--build-system", "xcode"], "--build-system", isNative)
+            ).to.be.undefined;
+        });
+
+        test("validate skips invalid --flag=value occurrences and returns last valid", () => {
+            const isNative = (v: string): v is "native" => v === "native";
+            expect(
+                BuildFlags.lastFlagValue(
+                    ["--build-system=native", "--build-system=xcode"],
+                    "--build-system",
+                    isNative
+                )
+            ).to.equal("native");
+        });
+
+        test("returns undefined when flag is last argument with no following value", () => {
+            expect(BuildFlags.lastFlagValue(["--build-system"], "--build-system")).to.be.undefined;
+        });
+
+        test("handles mixed --flag value and --flag=value formats, returns last", () => {
+            expect(
+                BuildFlags.lastFlagValue(
+                    ["--build-system=xcode", "--build-system", "native"],
+                    "--build-system"
+                )
+            ).to.equal("native");
+        });
+
+        test("does not match flags that share a prefix", () => {
+            expect(BuildFlags.lastFlagValue(["--build-system-extra", "value"], "--build-system")).to
+                .be.undefined;
         });
     });
 });

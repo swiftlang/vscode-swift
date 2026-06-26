@@ -15,9 +15,7 @@ import * as os from "os";
 import * as path from "path";
 import * as vscode from "vscode";
 
-import { WorkspaceContext } from "./WorkspaceContext";
 import { SwiftToolchain } from "./toolchain/toolchain";
-import { showReloadExtensionNotification } from "./ui/ReloadExtension";
 
 /**
  * Custom error type for configuration validation errors that includes the setting name
@@ -33,21 +31,17 @@ export class ConfigurationValidationError extends Error {
     }
 }
 
-export type DebugAdapters = "auto" | "lldb-dap" | "CodeLLDB";
-export type SetupCodeLLDBOptions =
-    | "prompt"
-    | "alwaysUpdateGlobal"
-    | "alwaysUpdateWorkspace"
-    | "never";
-export type CFamilySupportOptions = "enable" | "disable" | "cpptools-inactive";
-export type ActionAfterBuildError = "Focus Problems" | "Focus Terminal" | "Do Nothing";
-export type OpenAfterCreateNewProjectOptions =
+type DebugAdapters = "auto" | "lldb-dap" | "CodeLLDB";
+type SetupCodeLLDBOptions = "prompt" | "alwaysUpdateGlobal" | "alwaysUpdateWorkspace" | "never";
+type CFamilySupportOptions = "enable" | "disable" | "cpptools-inactive";
+type ActionAfterBuildError = "Focus Problems" | "Focus Terminal" | "Do Nothing";
+type OpenAfterCreateNewProjectOptions =
     | "always"
     | "alwaysNewWindow"
     | "whenNoFolderOpen"
     | "prompt";
 export type ShowBuildStatusOptions = "never" | "swiftStatus" | "progress" | "notification";
-export type DiagnosticCollectionOptions =
+type DiagnosticCollectionOptions =
     | "onlySwiftc"
     | "onlySourceKit"
     | "keepSwiftc"
@@ -57,7 +51,7 @@ export type DiagnosticStyle = "default" | "llvm" | "swift";
 export type ValidCodeLens = "run" | "debug" | "coverage";
 
 /** sourcekit-lsp configuration */
-export interface LSPConfiguration {
+interface LSPConfiguration {
     /** Path to sourcekit-lsp executable */
     readonly serverPath: string;
     /** Arguments to pass to sourcekit-lsp executable */
@@ -70,10 +64,14 @@ export interface LSPConfiguration {
     readonly supportedLanguages: string[];
     /** Is SourceKit-LSP disabled */
     readonly disable: boolean;
+    /** Include declaration in Find All References results */
+    readonly includeDeclarationInFindAllReferences: "default" | "always" | "never";
+    /** Is the trace server enabled */
+    readonly traceServer: "off" | "messages" | "verbose";
 }
 
 /** debugger configuration */
-export interface DebuggerConfiguration {
+interface DebuggerConfiguration {
     /** Get the underlying debug adapter type requested by the user. */
     readonly debugAdapter: DebugAdapters;
     /** Return path to debug adapter */
@@ -125,7 +123,7 @@ export interface PluginPermissionConfiguration {
     allowNetworkConnections?: string;
 }
 
-export interface BackgroundCompilationConfiguration {
+interface BackgroundCompilationConfiguration {
     /** enable background compilation task on save */
     enabled: boolean;
     /** use the default `swift` build task when background compilation is enabled */
@@ -197,6 +195,22 @@ const configuration = {
                     "swift.sourcekit-lsp.disable"
                 );
             },
+            get includeDeclarationInFindAllReferences(): "default" | "always" | "never" {
+                return validateStringSetting<"default" | "always" | "never">(
+                    vscode.workspace
+                        .getConfiguration("swift.sourcekit-lsp")
+                        .get<string>("includeDeclarationInFindAllReferences", "default"),
+                    "swift.sourcekit-lsp.includeDeclarationInFindAllReferences"
+                );
+            },
+            get traceServer(): "off" | "messages" | "verbose" {
+                return validateStringSetting<"off" | "messages" | "verbose">(
+                    vscode.workspace
+                        .getConfiguration("swift.sourcekit-lsp.trace")
+                        .get<string>("server", "off"),
+                    "swift.sourcekit-lsp.trace.server"
+                );
+            },
         };
     },
 
@@ -222,9 +236,10 @@ const configuration = {
 
                 if (resultIsArray && Array.isArray(args)) {
                     return args;
-                } else if (
+                }
+                if (
                     !resultIsArray &&
-                    args !== null &&
+                    !!args &&
                     typeof args === "object" &&
                     Object.keys(args).length !== 0
                 ) {
@@ -357,15 +372,13 @@ const configuration = {
                         .get<DebugAdapters>("debugAdapter", "auto"),
                     "swift.debugger.debugAdapter"
                 );
-                switch (selectedAdapter) {
-                    case "auto":
-                        if (useDebugAdapterFromToolchain !== undefined) {
-                            return useDebugAdapterFromToolchain ? "lldb-dap" : "CodeLLDB";
-                        }
-                        return "auto";
-                    default:
-                        return selectedAdapter;
+                if (selectedAdapter === "auto") {
+                    if (useDebugAdapterFromToolchain !== undefined) {
+                        return useDebugAdapterFromToolchain ? "lldb-dap" : "CodeLLDB";
+                    }
+                    return "auto";
                 }
+                return selectedAdapter;
             },
             get customDebugAdapterPath(): string {
                 return validateStringSetting(
@@ -585,18 +598,18 @@ const configuration = {
     },
     /** background indexing */
     get backgroundIndexing(): "on" | "off" | "auto" {
-        const value = validateStringSetting<"on" | "off" | "auto">(
-            vscode.workspace
-                .getConfiguration("swift.sourcekit-lsp")
-                .get("backgroundIndexing", "auto"),
-            "swift.sourcekit-lsp.backgroundIndexing"
-        );
+        const value = vscode.workspace
+            .getConfiguration("swift.sourcekit-lsp")
+            .get("backgroundIndexing", "auto");
 
         // Legacy versions of this setting were a boolean, convert to the new string version.
         if (typeof value === "boolean") {
             return value ? "on" : "off";
         } else {
-            return value;
+            return validateStringSetting<"on" | "off" | "auto">(
+                value,
+                "swift.sourcekit-lsp.backgroundIndexing"
+            );
         }
     },
     /** focus on problems view whenever there is a build error */
@@ -703,10 +716,16 @@ const configuration = {
     },
     /** Whether or not to disable SwiftPM sandboxing */
     get disableSandbox(): boolean {
-        return validateBooleanSetting(
-            vscode.workspace.getConfiguration("swift").get<boolean>("disableSandbox", false),
-            "swift.disableSandbox"
-        );
+        const config = vscode.workspace.getConfiguration("swift");
+        const sandbox = getExplicitSetting<boolean>(config, "disableSandbox");
+        if (sandbox !== undefined) {
+            return validateBooleanSetting(sandbox, "swift.disableSandbox");
+        }
+        const sandboxTypo = getExplicitSetting<boolean>(config, "disableSandox");
+        if (sandboxTypo !== undefined) {
+            return validateBooleanSetting(sandboxTypo, "swift.disableSandox");
+        }
+        return false;
     },
     /** Workspace folder glob patterns to exclude */
     get excludePathsFromActivation(): Record<string, boolean> {
@@ -819,6 +838,18 @@ function validateObjectSetting<T extends object>(obj: T, settingName: string): T
     return obj;
 }
 
+function getExplicitSetting<T>(config: vscode.WorkspaceConfiguration, key: string): T | undefined {
+    const inspect = config.inspect<T>(key);
+    if (
+        inspect?.globalValue !== undefined ||
+        inspect?.workspaceValue !== undefined ||
+        inspect?.workspaceFolderValue !== undefined
+    ) {
+        return config.get<T>(key);
+    }
+    return undefined;
+}
+
 // To avoid spamming the user with multiple error messages for the same bad setting/value
 // we keep track of the bad settings we've already reported during this session.
 const badSettingLookup: { [key: string]: unknown } = {};
@@ -885,40 +916,6 @@ function computeVscodeVar(varName: string): string | null {
     };
 
     return varName in supportedVariables ? supportedVariables[varName]() : null;
-}
-
-/**
- * Handler for configuration change events that triggers a reload of the extension
- * if the setting changed requires one.
- * @param ctx The workspace context.
- * @returns A disposable that unregisters the provider when disposed.
- */
-export function handleConfigurationChangeEvent(
-    ctx: WorkspaceContext
-): (event: vscode.ConfigurationChangeEvent) => void {
-    return (event: vscode.ConfigurationChangeEvent) => {
-        // on toolchain config change, reload window
-        if (
-            event.affectsConfiguration("swift.path") &&
-            configuration.path !== ctx.currentFolder?.toolchain.swiftFolderPath
-        ) {
-            void showReloadExtensionNotification(
-                "Changing the Swift path requires Visual Studio Code be reloaded."
-            );
-        } else if (
-            // on sdk config change, restart sourcekit-lsp
-            event.affectsConfiguration("swift.SDK") ||
-            event.affectsConfiguration("swift.swiftSDK")
-        ) {
-            void vscode.commands.executeCommand("swift.restartLSPServer").then(() => {
-                /* Put in worker queue */
-            });
-        } else if (event.affectsConfiguration("swift.swiftEnvironmentVariables")) {
-            void showReloadExtensionNotification(
-                "Changing environment variables requires the project be reloaded."
-            );
-        }
-    };
 }
 
 /**

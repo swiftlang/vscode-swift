@@ -136,6 +136,7 @@ export async function promptToInstallSwiftlyToolchain(
             prompt: "Enter the branch name to list snapshot toolchains (e.g., 'main-snapshot', '6.1-snapshot')",
             placeHolder: "main-snapshot",
             value: "main-snapshot",
+            ignoreFocusOut: true,
         });
         if (!branch) {
             return; // User cancelled input

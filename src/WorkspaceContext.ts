@@ -20,14 +20,12 @@ import { FolderContext } from "./FolderContext";
 import {
     FolderEvent as ExternalFolderEvent,
     WorkspaceContext as ExternalWorkspaceContext,
-    FileOperation,
     FolderOperation,
     SwiftFileEvent,
 } from "./SwiftExtensionApi";
 import { TestKind } from "./TestExplorer/TestKind";
 import { TestRunManager } from "./TestExplorer/TestRunManager";
 import configuration from "./configuration";
-import { LLDBDebugConfigurationProvider } from "./debugger/debugAdapterFactory";
 import { makeDebugConfigurations } from "./debugger/launch";
 import { DocumentationManager } from "./documentation/DocumentationManager";
 import { CommentCompletionProviders } from "./editor/CommentCompletion";
@@ -42,6 +40,7 @@ import { SwiftToolchain } from "./toolchain/toolchain";
 import { ProjectPanelProvider } from "./ui/ProjectPanelProvider";
 import { StatusItem } from "./ui/StatusItem";
 import { SwiftBuildStatus } from "./ui/SwiftBuildStatus";
+import { AsyncDisposable, Disposable } from "./utilities/Disposable";
 import { isExcluded, isPathInsidePath } from "./utilities/filesystem";
 import { swiftLibraryPathKey } from "./utilities/utilities";
 import { isValidWorkspaceFolder, searchForPackages } from "./utilities/workspace";
@@ -59,7 +58,7 @@ export interface FolderEvent extends ExternalFolderEvent {
  * Context for whole workspace. Holds array of contexts for each workspace folder
  * and the ExtensionContext
  */
-export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Disposable {
+export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposable {
     public folders: FolderContext[] = [];
     public currentFolder: FolderContext | null | undefined;
     public currentDocument: vscode.Uri | null;
@@ -70,8 +69,7 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
     public diagnostics: DiagnosticsManager;
     public taskProvider: SwiftTaskProvider;
     public pluginProvider: SwiftPluginTaskProvider;
-    public launchProvider: LLDBDebugConfigurationProvider;
-    public subscriptions: vscode.Disposable[];
+    public subscriptions: Disposable[];
     public commentCompletionProvider: CommentCompletionProviders;
     public documentation: DocumentationManager;
     public testRunManager: TestRunManager;
@@ -90,19 +88,21 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
     public onDidStartBuild = this.buildStartEmitter.event;
     public onDidFinishBuild = this.buildFinishEmitter.event;
 
+    private readonly indexingFinishedEmitter = new vscode.EventEmitter<void>();
+    public onDidFinishIndexing = this.indexingFinishedEmitter.event;
+
     private observers = new Set<(listener: FolderEvent) => unknown>();
     private swiftFileObservers = new Set<(listener: SwiftFileEvent) => unknown>();
-
-    public loggerFactory: SwiftLoggerFactory;
 
     constructor(
         public extensionContext: vscode.ExtensionContext,
         public contextKeys: ContextKeys,
+        private outputChannel: vscode.OutputChannel,
+        public loggerFactory: SwiftLoggerFactory,
         public logger: SwiftLogger,
         public globalToolchain: SwiftToolchain
     ) {
         this.testRunManager = new TestRunManager();
-        this.loggerFactory = new SwiftLoggerFactory(extensionContext.logUri);
         this.statusItem = new StatusItem();
         this.buildStatus = new SwiftBuildStatus(this.statusItem);
         this.languageClientManager = new LanguageClientToolchainCoordinator(this, {
@@ -114,10 +114,9 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
             },
         });
         this.tasks = new TaskManager(this);
-        this.diagnostics = new DiagnosticsManager(this);
+        this.diagnostics = new DiagnosticsManager(this.logger);
         this.taskProvider = new SwiftTaskProvider(this);
         this.pluginProvider = new SwiftPluginTaskProvider(this);
-        this.launchProvider = new LLDBDebugConfigurationProvider(process.platform, this, logger);
         this.documentation = new DocumentationManager(extensionContext, this);
         this.currentDocument = null;
         this.commentCompletionProvider = new CommentCompletionProviders();
@@ -148,8 +147,8 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
                     )
                     .then(async selected => {
                         if (selected === "Update") {
-                            this.folders.forEach(ctx =>
-                                makeDebugConfigurations(ctx, { yes: true })
+                            await Promise.all(
+                                this.folders.map(ctx => makeDebugConfigurations(ctx, { yes: true }))
                             );
                         }
                     });
@@ -171,10 +170,10 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
                         "Update",
                         "Cancel"
                     )
-                    .then(selected => {
+                    .then(async selected => {
                         if (selected === "Update") {
-                            this.folders.forEach(ctx =>
-                                makeDebugConfigurations(ctx, { yes: true })
+                            await Promise.all(
+                                this.folders.map(ctx => makeDebugConfigurations(ctx, { yes: true }))
                             );
                         }
                     });
@@ -219,25 +218,7 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
                     });
             }
         });
-        const swiftFileWatcher = vscode.workspace.createFileSystemWatcher("**/*.swift");
-        swiftFileWatcher.onDidCreate(uri => {
-            this.swiftFileObservers.forEach(observer =>
-                observer({ uri, operation: FileOperation.created })
-            );
-        });
-        swiftFileWatcher.onDidChange(uri => {
-            this.swiftFileObservers.forEach(observer =>
-                observer({ uri, operation: FileOperation.changed })
-            );
-        });
-        swiftFileWatcher.onDidDelete(uri => {
-            this.swiftFileObservers.forEach(observer =>
-                observer({ uri, operation: FileOperation.deleted })
-            );
-        });
-
         this.subscriptions = [
-            swiftFileWatcher,
             onDidEndTask,
             this.commentCompletionProvider,
             contextKeysUpdate,
@@ -245,8 +226,6 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
             this.tasks,
             this.diagnostics,
             this.documentation,
-            this.languageClientManager,
-            this.logger,
             this.statusItem,
             this.buildStatus,
             this.projectPanel,
@@ -256,19 +235,16 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
         this.setupEventListeners();
     }
 
-    async stop() {
-        try {
-            await this.languageClientManager.stop();
-        } catch {
-            // ignore
-        }
+    showSwiftOutputChannel(): void {
+        this.outputChannel.show();
     }
 
-    dispose() {
+    async dispose(): Promise<void> {
         this.folders.forEach(f => f.dispose());
         this.folders.length = 0;
         this.subscriptions.forEach(item => item.dispose());
         this.subscriptions.length = 0;
+        await this.languageClientManager.dispose();
     }
 
     get globalToolchainSwiftVersion() {
@@ -338,7 +314,10 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
             } catch (error) {
                 // Make sure one observer does not stop all others from being called
                 this.logger.error(
-                    `Folder operation "${operation}" event observer failed for ${folder?.folder.fsPath}: ${error}`
+                    Error(
+                        `Folder operation "${operation}" event observer failed for ${folder?.folder.fsPath}`,
+                        { cause: error }
+                    )
                 );
             }
         }
@@ -388,6 +367,10 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
         options: vscode.DebugSessionOptions
     ) {
         this.buildFinishEmitter.fire({ targetName, launchConfig, options });
+    }
+
+    public indexingFinished() {
+        this.indexingFinishedEmitter.fire();
     }
 
     /**
@@ -476,14 +459,18 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
             const observersReversed = [...this.observers];
             observersReversed.reverse();
             for (const observer of observersReversed) {
-                await observer({ folder, operation: FolderOperation.remove, workspace: this });
+                try {
+                    await observer({ folder, operation: FolderOperation.remove, workspace: this });
+                } catch (error) {
+                    this.logger.error(`Failed to remove folder ${folder.name}: ${error}`);
+                }
             }
             folder.dispose();
         }
         this.folders = this.folders.filter(folder => folder.workspaceFolder !== workspaceFolder);
     }
 
-    onDidChangeFolders(listener: (event: FolderEvent) => unknown): vscode.Disposable {
+    onDidChangeFolders(listener: (event: FolderEvent) => unknown): Disposable {
         this.observers.add(listener);
 
         // https://github.com/swiftlang/vscode-swift/issues/1944
@@ -502,9 +489,14 @@ export class WorkspaceContext implements ExternalWorkspaceContext, vscode.Dispos
         return { dispose: () => this.observers.delete(listener) };
     }
 
-    onDidChangeSwiftFiles(listener: (event: SwiftFileEvent) => unknown): vscode.Disposable {
+    onDidChangeSwiftFiles(listener: (event: SwiftFileEvent) => unknown): Disposable {
         this.swiftFileObservers.add(listener);
         return { dispose: () => this.swiftFileObservers.delete(listener) };
+    }
+
+    /** Notify all swift file observers of a change to a `.swift` file. */
+    fireSwiftFileChange(event: SwiftFileEvent) {
+        this.swiftFileObservers.forEach(observer => observer(event));
     }
 
     /** set focus based on the file a TextEditor is editing */

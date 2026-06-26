@@ -22,8 +22,8 @@ suite("lldb contract test suite", () => {
     let workspaceContext: WorkspaceContext;
 
     activateExtensionForTest({
-        async setup(ctx) {
-            workspaceContext = ctx;
+        async setup(api) {
+            workspaceContext = await api.waitForWorkspaceContext();
         },
         requiresDebugger: true,
     });

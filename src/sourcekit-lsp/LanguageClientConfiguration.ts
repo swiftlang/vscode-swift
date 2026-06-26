@@ -29,9 +29,8 @@ import { SourceKitLSPErrorHandler } from "./LanguageClientManager";
 import { LSPActiveDocumentManager } from "./didChangeActiveDocument";
 import { uriConverters } from "./uriConverters";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-function initializationOptions(swiftVersion: Version): any {
-    let options: any = {
+function initializationOptions(swiftVersion: Version): Record<string, unknown> {
+    let options: Record<string, unknown> = {
         "textDocument/codeLens": {
             supportedCommands: {
                 "swift.run": "swift.run",
@@ -45,6 +44,7 @@ function initializationOptions(swiftVersion: Version): any {
     // (https://github.com/swiftlang/sourcekit-lsp/pull/2204)
     if (swiftVersion.isGreaterThanOrEqual(new Version(6, 3, 0))) {
         options = {
+            ...options,
             "workspace/peekDocuments": {
                 supported: true, // workaround for client capability to handle `PeekDocumentsRequest`
                 peekLocation: true, // allow SourceKit-LSP to send `Location` instead of `DocumentUri` for the locations to peek.
@@ -100,7 +100,6 @@ function initializationOptions(swiftVersion: Version): any {
 
     return options;
 }
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 type SourceKitDocumentSelector = {
     scheme: string;
@@ -109,7 +108,7 @@ type SourceKitDocumentSelector = {
 }[];
 
 export class LanguagerClientDocumentSelectors {
-    static appleLangDocumentSelector: SourceKitDocumentSelector = [
+    static readonly appleLangDocumentSelector: SourceKitDocumentSelector = [
         { scheme: "sourcekit-lsp", language: "swift" },
         { scheme: "file", language: "swift" },
         { scheme: "untitled", language: "swift" },
@@ -119,22 +118,21 @@ export class LanguagerClientDocumentSelectors {
         { scheme: "untitled", language: "objective-cpp" },
     ];
 
-    static cFamilyDocumentSelector: SourceKitDocumentSelector = [
+    static readonly cFamilyDocumentSelector: SourceKitDocumentSelector = [
         { scheme: "file", language: "c" },
         { scheme: "untitled", language: "c" },
         { scheme: "file", language: "cpp" },
         { scheme: "untitled", language: "cpp" },
     ];
 
-    // document selector for swift-docc documentation
-    static documentationDocumentSelector: SourceKitDocumentSelector = [
+    static readonly documentationDocumentSelector: SourceKitDocumentSelector = [
         { scheme: "file", language: "markdown" },
         { scheme: "untitled", language: "markdown" },
         { scheme: "file", language: "tutorial" },
         { scheme: "untitiled", language: "tutorial" },
     ];
 
-    static miscelaneousDocumentSelector: SourceKitDocumentSelector = [
+    static readonly miscelaneousDocumentSelector: SourceKitDocumentSelector = [
         { scheme: "file", language: "plaintext", pattern: "**/.swift-version" },
     ];
 
@@ -222,10 +220,9 @@ export function lspClientOptions(
         documentSelector: LanguagerClientDocumentSelectors.sourcekitLSPDocumentTypes(),
         revealOutputChannelOn: RevealOutputChannelOn.Never,
         workspaceFolder,
-        outputChannel: workspaceContext.loggerFactory.create(
+        outputChannel: workspaceContext.loggerFactory.createOutputChannel(
             `SourceKit Language Server (${swiftVersion.toString()})`,
-            `sourcekit-lsp-${swiftVersion.toString()}.log`,
-            { outputChannel: true }
+            `sourcekit-lsp-${swiftVersion.toString()}.log`
         ),
         middleware: {
             didOpen: activeDocumentManager.didOpen.bind(activeDocumentManager),
@@ -287,6 +284,18 @@ export function lspClientOptions(
                 }
                 return result;
             },
+            provideReferences: async (document, position, options, token, next) => {
+                const setting = configuration.lsp.includeDeclarationInFindAllReferences;
+                if (setting === "default") {
+                    return next(document, position, options, token);
+                }
+                return next(
+                    document,
+                    position,
+                    { ...options, includeDeclaration: setting === "always" },
+                    token
+                );
+            },
             // temporarily remove text edit from Inlay hints while SourceKit-LSP
             // returns invalid replacement text
             provideInlayHints: async (document, position, token, next) => {
@@ -320,17 +329,21 @@ export function lspClientOptions(
             },
             handleWorkDoneProgress: (() => {
                 let lastPrompted = new Date(0).getTime();
-                return async (token, params, next) => {
+                return (token, params, next) => {
                     const result = next(token, params);
+                    const tokenString = token.toString();
                     const now = new Date().getTime();
                     const oneHour = 60 * 60 * 1000;
                     if (
                         now - lastPrompted > oneHour &&
-                        token.toString().startsWith("sourcekitd-crashed")
+                        tokenString.startsWith("sourcekitd-crashed")
                     ) {
                         // Only prompt once an hour in case sourcekit is in a crash loop
                         lastPrompted = now;
                         void promptForDiagnostics(workspaceContext);
+                    }
+                    if (tokenString.startsWith("indexing") && params.kind === "end") {
+                        workspaceContext.indexingFinished();
                     }
                     return result;
                 };
