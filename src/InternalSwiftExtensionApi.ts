@@ -23,7 +23,7 @@ import { Commands, registerCommands } from "./commands";
 import { resolveFolderDependencies } from "./commands/dependencies/resolve";
 import { registerSourceKitSchemaWatcher } from "./commands/generateSourcekitConfiguration";
 import { handleMissingSwiftly } from "./commands/installSwiftly";
-import { swiftInstalled } from "./commands/swiftInstalled";
+import { isSwiftInstalled } from "./commands/isSwiftInstalled";
 import configuration, { ConfigurationValidationError } from "./configuration";
 import { registerDebugger } from "./debugger/debugAdapterFactory";
 import { makeDebugConfigurations } from "./debugger/launch";
@@ -88,6 +88,7 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
         return this.state.context;
     }
 
+    /** The absolute file path to the extension's installation directory. */
     get extensionPath(): string {
         return this.extensionContext.extensionPath;
     }
@@ -473,6 +474,17 @@ export async function checkForSwiftlyInstallation(
 }
 
 /**
+ * Checks if `swift --version` works, and updates the `swiftInstalled` context variable.
+ *
+ * The welcome walkthrough uses this context variable to render a check mark once Swift is
+ * available on the system.
+ */
+export async function checkForSwiftLangInstallation(): Promise<void> {
+    const isInstalled = await isSwiftInstalled();
+    await vscode.commands.executeCommand("setContext", "swiftInstalled", isInstalled);
+}
+
+/**
  * Checks for .swift-version file(s) in the workspace. If any are found then the user will be prompted to install Swiftly.
  */
 async function checkAndPromptToInstallSwiftly(
@@ -529,15 +541,6 @@ function findSwiftVersionFilesInWorkspace(): Promise<string[]> {
             });
         })
     ).then(results => results.reduceRight((prev, curr) => prev.concat(curr), []));
-}
-
-/**
- * Checks if swift --version works, and updates the "swiftInstalled" context variable
- */
-async function checkForSwiftLangInstallation(): Promise<void> {
-    const isInstalled = await swiftInstalled();
-    // The welcome page checks the swiftInstalled context variable and renders a check mark if true
-    await vscode.commands.executeCommand("setContext", "swiftInstalled", isInstalled);
 }
 
 function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise<void> {
