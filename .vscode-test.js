@@ -81,7 +81,7 @@ if (vsixPath) {
     extensionDependencies.push("vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap");
 }
 
-const vscodeVersion = process.env["VSCODE_VERSION"] ?? "1.105.1";
+const vscodeVersion = process.env["VSCODE_VERSION"] ?? "stable";
 log("Running tests against VS Code version " + vscodeVersion);
 
 const installConfigs = [];
