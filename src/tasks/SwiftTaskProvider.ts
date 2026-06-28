@@ -414,7 +414,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
                         scope: resolveScope(folderContext.workspaceFolder),
                         packageName: packageName(folderContext),
                         presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
-                        group: vscode.TaskGroup.Clean,
+                        group: vscode.TaskGroup.Build,
                     },
                     folderContext.toolchain
                 )

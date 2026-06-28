@@ -825,7 +825,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
                 execution.args.some(arg => arg === "clean"),
                 "Clean Build task should include 'clean' in its arguments"
             );
-            assert.strictEqual(cleanTask!.group, vscode.TaskGroup.Clean);
+            assert.strictEqual(cleanTask!.group, vscode.TaskGroup.Build);
         });
 
         test("does not include Clean Build task when no package is found", async () => {

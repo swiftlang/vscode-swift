@@ -23,7 +23,7 @@ By default build tasks are only automatically created for executable products. I
 
 ## Combining tasks
 
-Automatic tasks can be composed into a single workflow using the `dependsOn` property. The following `tasks.json` runs a clean before building:
+You can compose multiple built-in Swift tasks into a single [compound task](https://code.visualstudio.com/docs/debugtest/tasks#_compound-tasks) in your `.vscode/tasks.json`. For example, you can create a `Clean Rebuild` compound task that runs the `swift: Clean Build Folder` task followed by the `swift: Build All` task:
 
 ```json
 {
@@ -31,16 +31,15 @@ Automatic tasks can be composed into a single workflow using the `dependsOn` pro
     "tasks": [
         {
             "label": "Clean Rebuild",
-            "dependsOn": ["Clean Build Folder", "Build All"],
+            "dependsOn": ["swift: Clean Build Folder", "swift: Build All"],
             "dependsOrder": "sequence",
-            "group": {"kind": "build", "isDefault": true},
-            "problemMatcher": []
+            "group": "build"
         }
     ]
 }
 ```
 
-The same approach works for debug configurations via `preLaunchTask` in `launch.json`:
+[VS Code Debug Configurations](https://code.visualstudio.com/docs/debugtest/debugging-configuration) have a `preLaunchTask` property that can be used to run a single task before launching the debugger. You can use a compound task to run multiple smaller tasks as a `preLaunchTask`. For example, if you add the following to your `.vscode/launch.json`, VS Code will run the `Clean Rebuild` compound task before launching the debugger:
 
 ```json
 {
@@ -50,10 +49,9 @@ The same approach works for debug configurations via `preLaunchTask` in `launch.
             "request": "launch",
             "name": "Launch MyApp",
             "target": "MyApp",
-            "preLaunchTask": "Clean Build Folder"
+            "preLaunchTask": "Clean Rebuild"
         }
     ]
 }
 ```
 
-For more information, see the [VS Code Tasks](https://code.visualstudio.com/docs/editor/tasks) and [preLaunchTask](https://code.visualstudio.com/docs/debugtest/debugging-configuration) documentation.
