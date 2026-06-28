@@ -18,6 +18,7 @@ import { BackgroundCompilation } from "./BackgroundCompilation";
 import { LinuxMain } from "./LinuxMain";
 import { PackageWatcher } from "./PackageWatcher";
 import { FolderContext as ExternalFolderContext } from "./SwiftExtensionApi";
+import { SwiftFileWatcher } from "./SwiftFileWatcher";
 import { SwiftPackage, Target, TargetType } from "./SwiftPackage";
 import { TestExplorer } from "./TestExplorer/TestExplorer";
 import { TestRunManager } from "./TestExplorer/TestRunManager";
@@ -41,6 +42,7 @@ export class FolderContext implements ExternalFolderContext, Disposable {
     public playgroundProvider?: PlaygroundProvider;
     private testExplorerResolver?: (testExplorer: TestExplorer) => void;
     private packageWatcher: PackageWatcher;
+    private swiftFileWatcher: SwiftFileWatcher;
     private testRunManager: TestRunManager;
     public creationStack?: string;
 
@@ -59,6 +61,9 @@ export class FolderContext implements ExternalFolderContext, Disposable {
         public workspaceContext: WorkspaceContext,
         public logger: SwiftLogger
     ) {
+        this.swiftFileWatcher = new SwiftFileWatcher(this, event =>
+            workspaceContext.fireSwiftFileChange(event)
+        );
         this.packageWatcher = new PackageWatcher(this);
         this.backgroundCompilation = new BackgroundCompilation(this);
         this.taskQueue = new TaskQueue(this);
@@ -91,6 +96,7 @@ export class FolderContext implements ExternalFolderContext, Disposable {
         this.linuxMain?.dispose();
         this.swiftPackage.dispose();
         this.packageWatcher.dispose();
+        this.swiftFileWatcher.dispose();
         this.testExplorer?.dispose();
         this.backgroundCompilation.dispose();
         this.taskQueue.dispose();
