@@ -370,7 +370,7 @@ export function createSwiftTask(
  */
 export class SwiftTaskProvider implements vscode.TaskProvider {
     static readonly buildAllName = "Build All";
-    static readonly cleanBuildName = "Clean Build";
+    static readonly cleanBuildName = "Clean Build Folder";
     static readonly resolvePackageName = "Resolve Package Dependencies";
     static readonly updatePackageName = "Update Package Dependencies";
     static readonly showDependenciesName = "List Package Dependencies";
@@ -404,6 +404,21 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
             }
 
             tasks.push(await createBuildAllTask(folderContext, false));
+
+            tasks.push(
+                createSwiftTask(
+                    ["package", "clean"],
+                    SwiftTaskProvider.cleanBuildName,
+                    {
+                        cwd: folderContext.folder,
+                        scope: resolveScope(folderContext.workspaceFolder),
+                        packageName: packageName(folderContext),
+                        presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
+                        group: vscode.TaskGroup.Build,
+                    },
+                    folderContext.toolchain
+                )
+            );
 
             const executables = await folderContext.swiftPackage.executableProducts;
             for (const executable of executables) {
