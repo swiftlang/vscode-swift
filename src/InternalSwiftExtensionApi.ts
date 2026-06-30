@@ -11,7 +11,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import * as fs from "fs/promises";
 import * as vscode from "vscode";
 
 import { ContextKeyManager, ContextKeys } from "./ContextKeyManager";
@@ -22,7 +21,7 @@ import { FolderEvent, FolderOperation, WorkspaceContext } from "./WorkspaceConte
 import { Commands, registerCommands } from "./commands";
 import { resolveFolderDependencies } from "./commands/dependencies/resolve";
 import { registerSourceKitSchemaWatcher } from "./commands/generateSourcekitConfiguration";
-import { handleMissingSwiftly } from "./commands/installSwiftly";
+import { installSwiftly } from "./commands/installSwiftly";
 import { isSwiftInstalled } from "./commands/isSwiftInstalled";
 import configuration, { ConfigurationValidationError } from "./configuration";
 import { registerDebugger } from "./debugger/debugAdapterFactory";
@@ -41,9 +40,9 @@ import { getReadOnlyDocumentProvider } from "./ui/ReadOnlyDocumentProvider";
 import { showToolchainError } from "./ui/ToolchainSelection";
 import { checkAndWarnAboutWindowsSymlinks } from "./ui/win32";
 import { Disposable } from "./utilities/Disposable";
-import { globDirectory } from "./utilities/filesystem";
 import { getErrorDescription } from "./utilities/utilities";
 import { Version } from "./utilities/version";
+import { findSwiftVersionFiles, readSwiftVersions } from "./utilities/workspace";
 
 type UninitializedState = {
     type: "uninitialized";
@@ -187,11 +186,7 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
             );
 
             checkAndWarnAboutWindowsSymlinks(this.logger);
-            void checkForSwiftlyInstallation(
-                this.extensionContext.extensionPath,
-                this.contextKeys,
-                this.logger
-            );
+            void checkForSwiftlyInstallation(this.contextKeys, this.logger);
             void checkForSwiftLangInstallation();
 
             const subscriptionsStartTime = Date.now();
@@ -438,7 +433,6 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
  * Checks whether or not Swiftly is installed and updates context keys appropriately.
  */
 export async function checkForSwiftlyInstallation(
-    extensionPath: string,
     contextKeys: ContextKeys,
     logger: SwiftLogger
 ): Promise<void> {
@@ -450,10 +444,11 @@ export async function checkForSwiftlyInstallation(
 
     // Don't block extension activation waiting for Swiftly checks
     const isSwiftlyInstalled = await Swiftly.isInstalled();
+    await vscode.commands.executeCommand("setContext", "swiftlyInstalled", isSwiftlyInstalled);
     try {
         if (!isSwiftlyInstalled) {
             logger.debug("Swiftly is not installed on this system.");
-            await checkAndPromptToInstallSwiftly(extensionPath, logger);
+            await checkAndPromptToInstallSwiftly(logger);
             return;
         }
         const version = await Swiftly.version(logger);
@@ -486,10 +481,7 @@ export async function checkForSwiftLangInstallation(): Promise<void> {
 /**
  * Checks for .swift-version file(s) in the workspace. If any are found then the user will be prompted to install Swiftly.
  */
-async function checkAndPromptToInstallSwiftly(
-    extensionRoot: string,
-    logger: SwiftLogger
-): Promise<void> {
+async function checkAndPromptToInstallSwiftly(logger: SwiftLogger): Promise<void> {
     // Bail early if the user has disabled the swiftly install prompt, or is ignoring .swift-version files, globally
     if (
         configuration.folder(undefined).disableSwiftlyInstallPrompt ||
@@ -498,48 +490,38 @@ async function checkAndPromptToInstallSwiftly(
         logger?.debug("Swiftly installation prompt is suppressed");
         return;
     }
-    // Check to see if there are any .swift-version files in the workspace
-    const swiftVersionFiles = await findSwiftVersionFilesInWorkspace();
-    const allSwiftVersionsWithUndefined = await Promise.all(
-        swiftVersionFiles.map(async file => {
-            // Validate that the configuration for the folder containing the
-            // .swift-version file does not disable the swiftly install prompt or ignore swiftly
-            const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(file));
-            if (
-                workspaceFolder &&
-                (configuration.folder(workspaceFolder).disableSwiftlyInstallPrompt ||
-                    configuration.folder(workspaceFolder).ignoreSwiftVersionFile)
-            ) {
-                logger?.debug("Swiftly installation prompt is suppressed");
-                return undefined;
-            }
-            return (await fs.readFile(file, "utf-8")).trim();
-        })
-    );
-    const allSwiftVersions: string[] = allSwiftVersionsWithUndefined.filter(
-        (v): v is string => v !== undefined && v.length > 0
-    );
-    const uniqueSwiftVersions = [...new Set(allSwiftVersions)];
+    // Check to see if there are any .swift-version files in the workspace, ignoring any whose
+    // containing folder disables the swiftly install prompt or ignores .swift-version files
+    const swiftVersionFiles = (await findSwiftVersionFiles()).filter(file => {
+        if (isSwiftVersionFileSuppressed(file)) {
+            logger?.debug("Swiftly installation prompt is suppressed");
+            return false;
+        } else {
+            return true;
+        }
+    });
+    const uniqueSwiftVersions = await readSwiftVersions(swiftVersionFiles);
     if (uniqueSwiftVersions.length === 0) {
         return;
     }
     logger.debug(`Detected swift version file(s): ${uniqueSwiftVersions.join(", ")}`);
     logger.debug("Prompting user to install Swiftly.");
-    await handleMissingSwiftly(uniqueSwiftVersions, extensionRoot, logger);
+    await installSwiftly({ logger });
 }
 
 /**
- * Checks if any workspace folder contains a .swift-version file
+ * Determines whether the folder containing the given .swift-version file disables the swiftly
+ * install prompt or ignores .swift-version files.
  */
-function findSwiftVersionFilesInWorkspace(): Promise<string[]> {
-    return Promise.all(
-        (vscode.workspace.workspaceFolders ?? []).map(folder => {
-            return globDirectory(folder.uri, "**/.swift-version", {
-                absolute: true,
-                onlyFiles: true,
-            });
-        })
-    ).then(results => results.reduceRight((prev, curr) => prev.concat(curr), []));
+function isSwiftVersionFileSuppressed(file: string): boolean {
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(file));
+    if (!workspaceFolder) {
+        return false;
+    }
+    return (
+        configuration.folder(workspaceFolder).disableSwiftlyInstallPrompt ||
+        configuration.folder(workspaceFolder).ignoreSwiftVersionFile
+    );
 }
 
 function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise<void> {
@@ -625,7 +607,7 @@ async function createActiveToolchain(
         contextKeys.updateKeysBasedOnActiveVersion(toolchain.swiftVersion);
         return toolchain;
     } catch (error) {
-        if (!(await showToolchainError())) {
+        if (!(await showToolchainError(extensionPath))) {
             throw error;
         }
         return await createActiveToolchain(extensionPath, contextKeys, logger);

@@ -17,8 +17,9 @@ import * as vscode from "vscode";
 import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { Swiftly } from "../toolchain/swiftly";
-import { promptToRestartAfterInstallation } from "../ui/RestartEditor";
-import { installSwiftlyToolchainWithProgress } from "./installSwiftlyToolchain";
+import { Workbench } from "../utilities/commands";
+import { findSwiftVersionFiles, readSwiftVersions } from "../utilities/workspace";
+import { installSwiftlyToolchainWithProgressAndErrorMsgs } from "./installSwiftlyToolchain";
 
 /**
  * Prompts user for Swiftly installation with directory customization options
@@ -79,7 +80,7 @@ This process involves updating your shell profile in order to add swiftly to you
  * @param logger Optional logger
  * @returns Promise<boolean> true if installation succeeded
  */
-async function installSwiftlyWithProgress(logger?: SwiftLogger): Promise<boolean> {
+export async function installSwiftlyWithProgress(logger?: SwiftLogger): Promise<boolean> {
     try {
         await vscode.window.withProgress(
             {
@@ -100,42 +101,106 @@ async function installSwiftlyWithProgress(logger?: SwiftLogger): Promise<boolean
     }
 }
 
+async function promptToRestartVSCode(): Promise<void> {
+    const editorName = vscode.env.appName;
+    const selection = await vscode.window.showInformationMessage(
+        `Restart ${editorName}`,
+        {
+            modal: true,
+            detail: `You must restart ${editorName} in order for the Swiftly installation to take effect. \n\nWhen you reopen ${editorName}, you will be prompted to install the Swift toolchain now that you have Swiftly installed.`,
+        },
+        `Quit ${editorName}`
+    );
+    if (selection === `Quit ${editorName}`) {
+        await vscode.commands.executeCommand(Workbench.ACTION_QUIT);
+    }
+}
+
 /**
- * Main function to handle missing Swiftly detection and installation
- * @param swiftVersionFiles A list of swift version files that will need to be installed
- * @param logger Optional logger
- * @returns Promise<boolean> true if Swiftly was installed or already exists
+ * Handles the "Swiftly is not installed" case: installs Swiftly itself, prompting the
+ * user first unless suppressed or skipped, then asks the user to restart the editor so
+ * the installation can take effect.
+ * @param options.logger Optional logger
+ * @param options.skipPrompt Skips the confirmation prompt when the user has already opted
+ *   in elsewhere (e.g. by clicking an explicit "Install Swiftly" button)
+ * @returns Promise<boolean> true if Swiftly was installed
  */
-export async function handleMissingSwiftly(
-    swiftVersions: string[],
-    extensionRoot: string,
-    logger?: SwiftLogger,
-    skipPrompt: boolean = false
-): Promise<boolean> {
+export async function installSwiftly(options: {
+    logger?: SwiftLogger;
+    skipPrompt?: boolean;
+}): Promise<boolean> {
+    const { logger, skipPrompt = false } = options;
     if (configuration.folder(undefined).disableSwiftlyInstallPrompt) {
         logger?.debug("Swiftly installation prompt is suppressed");
         return false;
     }
 
-    if (!skipPrompt) {
-        // Prompt user for installation
-        if (!(await promptForSwiftlyInstallation(logger))) {
-            return false;
-        }
+    if (!skipPrompt && !(await promptForSwiftlyInstallation(logger))) {
+        return false;
     }
 
-    // Install Swiftly
     if (!(await installSwiftlyWithProgress(logger))) {
         return false;
     }
 
-    // Install toolchains
+    await promptToRestartVSCode();
+    return true;
+}
+
+/**
+ * Handles the "Swiftly is installed but a required toolchain is missing" case: installs
+ * the requested Swift toolchain versions using the already installed Swiftly, surfacing a
+ * modal error if a version fails to install (for example, because it does not exist).
+ * @param options.swiftVersions The Swift toolchain versions to install
+ * @param options.extensionRoot The absolute path to the extension's installation directory
+ * @param options.logger Optional logger
+ * @returns Promise<boolean> true if every toolchain installed successfully
+ */
+export async function installMissingToolchains(options: {
+    swiftVersions: string[];
+    extensionRoot: string;
+    logger?: SwiftLogger;
+}): Promise<boolean> {
+    const { swiftVersions, extensionRoot, logger } = options;
     const swiftlyPath = path.join(Swiftly.defaultHomeDir(), "bin/swiftly");
     for (const version of swiftVersions) {
-        await installSwiftlyToolchainWithProgress(version, extensionRoot, logger, swiftlyPath);
+        const result = await installSwiftlyToolchainWithProgressAndErrorMsgs(
+            version,
+            extensionRoot,
+            logger,
+            swiftlyPath
+        );
+
+        if (result.success) {
+            continue;
+        }
+
+        if (result.errorMsg) {
+            await vscode.window.showErrorMessage("Installation failed", {
+                modal: true,
+                detail: result.errorMsg,
+            });
+        }
+        return false;
     }
 
-    // VS Code needs to be restarted after installing swiftly
-    await promptToRestartAfterInstallation("Swiftly");
     return true;
+}
+
+/**
+ * Resolves which Swift toolchain version(s) to install via Swiftly by reading the package's
+ * `.swift-version` file(s) directly. Reading the file gives the requested version name whether
+ * or not the toolchain is installed (Swiftly itself cannot report the version of a toolchain
+ * that is not installed). Versions are deduplicated, and the latest stable toolchain is used as
+ * a fallback when no `.swift-version` file is found.
+ * @param folder Optional folder to search; when omitted every workspace folder is searched
+ * @returns The version(s) to install; never empty
+ */
+export async function resolveSwiftVersionsToInstall(folder?: vscode.Uri): Promise<string[]> {
+    const swiftVersionFiles = await findSwiftVersionFiles(folder);
+    const versions = await readSwiftVersions(swiftVersionFiles);
+    if (versions.length === 0) {
+        return ["latest"];
+    }
+    return versions;
 }

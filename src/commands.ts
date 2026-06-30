@@ -31,7 +31,11 @@ import { useLocalDependency } from "./commands/dependencies/useLocal";
 import { generateLaunchConfigurations } from "./commands/generateLaunchConfigurations";
 import { generateSourcekitConfiguration } from "./commands/generateSourcekitConfiguration";
 import { insertFunctionComment } from "./commands/insertFunctionComment";
-import { handleMissingSwiftly } from "./commands/installSwiftly";
+import {
+    installMissingToolchains,
+    installSwiftly,
+    resolveSwiftVersionsToInstall,
+} from "./commands/installSwiftly";
 import { promptToInstallSwiftlyToolchain } from "./commands/installSwiftlyToolchain";
 import { newSwiftFile } from "./commands/newFile";
 import { openDocumentation } from "./commands/openDocumentation";
@@ -108,7 +112,9 @@ export enum Commands {
 export function registerCommands(api: InternalSwiftExtensionApi): Disposable[] {
     return [
         vscode.commands.registerCommand("swift.createNewProject", () =>
-            api.withWorkspaceContext<void>(ctx => createNewProject(ctx.globalToolchain))
+            api.withWorkspaceContext<void>(ctx =>
+                createNewProject(ctx.extensionContext.extensionPath, ctx.globalToolchain)
+            )
         ),
         vscode.commands.registerCommand("swift.selectToolchain", () =>
             api.withWorkspaceContext(ctx =>
@@ -123,7 +129,14 @@ export function registerCommands(api: InternalSwiftExtensionApi): Disposable[] {
             pickProcess(configuration)
         ),
         vscode.commands.registerCommand("swift.installSwiftly", () =>
-            handleMissingSwiftly(["latest"], api.extensionPath, api.logger, true)
+            installSwiftly({ logger: api.logger, skipPrompt: true })
+        ),
+        vscode.commands.registerCommand("swift.installSwiftToolchain", async () =>
+            installMissingToolchains({
+                swiftVersions: await resolveSwiftVersionsToInstall(),
+                extensionRoot: api.extensionPath,
+                logger: api.logger,
+            })
         ),
         vscode.commands.registerCommand("swift.generateLaunchConfigurations", () =>
             api.withWorkspaceContext(ctx => generateLaunchConfigurations(ctx))

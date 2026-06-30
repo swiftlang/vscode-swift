@@ -18,7 +18,12 @@ import { match } from "sinon";
 import * as vscode from "vscode";
 
 import * as askpass from "@src/askpass/askpass-server";
-import { handleMissingSwiftly, promptForSwiftlyInstallation } from "@src/commands/installSwiftly";
+import {
+    installMissingToolchains,
+    installSwiftly,
+    promptForSwiftlyInstallation,
+    resolveSwiftVersionsToInstall,
+} from "@src/commands/installSwiftly";
 import { installSwiftlyToolchainWithProgress } from "@src/commands/installSwiftlyToolchain";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 import {
@@ -28,6 +33,7 @@ import {
 } from "@src/toolchain/swiftly";
 import * as utilities from "@src/utilities/utilities";
 import { ExecFileError } from "@src/utilities/utilities";
+import * as workspace from "@src/utilities/workspace";
 
 import {
     MockedObject,
@@ -1772,47 +1778,156 @@ apt-get -y install libncurses5-dev
             });
         });
 
-        suite("handleMissingSwiftly()", () => {
-            const isInstalledStub = mockGlobalFunction(Swiftly, "isInstalled");
+        suite("installSwiftly()", () => {
             const installSwiftlyStub = mockGlobalFunction(Swiftly, "installSwiftly");
 
             test("should return false when prompt is suppressed", async () => {
-                isInstalledStub.resolves(false);
                 mockConfiguration.get.withArgs("disableSwiftlyInstallPrompt").returns(true); // Prompt suppressed
 
-                const result = await handleMissingSwiftly([], "");
+                const result = await installSwiftly({});
 
                 expect(result).to.be.false;
                 expect(mockWindow.showWarningMessage).to.not.have.been.called;
             });
 
             test("should return false when user cancels", async () => {
-                isInstalledStub.resolves(false);
                 mockConfiguration.get.withArgs("disableSwiftlyInstallPrompt").returns(false); // Prompt not suppressed
                 mockWindow.showWarningMessage.resolves(undefined); // User cancels
 
-                const result = await handleMissingSwiftly([], "");
+                const result = await installSwiftly({});
 
                 expect(result).to.be.false;
             });
 
             test('should attempt installation when user selects "Install Swiftly"', async () => {
-                isInstalledStub.resolves(false);
                 mockConfiguration.get.withArgs("disableSwiftlyInstallPrompt").returns(false); // Prompt not suppressed
-                // Need to stub both prompts in the new two-step flow
                 mockWindow.showWarningMessage.resolves("Install Swiftly" as any);
                 mockWindow.showInformationMessage.resolves("Continue" as any);
                 mockWindow.withProgress.callsFake(async (_options, task) => {
                     await task({ report: () => {} } as any, {} as any);
                 });
 
-                const result = await handleMissingSwiftly([], "");
+                const result = await installSwiftly({});
 
-                // Result depends on whether installation succeeds
-                // In this test, we mocked it to succeed
                 expect(result).to.be.true;
                 expect(installSwiftlyStub).to.have.been.called;
             });
+
+            test("should skip the confirmation prompt when skipPrompt is set", async () => {
+                mockConfiguration.get.withArgs("disableSwiftlyInstallPrompt").returns(false);
+                mockWindow.withProgress.callsFake(async (_options, task) => {
+                    await task({ report: () => {} } as any, {} as any);
+                });
+
+                const result = await installSwiftly({ skipPrompt: true });
+
+                expect(result).to.be.true;
+                expect(mockWindow.showWarningMessage).to.not.have.been.called;
+                expect(installSwiftlyStub).to.have.been.called;
+            });
+        });
+
+        suite("installMissingToolchains()", () => {
+            const installToolchainStub = mockGlobalFunction(Swiftly, "installToolchain");
+
+            setup(() => {
+                mockConfiguration.get.withArgs("disableSwiftlyInstallPrompt").returns(false);
+                mockWindow.withProgress.callsFake(async (_options, task) =>
+                    task(
+                        { report: () => {} } as any,
+                        {
+                            isCancellationRequested: false,
+                            onCancellationRequested: () => ({ dispose: () => {} }),
+                        } as any
+                    )
+                );
+            });
+
+            test("returns true and installs nothing when no versions are requested", async () => {
+                const result = await installMissingToolchains({
+                    swiftVersions: [],
+                    extensionRoot: "/extension/root",
+                });
+
+                expect(result).to.be.true;
+                expect(installToolchainStub).to.not.have.been.called;
+            });
+
+            test("installs every requested version and returns true", async () => {
+                installToolchainStub.resolves();
+
+                const result = await installMissingToolchains({
+                    swiftVersions: ["6.0.3", "6.1.0"],
+                    extensionRoot: "/extension/root",
+                });
+
+                expect(result).to.be.true;
+                expect(installToolchainStub).to.have.been.calledWith("6.0.3");
+                expect(installToolchainStub).to.have.been.calledWith("6.1.0");
+            });
+
+            test("shows a modal error and returns false when a version fails to install", async () => {
+                installToolchainStub.rejects(new Error("no such toolchain"));
+
+                const result = await installMissingToolchains({
+                    swiftVersions: ["9.9.9"],
+                    extensionRoot: "/extension/root",
+                });
+
+                expect(result).to.be.false;
+                expect(mockWindow.showErrorMessage).to.have.been.calledWith(
+                    "Installation failed",
+                    match.has("modal", true)
+                );
+            });
+
+            test("returns false without a modal error when installation is cancelled", async () => {
+                installToolchainStub.rejects(new Error(Swiftly.cancellationMessage));
+
+                const result = await installMissingToolchains({
+                    swiftVersions: ["6.0.3"],
+                    extensionRoot: "/extension/root",
+                });
+
+                expect(result).to.be.false;
+                expect(mockWindow.showErrorMessage).to.not.have.been.calledWith(
+                    "Installation failed"
+                );
+            });
+        });
+    });
+
+    suite("resolveSwiftVersionsToInstall()", () => {
+        const findSwiftVersionFilesStub = mockGlobalFunction(workspace, "findSwiftVersionFiles");
+        const readSwiftVersionsStub = mockGlobalFunction(workspace, "readSwiftVersions");
+
+        test("returns the unique versions read from the .swift-version files", async () => {
+            findSwiftVersionFilesStub.resolves(["/project/.swift-version"]);
+            readSwiftVersionsStub.resolves(["6.1.2"]);
+
+            const versions = await resolveSwiftVersionsToInstall();
+
+            expect(versions).to.deep.equal(["6.1.2"]);
+        });
+
+        test("searches the given folder for .swift-version files", async () => {
+            const folder = vscode.Uri.file("/project");
+            findSwiftVersionFilesStub.resolves(["/project/.swift-version"]);
+            readSwiftVersionsStub.resolves(["6.0.3"]);
+
+            const versions = await resolveSwiftVersionsToInstall(folder);
+
+            expect(versions).to.deep.equal(["6.0.3"]);
+            expect(findSwiftVersionFilesStub).to.have.been.calledWith(folder);
+        });
+
+        test("falls back to latest when no .swift-version file is found", async () => {
+            findSwiftVersionFilesStub.resolves([]);
+            readSwiftVersionsStub.resolves([]);
+
+            const versions = await resolveSwiftVersionsToInstall();
+
+            expect(versions).to.deep.equal(["latest"]);
         });
     });
 });

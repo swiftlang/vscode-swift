@@ -16,6 +16,11 @@ import * as vscode from "vscode";
 
 import { FolderContext } from "../FolderContext";
 import { Commands } from "../commands";
+import {
+    installMissingToolchains,
+    installSwiftly,
+    resolveSwiftVersionsToInstall,
+} from "../commands/installSwiftly";
 import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { Swiftly } from "../toolchain/swiftly";
@@ -56,8 +61,16 @@ async function selectToolchainFolder() {
  * Displays an error notification to the user that toolchain discovery failed.
  * @returns true if the user made a selection (and potentially updated toolchain settings), false if they dismissed the dialog
  */
-export async function showToolchainError(folder?: vscode.Uri): Promise<boolean> {
-    let selected: "Remove From Settings" | "Select Toolchain" | "Open Documentation" | undefined;
+export async function showToolchainError(
+    extensionPath: string,
+    folder?: vscode.Uri
+): Promise<boolean> {
+    let selected:
+        | "Remove From Settings"
+        | "Select Toolchain"
+        | "Install Swiftly"
+        | "Install Toolchain Via Swiftly"
+        | undefined;
     const folderName = folder ? `${FolderContext.uriName(folder)}: ` : "";
     if (configuration.path) {
         selected = await vscode.window.showErrorMessage(
@@ -66,11 +79,20 @@ export async function showToolchainError(folder?: vscode.Uri): Promise<boolean> 
             "Select Toolchain"
         );
     } else {
-        selected = await vscode.window.showErrorMessage(
-            `${folderName}Unable to automatically discover your Swift toolchain. Either install a toolchain from Swift.org or provide the path to an existing toolchain.`,
-            "Open Documentation",
-            "Select Toolchain"
-        );
+        const isInstalled = await Swiftly.isInstalled();
+        if (isInstalled) {
+            selected = await vscode.window.showInformationMessage(
+                `${folderName}Swiftly is installed, but missing Swift toolchain. Use Swiftly to install one or provide the path to an existing toolchain.`,
+                "Install Toolchain Via Swiftly",
+                "Select Toolchain"
+            );
+        } else {
+            selected = await vscode.window.showErrorMessage(
+                `${folderName}Unable to automatically discover your Swift toolchain. Install Swiftly to install the latest toolchain or provide the path to an existing toolchain.`,
+                "Install Swiftly",
+                "Select Toolchain"
+            );
+        }
     }
 
     if (selected === "Remove From Settings") {
@@ -79,13 +101,17 @@ export async function showToolchainError(folder?: vscode.Uri): Promise<boolean> 
     } else if (selected === "Select Toolchain") {
         await selectToolchain();
         return true;
-    } else if (selected === "Open Documentation") {
-        void vscode.env.openExternal(
-            vscode.Uri.parse(
-                "https://docs.swift.org/vscode/documentation/userdocs/supported-toolchains"
-            )
-        );
-        return false;
+    } else if (selected === "Install Swiftly") {
+        // Only offered when Swiftly is not installed.
+        await installSwiftly({ skipPrompt: true });
+        return true;
+    } else if (selected === "Install Toolchain Via Swiftly") {
+        // Only offered when Swiftly is installed but a toolchain is missing.
+        await installMissingToolchains({
+            swiftVersions: await resolveSwiftVersionsToInstall(folder),
+            extensionRoot: extensionPath,
+        });
+        return true;
     }
     return false;
 }
