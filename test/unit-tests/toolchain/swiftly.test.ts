@@ -1897,54 +1897,38 @@ apt-get -y install libncurses5-dev
     });
 
     suite("resolveSwiftVersionsToInstall()", () => {
-        const inUseLocationStub = mockGlobalFunction(Swiftly, "inUseLocation");
+        const inUseVersionStub = mockGlobalFunction(Swiftly, "inUseVersion");
 
-        test("returns the missing toolchain version parsed from Swiftly's error", async () => {
-            inUseLocationStub.rejects(
-                new ExecFileError(
-                    new Error("swiftly use failed"),
-                    "",
-                    "The swift version file uses toolchain version 6.1.2, but it doesn't match any of the installed toolchains"
-                )
-            );
+        test("returns the Swift version reported by Swiftly", async () => {
+            inUseVersionStub.resolves("6.1.2");
 
             const versions = await resolveSwiftVersionsToInstall();
 
             expect(versions).to.deep.equal(["6.1.2"]);
         });
 
-        test("resolves the version within the given folder", async () => {
+        test("reads the version within the given folder", async () => {
             const folder = vscode.Uri.file("/project");
-            inUseLocationStub.rejects(
-                new ExecFileError(
-                    new Error("swiftly use failed"),
-                    "",
-                    "uses toolchain version 6.0.3, but it doesn't match any of the installed toolchains"
-                )
-            );
+            inUseVersionStub.resolves("6.0.3");
 
             const versions = await resolveSwiftVersionsToInstall(folder);
 
             expect(versions).to.deep.equal(["6.0.3"]);
-            expect(inUseLocationStub).to.have.been.calledWith(match.string, folder);
+            expect(inUseVersionStub).to.have.been.calledWith(match.string, match.any, folder);
         });
 
-        test("falls back to latest when Swiftly already has a toolchain in use", async () => {
-            inUseLocationStub.resolves("/path/to/toolchain");
+        test("falls back to latest when Swiftly does not report a version", async () => {
+            inUseVersionStub.resolves(undefined);
 
             const versions = await resolveSwiftVersionsToInstall();
 
             expect(versions).to.deep.equal(["latest"]);
         });
 
-        test("falls back to latest when the error is not a missing-toolchain error", async () => {
-            inUseLocationStub.rejects(
-                new ExecFileError(new Error("boom"), "", "some unrelated failure")
-            );
+        test("propagates errors thrown while reading the version", async () => {
+            inUseVersionStub.rejects(new Error("boom"));
 
-            const versions = await resolveSwiftVersionsToInstall();
-
-            expect(versions).to.deep.equal(["latest"]);
+            await expect(resolveSwiftVersionsToInstall()).to.eventually.be.rejectedWith("boom");
         });
     });
 });

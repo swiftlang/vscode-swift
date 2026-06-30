@@ -16,9 +16,8 @@ import * as vscode from "vscode";
 
 import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
-import { Swiftly, parseSwiftlyMissingToolchainError } from "../toolchain/swiftly";
+import { Swiftly } from "../toolchain/swiftly";
 import { Workbench } from "../utilities/commands";
-import { ExecFileError } from "../utilities/utilities";
 import { installSwiftlyToolchainWithProgressAndErrorMsgs } from "./installSwiftlyToolchain";
 
 /**
@@ -188,24 +187,19 @@ export async function installMissingToolchains(options: {
 }
 
 /**
- * Resolves which Swift toolchain version to install via Swiftly. Asks Swiftly for the
- * toolchain it is configured to use; if that toolchain is missing, the required version is
- * parsed from Swiftly's error message. Falls back to the latest stable toolchain when no
- * specific version is required (or the version cannot be determined).
+ * Resolves which Swift toolchain version to install via Swiftly. Asks Swiftly directly for the
+ * version it is configured to use (e.g. from a folder's .swift-version file), which it reports
+ * whether or not that toolchain is installed. Falls back to the latest stable toolchain when
+ * Swiftly does not report a specific version. Errors reading the version are propagated so they
+ * surface to the user rather than silently installing the wrong toolchain.
  * @param folder Optional folder used to resolve a folder-specific (.swift-version) toolchain
  * @returns The version(s) to install; never empty
  */
 export async function resolveSwiftVersionsToInstall(folder?: vscode.Uri): Promise<string[]> {
     const swiftlyPath = path.join(Swiftly.defaultHomeDir(), "bin/swiftly");
-    try {
-        await Swiftly.inUseLocation(swiftlyPath, folder);
-    } catch (error) {
-        if (error instanceof ExecFileError) {
-            const missingToolchain = parseSwiftlyMissingToolchainError(error.stderr);
-            if (missingToolchain) {
-                return [missingToolchain.version];
-            }
-        }
+    const version = await Swiftly.inUseVersion(swiftlyPath, undefined, folder);
+    if (version) {
+        return [version];
     }
     return ["latest"];
 }
