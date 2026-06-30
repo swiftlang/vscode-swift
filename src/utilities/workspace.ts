@@ -144,5 +144,5 @@ export async function readSwiftVersions(files: string[]): Promise<string[]> {
     const versions = await Promise.all(
         files.map(async file => (await fs.readFile(file, "utf-8")).trim())
     );
-    return [...new Set(versions)];
+    return [...new Set(versions.filter(version => version.length > 0))];
 }
