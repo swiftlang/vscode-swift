@@ -16,7 +16,11 @@ import * as vscode from "vscode";
 
 import { FolderContext } from "../FolderContext";
 import { Commands } from "../commands";
-import { handleMissingSwiftly } from "../commands/installSwiftly";
+import {
+    installMissingToolchains,
+    installSwiftly,
+    resolveSwiftVersionsToInstall,
+} from "../commands/installSwiftly";
 import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { Swiftly } from "../toolchain/swiftly";
@@ -97,8 +101,16 @@ export async function showToolchainError(
     } else if (selected === "Select Toolchain") {
         await selectToolchain();
         return true;
-    } else if (selected === "Install Swiftly" || selected === "Install Toolchain Via Swiftly") {
-        await handleMissingSwiftly(["latest"], extensionPath, undefined, true);
+    } else if (selected === "Install Swiftly") {
+        // Only offered when Swiftly is not installed.
+        await installSwiftly({ skipPrompt: true });
+        return true;
+    } else if (selected === "Install Toolchain Via Swiftly") {
+        // Only offered when Swiftly is installed but a toolchain is missing.
+        await installMissingToolchains({
+            swiftVersions: await resolveSwiftVersionsToInstall(folder),
+            extensionRoot: extensionPath,
+        });
         return true;
     }
     return false;

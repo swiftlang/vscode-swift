@@ -22,7 +22,7 @@ import { FolderEvent, FolderOperation, WorkspaceContext } from "./WorkspaceConte
 import { Commands, registerCommands } from "./commands";
 import { resolveFolderDependencies } from "./commands/dependencies/resolve";
 import { registerSourceKitSchemaWatcher } from "./commands/generateSourcekitConfiguration";
-import { handleMissingSwiftly } from "./commands/installSwiftly";
+import { installSwiftly } from "./commands/installSwiftly";
 import { isSwiftInstalled } from "./commands/isSwiftInstalled";
 import configuration, { ConfigurationValidationError } from "./configuration";
 import { registerDebugger } from "./debugger/debugAdapterFactory";
@@ -187,11 +187,7 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
             );
 
             checkAndWarnAboutWindowsSymlinks(this.logger);
-            void checkForSwiftlyInstallation(
-                this.extensionContext.extensionPath,
-                this.contextKeys,
-                this.logger
-            );
+            void checkForSwiftlyInstallation(this.contextKeys, this.logger);
             void checkForSwiftLangInstallation();
 
             const subscriptionsStartTime = Date.now();
@@ -438,7 +434,6 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
  * Checks whether or not Swiftly is installed and updates context keys appropriately.
  */
 export async function checkForSwiftlyInstallation(
-    extensionPath: string,
     contextKeys: ContextKeys,
     logger: SwiftLogger
 ): Promise<void> {
@@ -454,7 +449,7 @@ export async function checkForSwiftlyInstallation(
     try {
         if (!isSwiftlyInstalled) {
             logger.debug("Swiftly is not installed on this system.");
-            await checkAndPromptToInstallSwiftly(extensionPath, logger);
+            await checkAndPromptToInstallSwiftly(logger);
             return;
         }
         const version = await Swiftly.version(logger);
@@ -487,10 +482,7 @@ export async function checkForSwiftLangInstallation(): Promise<void> {
 /**
  * Checks for .swift-version file(s) in the workspace. If any are found then the user will be prompted to install Swiftly.
  */
-async function checkAndPromptToInstallSwiftly(
-    extensionRoot: string,
-    logger: SwiftLogger
-): Promise<void> {
+async function checkAndPromptToInstallSwiftly(logger: SwiftLogger): Promise<void> {
     // Bail early if the user has disabled the swiftly install prompt, or is ignoring .swift-version files, globally
     if (
         configuration.folder(undefined).disableSwiftlyInstallPrompt ||
@@ -526,7 +518,7 @@ async function checkAndPromptToInstallSwiftly(
     }
     logger.debug(`Detected swift version file(s): ${uniqueSwiftVersions.join(", ")}`);
     logger.debug("Prompting user to install Swiftly.");
-    await handleMissingSwiftly(uniqueSwiftVersions, extensionRoot, logger);
+    await installSwiftly({ logger });
 }
 
 /**

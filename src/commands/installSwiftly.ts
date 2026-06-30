@@ -16,8 +16,9 @@ import * as vscode from "vscode";
 
 import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
-import { Swiftly } from "../toolchain/swiftly";
+import { Swiftly, parseSwiftlyMissingToolchainError } from "../toolchain/swiftly";
 import { Workbench } from "../utilities/commands";
+import { ExecFileError } from "../utilities/utilities";
 import { installSwiftlyToolchainWithProgressAndErrorMsgs } from "./installSwiftlyToolchain";
 
 /**
@@ -116,14 +117,19 @@ async function promptToRestartVSCode(): Promise<void> {
 }
 
 /**
- * Installs Swiftly itself, prompting the user first unless suppressed or skipped, then
- * asks the user to restart the editor so the installation can take effect.
+ * Handles the "Swiftly is not installed" case: installs Swiftly itself, prompting the
+ * user first unless suppressed or skipped, then asks the user to restart the editor so
+ * the installation can take effect.
+ * @param options.logger Optional logger
+ * @param options.skipPrompt Skips the confirmation prompt when the user has already opted
+ *   in elsewhere (e.g. by clicking an explicit "Install Swiftly" button)
  * @returns Promise<boolean> true if Swiftly was installed
  */
-async function installSwiftlyAndPromptRestart(
-    logger?: SwiftLogger,
-    skipPrompt: boolean = false
-): Promise<boolean> {
+export async function installSwiftly(options: {
+    logger?: SwiftLogger;
+    skipPrompt?: boolean;
+}): Promise<boolean> {
+    const { logger, skipPrompt = false } = options;
     if (configuration.folder(undefined).disableSwiftlyInstallPrompt) {
         logger?.debug("Swiftly installation prompt is suppressed");
         return false;
@@ -142,14 +148,20 @@ async function installSwiftlyAndPromptRestart(
 }
 
 /**
- * Installs the requested Swift toolchain versions using an already installed Swiftly.
+ * Handles the "Swiftly is installed but a required toolchain is missing" case: installs
+ * the requested Swift toolchain versions using the already installed Swiftly, surfacing a
+ * modal error if a version fails to install (for example, because it does not exist).
+ * @param options.swiftVersions The Swift toolchain versions to install
+ * @param options.extensionRoot The absolute path to the extension's installation directory
+ * @param options.logger Optional logger
  * @returns Promise<boolean> true if every toolchain installed successfully
  */
-async function installToolchainsViaSwiftly(
-    swiftVersions: string[],
-    extensionRoot: string,
-    logger?: SwiftLogger
-): Promise<boolean> {
+export async function installMissingToolchains(options: {
+    swiftVersions: string[];
+    extensionRoot: string;
+    logger?: SwiftLogger;
+}): Promise<boolean> {
+    const { swiftVersions, extensionRoot, logger } = options;
     const swiftlyPath = path.join(Swiftly.defaultHomeDir(), "bin/swiftly");
     for (const version of swiftVersions) {
         const result = await installSwiftlyToolchainWithProgressAndErrorMsgs(
@@ -176,20 +188,24 @@ async function installToolchainsViaSwiftly(
 }
 
 /**
- * Main function to handle missing Swiftly detection and installation
- * @param swiftVersions A list of swift versions that will need to be installed
- * @param logger Optional logger
- * @returns Promise<boolean> true if Swiftly was installed or already exists
+ * Resolves which Swift toolchain version to install via Swiftly. Asks Swiftly for the
+ * toolchain it is configured to use; if that toolchain is missing, the required version is
+ * parsed from Swiftly's error message. Falls back to the latest stable toolchain when no
+ * specific version is required (or the version cannot be determined).
+ * @param folder Optional folder used to resolve a folder-specific (.swift-version) toolchain
+ * @returns The version(s) to install; never empty
  */
-export async function handleMissingSwiftly(
-    swiftVersions: string[],
-    extensionRoot: string,
-    logger?: SwiftLogger,
-    skipPrompt: boolean = false
-): Promise<boolean> {
-    if (!(await Swiftly.isInstalled())) {
-        return installSwiftlyAndPromptRestart(logger, skipPrompt);
+export async function resolveSwiftVersionsToInstall(folder?: vscode.Uri): Promise<string[]> {
+    const swiftlyPath = path.join(Swiftly.defaultHomeDir(), "bin/swiftly");
+    try {
+        await Swiftly.inUseLocation(swiftlyPath, folder);
+    } catch (error) {
+        if (error instanceof ExecFileError) {
+            const missingToolchain = parseSwiftlyMissingToolchainError(error.stderr);
+            if (missingToolchain) {
+                return [missingToolchain.version];
+            }
+        }
     }
-
-    return installToolchainsViaSwiftly(swiftVersions, extensionRoot, logger);
+    return ["latest"];
 }

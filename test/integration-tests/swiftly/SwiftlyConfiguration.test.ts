@@ -66,7 +66,7 @@ suite("Swiftly Configuration Tests", () => {
 
             mockWindow.showWarningMessage.resolves("Don't Show Again" as any);
 
-            await checkForSwiftlyInstallation("extensionPath", {} as any, instance(mockLogger));
+            await checkForSwiftlyInstallation({} as any, instance(mockLogger));
 
             // Verify that showWarningMessage was called with the expected message
             expect(mockWindow.showWarningMessage).to.have.been.calledOnceWith(
@@ -89,7 +89,7 @@ suite("Swiftly Configuration Tests", () => {
                 debug: mockFn(),
             });
 
-            await checkForSwiftlyInstallation("extensionPath", {} as any, instance(mockLogger));
+            await checkForSwiftlyInstallation({} as any, instance(mockLogger));
 
             // Verify that showWarningMessage was NOT called
             expect(mockWindow.showWarningMessage).to.not.have.been.called;
@@ -110,7 +110,7 @@ suite("Swiftly Configuration Tests", () => {
                 debug: mockFn(),
             });
 
-            await checkForSwiftlyInstallation("extensionPath", {} as any, instance(mockLogger));
+            await checkForSwiftlyInstallation({} as any, instance(mockLogger));
 
             // Verify that showWarningMessage was NOT called
             expect(mockWindow.showWarningMessage).to.not.have.been.called;
@@ -138,7 +138,7 @@ suite("Swiftly Configuration Tests", () => {
                 debug: mockFn(),
             });
 
-            await checkForSwiftlyInstallation("extensionPath", {} as any, instance(mockLogger));
+            await checkForSwiftlyInstallation({} as any, instance(mockLogger));
 
             // Verify that showWarningMessage was NOT called since Swiftly is already installed
             expect(mockWindow.showWarningMessage).to.not.have.been.called;
@@ -158,7 +158,7 @@ suite("Swiftly Configuration Tests", () => {
                 debug: mockFn(),
             });
 
-            await checkForSwiftlyInstallation("extensionPath", {} as any, instance(mockLogger));
+            await checkForSwiftlyInstallation({} as any, instance(mockLogger));
 
             // Verify that showWarningMessage was NOT called
             expect(mockWindow.showWarningMessage).to.not.have.been.called;
@@ -180,7 +180,7 @@ suite("Swiftly Configuration Tests", () => {
                 debug: mockFn(),
             });
 
-            await checkForSwiftlyInstallation("extensionPath", {} as any, instance(mockLogger));
+            await checkForSwiftlyInstallation({} as any, instance(mockLogger));
 
             // Verify that showWarningMessage was NOT called since no .swift-version files were found
             expect(mockWindow.showWarningMessage).to.not.have.been.called;
