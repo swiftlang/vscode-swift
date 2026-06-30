@@ -7,6 +7,7 @@
 - Update sourcekit-lsp schema logic for new branch structure ([#2270](https://github.com/swiftlang/vscode-swift/pull/2270))
 - Work around an issue in older lldb-dap binaries where breakpoints would show up as unresolved even when they were hit ([#2283](https://github.com/swiftlang/vscode-swift/pull/2283))
 - Stop assuming that `swift.path` will point at a directory named `bin` ([#2288](https://github.com/swiftlang/vscode-swift/pull/2288))
+- Fixed code coverage information only showing for the first test target when buildnig with swift-build ([#2296](https://github.com/swiftlang/vscode-swift/pull/2296))
 
 ## 2.16.6 - 2026-06-04
 
