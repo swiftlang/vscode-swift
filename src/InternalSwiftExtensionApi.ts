@@ -11,7 +11,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import * as fs from "fs/promises";
 import * as vscode from "vscode";
 
 import { ContextKeyManager, ContextKeys } from "./ContextKeyManager";
@@ -41,9 +40,9 @@ import { getReadOnlyDocumentProvider } from "./ui/ReadOnlyDocumentProvider";
 import { showToolchainError } from "./ui/ToolchainSelection";
 import { checkAndWarnAboutWindowsSymlinks } from "./ui/win32";
 import { Disposable } from "./utilities/Disposable";
-import { globDirectory } from "./utilities/filesystem";
 import { getErrorDescription } from "./utilities/utilities";
 import { Version } from "./utilities/version";
+import { findSwiftVersionFiles, readSwiftVersions } from "./utilities/workspace";
 
 type UninitializedState = {
     type: "uninitialized";
@@ -491,28 +490,17 @@ async function checkAndPromptToInstallSwiftly(logger: SwiftLogger): Promise<void
         logger?.debug("Swiftly installation prompt is suppressed");
         return;
     }
-    // Check to see if there are any .swift-version files in the workspace
-    const swiftVersionFiles = await findSwiftVersionFilesInWorkspace();
-    const allSwiftVersionsWithUndefined = await Promise.all(
-        swiftVersionFiles.map(async file => {
-            // Validate that the configuration for the folder containing the
-            // .swift-version file does not disable the swiftly install prompt or ignore swiftly
-            const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(file));
-            if (
-                workspaceFolder &&
-                (configuration.folder(workspaceFolder).disableSwiftlyInstallPrompt ||
-                    configuration.folder(workspaceFolder).ignoreSwiftVersionFile)
-            ) {
-                logger?.debug("Swiftly installation prompt is suppressed");
-                return undefined;
-            }
-            return (await fs.readFile(file, "utf-8")).trim();
-        })
-    );
-    const allSwiftVersions: string[] = allSwiftVersionsWithUndefined.filter(
-        (v): v is string => v !== undefined && v.length > 0
-    );
-    const uniqueSwiftVersions = [...new Set(allSwiftVersions)];
+    // Check to see if there are any .swift-version files in the workspace, ignoring any whose
+    // containing folder disables the swiftly install prompt or ignores .swift-version files
+    const swiftVersionFiles = (await findSwiftVersionFiles()).filter(file => {
+        if (isSwiftVersionFileSuppressed(file)) {
+            logger?.debug("Swiftly installation prompt is suppressed");
+            return false;
+        } else {
+            return true;
+        }
+    });
+    const uniqueSwiftVersions = await readSwiftVersions(swiftVersionFiles);
     if (uniqueSwiftVersions.length === 0) {
         return;
     }
@@ -522,17 +510,18 @@ async function checkAndPromptToInstallSwiftly(logger: SwiftLogger): Promise<void
 }
 
 /**
- * Checks if any workspace folder contains a .swift-version file
+ * Determines whether the folder containing the given .swift-version file disables the swiftly
+ * install prompt or ignores .swift-version files.
  */
-function findSwiftVersionFilesInWorkspace(): Promise<string[]> {
-    return Promise.all(
-        (vscode.workspace.workspaceFolders ?? []).map(folder => {
-            return globDirectory(folder.uri, "**/.swift-version", {
-                absolute: true,
-                onlyFiles: true,
-            });
-        })
-    ).then(results => results.reduceRight((prev, curr) => prev.concat(curr), []));
+function isSwiftVersionFileSuppressed(file: string): boolean {
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(file));
+    if (!workspaceFolder) {
+        return false;
+    }
+    return (
+        configuration.folder(workspaceFolder).disableSwiftlyInstallPrompt ||
+        configuration.folder(workspaceFolder).ignoreSwiftVersionFile
+    );
 }
 
 function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise<void> {

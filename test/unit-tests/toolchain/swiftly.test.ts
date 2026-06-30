@@ -33,6 +33,7 @@ import {
 } from "@src/toolchain/swiftly";
 import * as utilities from "@src/utilities/utilities";
 import { ExecFileError } from "@src/utilities/utilities";
+import * as workspace from "@src/utilities/workspace";
 
 import {
     MockedObject,
@@ -1897,38 +1898,36 @@ apt-get -y install libncurses5-dev
     });
 
     suite("resolveSwiftVersionsToInstall()", () => {
-        const inUseVersionStub = mockGlobalFunction(Swiftly, "inUseVersion");
+        const findSwiftVersionFilesStub = mockGlobalFunction(workspace, "findSwiftVersionFiles");
+        const readSwiftVersionsStub = mockGlobalFunction(workspace, "readSwiftVersions");
 
-        test("returns the Swift version reported by Swiftly", async () => {
-            inUseVersionStub.resolves("6.1.2");
+        test("returns the unique versions read from the .swift-version files", async () => {
+            findSwiftVersionFilesStub.resolves(["/project/.swift-version"]);
+            readSwiftVersionsStub.resolves(["6.1.2"]);
 
             const versions = await resolveSwiftVersionsToInstall();
 
             expect(versions).to.deep.equal(["6.1.2"]);
         });
 
-        test("reads the version within the given folder", async () => {
+        test("searches the given folder for .swift-version files", async () => {
             const folder = vscode.Uri.file("/project");
-            inUseVersionStub.resolves("6.0.3");
+            findSwiftVersionFilesStub.resolves(["/project/.swift-version"]);
+            readSwiftVersionsStub.resolves(["6.0.3"]);
 
             const versions = await resolveSwiftVersionsToInstall(folder);
 
             expect(versions).to.deep.equal(["6.0.3"]);
-            expect(inUseVersionStub).to.have.been.calledWith(match.string, match.any, folder);
+            expect(findSwiftVersionFilesStub).to.have.been.calledWith(folder);
         });
 
-        test("falls back to latest when Swiftly does not report a version", async () => {
-            inUseVersionStub.resolves(undefined);
+        test("falls back to latest when no .swift-version file is found", async () => {
+            findSwiftVersionFilesStub.resolves([]);
+            readSwiftVersionsStub.resolves([]);
 
             const versions = await resolveSwiftVersionsToInstall();
 
             expect(versions).to.deep.equal(["latest"]);
-        });
-
-        test("propagates errors thrown while reading the version", async () => {
-            inUseVersionStub.rejects(new Error("boom"));
-
-            await expect(resolveSwiftVersionsToInstall()).to.eventually.be.rejectedWith("boom");
         });
     });
 });

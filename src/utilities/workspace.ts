@@ -116,3 +116,33 @@ export async function isValidWorkspaceFolder(
 
     return false;
 }
+
+/**
+ * Finds all `.swift-version` files within the given folder, or across every workspace folder
+ * when no folder is provided.
+ * @param folder Optional folder to search; when omitted every workspace folder is searched
+ * @returns Absolute paths to the discovered `.swift-version` files
+ */
+export function findSwiftVersionFiles(folder?: vscode.Uri): Promise<string[]> {
+    const folders = folder
+        ? [folder]
+        : (vscode.workspace.workspaceFolders ?? []).map(workspaceFolder => workspaceFolder.uri);
+    return Promise.all(
+        folders.map(uri =>
+            globDirectory(uri, "**/.swift-version", { absolute: true, onlyFiles: true })
+        )
+    ).then(results => results.flat());
+}
+
+/**
+ * Reads the Swift version named in each of the given `.swift-version` files, returning the
+ * unique, non-empty version names.
+ * @param files Absolute paths to `.swift-version` files
+ * @returns The deduplicated Swift version names
+ */
+export async function readSwiftVersions(files: string[]): Promise<string[]> {
+    const versions = await Promise.all(
+        files.map(async file => (await fs.readFile(file, "utf-8")).trim())
+    );
+    return [...new Set(versions)];
+}

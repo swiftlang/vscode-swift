@@ -18,6 +18,7 @@ import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { Swiftly } from "../toolchain/swiftly";
 import { Workbench } from "../utilities/commands";
+import { findSwiftVersionFiles, readSwiftVersions } from "../utilities/workspace";
 import { installSwiftlyToolchainWithProgressAndErrorMsgs } from "./installSwiftlyToolchain";
 
 /**
@@ -187,19 +188,19 @@ export async function installMissingToolchains(options: {
 }
 
 /**
- * Resolves which Swift toolchain version to install via Swiftly. Asks Swiftly directly for the
- * version it is configured to use (e.g. from a folder's .swift-version file), which it reports
- * whether or not that toolchain is installed. Falls back to the latest stable toolchain when
- * Swiftly does not report a specific version. Errors reading the version are propagated so they
- * surface to the user rather than silently installing the wrong toolchain.
- * @param folder Optional folder used to resolve a folder-specific (.swift-version) toolchain
+ * Resolves which Swift toolchain version(s) to install via Swiftly by reading the package's
+ * `.swift-version` file(s) directly. Reading the file gives the requested version name whether
+ * or not the toolchain is installed (Swiftly itself cannot report the version of a toolchain
+ * that is not installed). Versions are deduplicated, and the latest stable toolchain is used as
+ * a fallback when no `.swift-version` file is found.
+ * @param folder Optional folder to search; when omitted every workspace folder is searched
  * @returns The version(s) to install; never empty
  */
 export async function resolveSwiftVersionsToInstall(folder?: vscode.Uri): Promise<string[]> {
-    const swiftlyPath = path.join(Swiftly.defaultHomeDir(), "bin/swiftly");
-    const version = await Swiftly.inUseVersion(swiftlyPath, undefined, folder);
-    if (version) {
-        return [version];
+    const swiftVersionFiles = await findSwiftVersionFiles(folder);
+    const versions = await readSwiftVersions(swiftVersionFiles);
+    if (versions.length === 0) {
+        return ["latest"];
     }
-    return ["latest"];
+    return versions;
 }
