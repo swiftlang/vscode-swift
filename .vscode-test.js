@@ -15,7 +15,6 @@
 
 const { defineConfig } = require("@vscode/test-cli");
 const path = require("path");
-const { version, publisher, name } = require("./package.json");
 
 const isCIBuild = process.env["CI"] === "1";
 
@@ -51,51 +50,15 @@ if (dataDir) {
     launchArgs.push("--user-data-dir", dataDir);
 }
 
-const installExtensions = [];
-const extensionDependencies = [];
-let vsixPath = process.env["VSCODE_SWIFT_VSIX"];
-let versionStr = version;
-let extensionDevelopmentPath;
-if (vsixPath) {
-    // https://github.com/swiftlang/vscode-swift/issues/1751
-    // Will install extensions before CI tests run
-    installExtensions.push("vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap");
-
-    // Absolute path to vsix needed
-    if (!path.isAbsolute(vsixPath)) {
-        vsixPath = path.join(__dirname, vsixPath);
-    }
-    log("Installing VSIX " + vsixPath);
+const installExtensions = ["vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap"];
+if (process.env["VSCODE_SWIFT_VSIX"]) {
+    const vsixPath = path.resolve(__dirname, process.env["VSCODE_SWIFT_VSIX"]);
+    log("Running tests against VSIX: " + vsixPath);
     installExtensions.push(vsixPath);
-
-    // Determine version to use
-    const match = /swift-vscode-(\d+\.\d+\.\d+(-dev)?)(-\d+)?\.vsix/g.exec(path.basename(vsixPath));
-    if (match) {
-        versionStr = match[1];
-    }
-    log("Running tests against extension version " + versionStr);
-
-    extensionDevelopmentPath = `${__dirname}/.vscode-test/extensions/${publisher}.${name}-${versionStr}`;
-    log("Running tests against extension development path " + extensionDevelopmentPath);
-} else {
-    extensionDependencies.push("vadimcn.vscode-lldb", "llvm-vs-code-extensions.lldb-dap");
 }
 
 const vscodeVersion = process.env["VSCODE_VERSION"] ?? "1.105.1";
 log("Running tests against VS Code version " + vscodeVersion);
-
-const installConfigs = [];
-for (const ext of installExtensions) {
-    installConfigs.push({
-        label: `installExtension-${ext}`,
-        installExtensions: [ext],
-        launchArgs: launchArgs.concat("--disable-extensions"),
-        files: ["dist/test/sleep.test.js"],
-        version: vscodeVersion,
-        skipExtensionDependencies: true,
-        reuseMachineInstall: !isCIBuild,
-    });
-}
 
 const env = {
     ...process.env,
@@ -106,20 +69,17 @@ log("Running tests against environment:\n" + JSON.stringify(env, undefined, 2));
 
 module.exports = defineConfig({
     tests: [
-        ...installConfigs,
         {
             label: "integrationTests",
             files: ["dist/test/common.js", "dist/test/integration-tests/**/*.test.js"],
             version: vscodeVersion,
             workspaceFolder: "./assets/test",
             launchArgs,
-            extensionDevelopmentPath,
             env,
             mocha: {
                 ui: "tdd",
                 color: true,
                 timeout,
-                forbidOnly: isCIBuild,
                 slow: 10000,
                 retries: 1,
                 reporter: path.join(__dirname, ".mocha-reporter.js"),
@@ -132,8 +92,7 @@ module.exports = defineConfig({
                     },
                 },
             },
-            installExtensions: extensionDependencies,
-            skipExtensionDependencies: installConfigs.length > 0,
+            installExtensions,
         },
         {
             label: "codeWorkspaceTests",
@@ -149,13 +108,11 @@ module.exports = defineConfig({
             version: vscodeVersion,
             workspaceFolder: "./assets/test.code-workspace",
             launchArgs,
-            extensionDevelopmentPath,
             env,
             mocha: {
                 ui: "tdd",
                 color: true,
                 timeout,
-                forbidOnly: isCIBuild,
                 slow: 10000,
                 retries: 1,
                 reporter: path.join(__dirname, ".mocha-reporter.js"),
@@ -168,8 +125,7 @@ module.exports = defineConfig({
                     },
                 },
             },
-            installExtensions: extensionDependencies,
-            skipExtensionDependencies: installConfigs.length > 0,
+            installExtensions,
         },
         {
             label: "unitTests",
@@ -181,7 +137,6 @@ module.exports = defineConfig({
                 ui: "tdd",
                 color: true,
                 timeout,
-                forbidOnly: isCIBuild,
                 slow: 100,
                 reporter: path.join(__dirname, ".mocha-reporter.js"),
                 reporterOptions: {

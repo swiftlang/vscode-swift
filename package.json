@@ -1017,13 +1017,6 @@
             "order": 7,
             "scope": "machine-overridable"
           },
-          "sourcekit-lsp.inlayHints.enabled": {
-            "type": "boolean",
-            "default": true,
-            "markdownDescription": "Display Inlay Hints. Inlay Hints are variable annotations indicating their inferred type. They are only available if you are using Swift 5.6 or later.",
-            "deprecationMessage": "Deprecated: Please use \"editor.inlayHints.enabled\" instead.",
-            "markdownDeprecationMessage": "**Deprecated**: Please use `#editor.inlayHints.enabled#` instead."
-          },
           "sourcekit-lsp.support-c-cpp": {
             "type": "string",
             "default": "cpptools-inactive",

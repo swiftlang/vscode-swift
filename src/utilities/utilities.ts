@@ -284,15 +284,71 @@ export async function execSwift(
     return await execFile(command, commandArgs, options, folderContext);
 }
 
+export type PollResult<T> = PollSuccessResult<T> | PollFailureResult;
+
+export interface PollSuccessResult<T> {
+    type: "success";
+    value: T;
+}
+
+export interface PollFailureResult {
+    type: "failure";
+}
+
 /**
- * Keep calling a function until it returns true
+ * Keep calling a function until it returns true.
+ *
  * @param fn function to test
  * @param everyMilliseconds Time period between each call of the function
+ * @param cancellationToken A {@link vscode.CancellationToken} that can be used to cancel polling
+ * @returns A Promise that resolves when the function succeeds
  */
-export async function poll(fn: () => boolean, everyMilliseconds: number) {
-    while (!fn()) {
+export function poll(
+    fn: () => boolean | Promise<boolean>,
+    everyMilliseconds: number,
+    cancellationToken?: vscode.CancellationToken
+): Promise<void>;
+
+/**
+ * Keep calling a function until it returns a specified value.
+ *
+ * @param fn The function to test
+ * @param everyMilliseconds Time period between each call of the function
+ * @param cancellationToken A {@link vscode.CancellationToken} that can be used to cancel polling
+ * @returns A Promise that resolves to the expected value
+ */
+export function poll<T>(
+    fn: () => PollResult<T> | Promise<PollResult<T>>,
+    everyMilliseconds: number,
+    cancellationToken?: vscode.CancellationToken
+): Promise<T>;
+
+export async function poll<T>(
+    fn: () => boolean | PollResult<T> | Promise<boolean> | Promise<PollResult<T>>,
+    everyMilliseconds: number,
+    cancellationToken?: vscode.CancellationToken
+): Promise<T | void> {
+    let result = await fn();
+    while (!checkPollResult(result)) {
+        if (cancellationToken?.isCancellationRequested) {
+            throw Error("Operation was cancelled");
+        }
         await wait(everyMilliseconds);
+        result = await fn();
     }
+    if (typeof result === "boolean") {
+        return;
+    }
+    return result.value;
+}
+
+function checkPollResult(
+    result: boolean | PollResult<unknown>
+): result is boolean | PollSuccessResult<unknown> {
+    if (typeof result === "boolean") {
+        return result;
+    }
+    return result.type === "success";
 }
 
 /**

@@ -26,11 +26,11 @@ export async function reindexProject(
         return;
     }
 
-    const languageClientManager = workspaceContext.languageClientManager.get(
-        workspaceContext.currentFolder
-    );
-    return languageClientManager.useLanguageClient(async (client, token) => {
-        try {
+    try {
+        const client = workspaceContext.languageClientManager.getClient(
+            workspaceContext.currentFolder
+        );
+        return await client.useLanguageClient(async (client, token) => {
             await client.sendRequest(ReIndexProjectRequest.type, token);
             const result = await vscode.window.showWarningMessage(
                 "Re-indexing a project should never be necessary and indicates a bug in SourceKit-LSP. Please file an issue describing which symbol was out-of-date and how you got into the state.",
@@ -45,16 +45,16 @@ export async function reindexProject(
                     )
                 );
             }
-        } catch (err) {
-            const error = err as { code: number; message: string };
-            // methodNotFound, version of sourcekit-lsp is likely too old.
-            if (error.code === -32601) {
-                void vscode.window.showWarningMessage(
-                    "The installed version of SourceKit-LSP does not support background indexing."
-                );
-            } else {
-                void vscode.window.showWarningMessage(error.message);
-            }
+        });
+    } catch (err) {
+        const error = err as { code: number; message: string };
+        // methodNotFound, version of sourcekit-lsp is likely too old.
+        if (error.code === -32601) {
+            void vscode.window.showWarningMessage(
+                "The installed version of SourceKit-LSP does not support background indexing."
+            );
+        } else {
+            void vscode.window.showWarningMessage(error.message);
         }
-    });
+    }
 }

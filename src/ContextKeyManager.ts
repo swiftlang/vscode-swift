@@ -15,7 +15,7 @@ import * as path from "path";
 import * as vscode from "vscode";
 
 import { FolderContext } from "./FolderContext";
-import { LanguageClientManager } from "./sourcekit-lsp/LanguageClientManager";
+import { SourceKitLanguageClient } from "./sourcekit-lsp/client/SourceKitLanguageClient";
 import { DocCDocumentationRequest, ReIndexProjectRequest } from "./sourcekit-lsp/extensions";
 import { Version } from "./utilities/version";
 
@@ -114,7 +114,7 @@ export interface ContextKeys {
     updateForFile(
         currentDocument: vscode.Uri | null,
         currentFolder: FolderContext | null,
-        languageClientManager: { get(folder: FolderContext): LanguageClientManager }
+        languageClientManager: { getClient(folder: FolderContext): SourceKitLanguageClient }
     ): Promise<void>;
 
     /**
@@ -292,7 +292,7 @@ export class ContextKeyManager implements ContextKeys {
     async updateForFile(
         currentDocument: vscode.Uri | null,
         currentFolder: FolderContext | null,
-        languageClientManager: { get(folder: FolderContext): LanguageClientManager }
+        languageClientManager: { getClient(folder: FolderContext): SourceKitLanguageClient }
     ): Promise<void> {
         if (currentDocument && currentFolder) {
             const target = await currentFolder.swiftPackage.getTarget(currentDocument.fsPath);
@@ -302,18 +302,16 @@ export class ContextKeyManager implements ContextKeys {
         }
 
         if (currentFolder) {
-            const languageClient = languageClientManager.get(currentFolder);
-            await languageClient.useLanguageClient(async client => {
-                const experimentalCaps = client.initializeResult?.capabilities.experimental;
-                if (!experimentalCaps) {
-                    this.supportsReindexing = false;
-                    this.supportsDocumentationLivePreview = false;
-                    return;
-                }
-                this.supportsReindexing =
-                    experimentalCaps[ReIndexProjectRequest.method] !== undefined;
-                this.supportsDocumentationLivePreview =
-                    experimentalCaps[DocCDocumentationRequest.method] !== undefined;
+            const client = languageClientManager.getClient(currentFolder);
+            await client.useLanguageClient(async client => {
+                this.supportsReindexing = client.checkExperimentalCapability(
+                    ReIndexProjectRequest.method,
+                    1
+                );
+                this.supportsDocumentationLivePreview = client.checkExperimentalCapability(
+                    DocCDocumentationRequest.method,
+                    1
+                );
             });
         }
 
