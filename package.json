@@ -1017,6 +1017,23 @@
             "order": 7,
             "scope": "machine-overridable"
           },
+          "swift.sourcekit-lsp.swiftPM.buildSystemBackend": {
+            "type": "string",
+            "default": "auto",
+            "enum": [
+              "auto",
+              "native",
+              "swiftbuild"
+            ],
+            "enumDescriptions": [
+              "Use the default build system backend selected by SourceKit-LSP.",
+              "Use the legacy SwiftPM build system.",
+              "Use SwiftPM's Swift Build backend (experimental)."
+            ],
+            "markdownDescription": "Which SwiftPM build system backend to use when preparing a package for indexing.",
+            "order": 8,
+            "scope": "machine-overridable"
+          },
           "sourcekit-lsp.support-c-cpp": {
             "type": "string",
             "default": "cpptools-inactive",

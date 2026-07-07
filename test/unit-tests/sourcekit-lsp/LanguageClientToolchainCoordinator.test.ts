@@ -344,6 +344,20 @@ suite("LanguageClientToolchainCoordinator Unit Tests", () => {
             expect(client2.dispose).to.not.have.been.called;
         });
 
+        test("restarts every client when the swift.sourcekit-lsp.swiftPM.buildSystemBackend setting changes", async function () {
+            const folder1 = await addFolderToWorkspace(new Version(5, 10, 0));
+            const folder2 = await addFolderToWorkspace(new Version(6, 4, 0));
+            const client1 = coordinator.getClient(instance(folder1));
+            const client2 = coordinator.getClient(instance(folder2));
+
+            await fireConfigurationChange("swift.sourcekit-lsp.swiftPM.buildSystemBackend");
+
+            expect(client1.restart).to.have.been.calledOnce;
+            expect(client2.restart).to.have.been.calledOnce;
+            expect(client1.dispose).to.not.have.been.called;
+            expect(client2.dispose).to.not.have.been.called;
+        });
+
         test("restarts every client when the swift.sourcekit-lsp.support-c-cpp setting changes", async function () {
             const folder1 = await addFolderToWorkspace(new Version(5, 10, 0));
             const folder2 = await addFolderToWorkspace(new Version(6, 4, 0));

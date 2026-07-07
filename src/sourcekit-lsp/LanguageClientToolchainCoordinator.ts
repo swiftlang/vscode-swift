@@ -76,6 +76,7 @@ export class LanguageClientToolchainCoordinator implements AsyncDisposable {
             "swift.sourcekit-lsp.serverArguments",
             "swift.sourcekit-lsp.supported-languages",
             "swift.sourcekit-lsp.backgroundIndexing",
+            "swift.sourcekit-lsp.swiftPM.buildSystemBackend",
             "swift.sourcekit-lsp.support-c-cpp",
         ];
         if (restartSettings.some(s => event.affectsConfiguration(s))) {

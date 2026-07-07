@@ -371,10 +371,18 @@ function initializationOptions(swiftVersion: Version): Record<string, unknown> {
         };
     }
 
+    const swiftPMOptions: Record<string, unknown> = {};
     if (configuration.swiftSDK !== "") {
+        swiftPMOptions.swiftSDK = configuration.swiftSDK;
+    }
+    // "auto" leaves the build system unset so that sourcekit-lsp picks its default.
+    if (configuration.lsp.swiftPMBuildSystem !== "auto") {
+        swiftPMOptions.buildSystem = configuration.lsp.swiftPMBuildSystem;
+    }
+    if (Object.keys(swiftPMOptions).length > 0) {
         options = {
             ...options,
-            swiftPM: { swiftSDK: configuration.swiftSDK },
+            swiftPM: swiftPMOptions,
         };
     }
 

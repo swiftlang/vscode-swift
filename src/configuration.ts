@@ -64,6 +64,8 @@ interface LSPConfiguration {
     readonly disable: boolean;
     /** Include declaration in Find All References results */
     readonly includeDeclarationInFindAllReferences: "default" | "always" | "never";
+    /** Which SwiftPM build system backend SourceKit-LSP should use */
+    readonly swiftPMBuildSystem: "auto" | "native" | "swiftbuild";
     /** Is the trace server enabled */
     readonly traceServer: "off" | "messages" | "verbose";
 }
@@ -191,6 +193,14 @@ const configuration = {
                         .getConfiguration("swift.sourcekit-lsp")
                         .get<string>("includeDeclarationInFindAllReferences", "default"),
                     "swift.sourcekit-lsp.includeDeclarationInFindAllReferences"
+                );
+            },
+            get swiftPMBuildSystem(): "auto" | "native" | "swiftbuild" {
+                return validateStringSetting<"auto" | "native" | "swiftbuild">(
+                    vscode.workspace
+                        .getConfiguration("swift.sourcekit-lsp.swiftPM")
+                        .get<string>("buildSystemBackend", "auto"),
+                    "swift.sourcekit-lsp.swiftPM.buildSystemBackend"
                 );
             },
             get traceServer(): "off" | "messages" | "verbose" {
