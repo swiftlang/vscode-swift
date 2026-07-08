@@ -2,6 +2,10 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+### Added
+
+- Add **Clean Build Folder** automatically generated task to remove all build artifacts ([#2280](https://github.com/swiftlang/vscode-swift/pull/2280))
+
 ### Fixed
 - Reveal the task terminal when clicking the Swift build status item instead of showing a popup ([#2254](https://github.com/swiftlang/vscode-swift/pull/2254))
 - Update sourcekit-lsp schema logic for new branch structure ([#2270](https://github.com/swiftlang/vscode-swift/pull/2270))
