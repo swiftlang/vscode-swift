@@ -475,29 +475,39 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
         this.folders = this.folders.filter(folder => folder.workspaceFolder !== workspaceFolder);
     }
 
-    onDidChangeFolders(listener: (event: FolderEvent) => unknown): Disposable {
-        this.observers.add(listener);
+    onDidChangeFolders: vscode.Event<FolderEvent> = (listener, thisArg, disposables) => {
+        const observer = listener.bind(thisArg);
+        this.observers.add(observer);
 
         // https://github.com/swiftlang/vscode-swift/issues/1944
         // make sure no FolderOperation are missed by fast activation
         for (const folder of this.folders) {
-            listener({ folder, operation: FolderOperation.add, workspace: this });
+            observer({ folder, operation: FolderOperation.add, workspace: this });
         }
         if (this.currentFolder) {
-            listener({
+            observer({
                 folder: this.currentFolder,
                 operation: FolderOperation.focus,
                 workspace: this,
             });
         }
 
-        return { dispose: () => this.observers.delete(listener) };
-    }
+        const disposable = new Disposable(() => this.observers.delete(observer));
+        if (disposables) {
+            disposables.push(disposable);
+        }
+        return disposable;
+    };
 
-    onDidChangeSwiftFiles(listener: (event: SwiftFileEvent) => unknown): Disposable {
-        this.swiftFileObservers.add(listener);
-        return { dispose: () => this.swiftFileObservers.delete(listener) };
-    }
+    onDidChangeSwiftFiles: vscode.Event<SwiftFileEvent> = (listener, thisArg, disposables) => {
+        const observer = listener.bind(thisArg);
+        this.swiftFileObservers.add(observer);
+        const disposable = new Disposable(() => this.swiftFileObservers.delete(observer));
+        if (disposables) {
+            disposables.push(disposable);
+        }
+        return disposable;
+    };
 
     /** Notify all swift file observers of a change to a `.swift` file. */
     fireSwiftFileChange(event: SwiftFileEvent) {
