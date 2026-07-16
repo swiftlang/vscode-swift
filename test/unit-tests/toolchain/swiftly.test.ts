@@ -1775,6 +1775,28 @@ apt-get -y install libncurses5-dev
         suite("handleMissingSwiftly()", () => {
             const isInstalledStub = mockGlobalFunction(Swiftly, "isInstalled");
             const installSwiftlyStub = mockGlobalFunction(Swiftly, "installSwiftly");
+            const installToolchainStub = mockGlobalFunction(Swiftly, "installToolchain");
+
+            const runProgressTask = () => {
+                mockWindow.withProgress.callsFake((_options, task) =>
+                    task(
+                        { report: () => {} } as any,
+                        {
+                            isCancellationRequested: false,
+                            onCancellationRequested: () => ({ dispose: () => {} }),
+                        } as any
+                    )
+                );
+            };
+
+            const acceptSwiftlyInstallation = () => {
+                isInstalledStub.resolves(false);
+                mockConfiguration.get.withArgs("disableSwiftlyInstallPrompt").returns(false);
+                mockWindow.showWarningMessage.resolves("Install Swiftly" as any);
+                mockWindow.showInformationMessage.resolves("Continue" as any);
+                installSwiftlyStub.resolves();
+                runProgressTask();
+            };
 
             test("should return false when prompt is suppressed", async () => {
                 isInstalledStub.resolves(false);
@@ -1812,6 +1834,42 @@ apt-get -y install libncurses5-dev
                 // In this test, we mocked it to succeed
                 expect(result).to.be.true;
                 expect(installSwiftlyStub).to.have.been.called;
+            });
+
+            test("should prompt to restart normally when the toolchain installs successfully", async () => {
+                acceptSwiftlyInstallation();
+                installToolchainStub.resolves();
+
+                await handleMissingSwiftly(["6.1.0"], "");
+
+                expect(mockWindow.showErrorMessage).to.not.have.been.called;
+                expect(mockWindow.showInformationMessage).to.have.been.calledWith(
+                    match.any,
+                    match.has("detail", match("installation to take effect"))
+                );
+            });
+
+            test("should suppress the error notification and prompt to quit with a failure message when the toolchain fails to install", async () => {
+                acceptSwiftlyInstallation();
+                installToolchainStub.rejects(new Error("Network error"));
+
+                const result = await handleMissingSwiftly(["6.1.0"], "");
+
+                expect(result).to.be.true;
+                expect(mockWindow.showErrorMessage).to.not.have.been.called;
+                expect(mockWindow.showInformationMessage).to.have.been.calledWith(
+                    match.any,
+                    match.has(
+                        "detail",
+                        match(
+                            "Swiftly was successfully installed. Installing Swift version 6.1.0 failed."
+                        )
+                    )
+                );
+                expect(mockWindow.showInformationMessage).to.not.have.been.calledWith(
+                    match.any,
+                    match.has("detail", match("installation to take effect"))
+                );
             });
         });
     });
