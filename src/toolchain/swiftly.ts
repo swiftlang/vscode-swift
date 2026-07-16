@@ -175,8 +175,9 @@ export async function handleMissingSwiftlyToolchain(
 ): Promise<boolean> {
     logger?.info(`Attempting to handle missing toolchain: ${version}`);
 
-    // Ask user for permission
-    const userConsent = await showMissingToolchainDialog(version, folder);
+    // Prompt the user to install the required toolchain, or select an alternative one if it is
+    // not available via Swiftly.
+    const userConsent = await showMissingToolchainDialog(version, logger, folder);
     if (!userConsent) {
         logger?.info(`User declined to install missing toolchain: ${version}`);
         return false;

@@ -18,6 +18,7 @@ import { match } from "sinon";
 import * as vscode from "vscode";
 
 import * as askpass from "@src/askpass/askpass-server";
+import { Commands } from "@src/commands";
 import { handleMissingSwiftly, promptForSwiftlyInstallation } from "@src/commands/installSwiftly";
 import { installSwiftlyToolchainWithProgress } from "@src/commands/installSwiftlyToolchain";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
@@ -1493,18 +1494,33 @@ apt-get -y install libncurses5-dev
 
     suite("handleMissingSwiftlyToolchain", () => {
         const mockWindow = mockGlobalObject(vscode, "window");
+        const mockCommands = mockGlobalObject(vscode, "commands");
         const mockedUtilities = mockGlobalModule(utilities);
         const mockSwiftlyInstallToolchain = mockGlobalValue(Swiftly, "installToolchain");
+        const mockSwiftlyListAvailable = mockGlobalValue(Swiftly, "listAvailable");
+
+        const availableToolchain = {
+            inUse: false,
+            installed: false,
+            isDefault: false,
+            version: { type: "stable" as const, major: 6, minor: 1, patch: 2, name: "6.1.2" },
+        };
+
+        setup(() => {
+            mockCommands.executeCommand.resolves(undefined);
+            // By default the required toolchain is available to install via Swiftly.
+            mockSwiftlyListAvailable.setValue(async () => [availableToolchain]);
+        });
 
         test("handleMissingSwiftlyToolchain returns false when user declines installation", async () => {
-            mockWindow.showWarningMessage.resolves(undefined); // User cancels/declines
+            mockWindow.showInformationMessage.resolves(undefined); // User dismisses the dialog
             const result = await handleMissingSwiftlyToolchain("6.1.2", "/path/to/extension");
             expect(result).to.be.false;
         });
 
         test("handleMissingSwiftlyToolchain returns true when user accepts and installation succeeds", async () => {
             // User accepts the installation
-            mockWindow.showWarningMessage.resolves("Install Toolchain" as any);
+            mockWindow.showInformationMessage.resolves("Install Toolchain" as any);
 
             // Mock successful installation with progress
             mockWindow.withProgress.callsFake(async (_options, task) => {
@@ -1528,6 +1544,17 @@ apt-get -y install libncurses5-dev
             expect(result).to.be.true;
         });
 
+        test("handleMissingSwiftlyToolchain prompts to select a toolchain when the version is unavailable", async () => {
+            // The required toolchain cannot be installed via Swiftly
+            mockSwiftlyListAvailable.setValue(async () => []);
+            mockWindow.showInformationMessage.resolves("Select Toolchain" as any);
+
+            const result = await handleMissingSwiftlyToolchain("6.1.2", "/path/to/extension");
+
+            expect(result).to.be.false;
+            expect(mockCommands.executeCommand).to.have.been.calledWith(Commands.SELECT_TOOLCHAIN);
+        });
+
         test("getActiveToolchain falls back to global toolchain when user declines and cwd is provided", async () => {
             const missingToolchainError = Object.create(ExecFileError.prototype);
             missingToolchainError.causedBy = new Error("swiftly use failed");
@@ -1544,7 +1571,7 @@ apt-get -y install libncurses5-dev
                 .resolves({ stdout: "/global/toolchain/path\n", stderr: "" });
 
             // User declines installation prompt
-            mockWindow.showWarningMessage.resolves(undefined);
+            mockWindow.showInformationMessage.resolves(undefined);
 
             const mockLogger = mockObject<SwiftLogger>({
                 info: mockFn(),

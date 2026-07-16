@@ -16,10 +16,14 @@ import * as path from "path";
 import { match } from "sinon";
 import * as vscode from "vscode";
 
+import { Commands } from "@src/commands";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { Swiftly } from "@src/toolchain/swiftly";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
-import { showToolchainSelectionQuickPick } from "@src/ui/ToolchainSelection";
+import {
+    showMissingToolchainDialog,
+    showToolchainSelectionQuickPick,
+} from "@src/ui/ToolchainSelection";
 import * as utilities from "@src/utilities/utilities";
 
 import {
@@ -384,6 +388,101 @@ suite("ToolchainSelection Unit Test Suite", () => {
                 "path",
                 undefined,
                 vscode.ConfigurationTarget.Global
+            );
+        });
+    });
+
+    suite("showMissingToolchainDialog", () => {
+        const availableToolchain = {
+            inUse: false,
+            installed: false,
+            isDefault: false,
+            version: { type: "stable" as const, major: 6, minor: 1, patch: 2, name: "6.1.2" },
+        };
+
+        setup(() => {
+            mockedPlatform.setValue("darwin");
+        });
+
+        test("prompts to install when the required toolchain is available via Swiftly", async () => {
+            mockedSwiftly.listAvailable.resolves([availableToolchain]);
+            mockedVSCodeWindow.showInformationMessage.resolves("Install Toolchain" as any);
+
+            const result = await showMissingToolchainDialog("6.1.2", instance(mockedLogger));
+
+            expect(result).to.be.true;
+            expect(mockedVSCodeWindow.showInformationMessage).to.have.been.calledWith(
+                match("6.1.2"),
+                match.has("modal", true),
+                "Install Toolchain"
+            );
+        });
+
+        test("returns false when the user dismisses the install prompt", async () => {
+            mockedSwiftly.listAvailable.resolves([availableToolchain]);
+            mockedVSCodeWindow.showInformationMessage.resolves(undefined);
+
+            const result = await showMissingToolchainDialog("6.1.2", instance(mockedLogger));
+
+            expect(result).to.be.false;
+            expect(mockedVSCodeCommands.executeCommand).to.not.have.been.calledWith(
+                Commands.SELECT_TOOLCHAIN
+            );
+        });
+
+        test("prompts to select a toolchain when the required version is unavailable", async () => {
+            mockedSwiftly.listAvailable.resolves([]);
+            mockedVSCodeWindow.showInformationMessage.resolves("Select Toolchain" as any);
+
+            const result = await showMissingToolchainDialog("6.1.2", instance(mockedLogger));
+
+            expect(result).to.be.false;
+            expect(mockedVSCodeWindow.showInformationMessage).to.have.been.calledWith(
+                match("6.1.2"),
+                match.has("modal", true),
+                "Select Toolchain"
+            );
+            expect(mockedVSCodeCommands.executeCommand).to.have.been.calledWith(
+                Commands.SELECT_TOOLCHAIN
+            );
+        });
+
+        test("does not select a toolchain when the user dismisses the unavailable prompt", async () => {
+            mockedSwiftly.listAvailable.resolves([]);
+            mockedVSCodeWindow.showInformationMessage.resolves(undefined);
+
+            const result = await showMissingToolchainDialog("6.1.2", instance(mockedLogger));
+
+            expect(result).to.be.false;
+            expect(mockedVSCodeCommands.executeCommand).to.not.have.been.calledWith(
+                Commands.SELECT_TOOLCHAIN
+            );
+        });
+
+        test("queries Swiftly for the snapshot branch when a snapshot version is required", async () => {
+            mockedSwiftly.listAvailable.resolves([]);
+            mockedVSCodeWindow.showInformationMessage.resolves(undefined);
+
+            await showMissingToolchainDialog("main-snapshot-2025-01-15", instance(mockedLogger));
+
+            expect(mockedSwiftly.listAvailable).to.have.been.calledWith(
+                "main-snapshot",
+                instance(mockedLogger)
+            );
+        });
+
+        test("includes the folder name in the message", async () => {
+            mockedSwiftly.listAvailable.resolves([availableToolchain]);
+            mockedVSCodeWindow.showInformationMessage.resolves(undefined);
+
+            await showMissingToolchainDialog(
+                "6.1.2",
+                instance(mockedLogger),
+                vscode.Uri.file("/path/to/MyPackage")
+            );
+
+            expect(mockedVSCodeWindow.showInformationMessage).to.have.been.calledWith(
+                match("MyPackage")
             );
         });
     });
