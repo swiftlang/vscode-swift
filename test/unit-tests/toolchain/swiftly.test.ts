@@ -23,7 +23,6 @@ import { installSwiftlyToolchainWithProgress } from "@src/commands/installSwiftl
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { Swiftly, handleMissingSwiftlyToolchain } from "@src/toolchain/swiftly";
 import * as utilities from "@src/utilities/utilities";
-import { ExecFileError } from "@src/utilities/utilities";
 
 import {
     MockedObject,
@@ -1493,28 +1492,44 @@ apt-get -y install libncurses5-dev
             const result = await handleMissingSwiftlyToolchain("6.1.2", "/path/to/extension");
             expect(result).to.be.true;
         });
+    });
 
-        test("getActiveToolchain falls back to global toolchain when user declines and cwd is provided", async () => {
-            const missingToolchainError = Object.create(ExecFileError.prototype);
-            missingToolchainError.causedBy = new Error("swiftly use failed");
-            missingToolchainError.stdout = "";
-            missingToolchainError.stderr =
-                "The swift version file uses toolchain version 6.1.2, but it doesn't match any of the installed toolchains";
-            missingToolchainError.message = "swiftly use failed";
+    suite("getActiveToolchain", () => {
+        let mockLogger: MockedObject<SwiftLogger>;
 
-            // First call (with cwd) fails with missing toolchain error
-            mockedUtilities.execFile.onFirstCall().rejects(missingToolchainError);
-            // Second call (recursive, with undefined cwd) succeeds
-            mockedUtilities.execFile
-                .onSecondCall()
-                .resolves({ stdout: "/global/toolchain/path\n", stderr: "" });
-
-            // User declines installation prompt
-            mockWindow.showWarningMessage.resolves(undefined);
-
-            const mockLogger = mockObject<SwiftLogger>({
+        setup(() => {
+            mockLogger = mockObject<SwiftLogger>({
                 info: mockFn(),
             });
+        });
+
+        test("returns the in-use toolchain location without installing it", async () => {
+            mockUtilities.execFile
+                .withArgs("swiftly", ["use", "--print-location"])
+                .resolves({ stdout: "/toolchains/6.1.2\n", stderr: "" });
+
+            const result = await Swiftly.getActiveToolchain(
+                "/extension/root",
+                instance(mockLogger)
+            );
+
+            expect(result).to.equal("/toolchains/6.1.2");
+            expect(mockUtilities.execFile).to.not.have.been.calledWith(
+                "swiftly",
+                match.array.startsWith(["install"])
+            );
+        });
+
+        test("installs the active toolchain and retries when it is not installed", async () => {
+            const useLocation = mockUtilities.execFile.withArgs("swiftly", [
+                "use",
+                "--print-location",
+            ]);
+            useLocation.onFirstCall().rejects(new Error("toolchain is not installed"));
+            useLocation.onSecondCall().resolves({ stdout: "/toolchains/6.1.2\n", stderr: "" });
+            mockUtilities.execFile
+                .withArgs("swiftly", match.array.startsWith(["install"]))
+                .resolves({ stdout: "", stderr: "" });
 
             const cwd = vscode.Uri.file("/project/path");
             const result = await Swiftly.getActiveToolchain(
@@ -1523,8 +1538,27 @@ apt-get -y install libncurses5-dev
                 cwd
             );
 
-            expect(result).to.equal("/global/toolchain/path");
-            expect(mockedUtilities.execFile).to.have.been.calledTwice;
+            expect(result).to.equal("/toolchains/6.1.2");
+            expect(mockUtilities.execFile).to.have.been.calledWith(
+                "swiftly",
+                ["install", "--assume-yes"],
+                match({ cwd: cwd.fsPath })
+            );
+        });
+
+        test("throws when the installation fails", async () => {
+            mockUtilities.execFile
+                .withArgs("swiftly", ["use", "--print-location"])
+                .rejects(new Error("toolchain is not installed"));
+            mockUtilities.execFile
+                .withArgs("swiftly", match.array.startsWith(["install"]))
+                .rejects(new Error("install failed"));
+
+            await expect(
+                Swiftly.getActiveToolchain("/extension/root", instance(mockLogger))
+            ).to.eventually.be.rejectedWith(
+                "Failed to install the active swift toolchain via swiftly."
+            );
         });
     });
 

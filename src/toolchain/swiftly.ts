@@ -28,7 +28,7 @@ import { SwiftLogger } from "../logging/SwiftLogger";
 import { showMissingToolchainDialog } from "../ui/ToolchainSelection";
 import { touch } from "../utilities/filesystem";
 import { findBinaryInPath } from "../utilities/shell";
-import { ExecFileError, execFile, execFileStreamOutput } from "../utilities/utilities";
+import { execFile, execFileStreamOutput } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { SwiftlyConfig } from "./ToolchainVersion";
 
@@ -609,38 +609,25 @@ export class Swiftly {
     }
 
     public static async getActiveToolchain(
-        extensionRoot: string,
+        _extensionRoot: string,
         logger: SwiftLogger,
         cwd?: vscode.Uri
     ): Promise<string> {
         try {
             return await Swiftly.inUseLocation("swiftly", cwd);
-        } catch (error: unknown) {
-            if (error instanceof ExecFileError) {
-                // Check if this is a missing toolchain error
-                const missingToolchainError = parseSwiftlyMissingToolchainError(error.stderr);
-                if (missingToolchainError) {
-                    // Attempt automatic installation
-                    const installed = await handleMissingSwiftlyToolchain(
-                        missingToolchainError.version,
-                        extensionRoot,
-                        logger,
-                        cwd
-                    );
-                    if (installed) {
-                        // Retry toolchain location after successful installation
-                        return await this.getActiveToolchain(extensionRoot, logger, cwd);
-                    } else if (cwd) {
-                        // If the user dismisses the installation prompt then fall back
-                        // to using the global toolchain
-                        return await Swiftly.getActiveToolchain(extensionRoot, logger);
-                    }
-                }
+        } catch {
+            // The active toolchain may not be installed yet. Ask swiftly to install
+            // whichever version is currently selected (resolved from `.swift-version`
+            // or the global default) before locating it again.
+            logger.info("Active swift toolchain is not installed, installing via swiftly");
+            try {
+                await execFile("swiftly", ["install", "--assume-yes"], { cwd: cwd?.fsPath });
+            } catch (error) {
+                throw Error("Failed to install the active swift toolchain via swiftly.", {
+                    cause: error,
+                });
             }
-            // We were unable to resolve the active swift toolchain.
-            throw Error("Failed to determine the active swift toolchain via swiftly.", {
-                cause: error,
-            });
+            return await Swiftly.inUseLocation("swiftly", cwd);
         }
     }
 
