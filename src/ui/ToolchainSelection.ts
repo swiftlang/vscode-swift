@@ -61,13 +61,21 @@ export async function showToolchainError(folder?: vscode.Uri): Promise<boolean> 
     const folderName = folder ? `${FolderContext.uriName(folder)}: ` : "";
     if (configuration.path) {
         selected = await vscode.window.showErrorMessage(
-            `${folderName}The Swift executable at "${configuration.path}" either could not be found or failed to launch. Please select a new toolchain.`,
+            "Toolchain failed",
+            {
+                modal: true,
+                detail: `${folderName}The Swift executable at "${configuration.path}" either could not be found or failed to launch. Please select a new toolchain.`,
+            },
             "Remove From Settings",
             "Select Toolchain"
         );
     } else {
         selected = await vscode.window.showErrorMessage(
-            `${folderName}Unable to automatically discover your Swift toolchain. Either install a toolchain from Swift.org or provide the path to an existing toolchain.`,
+            "Missing toolchain",
+            {
+                modal: true,
+                detail: `${folderName}Unable to automatically discover your Swift toolchain. Either install a toolchain from Swift.org or provide the path to an existing toolchain.`,
+            },
             "Open Documentation",
             "Select Toolchain"
         );
