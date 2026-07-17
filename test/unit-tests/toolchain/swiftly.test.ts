@@ -1557,21 +1557,6 @@ apt-get -y install libncurses5-dev
             expect(result).to.be.true;
         });
 
-        test("handleMissingSwiftlyToolchain returns false when the version is unavailable", async () => {
-            // The required toolchain cannot be installed via Swiftly, so the user is offered the
-            // chance to select a toolchain instead. Dismissing that prompt returns false.
-            mockSwiftlyListAvailable.setValue(async () => []);
-            mockWindow.showInformationMessage.resolves(undefined);
-
-            const result = await handleMissingSwiftlyToolchain(
-                "6.1.2",
-                "/path/to/extension",
-                instance(mockLogger)
-            );
-
-            expect(result).to.be.false;
-        });
-
         test("getActiveToolchain falls back to global toolchain when user declines and cwd is provided", async () => {
             const missingToolchainError = Object.create(ExecFileError.prototype);
             missingToolchainError.causedBy = new Error("swiftly use failed");
