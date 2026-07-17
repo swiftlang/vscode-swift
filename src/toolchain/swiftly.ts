@@ -135,30 +135,6 @@ interface PostInstallValidationResult {
     invalidCommands?: string[];
 }
 
-interface MissingToolchainError {
-    version: string;
-    originalError: string;
-}
-
-/**
- * Parses Swiftly error message to detect missing toolchain scenarios
- * @param stderr The stderr output from swiftly command
- * @returns MissingToolchainError if this is a missing toolchain error, undefined otherwise
- */
-export function parseSwiftlyMissingToolchainError(
-    stderr: string
-): MissingToolchainError | undefined {
-    // Parse error message like: "uses toolchain version 6.1.2, but it doesn't match any of the installed toolchains"
-    const versionMatch = /uses toolchain version ([0-9.]+(?:-[a-zA-Z0-9-]+)*)/.exec(stderr);
-    if (versionMatch && stderr.includes("doesn't match any of the installed toolchains")) {
-        return {
-            version: versionMatch[1],
-            originalError: stderr,
-        };
-    }
-    return undefined;
-}
-
 /**
  * Attempts to automatically install a missing Swiftly toolchain with user consent
  * @param version The toolchain version to install

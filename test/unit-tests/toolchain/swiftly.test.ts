@@ -21,11 +21,7 @@ import * as askpass from "@src/askpass/askpass-server";
 import { handleMissingSwiftly, promptForSwiftlyInstallation } from "@src/commands/installSwiftly";
 import { installSwiftlyToolchainWithProgress } from "@src/commands/installSwiftlyToolchain";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
-import {
-    Swiftly,
-    handleMissingSwiftlyToolchain,
-    parseSwiftlyMissingToolchainError,
-} from "@src/toolchain/swiftly";
+import { Swiftly, handleMissingSwiftlyToolchain } from "@src/toolchain/swiftly";
 import * as utilities from "@src/utilities/utilities";
 import { ExecFileError } from "@src/utilities/utilities";
 
@@ -1458,36 +1454,6 @@ apt-get -y install libncurses5-dev
                 "sudo",
                 match.array
             );
-        });
-    });
-
-    suite("Missing Toolchain Handling", () => {
-        test("parseSwiftlyMissingToolchainError parses version correctly", () => {
-            const stderr =
-                "The swift version file uses toolchain version 6.1.2, but it doesn't match any of the installed toolchains. You can install the toolchain with `swiftly install`.";
-            const result = parseSwiftlyMissingToolchainError(stderr);
-            expect(result?.version).to.equal("6.1.2");
-            expect(result?.originalError).to.equal(stderr);
-        });
-
-        test("parseSwiftlyMissingToolchainError returns undefined for other errors", () => {
-            const stderr = "Some other error message";
-            const result = parseSwiftlyMissingToolchainError(stderr);
-            expect(result).to.be.undefined;
-        });
-
-        test("parseSwiftlyMissingToolchainError handles snapshot versions", () => {
-            const stderr =
-                "uses toolchain version 6.1-snapshot-2024-12-01, but it doesn't match any of the installed toolchains";
-            const result = parseSwiftlyMissingToolchainError(stderr);
-            expect(result?.version).to.equal("6.1-snapshot-2024-12-01");
-        });
-
-        test("parseSwiftlyMissingToolchainError handles versions with hyphens", () => {
-            const stderr =
-                "uses toolchain version 6.0-dev, but it doesn't match any of the installed toolchains";
-            const result = parseSwiftlyMissingToolchainError(stderr);
-            expect(result?.version).to.equal("6.0-dev");
         });
     });
 
