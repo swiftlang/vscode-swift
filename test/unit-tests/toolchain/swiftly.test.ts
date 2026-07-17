@@ -18,7 +18,6 @@ import { match } from "sinon";
 import * as vscode from "vscode";
 
 import * as askpass from "@src/askpass/askpass-server";
-import { Commands } from "@src/commands";
 import { handleMissingSwiftly, promptForSwiftlyInstallation } from "@src/commands/installSwiftly";
 import { installSwiftlyToolchainWithProgress } from "@src/commands/installSwiftlyToolchain";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
@@ -1494,7 +1493,6 @@ apt-get -y install libncurses5-dev
 
     suite("handleMissingSwiftlyToolchain", () => {
         const mockWindow = mockGlobalObject(vscode, "window");
-        const mockCommands = mockGlobalObject(vscode, "commands");
         const mockedUtilities = mockGlobalModule(utilities);
         const mockSwiftlyInstallToolchain = mockGlobalValue(Swiftly, "installToolchain");
         const mockSwiftlyListAvailable = mockGlobalValue(Swiftly, "listAvailable");
@@ -1507,7 +1505,6 @@ apt-get -y install libncurses5-dev
         };
 
         setup(() => {
-            mockCommands.executeCommand.resolves(undefined);
             // By default the required toolchain is available to install via Swiftly.
             mockSwiftlyListAvailable.setValue(async () => [availableToolchain]);
         });
@@ -1544,15 +1541,15 @@ apt-get -y install libncurses5-dev
             expect(result).to.be.true;
         });
 
-        test("handleMissingSwiftlyToolchain prompts to select a toolchain when the version is unavailable", async () => {
-            // The required toolchain cannot be installed via Swiftly
+        test("handleMissingSwiftlyToolchain returns false when the version is unavailable", async () => {
+            // The required toolchain cannot be installed via Swiftly, so the user is offered the
+            // chance to select a toolchain instead. Dismissing that prompt returns false.
             mockSwiftlyListAvailable.setValue(async () => []);
-            mockWindow.showInformationMessage.resolves("Select Toolchain" as any);
+            mockWindow.showInformationMessage.resolves(undefined);
 
             const result = await handleMissingSwiftlyToolchain("6.1.2", "/path/to/extension");
 
             expect(result).to.be.false;
-            expect(mockCommands.executeCommand).to.have.been.calledWith(Commands.SELECT_TOOLCHAIN);
         });
 
         test("getActiveToolchain falls back to global toolchain when user declines and cwd is provided", async () => {

@@ -16,7 +16,6 @@ import * as path from "path";
 import { match } from "sinon";
 import * as vscode from "vscode";
 
-import { Commands } from "@src/commands";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { Swiftly } from "@src/toolchain/swiftly";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
@@ -425,9 +424,7 @@ suite("ToolchainSelection Unit Test Suite", () => {
             const result = await showMissingToolchainDialog("6.1.2", instance(mockedLogger));
 
             expect(result).to.be.false;
-            expect(mockedVSCodeCommands.executeCommand).to.not.have.been.calledWith(
-                Commands.SELECT_TOOLCHAIN
-            );
+            expect(mockedVSCodeWindow.showQuickPick).to.not.have.been.called;
         });
 
         test("prompts to select a toolchain when the required version is unavailable", async () => {
@@ -442,8 +439,9 @@ suite("ToolchainSelection Unit Test Suite", () => {
                 match.has("modal", true),
                 "Select Toolchain"
             );
-            expect(mockedVSCodeCommands.executeCommand).to.have.been.calledWith(
-                Commands.SELECT_TOOLCHAIN
+            expect(mockedVSCodeWindow.showQuickPick).to.have.been.calledWith(
+                match.any,
+                match.has("title", "Select the Swift toolchain")
             );
         });
 
@@ -454,9 +452,7 @@ suite("ToolchainSelection Unit Test Suite", () => {
             const result = await showMissingToolchainDialog("6.1.2", instance(mockedLogger));
 
             expect(result).to.be.false;
-            expect(mockedVSCodeCommands.executeCommand).to.not.have.been.calledWith(
-                Commands.SELECT_TOOLCHAIN
-            );
+            expect(mockedVSCodeWindow.showQuickPick).to.not.have.been.called;
         });
 
         test("queries Swiftly for the snapshot branch when a snapshot version is required", async () => {

@@ -130,7 +130,7 @@ export async function showMissingToolchainDialog(
         "Select Toolchain"
     );
     if (choice === "Select Toolchain") {
-        await selectToolchain();
+        await showToolchainSelectionQuickPick(undefined, logger, folder);
     }
     return false;
 }
@@ -219,7 +219,7 @@ type SelectToolchainItem = SwiftToolchainItem | ActionItem | SeparatorItem;
  */
 async function getQuickPickItems(
     activeToolchain: SwiftToolchain | undefined,
-    logger: SwiftLogger,
+    logger?: SwiftLogger,
     cwd?: vscode.Uri
 ): Promise<SelectToolchainItem[]> {
     // Find any Xcode installations on the system
@@ -269,7 +269,7 @@ async function getQuickPickItems(
                     );
                 }
             } catch (error) {
-                logger.error(error);
+                logger?.error(error);
                 void vscode.window.showErrorMessage(`Failed to switch Swiftly toolchain: ${error}`);
             }
         },
@@ -411,7 +411,7 @@ async function getSwiftlyActions(): Promise<ActionItem[]> {
  */
 export async function showToolchainSelectionQuickPick(
     activeToolchain: SwiftToolchain | undefined,
-    logger: SwiftLogger,
+    logger?: SwiftLogger,
     cwd?: vscode.Uri
 ) {
     let xcodePaths: string[] = [];
