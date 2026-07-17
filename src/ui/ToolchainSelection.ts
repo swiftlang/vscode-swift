@@ -139,11 +139,6 @@ export async function showMissingToolchainDialog(
  * Determines whether the given Swift version is available to install via Swiftly.
  */
 async function isSwiftlyToolchainAvailable(version: string, logger: SwiftLogger): Promise<boolean> {
-    // If it's a snapshot, always try to install it
-    if (version.toLowerCase().includes("snapshot")) {
-        return true;
-    }
-
     const branch = swiftlySnapshotBranch(version);
     const availableToolchains = await Swiftly.listAvailable(branch, logger);
     return availableToolchains.some(toolchain => toolchain.version.name === version);
