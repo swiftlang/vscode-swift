@@ -114,7 +114,7 @@ export async function showMissingToolchainDialog(
             `${folderName}Swift ${version} is not installed`,
             {
                 modal: true,
-                detail: `Swift version ${version} is required but not installed. Would you like to install it using Swiftly?`,
+                detail: `This project's .swift-version requires ${version}, but it is not installed. Would you like to install it using Swiftly?`,
             },
             "Install Toolchain"
         );
@@ -125,7 +125,7 @@ export async function showMissingToolchainDialog(
         `${folderName}Swift ${version} is not available`,
         {
             modal: true,
-            detail: `Swift version ${version} is required but is not available to install via Swiftly.`,
+            detail: `This project's .swift-version requires ${version}, but it is not available to install via Swiftly.`,
         },
         "Select Toolchain"
     );
