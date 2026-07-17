@@ -94,10 +94,9 @@ export async function showToolchainError(folder?: vscode.Uri): Promise<boolean> 
  * Handles a required Swift toolchain that is not installed.
  *
  * Checks whether the required version is available to install via Swiftly. If it is, the user is
- * prompted to install it. If it isn't (for example the user relies on a custom toolchain that
- * Swiftly does not manage), the user is offered the option to select a toolchain instead.
+ * prompted to install it. If it isn't, the user is offered the option to select a toolchain instead.
  *
- * @param version The required toolchain version, e.g. from the folder's `.swift-version` file.
+ * @param version The required toolchain version
  * @param logger Logger used while querying the toolchains available via Swiftly.
  * @param folder Optional folder context for the message.
  * @returns Promise<boolean> true if the user chose to install the toolchain via Swiftly, false otherwise.
