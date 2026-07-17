@@ -104,7 +104,7 @@ export async function showToolchainError(folder?: vscode.Uri): Promise<boolean> 
  */
 export async function showMissingToolchainDialog(
     version: string,
-    logger?: SwiftLogger,
+    logger: SwiftLogger,
     folder?: vscode.Uri
 ): Promise<boolean> {
     const folderName = folder ? `${FolderContext.uriName(folder)}: ` : "";
@@ -138,10 +138,7 @@ export async function showMissingToolchainDialog(
 /**
  * Determines whether the given Swift version is available to install via Swiftly.
  */
-async function isSwiftlyToolchainAvailable(
-    version: string,
-    logger?: SwiftLogger
-): Promise<boolean> {
+async function isSwiftlyToolchainAvailable(version: string, logger: SwiftLogger): Promise<boolean> {
     const branch = swiftlySnapshotBranch(version);
     const availableToolchains = await Swiftly.listAvailable(branch, logger);
     return availableToolchains.some(toolchain => toolchain.version.name === version);
@@ -219,7 +216,7 @@ type SelectToolchainItem = SwiftToolchainItem | ActionItem | SeparatorItem;
  */
 async function getQuickPickItems(
     activeToolchain: SwiftToolchain | undefined,
-    logger?: SwiftLogger,
+    logger: SwiftLogger,
     cwd?: vscode.Uri
 ): Promise<SelectToolchainItem[]> {
     // Find any Xcode installations on the system
@@ -269,7 +266,7 @@ async function getQuickPickItems(
                     );
                 }
             } catch (error) {
-                logger?.error(error);
+                logger.error(error);
                 void vscode.window.showErrorMessage(`Failed to switch Swiftly toolchain: ${error}`);
             }
         },
@@ -411,7 +408,7 @@ async function getSwiftlyActions(): Promise<ActionItem[]> {
  */
 export async function showToolchainSelectionQuickPick(
     activeToolchain: SwiftToolchain | undefined,
-    logger?: SwiftLogger,
+    logger: SwiftLogger,
     cwd?: vscode.Uri
 ) {
     let xcodePaths: string[] = [];

@@ -1504,14 +1504,26 @@ apt-get -y install libncurses5-dev
             version: { type: "stable" as const, major: 6, minor: 1, patch: 2, name: "6.1.2" },
         };
 
+        let mockLogger: MockedObject<SwiftLogger>;
+
         setup(() => {
+            mockLogger = mockObject<SwiftLogger>({
+                info: mockFn(),
+                warn: mockFn(),
+                error: mockFn(),
+                debug: mockFn(),
+            });
             // By default the required toolchain is available to install via Swiftly.
             mockSwiftlyListAvailable.setValue(async () => [availableToolchain]);
         });
 
         test("handleMissingSwiftlyToolchain returns false when user declines installation", async () => {
             mockWindow.showInformationMessage.resolves(undefined); // User dismisses the dialog
-            const result = await handleMissingSwiftlyToolchain("6.1.2", "/path/to/extension");
+            const result = await handleMissingSwiftlyToolchain(
+                "6.1.2",
+                "/path/to/extension",
+                instance(mockLogger)
+            );
             expect(result).to.be.false;
         });
 
@@ -1537,7 +1549,11 @@ apt-get -y install libncurses5-dev
                 .withArgs("swiftly", match.any)
                 .resolves({ stdout: "", stderr: "" });
 
-            const result = await handleMissingSwiftlyToolchain("6.1.2", "/path/to/extension");
+            const result = await handleMissingSwiftlyToolchain(
+                "6.1.2",
+                "/path/to/extension",
+                instance(mockLogger)
+            );
             expect(result).to.be.true;
         });
 
@@ -1547,7 +1563,11 @@ apt-get -y install libncurses5-dev
             mockSwiftlyListAvailable.setValue(async () => []);
             mockWindow.showInformationMessage.resolves(undefined);
 
-            const result = await handleMissingSwiftlyToolchain("6.1.2", "/path/to/extension");
+            const result = await handleMissingSwiftlyToolchain(
+                "6.1.2",
+                "/path/to/extension",
+                instance(mockLogger)
+            );
 
             expect(result).to.be.false;
         });
