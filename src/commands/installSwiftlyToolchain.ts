@@ -28,13 +28,16 @@ import {
  *
  * @param version The toolchain version to install
  * @param logger Optional logger for error reporting
+ * @param options.onError Invoked with the error when a non-cancellation failure occurs. When
+ * provided, the default error notification is suppressed so the caller can report it instead.
  * @returns A promise that resolves to true if installation succeeded, false otherwise
  */
 export async function installSwiftlyToolchainWithProgress(
     version: string,
     extensionRoot: string,
     logger?: SwiftLogger,
-    swiftlyPath?: string
+    swiftlyPath?: string,
+    options?: { onError?: (error: unknown) => void }
 ): Promise<boolean> {
     try {
         await vscode.window.withProgress(
@@ -93,6 +96,10 @@ export async function installSwiftlyToolchainWithProgress(
         }
 
         logger?.error(new Error(`Failed to install Swift ${version}`, { cause: error }));
+        if (options?.onError) {
+            options.onError(error);
+            return false;
+        }
         void vscode.window.showErrorMessage(`Failed to install Swift ${version}: ${error}`);
         return false;
     }

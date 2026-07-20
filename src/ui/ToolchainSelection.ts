@@ -61,13 +61,21 @@ export async function showToolchainError(folder?: vscode.Uri): Promise<boolean> 
     const folderName = folder ? `${FolderContext.uriName(folder)}: ` : "";
     if (configuration.path) {
         selected = await vscode.window.showErrorMessage(
-            `${folderName}The Swift executable at "${configuration.path}" either could not be found or failed to launch. Please select a new toolchain.`,
+            "Toolchain failed",
+            {
+                modal: true,
+                detail: `${folderName}The Swift executable at "${configuration.path}" either could not be found or failed to launch. Please select a new toolchain.`,
+            },
             "Remove From Settings",
             "Select Toolchain"
         );
     } else {
         selected = await vscode.window.showErrorMessage(
-            `${folderName}Unable to automatically discover your Swift toolchain. Either install a toolchain from Swift.org or provide the path to an existing toolchain.`,
+            "Missing toolchain",
+            {
+                modal: true,
+                detail: `${folderName}Unable to automatically discover your Swift toolchain. Either install a toolchain from Swift.org or provide the path to an existing toolchain.`,
+            },
             "Open Documentation",
             "Select Toolchain"
         );
@@ -91,22 +99,64 @@ export async function showToolchainError(folder?: vscode.Uri): Promise<boolean> 
 }
 
 /**
- * Shows a dialog asking user permission to install a missing Swiftly toolchain
- * @param version The toolchain version to install
- * @param folder Optional folder context for the error
- * @returns Promise<boolean> true if user agrees to install, false otherwise
+ * Handles a required Swift toolchain that is not installed.
+ *
+ * Checks whether the required version is available to install via Swiftly. If it is, the user is
+ * prompted to install it. If it isn't, the user is offered the option to select a toolchain instead.
+ *
+ * @param version The required toolchain version
+ * @param logger Logger used while querying the toolchains available via Swiftly.
+ * @param folder Optional folder context for the message.
+ * @returns Promise<boolean> true if the user chose to install the toolchain via Swiftly, false otherwise.
  */
 export async function showMissingToolchainDialog(
     version: string,
+    logger: SwiftLogger,
     folder?: vscode.Uri
 ): Promise<boolean> {
     const folderName = folder ? `${FolderContext.uriName(folder)}: ` : "";
-    const message =
-        `${folderName}Swift version ${version} is required but not installed. ` +
-        `Would you like to automatically install it using Swiftly?`;
 
-    const choice = await vscode.window.showWarningMessage(message, "Install Toolchain", "Cancel");
-    return choice === "Install Toolchain";
+    if (await isSwiftlyToolchainAvailable(version, logger)) {
+        const choice = await vscode.window.showInformationMessage(
+            `${folderName}Swift ${version} is not installed`,
+            {
+                modal: true,
+                detail: `This project's .swift-version requires ${version}, but it is not installed. Would you like to install it using Swiftly?`,
+            },
+            "Install Toolchain"
+        );
+        return choice === "Install Toolchain";
+    }
+
+    const choice = await vscode.window.showInformationMessage(
+        `${folderName}Swift ${version} is not available`,
+        {
+            modal: true,
+            detail: `This project's .swift-version requires ${version}, but it is not available to install via Swiftly.`,
+        },
+        "Select Toolchain"
+    );
+    if (choice === "Select Toolchain") {
+        await showToolchainSelectionQuickPick(undefined, logger, folder);
+    }
+    return false;
+}
+
+/**
+ * Determines whether the given Swift version is available to install via Swiftly.
+ */
+async function isSwiftlyToolchainAvailable(version: string, logger: SwiftLogger): Promise<boolean> {
+    const branch = swiftlySnapshotBranch(version);
+    const availableToolchains = await Swiftly.listAvailable(branch, logger);
+    return availableToolchains.some(toolchain => toolchain.version.name === version);
+}
+
+/**
+ * Derives the Swiftly snapshot branch (e.g. "main-snapshot", "6.1-snapshot") from a snapshot
+ * toolchain version. Returns undefined for stable releases, which are listed without a branch.
+ */
+function swiftlySnapshotBranch(version: string): string | undefined {
+    return /^(.+-snapshot)-\d{4}-\d{2}-\d{2}$/.exec(version)?.[1];
 }
 
 export async function selectToolchain() {

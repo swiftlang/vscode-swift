@@ -1495,16 +1495,41 @@ apt-get -y install libncurses5-dev
         const mockWindow = mockGlobalObject(vscode, "window");
         const mockedUtilities = mockGlobalModule(utilities);
         const mockSwiftlyInstallToolchain = mockGlobalValue(Swiftly, "installToolchain");
+        const mockSwiftlyListAvailable = mockGlobalValue(Swiftly, "listAvailable");
+
+        const availableToolchain = {
+            inUse: false,
+            installed: false,
+            isDefault: false,
+            version: { type: "stable" as const, major: 6, minor: 1, patch: 2, name: "6.1.2" },
+        };
+
+        let mockLogger: MockedObject<SwiftLogger>;
+
+        setup(() => {
+            mockLogger = mockObject<SwiftLogger>({
+                info: mockFn(),
+                warn: mockFn(),
+                error: mockFn(),
+                debug: mockFn(),
+            });
+            // By default the required toolchain is available to install via Swiftly.
+            mockSwiftlyListAvailable.setValue(async () => [availableToolchain]);
+        });
 
         test("handleMissingSwiftlyToolchain returns false when user declines installation", async () => {
-            mockWindow.showWarningMessage.resolves(undefined); // User cancels/declines
-            const result = await handleMissingSwiftlyToolchain("6.1.2", "/path/to/extension");
+            mockWindow.showInformationMessage.resolves(undefined); // User dismisses the dialog
+            const result = await handleMissingSwiftlyToolchain(
+                "6.1.2",
+                "/path/to/extension",
+                instance(mockLogger)
+            );
             expect(result).to.be.false;
         });
 
         test("handleMissingSwiftlyToolchain returns true when user accepts and installation succeeds", async () => {
             // User accepts the installation
-            mockWindow.showWarningMessage.resolves("Install Toolchain" as any);
+            mockWindow.showInformationMessage.resolves("Install Toolchain" as any);
 
             // Mock successful installation with progress
             mockWindow.withProgress.callsFake(async (_options, task) => {
@@ -1524,7 +1549,11 @@ apt-get -y install libncurses5-dev
                 .withArgs("swiftly", match.any)
                 .resolves({ stdout: "", stderr: "" });
 
-            const result = await handleMissingSwiftlyToolchain("6.1.2", "/path/to/extension");
+            const result = await handleMissingSwiftlyToolchain(
+                "6.1.2",
+                "/path/to/extension",
+                instance(mockLogger)
+            );
             expect(result).to.be.true;
         });
 
@@ -1544,7 +1573,7 @@ apt-get -y install libncurses5-dev
                 .resolves({ stdout: "/global/toolchain/path\n", stderr: "" });
 
             // User declines installation prompt
-            mockWindow.showWarningMessage.resolves(undefined);
+            mockWindow.showInformationMessage.resolves(undefined);
 
             const mockLogger = mockObject<SwiftLogger>({
                 info: mockFn(),
@@ -1775,6 +1804,28 @@ apt-get -y install libncurses5-dev
         suite("handleMissingSwiftly()", () => {
             const isInstalledStub = mockGlobalFunction(Swiftly, "isInstalled");
             const installSwiftlyStub = mockGlobalFunction(Swiftly, "installSwiftly");
+            const installToolchainStub = mockGlobalFunction(Swiftly, "installToolchain");
+
+            const runProgressTask = () => {
+                mockWindow.withProgress.callsFake((_options, task) =>
+                    task(
+                        { report: () => {} } as any,
+                        {
+                            isCancellationRequested: false,
+                            onCancellationRequested: () => ({ dispose: () => {} }),
+                        } as any
+                    )
+                );
+            };
+
+            const acceptSwiftlyInstallation = () => {
+                isInstalledStub.resolves(false);
+                mockConfiguration.get.withArgs("disableSwiftlyInstallPrompt").returns(false);
+                mockWindow.showWarningMessage.resolves("Install Swiftly" as any);
+                mockWindow.showInformationMessage.resolves("Continue" as any);
+                installSwiftlyStub.resolves();
+                runProgressTask();
+            };
 
             test("should return false when prompt is suppressed", async () => {
                 isInstalledStub.resolves(false);
@@ -1812,6 +1863,42 @@ apt-get -y install libncurses5-dev
                 // In this test, we mocked it to succeed
                 expect(result).to.be.true;
                 expect(installSwiftlyStub).to.have.been.called;
+            });
+
+            test("should prompt to restart normally when the toolchain installs successfully", async () => {
+                acceptSwiftlyInstallation();
+                installToolchainStub.resolves();
+
+                await handleMissingSwiftly(["6.1.0"], "");
+
+                expect(mockWindow.showErrorMessage).to.not.have.been.called;
+                expect(mockWindow.showInformationMessage).to.have.been.calledWith(
+                    match.any,
+                    match.has("detail", match("installation to take effect"))
+                );
+            });
+
+            test("should suppress the error notification and prompt to quit with a failure message when the toolchain fails to install", async () => {
+                acceptSwiftlyInstallation();
+                installToolchainStub.rejects(new Error("Network error"));
+
+                const result = await handleMissingSwiftly(["6.1.0"], "");
+
+                expect(result).to.be.true;
+                expect(mockWindow.showErrorMessage).to.not.have.been.called;
+                expect(mockWindow.showInformationMessage).to.have.been.calledWith(
+                    match.any,
+                    match.has(
+                        "detail",
+                        match(
+                            "Swiftly was successfully installed. Installing Swift version 6.1.0 failed."
+                        )
+                    )
+                );
+                expect(mockWindow.showInformationMessage).to.not.have.been.calledWith(
+                    match.any,
+                    match.has("detail", match("installation to take effect"))
+                );
             });
         });
     });

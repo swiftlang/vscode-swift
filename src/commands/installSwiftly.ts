@@ -17,7 +17,10 @@ import * as vscode from "vscode";
 import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { Swiftly } from "../toolchain/swiftly";
-import { promptToRestartAfterInstallation } from "../ui/RestartEditor";
+import {
+    promptToRestartAfterFailedToolchainInstallation,
+    promptToRestartAfterInstallation,
+} from "../ui/RestartEditor";
 import { installSwiftlyToolchainWithProgress } from "./installSwiftlyToolchain";
 
 /**
@@ -131,11 +134,20 @@ export async function handleMissingSwiftly(
 
     // Install toolchains
     const swiftlyPath = path.join(Swiftly.defaultHomeDir(), "bin/swiftly");
+    const failedVersions: string[] = [];
     for (const version of swiftVersions) {
-        await installSwiftlyToolchainWithProgress(version, extensionRoot, logger, swiftlyPath);
+        await installSwiftlyToolchainWithProgress(version, extensionRoot, logger, swiftlyPath, {
+            onError: () => {
+                failedVersions.push(version);
+            },
+        });
     }
 
     // VS Code needs to be restarted after installing swiftly
-    await promptToRestartAfterInstallation("Swiftly");
+    if (failedVersions.length > 0) {
+        await promptToRestartAfterFailedToolchainInstallation(failedVersions);
+    } else {
+        await promptToRestartAfterInstallation("Swiftly");
+    }
     return true;
 }
