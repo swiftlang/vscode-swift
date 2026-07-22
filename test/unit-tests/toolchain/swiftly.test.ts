@@ -1495,11 +1495,23 @@ apt-get -y install libncurses5-dev
     });
 
     suite("getActiveToolchain", () => {
+        const mockWindow = mockGlobalObject(vscode, "window");
+        const mockInstallToolchain = mockGlobalFunction(Swiftly, "installToolchain");
         let mockLogger: MockedObject<SwiftLogger>;
 
         setup(() => {
             mockLogger = mockObject<SwiftLogger>({
                 info: mockFn(),
+                error: mockFn(),
+            });
+            // Run the progress-notification task immediately with a non-cancelled token.
+            mockWindow.withProgress.callsFake(async (_options, task) => {
+                const mockProgress = { report: () => {} };
+                const mockToken = {
+                    isCancellationRequested: false,
+                    onCancellationRequested: () => ({ dispose: () => {} }),
+                };
+                return await task(mockProgress, mockToken);
             });
         });
 
@@ -1514,10 +1526,7 @@ apt-get -y install libncurses5-dev
             );
 
             expect(result).to.equal("/toolchains/6.1.2");
-            expect(mockUtilities.execFile).to.not.have.been.calledWith(
-                "swiftly",
-                match.array.startsWith(["install"])
-            );
+            expect(mockInstallToolchain).to.not.have.been.called;
         });
 
         test("installs the active toolchain and retries when it is not installed", async () => {
@@ -1527,9 +1536,7 @@ apt-get -y install libncurses5-dev
             ]);
             useLocation.onFirstCall().rejects(new Error("toolchain is not installed"));
             useLocation.onSecondCall().resolves({ stdout: "/toolchains/6.1.2\n", stderr: "" });
-            mockUtilities.execFile
-                .withArgs("swiftly", match.array.startsWith(["install"]))
-                .resolves({ stdout: "", stderr: "" });
+            mockInstallToolchain.resolves();
 
             const cwd = vscode.Uri.file("/project/path");
             const result = await Swiftly.getActiveToolchain(
@@ -1539,20 +1546,20 @@ apt-get -y install libncurses5-dev
             );
 
             expect(result).to.equal("/toolchains/6.1.2");
-            expect(mockUtilities.execFile).to.have.been.calledWith(
-                "swiftly",
-                ["install", "--assume-yes"],
-                match({ cwd: cwd.fsPath })
-            );
+            // swiftly resolves the version itself when none is given, so the toolchain
+            // is installed with an undefined version in the folder's working directory.
+            expect(mockInstallToolchain).to.have.been.calledOnce;
+            const installArgs = mockInstallToolchain.getCall(0).args;
+            expect(installArgs[0], "version should be undefined").to.be.undefined;
+            expect(installArgs[1]).to.equal("/extension/root");
+            expect(installArgs[6], "cwd should be forwarded to installToolchain").to.equal(cwd);
         });
 
         test("throws when the installation fails", async () => {
             mockUtilities.execFile
                 .withArgs("swiftly", ["use", "--print-location"])
                 .rejects(new Error("toolchain is not installed"));
-            mockUtilities.execFile
-                .withArgs("swiftly", match.array.startsWith(["install"]))
-                .rejects(new Error("install failed"));
+            mockInstallToolchain.rejects(new Error("install failed"));
 
             await expect(
                 Swiftly.getActiveToolchain("/extension/root", instance(mockLogger))
