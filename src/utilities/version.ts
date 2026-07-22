@@ -41,6 +41,10 @@ export class Version implements ExternalVersion {
         return `${this.major}.${this.minor}.${this.patch}`;
     }
 
+    isEqualTo(rhs: VersionInterface): boolean {
+        return this.major === rhs.major && this.minor === rhs.minor && this.patch === rhs.patch;
+    }
+
     isLessThan(rhs: VersionInterface): boolean {
         if (this.major < rhs.major) {
             return true;

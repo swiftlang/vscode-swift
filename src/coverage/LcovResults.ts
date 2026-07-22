@@ -33,6 +33,22 @@ interface CodeCovFile {
     path: string;
 }
 
+/**
+ * Builds the positional binary arguments for `llvm-cov export`.
+ *
+ * `llvm-cov` only treats the first positional argument as an instrumented
+ * binary; every subsequent binary must be introduced with `-object` or it is
+ * silently interpreted as a source-file filter. This matters when the
+ * swiftbuild build system produces one test binary per target.
+ */
+export function llvmCovObjectArguments(binaries: string[]): string[] {
+    const [first, ...rest] = binaries;
+    if (!first) {
+        return [];
+    }
+    return [first, ...rest.flatMap(binary => ["-object", binary])];
+}
+
 export class TestCoverage {
     private lcovFiles: CodeCovFile[] = [];
     private _lcovTmpFiles?: DisposableFileCollection;
@@ -169,7 +185,7 @@ export class TestCoverage {
             "export",
             "--format",
             "lcov",
-            ...coveredBinaries,
+            ...llvmCovObjectArguments(coveredBinaries),
             `--ignore-filename-regex=${await this.ignoredFilenamesRegex()}`,
             `--instr-profile=${mergedProfileFile}`,
         ]);

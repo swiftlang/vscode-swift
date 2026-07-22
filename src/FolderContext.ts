@@ -216,8 +216,8 @@ export class FolderContext implements ExternalFolderContext, Disposable {
         return toolchain;
     }
 
-    get languageClientManager() {
-        return this.workspaceContext.languageClientManager.get(this);
+    get languageClient() {
+        return this.workspaceContext.languageClientManager.getClient(this);
     }
 
     get name(): string {

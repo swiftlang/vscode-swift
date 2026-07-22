@@ -24,11 +24,33 @@ export async function promptToRestartAfterInstallation(
     type: "Swiftly" | "toolchain"
 ): Promise<void> {
     const editorName = vscode.env.appName;
+    await promptToQuit(
+        `You must restart ${editorName} in order for the ${type} installation to take effect.`
+    );
+}
+
+/**
+ * Prompts the user to quit their editor after Swiftly installed but one or more toolchains
+ * failed to install, so that the installation can be retried on the next launch.
+ *
+ * @param versions The toolchain versions that failed to install.
+ */
+export async function promptToRestartAfterFailedToolchainInstallation(
+    versions: string[]
+): Promise<void> {
+    const editorName = vscode.env.appName;
+    await promptToQuit(
+        `Swiftly was successfully installed. Installing Swift version ${versions.join(", ")} failed. Quit ${editorName} to try again.`
+    );
+}
+
+async function promptToQuit(detail: string): Promise<void> {
+    const editorName = vscode.env.appName;
     const selection = await vscode.window.showInformationMessage(
         `Restart ${editorName}`,
         {
             modal: true,
-            detail: `You must restart ${editorName} in order for the ${type} installation to take effect.`,
+            detail,
         },
         `Quit ${editorName}`
     );

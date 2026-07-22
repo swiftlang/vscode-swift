@@ -16,8 +16,10 @@ import * as vscode from "vscode";
 
 import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
 import { Disposable } from "@src/utilities/Disposable";
+import { poll } from "@src/utilities/utilities";
 
 import { SwiftTaskFixture } from "../fixtures";
+import { withTimeout } from "./withTimeout";
 
 import stripAnsi = require("strip-ansi");
 
@@ -93,33 +95,18 @@ export async function waitForClose(fixture: {
  * utility can be used to make sure no task is running
  * before starting a new test
  */
-export function waitForNoRunningTasks(options?: { timeout: number }): Promise<void> {
-    return new Promise<void>((res, reject) => {
-        if (vscode.tasks.taskExecutions.length === 0) {
-            res();
-            return;
-        }
-        let timeout: NodeJS.Timeout;
-        const disposable = vscode.tasks.onDidEndTask(() => {
-            if (vscode.tasks.taskExecutions.length > 0) {
-                return;
-            }
-            disposable?.dispose();
-            clearTimeout(timeout);
-            res();
-        });
-        if (options?.timeout) {
-            timeout = setTimeout(() => {
-                disposable.dispose();
-                const runningTasks = vscode.tasks.taskExecutions.map(e => e.task.name);
-                reject(
-                    new Error(
-                        `Timed out waiting for tasks to complete. The following ${runningTasks.length} tasks are still running: ${runningTasks}.`
-                    )
-                );
-            }, options.timeout);
-        }
-    });
+export function waitForNoRunningTasks(options?: { timeout?: number }): Promise<void> {
+    if (options?.timeout && options.timeout > 0) {
+        return withTimeout(
+            cancellationToken => pollForNoRunningTasks(cancellationToken),
+            options.timeout
+        );
+    }
+    return pollForNoRunningTasks();
+}
+
+function pollForNoRunningTasks(cancellationToken?: vscode.CancellationToken): Promise<void> {
+    return poll(() => vscode.tasks.taskExecutions.length === 0, 1000, cancellationToken);
 }
 
 /**

@@ -49,7 +49,7 @@ async function folderResetPackage(folderContext: FolderContext) {
     );
 
     const languageClientManager = () =>
-        folderContext.workspaceContext.languageClientManager.get(folderContext);
+        folderContext.workspaceContext.languageClientManager.getClient(folderContext);
     const shouldStop = process.platform === "win32";
     if (shouldStop) {
         await vscode.window.withProgress(
@@ -57,7 +57,7 @@ async function folderResetPackage(folderContext: FolderContext) {
                 title: "Stopping the SourceKit-LSP server",
                 location: vscode.ProgressLocation.Window,
             },
-            async () => await languageClientManager().stop(false)
+            async () => await languageClientManager().stop()
         );
     }
 

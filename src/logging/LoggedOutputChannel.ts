@@ -18,6 +18,7 @@ import { Disposable } from "../utilities/Disposable";
 import { FileWriteStream } from "./FileWriteStream";
 
 export class LoggedOutputChannel implements vscode.OutputChannel, Disposable {
+    private isDisposed: boolean;
     private channel: vscode.OutputChannel;
     private fileWriteStream: FileWriteStream;
 
@@ -26,26 +27,39 @@ export class LoggedOutputChannel implements vscode.OutputChannel, Disposable {
     }
 
     constructor(name: string, logFilePath: Promise<string>) {
+        this.isDisposed = false;
         this.channel = vscode.window.createOutputChannel(name);
         this.fileWriteStream = new FileWriteStream(logFilePath);
     }
 
     append(value: string): void {
+        if (this.isDisposed) {
+            return;
+        }
         this.channel.append(value);
         void this.fileWriteStream.write(value);
     }
 
     appendLine(value: string): void {
+        if (this.isDisposed) {
+            return;
+        }
         this.channel.appendLine(value);
         void this.fileWriteStream.write(value + EOL);
     }
 
     replace(value: string): void {
+        if (this.isDisposed) {
+            return;
+        }
         this.clear();
         this.append(value);
     }
 
     clear(): void {
+        if (this.isDisposed) {
+            return;
+        }
         this.channel.clear();
         void this.fileWriteStream.write(
             EOL + EOL + `================ Output Channel Cleared ================` + EOL + EOL
@@ -53,6 +67,9 @@ export class LoggedOutputChannel implements vscode.OutputChannel, Disposable {
     }
 
     show(arg1?: vscode.ViewColumn | boolean, arg2?: boolean): void {
+        if (this.isDisposed) {
+            return;
+        }
         if (typeof arg1 === "number") {
             return this.channel.show(arg2);
         }
@@ -60,10 +77,17 @@ export class LoggedOutputChannel implements vscode.OutputChannel, Disposable {
     }
 
     hide(): void {
+        if (this.isDisposed) {
+            return;
+        }
         this.channel.hide();
     }
 
     dispose(): void {
+        if (this.isDisposed) {
+            return;
+        }
+        this.isDisposed = true;
         this.channel.dispose();
         this.fileWriteStream.dispose();
     }

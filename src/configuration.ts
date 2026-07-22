@@ -56,8 +56,6 @@ interface LSPConfiguration {
     readonly serverPath: string;
     /** Arguments to pass to sourcekit-lsp executable */
     readonly serverArguments: string[];
-    /** Are inlay hints enabled */
-    readonly inlayHintsEnabled: boolean;
     /** Support C Family source files */
     readonly supportCFamily: CFamilySupportOptions;
     /** Support Languages */
@@ -156,14 +154,6 @@ const configuration = {
                         .get<string[]>("serverArguments", []),
                     "swift.sourcekit-lsp.serverArguments"
                 ).map(substituteVariablesInString);
-            },
-            get inlayHintsEnabled(): boolean {
-                return validateBooleanSetting(
-                    vscode.workspace
-                        .getConfiguration("sourcekit-lsp")
-                        .get<boolean>("inlayHints.enabled", true),
-                    "swift.sourcekit-lsp.inlayHints.enabled"
-                );
             },
             get supportCFamily(): CFamilySupportOptions {
                 return validateStringSetting(

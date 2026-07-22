@@ -23,6 +23,7 @@ import { Commands, registerCommands } from "./commands";
 import { resolveFolderDependencies } from "./commands/dependencies/resolve";
 import { registerSourceKitSchemaWatcher } from "./commands/generateSourcekitConfiguration";
 import { handleMissingSwiftly } from "./commands/installSwiftly";
+import { isSwiftInstalled } from "./commands/isSwiftInstalled";
 import configuration, { ConfigurationValidationError } from "./configuration";
 import { registerDebugger } from "./debugger/debugAdapterFactory";
 import { makeDebugConfigurations } from "./debugger/launch";
@@ -85,6 +86,11 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
             return undefined;
         }
         return this.state.context;
+    }
+
+    /** The absolute file path to the extension's installation directory. */
+    get extensionPath(): string {
+        return this.extensionContext.extensionPath;
     }
 
     contextKeys: ContextKeys;
@@ -186,6 +192,7 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
                 this.contextKeys,
                 this.logger
             );
+            void checkForSwiftLangInstallation();
 
             const subscriptionsStartTime = Date.now();
             this.subscriptions.push(new SwiftEnvironmentVariablesManager(this.extensionContext));
@@ -463,6 +470,17 @@ export async function checkForSwiftlyInstallation(
     } catch (error) {
         logger.error(Error("Failed to verify Swiftly installation.", { cause: error }));
     }
+}
+
+/**
+ * Checks if `swift --version` works, and updates the `swiftInstalled` context variable.
+ *
+ * The welcome walkthrough uses this context variable to render a check mark once Swift is
+ * available on the system.
+ */
+export async function checkForSwiftLangInstallation(): Promise<void> {
+    const isInstalled = await isSwiftInstalled();
+    await vscode.commands.executeCommand("setContext", "swiftInstalled", isInstalled);
 }
 
 /**

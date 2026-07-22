@@ -15,11 +15,12 @@ import * as vscode from "vscode";
 
 import { FolderContext } from "../FolderContext";
 import { FolderOperation, WorkspaceContext } from "../WorkspaceContext";
+import configuration from "../configuration";
+import { SwiftLogger } from "../logging/SwiftLogger";
+import { SwiftToolchain } from "../toolchain/toolchain";
 import { AsyncDisposable, Disposable } from "../utilities/Disposable";
 import { isExcluded } from "../utilities/filesystem";
-import { Version } from "../utilities/version";
-import { LanguageClientFactory } from "./LanguageClientFactory";
-import { LanguageClientManager } from "./LanguageClientManager";
+import { SourceKitLanguageClient } from "./client/SourceKitLanguageClient";
 
 /**
  * Manages the creation of LanguageClient instances for workspace folders.
@@ -30,147 +31,157 @@ import { LanguageClientManager } from "./LanguageClientManager";
  */
 export class LanguageClientToolchainCoordinator implements AsyncDisposable {
     private subscriptions: Disposable[] = [];
-    private clients: Map<string, LanguageClientManager> = new Map();
-    private foldersToClient: Map<string, LanguageClientManager> = new Map();
+    private clients: SourceKitLanguageClient[] = [];
+
+    private get logger(): SwiftLogger {
+        return this.workspaceContext.logger;
+    }
 
     public constructor(
-        workspaceContext: WorkspaceContext,
+        private workspaceContext: WorkspaceContext,
         private options: {
-            onDocumentSymbols?: (
-                folder: FolderContext,
-                document: vscode.TextDocument,
-                symbols: vscode.DocumentSymbol[] | null | undefined
-            ) => void;
-            onDocumentCodeLens?: (
-                folder: FolderContext,
-                document: vscode.TextDocument,
-                symbols: vscode.CodeLens[] | null | undefined
-            ) => void;
-        } = {},
-        languageClientFactory: LanguageClientFactory = new LanguageClientFactory() // used for testing only
+            createLanguageClient?(
+                toolchain: SwiftToolchain,
+                workspaceContext: WorkspaceContext
+            ): SourceKitLanguageClient;
+        } = {}
     ) {
         this.subscriptions.push(
-            // stop and start server for each folder based on which file I am looking at
             workspaceContext.onDidChangeFolders(async ({ folder, operation }) => {
-                await this.handleEvent(folder, operation, languageClientFactory);
-            })
+                await this.handleFolderChangeEvent(folder, operation);
+            }),
+            vscode.workspace.onDidChangeConfiguration(this.handleConfigurationChangeEvent, this)
         );
+    }
 
-        // Add any folders already in the workspace context at the time of construction.
-        // This is mainly for testing purposes, as this class should be created immediately
-        // when the extension is activated and the workspace context is first created.
-        for (const folder of workspaceContext.folders) {
-            void this.handleEvent(folder, FolderOperation.add, languageClientFactory);
+    private async handleConfigurationChangeEvent(
+        event: vscode.ConfigurationChangeEvent
+    ): Promise<void> {
+        if (event.affectsConfiguration("swift.sourcekit-lsp.disable")) {
+            if (configuration.lsp.disable) {
+                await this.disposeAllClients();
+            } else {
+                await Promise.all(
+                    this.workspaceContext.folders.map(folder => {
+                        return this.handleFolderChangeEvent(folder, FolderOperation.add);
+                    })
+                );
+            }
+            return;
+        }
+
+        const restartSettings = [
+            "swift.swiftSDK",
+            "swift.sourcekit-lsp.serverPath",
+            "swift.sourcekit-lsp.serverArguments",
+            "swift.sourcekit-lsp.supported-languages",
+            "swift.sourcekit-lsp.backgroundIndexing",
+            "swift.sourcekit-lsp.support-c-cpp",
+        ];
+        if (restartSettings.some(s => event.affectsConfiguration(s))) {
+            await Promise.all(this.clients.map(c => c.restart()));
         }
     }
 
-    private async handleEvent(
+    private async handleFolderChangeEvent(
         folder: FolderContext | null,
-        operation: FolderOperation,
-        languageClientFactory: LanguageClientFactory
+        operation: FolderOperation
     ): Promise<void> {
-        if (!folder) {
+        if (configuration.lsp.disable || !folder || isExcluded(folder.workspaceFolder.uri)) {
             return;
         }
-        if (isExcluded(folder.workspaceFolder.uri)) {
-            return;
-        }
-        const singleServer = folder.swiftVersion.isGreaterThanOrEqual(new Version(5, 7, 0));
         switch (operation) {
             case FolderOperation.swiftVersionUpdated: {
-                const existingClient = this.foldersToClient.get(folder.folder.toString());
-                await existingClient?.removeFolder(folder);
-                const client = await this.create(folder, singleServer, languageClientFactory);
-                await (singleServer
-                    ? client.addFolder(folder)
-                    : client.setLanguageClientFolder(folder));
-                this.foldersToClient.set(folder.folder.toString(), client);
+                const originalClient = this.clients.find(c => c.addedFolders.includes(folder));
+                if (originalClient) {
+                    await originalClient.removeFolder(folder);
+                    if (originalClient.addedFolders.length === 0) {
+                        this.clients = this.clients.filter(c => c !== originalClient);
+                        originalClient.dispose().catch(e => this.logger.error(e));
+                    }
+                }
+                const newClient = await this.getOrCreateClient(folder);
+                await newClient.addFolder(folder);
                 break;
             }
             case FolderOperation.add: {
-                const client = await this.create(folder, singleServer, languageClientFactory);
-                await (singleServer
-                    ? client.addFolder(folder)
-                    : client.setLanguageClientFolder(folder));
-                this.foldersToClient.set(folder.folder.toString(), client);
+                const client = await this.getOrCreateClient(folder);
+                await client.addFolder(folder);
                 break;
             }
             case FolderOperation.remove: {
-                const client = await this.create(folder, singleServer, languageClientFactory);
+                const client = await this.getOrCreateClient(folder);
                 await client.removeFolder(folder);
-                this.foldersToClient.delete(folder.folder.toString());
-                break;
-            }
-            case FolderOperation.focus: {
-                if (!singleServer) {
-                    const client = await this.create(folder, singleServer, languageClientFactory);
-                    await client.setLanguageClientFolder(folder);
+                if (client.addedFolders.length === 0) {
+                    this.clients = this.clients.filter(c => c !== client);
+                    await client.dispose();
                 }
                 break;
             }
         }
     }
 
-    /**
-     * Returns the LanguageClientManager for the supplied folder.
-     * @param folder
-     * @returns
-     */
-    public get(folder: FolderContext): LanguageClientManager {
-        return this.getByVersion(folder.swiftVersion.toString());
+    public getAllClients(): SourceKitLanguageClient[] {
+        return this.clients.slice();
     }
 
     /**
-     * Returns the LanguageClientManager for the supplied toolchain version.
-     * @param folder
-     * @returns
+     * Returns the SourceKitLanguageClient for the supplied folder.
      */
-    public getByVersion(version: string): LanguageClientManager {
-        const client = this.clients.get(version);
+    public getClient(folder: FolderContext): SourceKitLanguageClient {
+        const client = this.clients.find(c => c.addedFolders.includes(folder));
         if (!client) {
             throw new Error(
-                "LanguageClientManager has not yet been created. This is a bug, please file an issue at https://github.com/swiftlang/vscode-swift/issues"
+                "SourceKitLanguageClient has not yet been created. This is a bug, please file an issue at https://github.com/swiftlang/vscode-swift/issues"
             );
         }
         return client;
     }
 
     /**
-     * Stops all LanguageClient instances.
+     * Stops all SourceKitLanguageClient instances.
      * This should be called when the extension is deactivated.
      */
     public async stop() {
-        for (const client of this.clients.values()) {
-            await client.stop();
-        }
-        this.clients.clear();
+        await Promise.all(this.clients.map(c => c.stop()));
     }
 
-    private async create(
-        folder: FolderContext,
-        singleServerSupport: boolean,
-        languageClientFactory: LanguageClientFactory
-    ): Promise<LanguageClientManager> {
-        const versionString = folder.swiftVersion.toString();
-        let client = this.clients.get(versionString);
+    private async getOrCreateClient(folder: FolderContext): Promise<SourceKitLanguageClient> {
+        let client = this.clients.find(c => c.swiftVersion.isEqualTo(folder.swiftVersion));
         if (!client) {
-            client = new LanguageClientManager(folder, this.options, languageClientFactory);
-            this.clients.set(versionString, client);
-            // Callers that must restart when switching folders will call setLanguageClientFolder themselves.
-            if (singleServerSupport) {
-                await client.setLanguageClientFolder(folder);
-            }
+            client = this.createLanguageClient(folder.toolchain);
+            await client.addFolder(folder);
+            this.clients.push(client);
+            await client.start();
         }
         return client;
     }
 
+    private createLanguageClient(toolchain: SwiftToolchain): SourceKitLanguageClient {
+        if (this.options.createLanguageClient) {
+            return this.options.createLanguageClient(toolchain, this.workspaceContext);
+        }
+        return new SourceKitLanguageClient(toolchain, this.workspaceContext);
+    }
+
+    private async disposeAllClients(): Promise<void> {
+        const clientsToDispose = this.clients.slice();
+        this.clients = [];
+        await Promise.all(
+            clientsToDispose.map(c =>
+                c.dispose().catch(error => {
+                    this.logger.error(
+                        Error(`Failed to dispose of SourceKit-LSP (${c.swiftVersion})`, {
+                            cause: error,
+                        })
+                    );
+                })
+            )
+        );
+    }
+
     async dispose(): Promise<void> {
         this.subscriptions.forEach(item => item.dispose());
-        const disposeClients: Promise<void>[] = [];
-        for (const client of this.clients.values()) {
-            disposeClients.push(client.dispose());
-        }
-        await Promise.all(disposeClients);
-        this.clients.clear();
+        await this.disposeAllClients();
     }
 }

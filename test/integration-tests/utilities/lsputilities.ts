@@ -14,60 +14,81 @@
 import * as vscode from "vscode";
 import * as langclient from "vscode-languageclient/node";
 
-import { LanguageClientManager } from "@src/sourcekit-lsp/LanguageClientManager";
+import { SourceKitLanguageClient } from "@src/sourcekit-lsp/client/SourceKitLanguageClient";
+import {
+    PollIndexRequest,
+    WorkspaceSynchronizeRequest,
+} from "@src/sourcekit-lsp/extensions/PollIndexRequest";
+import { Disposable } from "@src/utilities/Disposable";
+import { poll } from "@src/utilities/utilities";
+import { Version } from "@src/utilities/version";
 
-export async function waitForClient<Result>(
-    languageClientManager: LanguageClientManager,
-    getResult: (
-        c: langclient.LanguageClient,
-        token: langclient.CancellationToken
-    ) => Promise<Result>,
-    match: (r: Result | undefined) => boolean
-): Promise<Result | undefined> {
-    let result: Result | undefined = undefined;
-    while (!match(result)) {
-        result = await languageClientManager.useLanguageClient<Result>(getResult);
-        console.warn("Language client is not ready yet. Retrying in 100 ms...");
-        await new Promise(resolve => setTimeout(resolve, 100));
-    }
-    return result;
-}
+/**
+ * Wait for the LSP to indicate it is done indexing
+ */
+export async function waitForIndex(client: SourceKitLanguageClient): Promise<void> {
+    const requestType = client.swiftVersion.isGreaterThanOrEqual(new Version(6, 2, 0))
+        ? WorkspaceSynchronizeRequest.type
+        : PollIndexRequest.type;
 
-export async function waitForClientState(
-    languageClientManager: LanguageClientManager,
-    expectedState: langclient.State
-): Promise<langclient.State | undefined> {
-    return await waitForClient(
-        languageClientManager,
-        async c => c.state,
-        s => s === expectedState
+    await client.useLanguageClient((c, token) =>
+        c.sendRequest(
+            requestType,
+            requestType.method === WorkspaceSynchronizeRequest.method ? { index: true } : {},
+            token
+        )
     );
 }
 
+export async function waitForClientState(
+    client: SourceKitLanguageClient,
+    expectedState: langclient.State
+): Promise<langclient.State | undefined> {
+    if (client.state === expectedState) {
+        return;
+    }
+
+    const subscriptions: Disposable[] = [];
+    await new Promise<void>(resolve => {
+        subscriptions.push(
+            client.onDidChangeState(event => {
+                if (event.newState !== expectedState) {
+                    return;
+                }
+                resolve();
+            })
+        );
+    }).finally(() => subscriptions.forEach(s => s.dispose()));
+}
+
 export async function waitForCodeActions(
-    languageClientManager: LanguageClientManager,
+    client: SourceKitLanguageClient,
     uri: vscode.Uri,
     range: vscode.Range
 ): Promise<(langclient.CodeAction | langclient.Command)[]> {
-    return (
-        (await waitForClient(
-            languageClientManager,
-            async (client, token) => {
+    return await client.useLanguageClient((client, cancellationToken) =>
+        poll<(langclient.CodeAction | langclient.Command)[]>(
+            async () => {
                 try {
-                    return client.sendRequest(
+                    const response = await client.sendRequest(
                         langclient.CodeActionRequest.type,
                         {
                             context: langclient.CodeActionContext.create([]),
                             textDocument: langclient.TextDocumentIdentifier.create(uri.toString()),
                             range,
                         },
-                        token
+                        cancellationToken
                     );
+                    if (!response || response.length === 0) {
+                        return { type: "failure" };
+                    }
+                    return { type: "success", value: response };
                 } catch (e) {
-                    // Ignore
+                    return { type: "failure" };
                 }
             },
-            s => (s || []).length > 0
-        )) || []
+            500,
+            cancellationToken
+        )
     );
 }

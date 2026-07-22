@@ -138,23 +138,24 @@ interface PostInstallValidationResult {
 /**
  * Attempts to automatically install a missing Swiftly toolchain with user consent
  * @param version The toolchain version to install
- * @param logger Optional logger for error reporting
+ * @param extensionRoot The root path of the extension
+ * @param logger Logger for error reporting
  * @param folder Optional folder context
- * @param token Optional cancellation token to abort the installation
  * @returns Promise<boolean> true if toolchain was successfully installed, false otherwise
  */
 export async function handleMissingSwiftlyToolchain(
     version: string,
     extensionRoot: string,
-    logger?: SwiftLogger,
+    logger: SwiftLogger,
     folder?: vscode.Uri
 ): Promise<boolean> {
-    logger?.info(`Attempting to handle missing toolchain: ${version}`);
+    logger.info(`Attempting to handle missing toolchain: ${version}`);
 
-    // Ask user for permission
-    const userConsent = await showMissingToolchainDialog(version, folder);
+    // Prompt the user to install the required toolchain, or select an alternative one if it is
+    // not available via Swiftly.
+    const userConsent = await showMissingToolchainDialog(version, logger, folder);
     if (!userConsent) {
-        logger?.info(`User declined to install missing toolchain: ${version}`);
+        logger.info(`User declined to install missing toolchain: ${version}`);
         return false;
     }
 

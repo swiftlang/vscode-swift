@@ -43,22 +43,46 @@
         "description": "Learn how to use the Swift extension for VS Code.",
         "steps": [
           {
-            "id": "installing-mac",
+            "id": "installing-mac-not-installed",
             "title": "Install Swift",
-            "description": "Swift is cross-platform! If you already have Xcode installed, you're ready to go. Otherwise, see the instructions to [install on macOS](https://www.swift.org/install).\n Swift is [open source](https://github.com/swiftlang) and community driven!\n Questions? Visit the [Swift forums](https://forums.swift.org/) or the [Swift extension GitHub page](https://github.com/swiftlang/vscode-swift) for help.",
+            "description": "Swift is not currently installed on your system.\n\n[Install Swift](command:swift.installSwiftly)\n\nOr install manually from [swift.org](https://www.swift.org/install).",
             "media": {
               "markdown": "./assets/walkthrough/welcome.md"
             },
-            "when": "isMac"
+            "when": "isMac && !swiftInstalled"
           },
           {
-            "id": "installing-linux",
-            "title": "Installing Swift",
-            "description": "Swift is cross-platform! See the instructions to [install on Linux](https://www.swift.org/install).\n Swift is [open source](https://github.com/swiftlang) and community driven!\n Questions? Visit the [Swift forums](https://forums.swift.org/) or the [Swift extension GitHub page](https://github.com/swiftlang/vscode-swift) for help.",
+            "id": "installing-mac-installed",
+            "title": "Swift is Ready",
+            "description": "Swift is already installed on your system. You're ready to start developing!\n\n[Create New Swift Project](command:swift.createNewProject)",
             "media": {
               "markdown": "./assets/walkthrough/welcome.md"
             },
-            "when": "isLinux"
+            "when": "isMac && swiftInstalled",
+            "completionEvents": [
+              "onContext:swiftInstalled"
+            ]
+          },
+          {
+            "id": "installing-linux-not-installed",
+            "title": "Install Swift",
+            "description": "Swift is not currently installed on your system.\n\n[Install Swift](command:swift.installSwiftly)\n\nOr install manually from [swift.org](https://www.swift.org/install).",
+            "media": {
+              "markdown": "./assets/walkthrough/welcome.md"
+            },
+            "when": "isLinux && !swiftInstalled"
+          },
+          {
+            "id": "installing-linux-installed",
+            "title": "Swift is Ready",
+            "description": "Swift is already installed on your system. You're ready to start developing!\n\n[Create New Swift Project](command:swift.createNewProject)",
+            "media": {
+              "markdown": "./assets/walkthrough/welcome.md"
+            },
+            "when": "isLinux && swiftInstalled",
+            "completionEvents": [
+              "onContext:swiftInstalled"
+            ]
           },
           {
             "id": "installing-windows",
@@ -992,13 +1016,6 @@
             "markdownDescription": "Controls whether the symbol declaration is included in the results of `Find All References`.",
             "order": 7,
             "scope": "machine-overridable"
-          },
-          "sourcekit-lsp.inlayHints.enabled": {
-            "type": "boolean",
-            "default": true,
-            "markdownDescription": "Display Inlay Hints. Inlay Hints are variable annotations indicating their inferred type. They are only available if you are using Swift 5.6 or later.",
-            "deprecationMessage": "Deprecated: Please use \"editor.inlayHints.enabled\" instead.",
-            "markdownDeprecationMessage": "**Deprecated**: Please use `#editor.inlayHints.enabled#` instead."
           },
           "sourcekit-lsp.support-c-cpp": {
             "type": "string",
@@ -2214,7 +2231,7 @@
     "fast-glob": "^3.3.3",
     "lcov-parse": "^1.0.0",
     "plist": "=3.1.0",
-    "tar": "^7.5.16",
+    "tar": "^7.5.19",
     "vscode-languageclient": "^9.0.1",
     "xml2js": "^0.6.2",
     "zod": "^4.1.5"
