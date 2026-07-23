@@ -625,9 +625,6 @@ export class Swiftly {
                 logger.info(
                     "Automatic Swiftly toolchain installation is disabled; skipping installation of the active toolchain"
                 );
-                void vscode.window.showWarningMessage(
-                    "Swift toolchain missing. Skipping automatic installation. Install it manually via `swiftly install`"
-                );
                 throw error;
             }
             logger.info("Active swift toolchain is not installed, installing via swiftly");
