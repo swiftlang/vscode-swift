@@ -1522,7 +1522,7 @@ apt-get -y install libncurses5-dev
             expect(result).to.be.true;
         });
 
-        test("getActiveToolchain installs the active toolchain then returns its location when it is not installed", async () => {
+        test("getActiveToolchain installs the active toolchain then returns its location when the toolchain is not installed", async () => {
             // The active toolchain isn't installed yet, so the first
             // `swiftly use --print-location` fails; after installing it, the retry succeeds.
             const useLocation = mockedUtilities.execFile.withArgs("swiftly", [
