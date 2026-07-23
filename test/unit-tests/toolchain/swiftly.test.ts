@@ -1522,27 +1522,26 @@ apt-get -y install libncurses5-dev
             expect(result).to.be.true;
         });
 
-        test("getActiveToolchain falls back to global toolchain when user declines and cwd is provided", async () => {
-            const missingToolchainError = Object.create(ExecFileError.prototype);
-            missingToolchainError.causedBy = new Error("swiftly use failed");
-            missingToolchainError.stdout = "";
-            missingToolchainError.stderr =
-                "The swift version file uses toolchain version 6.1.2, but it doesn't match any of the installed toolchains";
-            missingToolchainError.message = "swiftly use failed";
+        test("getActiveToolchain installs the active toolchain then returns its location when it is not installed", async () => {
+            // The active toolchain isn't installed yet, so the first
+            // `swiftly use --print-location` fails; after installing it, the retry succeeds.
+            const useLocation = mockedUtilities.execFile.withArgs("swiftly", [
+                "use",
+                "--print-location",
+            ]);
+            useLocation.onFirstCall().rejects(new Error("toolchain is not installed"));
+            useLocation.onSecondCall().resolves({ stdout: "/toolchains/6.1.2\n", stderr: "" });
 
-            // First call (with cwd) fails with missing toolchain error
-            mockedUtilities.execFile.onFirstCall().rejects(missingToolchainError);
-            // Second call (recursive, with undefined cwd) succeeds
-            mockedUtilities.execFile
-                .onSecondCall()
-                .resolves({ stdout: "/global/toolchain/path\n", stderr: "" });
-
-            // User declines installation prompt
-            mockWindow.showInformationMessage.resolves(undefined);
-
-            const mockLogger = mockObject<SwiftLogger>({
-                info: mockFn(),
+            // Run the installation progress task immediately with a non-cancelled token.
+            mockWindow.withProgress.callsFake(async (_options, task) => {
+                const mockProgress = { report: () => {} };
+                const mockToken = {
+                    isCancellationRequested: false,
+                    onCancellationRequested: () => ({ dispose: () => {} }),
+                };
+                return await task(mockProgress, mockToken);
             });
+            mockSwiftlyInstallToolchain.setValue(() => Promise.resolve());
 
             const cwd = vscode.Uri.file("/project/path");
             const result = await Swiftly.getActiveToolchain(
@@ -1551,7 +1550,7 @@ apt-get -y install libncurses5-dev
                 cwd
             );
 
-            expect(result).to.equal("/global/toolchain/path");
+            expect(result).to.equal("/toolchains/6.1.2");
             expect(mockedUtilities.execFile).to.have.been.calledTwice;
         });
     });
