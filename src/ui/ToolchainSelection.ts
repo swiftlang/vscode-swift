@@ -72,7 +72,7 @@ export async function showToolchainError(folder?: vscode.Uri): Promise<boolean> 
     } else {
         const reason = configuration.folder(undefined).disableAutoSwiftlyToolchainInstall
             ? "Automatic toolchain installation is turned off in settings."
-            : "Unable to automatically discover your Swift toolchain.";
+            : "Automatic toolchain installation is turned off in the Swift extension settings.";
         const msg = `${folderName}${reason} Either install a toolchain from Swift.org or provide the path to an existing toolchain.`;
         selected = await vscode.window.showErrorMessage(
             "Missing toolchain",
