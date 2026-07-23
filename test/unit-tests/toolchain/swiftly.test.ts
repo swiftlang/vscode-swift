@@ -20,6 +20,7 @@ import * as vscode from "vscode";
 import * as askpass from "@src/askpass/askpass-server";
 import { handleMissingSwiftly, promptForSwiftlyInstallation } from "@src/commands/installSwiftly";
 import { installSwiftlyToolchainWithProgress } from "@src/commands/installSwiftlyToolchain";
+import configuration, { FolderConfiguration } from "@src/configuration";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { Swiftly, handleMissingSwiftlyToolchain } from "@src/toolchain/swiftly";
 import * as utilities from "@src/utilities/utilities";
@@ -1523,7 +1524,7 @@ apt-get -y install libncurses5-dev
         });
 
         test("getActiveToolchain falls back to global toolchain when user declines and cwd is provided", async () => {
-            const missingToolchainError = Object.create(ExecFileError.prototype);
+            const missingToolchainError = Object.create(utilities.ExecFileError.prototype);
             missingToolchainError.causedBy = new Error("swiftly use failed");
             missingToolchainError.stdout = "";
             missingToolchainError.stderr =
@@ -1559,13 +1560,26 @@ apt-get -y install libncurses5-dev
     suite("getActiveToolchain", () => {
         const mockWindow = mockGlobalObject(vscode, "window");
         const mockInstallToolchain = mockGlobalFunction(Swiftly, "installToolchain");
+        const mockConfigFolder = mockGlobalValue(configuration, "folder");
         let mockLogger: MockedObject<SwiftLogger>;
+
+        const setAutomaticInstallDisabled = (disabled: boolean) => {
+            mockConfigFolder.setValue(() =>
+                instance(
+                    mockObject<FolderConfiguration>({
+                        disableAutoSwiftlyToolchainInstall: disabled,
+                    })
+                )
+            );
+        };
 
         setup(() => {
             mockLogger = mockObject<SwiftLogger>({
                 info: mockFn(),
                 error: mockFn(),
             });
+            // Automatic installation of missing toolchains is enabled by default.
+            setAutomaticInstallDisabled(false);
             // Run the progress-notification task immediately with a non-cancelled token.
             mockWindow.withProgress.callsFake(async (_options, task) => {
                 const mockProgress = { report: () => {} };
@@ -1627,6 +1641,23 @@ apt-get -y install libncurses5-dev
                 Swiftly.getActiveToolchain("/extension/root", instance(mockLogger))
             ).to.eventually.be.rejectedWith(
                 "Failed to install the active swift toolchain via swiftly."
+            );
+        });
+
+        test("skips installation and notifies the user when automatic installation is disabled", async () => {
+            setAutomaticInstallDisabled(true);
+            const notInstalled = new Error("toolchain is not installed");
+            mockUtilities.execFile
+                .withArgs("swiftly", ["use", "--print-location"])
+                .rejects(notInstalled);
+
+            await expect(
+                Swiftly.getActiveToolchain("/extension/root", instance(mockLogger))
+            ).to.eventually.be.rejectedWith(notInstalled);
+
+            expect(mockInstallToolchain).to.not.have.been.called;
+            expect(mockWindow.showWarningMessage).to.have.been.calledWith(
+                "Swift toolchain missing. Skipping automatic installation. Install it manually via `swiftly install`"
             );
         });
     });

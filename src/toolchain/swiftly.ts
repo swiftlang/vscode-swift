@@ -24,6 +24,7 @@ import { z } from "zod/v4/mini";
 
 import { withAskpassServer } from "../askpass/askpass-server";
 import { installSwiftlyToolchainWithProgress } from "../commands/installSwiftlyToolchain";
+import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { showMissingToolchainDialog } from "../ui/ToolchainSelection";
 import { touch } from "../utilities/filesystem";
@@ -616,10 +617,19 @@ export class Swiftly {
     ): Promise<string> {
         try {
             return await Swiftly.inUseLocation("swiftly", cwd);
-        } catch {
-            // The active toolchain may not be installed yet. Ask swiftly to install
-            // whichever version is currently selected (resolved from `.swift-version`
-            // or the global default) before locating it again.
+        } catch (error) {
+            // The active toolchain may not be installed yet. Unless the user has opted out,
+            // ask swiftly to install whichever version is currently selected (resolved from
+            // `.swift-version` or the global default) before locating it again.
+            if (configuration.folder(undefined).disableAutoSwiftlyToolchainInstall) {
+                logger.info(
+                    "Automatic Swiftly toolchain installation is disabled; skipping installation of the active toolchain"
+                );
+                void vscode.window.showWarningMessage(
+                    "Swift toolchain missing. Skipping automatic installation. Install it manually via `swiftly install`"
+                );
+                throw error;
+            }
             logger.info("Active swift toolchain is not installed, installing via swiftly");
             const installed = await installSwiftlyToolchainWithProgress(
                 undefined,
@@ -629,7 +639,9 @@ export class Swiftly {
                 cwd
             );
             if (!installed) {
-                throw new Error("Failed to install the active swift toolchain via swiftly.");
+                throw new Error("Failed to install the active swift toolchain via swiftly.", {
+                    cause: error,
+                });
             }
             return await Swiftly.inUseLocation("swiftly", cwd);
         }

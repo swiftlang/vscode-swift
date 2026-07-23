@@ -98,6 +98,8 @@ export interface FolderConfiguration {
     readonly ignoreSwiftVersionFile: boolean;
     /** Whether or not the user should be prompted to install swiftly */
     readonly disableSwiftlyInstallPrompt: boolean;
+    /** Whether to skip automatically installing a missing Swiftly-managed toolchain */
+    readonly disableAutoSwiftlyToolchainInstall: boolean;
     /** location to save swift-testing attachments */
     readonly attachmentsPath: string;
     /** look up saved permissions for the supplied plugin */
@@ -315,6 +317,14 @@ const configuration = {
                         .getConfiguration("swift")
                         .get<boolean>("disableSwiftlyInstallPrompt", false),
                     "swift.disableSwiftlyInstallPrompt"
+                );
+            },
+            get disableAutoSwiftlyToolchainInstall(): boolean {
+                return validateBooleanSetting(
+                    vscode.workspace
+                        .getConfiguration("swift")
+                        .get<boolean>("disableAutoSwiftlyToolchainInstall", false),
+                    "swift.disableAutoSwiftlyToolchainInstall"
                 );
             },
             get ignoreSwiftVersionFile(): boolean {

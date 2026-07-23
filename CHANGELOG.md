@@ -7,6 +7,7 @@
 - Toolchain changes will now automatically reload the workspace ([#2196](https://github.com/swiftlang/vscode-swift/pull/2196))
 - Add a button that installs Swiftly and the latest Swift toolchain to the extension's welcome walkthrough ([#2078](https://github.com/swiftlang/vscode-swift/pull/2078))
 - Add **Clean Build Folder** automatically generated task to remove all build artifacts ([#2280](https://github.com/swiftlang/vscode-swift/pull/2280))
+- Add `swift.disableAutoSwiftlyToolchainInstall` setting to skip automatically installing a missing Swift toolchain via Swiftly and notify the user to install it manually instead
 
 ### Fixed
 
