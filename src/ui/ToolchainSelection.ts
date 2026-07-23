@@ -58,13 +58,13 @@ async function selectToolchainFolder() {
  */
 export async function showToolchainError(folder?: vscode.Uri): Promise<boolean> {
     let selected: "Remove From Settings" | "Select Toolchain" | "Open Documentation" | undefined;
-    const folderName = folder ? `${FolderContext.uriName(folder)}: ` : "";
+    const swiftVersionPath = folder ? `${FolderContext.uriName(folder)}/.swift-version: ` : "";
     if (configuration.path) {
         selected = await vscode.window.showErrorMessage(
             "Toolchain failed",
             {
                 modal: true,
-                detail: `${folderName}The Swift executable at "${configuration.path}" either could not be found or failed to launch. Please select a new toolchain.`,
+                detail: `${swiftVersionPath}The Swift executable at "${configuration.path}" either could not be found or failed to launch. Please select a new toolchain.`,
             },
             "Remove From Settings",
             "Select Toolchain"
@@ -73,7 +73,7 @@ export async function showToolchainError(folder?: vscode.Uri): Promise<boolean> 
         const reason = configuration.folder(undefined).disableAutoSwiftlyToolchainInstall
             ? "Automatic toolchain installation is turned off in settings."
             : "Automatic toolchain installation is turned off in the Swift extension settings.";
-        const msg = `${folderName}${reason} Either install a toolchain from Swift.org or provide the path to an existing toolchain.`;
+        const msg = `${swiftVersionPath}${reason} Either install a toolchain from Swift.org or provide the path to an existing toolchain.`;
         selected = await vscode.window.showErrorMessage(
             "Missing toolchain",
             {
