@@ -16,11 +16,13 @@ import * as path from "path";
 import { match } from "sinon";
 import * as vscode from "vscode";
 
+import { Commands } from "@src/commands";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { Swiftly } from "@src/toolchain/swiftly";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
 import {
     showMissingToolchainDialog,
+    showToolchainError,
     showToolchainSelectionQuickPick,
 } from "@src/ui/ToolchainSelection";
 import * as utilities from "@src/utilities/utilities";
@@ -480,6 +482,48 @@ suite("ToolchainSelection Unit Test Suite", () => {
             expect(mockedVSCodeWindow.showInformationMessage).to.have.been.calledWith(
                 match("MyPackage")
             );
+        });
+    });
+
+    suite("showToolchainError", () => {
+        setup(() => {
+            mockedPlatform.setValue("darwin");
+        });
+
+        test("selecting a toolchain opens the quick pick directly without dispatching a command", async () => {
+            mockedVSCodeWindow.showErrorMessage.resolves("Select Toolchain" as any);
+
+            const result = await showToolchainError(instance(mockedLogger));
+
+            expect(result).to.be.true;
+            expect(mockedVSCodeWindow.showQuickPick).to.have.been.calledWith(
+                match.any,
+                match.has("title", "Select the Swift toolchain")
+            );
+            expect(mockedVSCodeCommands.executeCommand).to.not.have.been.calledWith(
+                Commands.SELECT_TOOLCHAIN
+            );
+        });
+
+        test("includes the folder name in the error message", async () => {
+            const folder = vscode.Uri.file("/path/to/MyPackage");
+            mockedVSCodeWindow.showErrorMessage.resolves(undefined);
+
+            await showToolchainError(instance(mockedLogger), folder);
+
+            expect(mockedVSCodeWindow.showErrorMessage).to.have.been.calledWith(
+                match.any,
+                match.has("detail", match("MyPackage/.swift-version"))
+            );
+        });
+
+        test("does not open the quick pick when the user dismisses the error", async () => {
+            mockedVSCodeWindow.showErrorMessage.resolves(undefined);
+
+            const result = await showToolchainError(instance(mockedLogger));
+
+            expect(result).to.be.false;
+            expect(mockedVSCodeWindow.showQuickPick).to.not.have.been.called;
         });
     });
 });

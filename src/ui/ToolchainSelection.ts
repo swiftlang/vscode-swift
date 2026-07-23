@@ -54,9 +54,15 @@ async function selectToolchainFolder() {
 
 /**
  * Displays an error notification to the user that toolchain discovery failed.
+ *
+ * @param logger Logger used while querying the toolchains available on the system.
+ * @param folder Optional folder context for the message.
  * @returns true if the user made a selection (and potentially updated toolchain settings), false if they dismissed the dialog
  */
-export async function showToolchainError(folder?: vscode.Uri): Promise<boolean> {
+export async function showToolchainError(
+    logger: SwiftLogger,
+    folder?: vscode.Uri
+): Promise<boolean> {
     let selected: "Remove From Settings" | "Select Toolchain" | "Open Documentation" | undefined;
     const swiftVersionPath = folder ? `${FolderContext.uriName(folder)}/.swift-version: ` : "";
     if (configuration.path) {
@@ -89,7 +95,8 @@ export async function showToolchainError(folder?: vscode.Uri): Promise<boolean> 
         await removeToolchainPath();
         return true;
     } else if (selected === "Select Toolchain") {
-        await selectToolchain();
+        // Allow user to select toolchain without waiting for workspace init
+        await showToolchainSelectionQuickPick(undefined, logger, folder);
         return true;
     } else if (selected === "Open Documentation") {
         void vscode.env.openExternal(
