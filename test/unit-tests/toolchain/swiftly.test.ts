@@ -1521,8 +1521,8 @@ apt-get -y install libncurses5-dev
             );
             expect(result).to.be.true;
         });
- 
-      test("getActiveToolchain falls back to global toolchain when user declines and cwd is provided", async () => {
+
+        test("getActiveToolchain falls back to global toolchain when user declines and cwd is provided", async () => {
             const missingToolchainError = Object.create(ExecFileError.prototype);
             missingToolchainError.causedBy = new Error("swiftly use failed");
             missingToolchainError.stdout = "";
