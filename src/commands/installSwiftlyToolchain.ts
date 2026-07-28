@@ -32,8 +32,8 @@ import {
  * @param logger Optional logger for error reporting
  * @param cwd Optional working directory used to resolve the selected toolchain when
  *   no version is given.
- * @param options.onError Invoked with the error when a non-cancellation failure occurs. When
- * provided, the default error notification is suppressed so the caller can report it instead.
+ * @param options.suppressErrorNotification Suppresses the default error notification on a
+ * non-cancellation failure so that the caller can report it instead.
  * @returns A promise that resolves to true if installation succeeded, false otherwise
  */
 export async function installSwiftlyToolchainWithProgress(
@@ -42,7 +42,7 @@ export async function installSwiftlyToolchainWithProgress(
     logger?: SwiftLogger,
     swiftlyPath?: string,
     cwd?: vscode.Uri,
-    options?: { onError?: (error: unknown) => void }
+    options?: { suppressErrorNotification?: boolean }
 ): Promise<boolean> {
     const toolchainName = version ? `Swift ${version}` : "the active Swift toolchain";
     try {
@@ -104,13 +104,10 @@ export async function installSwiftlyToolchainWithProgress(
             return false;
         }
 
-        logger?.error(new Error(`Failed to install Swift ${version}`, { cause: error }));
-        if (options?.onError) {
-            options.onError(error);
-            return false;
-        }
         logger?.error(new Error(`Failed to install ${toolchainName}`, { cause: error }));
-        void vscode.window.showErrorMessage(`Failed to install ${toolchainName}: ${error}`);
+        if (!options?.suppressErrorNotification) {
+            void vscode.window.showErrorMessage(`Failed to install ${toolchainName}: ${error}`);
+        }
 
         return false;
     }
