@@ -80,8 +80,8 @@ suite("ToolchainSelection Unit Test Suite", () => {
                 s.withArgs("path", match.any).returns("");
                 s.withArgs("runtimePath", match.any).returns("");
                 s.withArgs("swiftEnvironmentVariables", match.any).returns({});
-                // Default fallback
-                s.returns(undefined);
+                // Fall back to the default value supplied by the caller, just like VS Code does
+                s.callsFake((_section, defaultValue) => defaultValue);
             }),
             has: mockFn(s => s.returns(false)),
         });

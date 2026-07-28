@@ -1643,7 +1643,7 @@ apt-get -y install libncurses5-dev
             );
         });
 
-        test("skips installation and notifies the user when automatic installation is disabled", async () => {
+        test("skips installation without notifying the user when automatic installation is disabled", async () => {
             setAutomaticInstallDisabled(true);
             const notInstalled = new Error("toolchain is not installed");
             mockUtilities.execFile
@@ -1655,9 +1655,7 @@ apt-get -y install libncurses5-dev
             ).to.eventually.be.rejectedWith(notInstalled);
 
             expect(mockInstallToolchain).to.not.have.been.called;
-            expect(mockWindow.showWarningMessage).to.have.been.calledWith(
-                "Swift toolchain missing. Skipping automatic installation. Install it manually via `swiftly install`"
-            );
+            expect(mockWindow.showWarningMessage).to.not.have.been.called;
         });
     });
 
