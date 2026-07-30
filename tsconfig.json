@@ -3,6 +3,7 @@
   "references": [
     { "path": "./src" },
     { "path": "./src/documentation/webview" },
-    { "path": "./test" }
+    { "path": "./test" },
+    { "path": "./scripts" }
   ]
 }
