@@ -2219,7 +2219,7 @@
     "svgo": "^4.0.1",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.22.4",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vscode-tmgrammar-test": "^0.1.3",
     "winston": "^3.19.0",
     "winston-transport": "^4.9.0",
