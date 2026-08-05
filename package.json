@@ -209,6 +209,16 @@
         "configuration": "./tutorial.language-configuration.json"
       },
       {
+        "id": "markdown-docc",
+        "aliases": [
+          "DocC Markdown"
+        ],
+        "filenamePatterns": [
+          "**/*.docc/**/*.md"
+        ],
+        "configuration": "./markdown-docc.language-configuration.json"
+      },
+      {
         "id": "swift-gyb",
         "aliases": [
           "Swift GYB"
@@ -237,6 +247,11 @@
         "injectTo": [
           "text.html.markdown"
         ]
+      },
+      {
+        "language": "markdown-docc",
+        "scopeName": "text.html.markdown.docc",
+        "path": "./syntaxes/markdown-docc.tmLanguage.json"
       }
     ],
     "snippets": [
