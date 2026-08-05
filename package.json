@@ -2216,7 +2216,7 @@
     "sinon-chai": "^3.7.0",
     "source-map-support": "^0.5.21",
     "strip-ansi": "^6.0.1",
-    "svgo": "^4.0.1",
+    "svgo": "^4.0.2",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
