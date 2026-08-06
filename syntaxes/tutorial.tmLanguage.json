@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
-  "name": "Tutorial",
+  "name": "Swift DocC Tutorial",
   "scopeName": "text.tutorial",
   "fileTypes": ["tutorial"],
   "patterns": [
