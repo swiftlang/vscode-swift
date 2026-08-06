@@ -198,7 +198,7 @@
       {
         "id": "tutorial",
         "aliases": [
-          "Tutorial"
+          "Swift DocC Tutorial"
         ],
         "filenamePatterns": [
           "*.tutorial"
