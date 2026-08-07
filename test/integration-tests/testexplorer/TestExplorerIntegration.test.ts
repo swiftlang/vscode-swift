@@ -34,6 +34,7 @@ import { lineBreakRegex } from "@src/utilities/tasks";
 import { randomString } from "@src/utilities/utilities";
 import { Version } from "@src/utilities/version";
 
+import { mockGlobalFunction } from "../../MockUtils";
 import { tag } from "../../tags";
 import { executeTaskAndWaitForResult } from "../../utilities/tasks";
 import {
@@ -194,6 +195,64 @@ tag("large").suite("Test Explorer Suite", function () {
                     this.skip();
                 }
                 await runSwiftTesting.call(this);
+            });
+        });
+
+        suite("Session termination name mismatch", () => {
+            // Capture the real event before `mockGlobalFunction` replaces it so the fake
+            // can forward genuine terminate events with a disguised session name.
+            const realOnDidTerminate = vscode.debug.onDidTerminateDebugSession.bind(vscode.debug);
+            const onDidTerminate = mockGlobalFunction(vscode.debug, "onDidTerminateDebugSession");
+            let resetSettings: (() => Promise<void>) | undefined;
+
+            beforeEach(async function () {
+                // lldb-dap is only present/functional in the toolchain in 6.0.2 and up.
+                if (folderContext.swiftVersion.isLessThan(new Version(6, 0, 2))) {
+                    this.skip();
+                }
+                resetSettings = await updateSettings({
+                    "swift.debugger.debugAdapter": "lldb-dap",
+                });
+            });
+
+            afterEach(async () => {
+                if (resetSettings) {
+                    await resetSettings();
+                    resetSettings = undefined;
+                }
+            });
+
+            test("Registers completion when the terminated session name does not match", async function () {
+                this.timeout(60 * 1000);
+
+                onDidTerminate.callsFake((listener, thisArgs, disposables) =>
+                    realOnDidTerminate(
+                        session => {
+                            const disguised = new Proxy(session, {
+                                get(target, prop, receiver) {
+                                    if (prop === "name") {
+                                        return `xcrun ${target.name}`;
+                                    }
+                                    return Reflect.get(target, prop, receiver);
+                                },
+                            });
+                            listener.call(thisArgs, disguised);
+                        },
+                        undefined,
+                        disposables
+                    )
+                );
+
+                const suiteId = "PackageTests.PassingXCTestSuite";
+                const testId = `${suiteId}/testPassing`;
+
+                // The debug session should resolve even though the terminated session's
+                // name does not match, but the session ID does.
+                const testRun = await runTest(testExplorer, TestKind.debug, testId);
+                assertTestResults(testRun, {
+                    passed: [suiteId, testId],
+                });
+                assert.strictEqual(folderContext.hasActiveTestRun(), false);
             });
         });
     });

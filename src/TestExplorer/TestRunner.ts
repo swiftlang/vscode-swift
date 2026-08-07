@@ -62,6 +62,17 @@ export enum TestLibrary {
     swiftTesting = "swift-testing",
 }
 
+export function debugSessionMatchesConfig(
+    config: vscode.DebugConfiguration,
+    startedSessionId: string | undefined,
+    session: Pick<vscode.DebugSession, "id" | "name">
+): boolean {
+    if (startedSessionId !== undefined && session.id === startedSessionId) {
+        return true;
+    }
+    return session.name === config.name;
+}
+
 /** Class used to run tests */
 export class TestRunner {
     public testRun: TestRunProxy;
@@ -931,7 +942,25 @@ export class TestRunner {
                 return;
             }
 
+            let startedSessionId: string | undefined;
+
+            let settled = false;
+            const finish = () => {
+                if (settled) {
+                    return;
+                }
+                settled = true;
+                subscriptions.forEach(sub => sub.dispose());
+                if (config.testType === TestLibrary.swiftTesting) {
+                    void this.swiftTestOutputParser.close();
+                }
+                void vscode.commands
+                    .executeCommand("workbench.view.extension.test")
+                    .then(() => resolve());
+            };
+
             const startSession = vscode.debug.onDidStartDebugSession(session => {
+                startedSessionId = session.id;
                 const outputHandler = this.testOutputHandler(config.testType, runState);
                 outputHandler(`> ${config.program} ${config.args.join(" ")}\n\n\r`);
 
@@ -943,6 +972,11 @@ export class TestRunner {
                         if (exitCode === 9) {
                             this.debugSessionTerminatedEmitter.fire();
                         }
+                        this.workspaceContext.logger.debug(
+                            "Test Debugging Process Exited",
+                            this.folderContext.name
+                        );
+                        finish();
                     }
                 );
 
@@ -951,22 +985,18 @@ export class TestRunner {
                         "Test Debugging Cancelled",
                         this.folderContext.name
                     );
-                    void vscode.debug.stopDebugging(session).then(resolve);
+                    void vscode.debug.stopDebugging(session).then(finish, finish);
                 });
                 subscriptions.push(cancellation);
             });
             subscriptions.push(startSession);
 
             const terminateSession = vscode.debug.onDidTerminateDebugSession(e => {
-                if (e.name !== config.name) {
+                if (!debugSessionMatchesConfig(config, startedSessionId, e)) {
                     return;
                 }
                 this.workspaceContext.logger.debug("Stop Test Debugging", this.folderContext.name);
-                subscriptions.forEach(sub => sub.dispose());
-
-                void vscode.commands
-                    .executeCommand("workbench.view.extension.test")
-                    .then(() => resolve());
+                finish();
             });
             subscriptions.push(terminateSession);
 
@@ -983,11 +1013,13 @@ export class TestRunner {
                             this.folderContext.name
                         );
                     } else {
+                        settled = true;
                         subscriptions.forEach(sub => sub.dispose());
                         reject("Debugger not started");
                     }
                 },
                 reason => {
+                    settled = true;
                     subscriptions.forEach(sub => sub.dispose());
                     reject(reason);
                 }
