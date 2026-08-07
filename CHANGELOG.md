@@ -2,6 +2,8 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+## 2.16.6 - 2026-06-04
+
 ### Fixed
 
 - Packages that produced a warning during `swift package resolve` would not load ([#2262](https://github.com/swiftlang/vscode-swift/pull/2262))
