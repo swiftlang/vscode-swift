@@ -118,7 +118,7 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
             for (const o of loggingDebugAdapter.output) {
                 cb(o);
             }
-            if (loggingDebugAdapter.exitCode) {
+            if (loggingDebugAdapter.exitCode !== undefined) {
                 exitHandler(loggingDebugAdapter.exitCode);
             }
             loggingDebugAdapter.output = [];
@@ -143,7 +143,9 @@ export class LoggingDebugAdapterTracker implements vscode.DebugAdapterTracker {
             return;
         }
 
-        if (debugMessage.event === "exited" && debugMessage.body.exitCode) {
+        // https://github.com/swiftlang/vscode-swift/issues/2300
+        // exit code 0 must still be forwarded or the test run never finishes
+        if (debugMessage.event === "exited" && debugMessage.body.exitCode !== undefined) {
             this.exitCode = debugMessage.body.exitCode;
             this.exitHandler?.(debugMessage.body.exitCode);
         } else if (debugMessage.type === "event" && debugMessage.event === "output") {
