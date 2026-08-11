@@ -16,7 +16,11 @@ import * as vscode from "vscode";
 
 import { FolderContext } from "./FolderContext";
 import { SourceKitLanguageClient } from "./sourcekit-lsp/client/SourceKitLanguageClient";
-import { DocCDocumentationRequest, ReIndexProjectRequest } from "./sourcekit-lsp/extensions";
+import {
+    DocCDocumentationRequest,
+    DocCSymbolLinkDefinitionRequest,
+    ReIndexProjectRequest,
+} from "./sourcekit-lsp/extensions";
 import { Version } from "./utilities/version";
 
 /**
@@ -89,6 +93,11 @@ export interface ContextKeys {
     supportsDocumentationLivePreview: boolean;
 
     /**
+     * Whether the SourceKit-LSP server supports resolving DocC symbol links to their definition.
+     */
+    supportsSymbolLinkDefinition: boolean;
+
+    /**
      * Whether the installed version of Swiftly can be used to install toolchains from within VS Code.
      */
     supportsSwiftlyInstall: boolean;
@@ -139,6 +148,7 @@ export class ContextKeyManager implements ContextKeys {
     private _createNewProjectAvailable = false;
     private _supportsReindexing = false;
     private _supportsDocumentationLivePreview = false;
+    private _supportsSymbolLinkDefinition = false;
     private _supportsSwiftlyInstall = false;
     private _switchPlatformAvailable = false;
 
@@ -246,6 +256,18 @@ export class ContextKeyManager implements ContextKeys {
         );
     }
 
+    get supportsSymbolLinkDefinition(): boolean {
+        return this._supportsSymbolLinkDefinition;
+    }
+    set supportsSymbolLinkDefinition(value: boolean) {
+        this._supportsSymbolLinkDefinition = value;
+        void vscode.commands.executeCommand(
+            "setContext",
+            "swift.supportsSymbolLinkDefinition",
+            value
+        );
+    }
+
     get supportsSwiftlyInstall(): boolean {
         return this._supportsSwiftlyInstall;
     }
@@ -310,6 +332,10 @@ export class ContextKeyManager implements ContextKeys {
                 );
                 this.supportsDocumentationLivePreview = client.checkExperimentalCapability(
                     DocCDocumentationRequest.method,
+                    1
+                );
+                this.supportsSymbolLinkDefinition = client.checkExperimentalCapability(
+                    DocCSymbolLinkDefinitionRequest.method,
                     1
                 );
             });

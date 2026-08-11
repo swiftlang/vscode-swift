@@ -25,13 +25,6 @@ const themeObserver = new ThemeObserver();
 themeObserver.updateTheme();
 themeObserver.start();
 
-// Disable clicking on links as they do not work
-const disableLinks = document.createElement("style");
-disableLinks.textContent = `a {
-    pointer-events: none;
-}`;
-document.head.appendChild(disableLinks);
-
 // Set up the communication bridges to VS Code and swift-docc-render
 createCommunicationBridge().then(async bridge => {
     const vscode = acquireVsCodeApi();
@@ -54,6 +47,24 @@ createCommunicationBridge().then(async bridge => {
             }
         }
     });
+
+    document.addEventListener(
+        "click",
+        event => {
+            const anchor = (event.target as HTMLElement)?.closest(
+                "a[href]"
+            ) as HTMLAnchorElement | null;
+            if (!anchor) {
+                return;
+            }
+            event.preventDefault();
+            const href = anchor.getAttribute("href");
+            if (href) {
+                vscode.postMessage({ type: "symbolLinkClicked", data: href });
+            }
+        },
+        { capture: true }
+    );
 
     // Handle messages coming from vscode-swift
     // eslint-disable-next-line sonarjs/post-message

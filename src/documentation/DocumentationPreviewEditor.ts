@@ -18,6 +18,7 @@ import { LSPErrorCodes, ResponseError } from "vscode-languageclient";
 
 import { WorkspaceContext } from "../WorkspaceContext";
 import { DocCDocumentationRequest } from "../sourcekit-lsp/extensions";
+import { DocCSymbolLinkDefinitionRequest } from "../sourcekit-lsp/extensions";
 import { Disposable } from "../utilities/Disposable";
 import { RenderNode, WebviewContent, WebviewMessage } from "./webview/WebviewMessage";
 
@@ -163,6 +164,68 @@ export class DocumentationPreviewEditor implements Disposable {
             case "rendered":
                 this.renderEmitter.fire();
                 break;
+            case "symbolLinkClicked":
+                void this.resolveSymbolLink(message.data);
+                break;
+        }
+    }
+
+    private async resolveSymbolLink(href: string): Promise<void> {
+        if (!this.activeTextEditor) {
+            this.context.logger.debug(`resolveSymbolLink: no active text editor for href=${href}`);
+            return;
+        }
+        const document = this.activeTextEditor.document;
+        const folderContext = this.context.folders.find(folderContext =>
+            document.uri.fsPath.startsWith(folderContext.folder.fsPath)
+        );
+        if (!folderContext) {
+            this.context.logger.debug(
+                `resolveSymbolLink: no folderContext for ${document.uri.fsPath}`
+            );
+            return;
+        }
+
+        const symbolLink = href.startsWith("/") ? href.slice(1) : href;
+        this.context.logger.debug(
+            `resolveSymbolLink: resolving "${symbolLink}" from ${document.uri.toString()}`
+        );
+
+        try {
+            const client = this.context.languageClientManager.getClient(folderContext);
+            this.context.logger.debug(`resolveSymbolLink: got client, sending request`);
+            const location = await client.useLanguageClient(async client => {
+                const result = await client.sendRequest(DocCSymbolLinkDefinitionRequest.type, {
+                    symbolLink,
+                    textDocument: { uri: document.uri.toString() },
+                });
+                this.context.logger.debug(
+                    `resolveSymbolLink: request returned ${JSON.stringify(result)}`
+                );
+                return result ? client.protocol2CodeConverter.asDefinitionResult(result) : null;
+            });
+            if (location) {
+                const first = Array.isArray(location) ? location[0] : location;
+                const targetUri = "uri" in first ? first.uri : first.targetUri;
+                const targetRange = "range" in first ? first.range : first.targetSelectionRange;
+
+                this.context.logger.debug(`resolveSymbolLink: navigating to ${targetUri}`);
+                const targetDoc = await vscode.workspace.openTextDocument(targetUri);
+                await vscode.window.showTextDocument(targetDoc, {
+                    selection: targetRange,
+                    viewColumn: vscode.ViewColumn.One,
+                });
+            } else {
+                this.context.logger.debug(
+                    `resolveSymbolLink: server returned null/no location for "${symbolLink}"`
+                );
+                void vscode.window.showErrorMessage(
+                    `Symbol link could not be resolved: ${symbolLink}`
+                );
+            }
+        } catch (error) {
+            this.context.logger.error(`Failed to resolve symbol link "${symbolLink}": ${error}`);
+            void vscode.window.showErrorMessage(`Symbol not found: ${symbolLink}`);
         }
     }
 

@@ -15,7 +15,11 @@
 /**
  * Represents a message that can be sent between the webview and vscode-swift
  */
-export type WebviewMessage = LoadedMessage | RenderedMessage | UpdateContentMessage;
+export type WebviewMessage =
+    | LoadedMessage
+    | RenderedMessage
+    | UpdateContentMessage
+    | SymbolLinkClickedMessage;
 
 /**
  * Sent from the webview to the extension to indicate that the webview has loaded
@@ -31,6 +35,15 @@ export interface LoadedMessage {
  */
 export interface RenderedMessage {
     type: "rendered";
+}
+
+/**
+ * Sent from the webview to the extension when the user clicks a DocC symbol link,
+ * so the extension can resolve it via SourceKit-LSP and navigate to its definition.
+ */
+export interface SymbolLinkClickedMessage {
+    type: "symbolLinkClicked";
+    data: string;
 }
 
 /**
