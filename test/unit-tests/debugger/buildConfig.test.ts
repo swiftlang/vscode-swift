@@ -52,6 +52,7 @@ suite("BuildConfig Test Suite", () => {
             disableAutoResolve: false,
             attachmentsPath: "",
             disableSwiftlyInstallPrompt: false,
+            disableAutoSwiftlyToolchainInstall: false,
             ignoreSwiftVersionFile: false,
             pluginPermissions: () => ({ trusted: false }),
             pluginArguments: () => [],

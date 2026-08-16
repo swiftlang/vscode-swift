@@ -20,14 +20,10 @@ import * as vscode from "vscode";
 import * as askpass from "@src/askpass/askpass-server";
 import { handleMissingSwiftly, promptForSwiftlyInstallation } from "@src/commands/installSwiftly";
 import { installSwiftlyToolchainWithProgress } from "@src/commands/installSwiftlyToolchain";
+import configuration, { FolderConfiguration } from "@src/configuration";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
-import {
-    Swiftly,
-    handleMissingSwiftlyToolchain,
-    parseSwiftlyMissingToolchainError,
-} from "@src/toolchain/swiftly";
+import { Swiftly, handleMissingSwiftlyToolchain } from "@src/toolchain/swiftly";
 import * as utilities from "@src/utilities/utilities";
-import { ExecFileError } from "@src/utilities/utilities";
 
 import {
     MockedObject,
@@ -1461,36 +1457,6 @@ apt-get -y install libncurses5-dev
         });
     });
 
-    suite("Missing Toolchain Handling", () => {
-        test("parseSwiftlyMissingToolchainError parses version correctly", () => {
-            const stderr =
-                "The swift version file uses toolchain version 6.1.2, but it doesn't match any of the installed toolchains. You can install the toolchain with `swiftly install`.";
-            const result = parseSwiftlyMissingToolchainError(stderr);
-            expect(result?.version).to.equal("6.1.2");
-            expect(result?.originalError).to.equal(stderr);
-        });
-
-        test("parseSwiftlyMissingToolchainError returns undefined for other errors", () => {
-            const stderr = "Some other error message";
-            const result = parseSwiftlyMissingToolchainError(stderr);
-            expect(result).to.be.undefined;
-        });
-
-        test("parseSwiftlyMissingToolchainError handles snapshot versions", () => {
-            const stderr =
-                "uses toolchain version 6.1-snapshot-2024-12-01, but it doesn't match any of the installed toolchains";
-            const result = parseSwiftlyMissingToolchainError(stderr);
-            expect(result?.version).to.equal("6.1-snapshot-2024-12-01");
-        });
-
-        test("parseSwiftlyMissingToolchainError handles versions with hyphens", () => {
-            const stderr =
-                "uses toolchain version 6.0-dev, but it doesn't match any of the installed toolchains";
-            const result = parseSwiftlyMissingToolchainError(stderr);
-            expect(result?.version).to.equal("6.0-dev");
-        });
-    });
-
     suite("handleMissingSwiftlyToolchain", () => {
         const mockWindow = mockGlobalObject(vscode, "window");
         const mockedUtilities = mockGlobalModule(utilities);
@@ -1557,27 +1523,26 @@ apt-get -y install libncurses5-dev
             expect(result).to.be.true;
         });
 
-        test("getActiveToolchain falls back to global toolchain when user declines and cwd is provided", async () => {
-            const missingToolchainError = Object.create(ExecFileError.prototype);
-            missingToolchainError.causedBy = new Error("swiftly use failed");
-            missingToolchainError.stdout = "";
-            missingToolchainError.stderr =
-                "The swift version file uses toolchain version 6.1.2, but it doesn't match any of the installed toolchains";
-            missingToolchainError.message = "swiftly use failed";
+        test("getActiveToolchain installs the active toolchain then returns its location when the toolchain is not installed", async () => {
+            // The active toolchain isn't installed yet, so the first
+            // `swiftly use --print-location` fails; after installing it, the retry succeeds.
+            const useLocation = mockedUtilities.execFile.withArgs("swiftly", [
+                "use",
+                "--print-location",
+            ]);
+            useLocation.onFirstCall().rejects(new Error("toolchain is not installed"));
+            useLocation.onSecondCall().resolves({ stdout: "/toolchains/6.1.2\n", stderr: "" });
 
-            // First call (with cwd) fails with missing toolchain error
-            mockedUtilities.execFile.onFirstCall().rejects(missingToolchainError);
-            // Second call (recursive, with undefined cwd) succeeds
-            mockedUtilities.execFile
-                .onSecondCall()
-                .resolves({ stdout: "/global/toolchain/path\n", stderr: "" });
-
-            // User declines installation prompt
-            mockWindow.showInformationMessage.resolves(undefined);
-
-            const mockLogger = mockObject<SwiftLogger>({
-                info: mockFn(),
+            // Run the installation progress task immediately with a non-cancelled token.
+            mockWindow.withProgress.callsFake(async (_options, task) => {
+                const mockProgress = { report: () => {} };
+                const mockToken = {
+                    isCancellationRequested: false,
+                    onCancellationRequested: () => ({ dispose: () => {} }),
+                };
+                return await task(mockProgress, mockToken);
             });
+            mockSwiftlyInstallToolchain.setValue(() => Promise.resolve());
 
             const cwd = vscode.Uri.file("/project/path");
             const result = await Swiftly.getActiveToolchain(
@@ -1586,8 +1551,111 @@ apt-get -y install libncurses5-dev
                 cwd
             );
 
-            expect(result).to.equal("/global/toolchain/path");
+            expect(result).to.equal("/toolchains/6.1.2");
             expect(mockedUtilities.execFile).to.have.been.calledTwice;
+        });
+    });
+
+    suite("getActiveToolchain", () => {
+        const mockWindow = mockGlobalObject(vscode, "window");
+        const mockInstallToolchain = mockGlobalFunction(Swiftly, "installToolchain");
+        const mockConfigFolder = mockGlobalValue(configuration, "folder");
+        let mockLogger: MockedObject<SwiftLogger>;
+
+        const setAutomaticInstallDisabled = (disabled: boolean) => {
+            mockConfigFolder.setValue(() =>
+                instance(
+                    mockObject<FolderConfiguration>({
+                        disableAutoSwiftlyToolchainInstall: disabled,
+                    })
+                )
+            );
+        };
+
+        setup(() => {
+            mockLogger = mockObject<SwiftLogger>({
+                info: mockFn(),
+                error: mockFn(),
+            });
+            // Automatic installation of missing toolchains is enabled by default.
+            setAutomaticInstallDisabled(false);
+            // Run the progress-notification task immediately with a non-cancelled token.
+            mockWindow.withProgress.callsFake(async (_options, task) => {
+                const mockProgress = { report: () => {} };
+                const mockToken = {
+                    isCancellationRequested: false,
+                    onCancellationRequested: () => ({ dispose: () => {} }),
+                };
+                return await task(mockProgress, mockToken);
+            });
+        });
+
+        test("returns the in-use toolchain location without installing it", async () => {
+            mockUtilities.execFile
+                .withArgs("swiftly", ["use", "--print-location"])
+                .resolves({ stdout: "/toolchains/6.1.2\n", stderr: "" });
+
+            const result = await Swiftly.getActiveToolchain(
+                "/extension/root",
+                instance(mockLogger)
+            );
+
+            expect(result).to.equal("/toolchains/6.1.2");
+            expect(mockInstallToolchain).to.not.have.been.called;
+        });
+
+        test("installs the active toolchain and retries when it is not installed", async () => {
+            const useLocation = mockUtilities.execFile.withArgs("swiftly", [
+                "use",
+                "--print-location",
+            ]);
+            useLocation.onFirstCall().rejects(new Error("toolchain is not installed"));
+            useLocation.onSecondCall().resolves({ stdout: "/toolchains/6.1.2\n", stderr: "" });
+            mockInstallToolchain.resolves();
+
+            const cwd = vscode.Uri.file("/project/path");
+            const result = await Swiftly.getActiveToolchain(
+                "/extension/root",
+                instance(mockLogger),
+                cwd
+            );
+
+            expect(result).to.equal("/toolchains/6.1.2");
+            // swiftly resolves the version itself when none is given, so the toolchain
+            // is installed with an undefined version in the folder's working directory.
+            expect(mockInstallToolchain).to.have.been.calledOnce;
+            const installArgs = mockInstallToolchain.getCall(0).args;
+            expect(installArgs[0], "version should be undefined").to.be.undefined;
+            expect(installArgs[1]).to.equal("/extension/root");
+            expect(installArgs[6], "cwd should be forwarded to installToolchain").to.equal(cwd);
+        });
+
+        test("throws when the installation fails", async () => {
+            mockUtilities.execFile
+                .withArgs("swiftly", ["use", "--print-location"])
+                .rejects(new Error("toolchain is not installed"));
+            mockInstallToolchain.rejects(new Error("install failed"));
+
+            await expect(
+                Swiftly.getActiveToolchain("/extension/root", instance(mockLogger))
+            ).to.eventually.be.rejectedWith(
+                "Failed to install the active swift toolchain via swiftly."
+            );
+        });
+
+        test("skips installation without notifying the user when automatic installation is disabled", async () => {
+            setAutomaticInstallDisabled(true);
+            const notInstalled = new Error("toolchain is not installed");
+            mockUtilities.execFile
+                .withArgs("swiftly", ["use", "--print-location"])
+                .rejects(notInstalled);
+
+            await expect(
+                Swiftly.getActiveToolchain("/extension/root", instance(mockLogger))
+            ).to.eventually.be.rejectedWith(notInstalled);
+
+            expect(mockInstallToolchain).to.not.have.been.called;
+            expect(mockWindow.showWarningMessage).to.not.have.been.called;
         });
     });
 

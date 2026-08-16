@@ -24,11 +24,12 @@ import { z } from "zod/v4/mini";
 
 import { withAskpassServer } from "../askpass/askpass-server";
 import { installSwiftlyToolchainWithProgress } from "../commands/installSwiftlyToolchain";
+import configuration from "../configuration";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { showMissingToolchainDialog } from "../ui/ToolchainSelection";
 import { touch } from "../utilities/filesystem";
 import { findBinaryInPath } from "../utilities/shell";
-import { ExecFileError, execFile, execFileStreamOutput } from "../utilities/utilities";
+import { execFile, execFileStreamOutput } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 import { SwiftlyConfig } from "./ToolchainVersion";
 
@@ -133,30 +134,6 @@ interface PostInstallValidationResult {
     summary: string;
     scriptContent: string;
     invalidCommands?: string[];
-}
-
-interface MissingToolchainError {
-    version: string;
-    originalError: string;
-}
-
-/**
- * Parses Swiftly error message to detect missing toolchain scenarios
- * @param stderr The stderr output from swiftly command
- * @returns MissingToolchainError if this is a missing toolchain error, undefined otherwise
- */
-export function parseSwiftlyMissingToolchainError(
-    stderr: string
-): MissingToolchainError | undefined {
-    // Parse error message like: "uses toolchain version 6.1.2, but it doesn't match any of the installed toolchains"
-    const versionMatch = /uses toolchain version ([0-9.]+(?:-[a-zA-Z0-9-]+)*)/.exec(stderr);
-    if (versionMatch && stderr.includes("doesn't match any of the installed toolchains")) {
-        return {
-            version: versionMatch[1],
-            originalError: stderr,
-        };
-    }
-    return undefined;
 }
 
 /**
@@ -640,32 +617,30 @@ export class Swiftly {
     ): Promise<string> {
         try {
             return await Swiftly.inUseLocation("swiftly", cwd);
-        } catch (error: unknown) {
-            if (error instanceof ExecFileError) {
-                // Check if this is a missing toolchain error
-                const missingToolchainError = parseSwiftlyMissingToolchainError(error.stderr);
-                if (missingToolchainError) {
-                    // Attempt automatic installation
-                    const installed = await handleMissingSwiftlyToolchain(
-                        missingToolchainError.version,
-                        extensionRoot,
-                        logger,
-                        cwd
-                    );
-                    if (installed) {
-                        // Retry toolchain location after successful installation
-                        return await this.getActiveToolchain(extensionRoot, logger, cwd);
-                    } else if (cwd) {
-                        // If the user dismisses the installation prompt then fall back
-                        // to using the global toolchain
-                        return await Swiftly.getActiveToolchain(extensionRoot, logger);
-                    }
-                }
+        } catch (error) {
+            // The active toolchain may not be installed yet. Unless the user has opted out,
+            // ask swiftly to install whichever version is currently selected (resolved from
+            // `.swift-version` or the global default) before locating it again.
+            if (configuration.folder(undefined).disableAutoSwiftlyToolchainInstall) {
+                logger.info(
+                    "Automatic Swiftly toolchain installation is disabled; skipping installation of the active toolchain"
+                );
+                throw error;
             }
-            // We were unable to resolve the active swift toolchain.
-            throw Error("Failed to determine the active swift toolchain via swiftly.", {
-                cause: error,
-            });
+            logger.info("Active swift toolchain is not installed, installing via swiftly");
+            const installed = await installSwiftlyToolchainWithProgress(
+                undefined,
+                extensionRoot,
+                logger,
+                undefined,
+                cwd
+            );
+            if (!installed) {
+                throw new Error("Failed to install the active swift toolchain via swiftly.", {
+                    cause: error,
+                });
+            }
+            return await Swiftly.inUseLocation("swiftly", cwd);
         }
     }
 
@@ -717,87 +692,56 @@ export class Swiftly {
     /**
      * Installs a toolchain via swiftly with optional progress tracking.
      *
-     * @param version The toolchain version to install.
+     * @param version The toolchain version to install. When omitted, swiftly installs
+     *   whichever toolchain is currently selected (e.g. from a `.swift-version` file or
+     *   the global default).
      * @param progressCallback Optional callback that receives progress data as JSON objects.
      * @param logger Optional logger for error reporting.
      * @param token Optional cancellation token to abort the installation.
+     * @param cwd Optional working directory used to resolve the selected toolchain when
+     *   no version is given.
      */
     public static async installToolchain(
-        version: string,
+        version: string | undefined,
         extensionRoot: string,
         progressCallback?: (progressData: SwiftlyProgressData) => void,
         logger?: SwiftLogger,
         token?: vscode.CancellationToken,
-        swiftlyPath?: string
+        swiftlyPath?: string,
+        cwd?: vscode.Uri
     ): Promise<void> {
         if (!this.isSupported()) {
             throw new Error("Swiftly is not supported on this platform");
         }
 
-        logger?.info(`Installing toolchain ${version} via ${swiftlyPath ?? "swiftly"}`);
+        const toolchainLabel = version ? `toolchain ${version}` : "the active toolchain";
+        logger?.info(`Installing ${toolchainLabel} via ${swiftlyPath ?? "swiftly"}`);
 
         const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "vscode-swift-"));
-        const postInstallFilePath = path.join(tmpDir, `post-install-${version}.sh`);
+        const fileNameLabel = version ?? "active";
+        const postInstallFilePath = path.join(tmpDir, `post-install-${fileNameLabel}.sh`);
 
         let progressPipePath: string | undefined;
         let progressPromise: Promise<void> | undefined;
 
         if (progressCallback) {
-            progressPipePath = path.join(tmpDir, `progress-${version}.pipe`);
+            progressPipePath = path.join(tmpDir, `progress-${fileNameLabel}.pipe`);
 
             await execFile("mkfifo", [progressPipePath]);
 
-            progressPromise = new Promise<void>((resolve, reject) => {
-                const rl = readline.createInterface({
-                    input: fsSync.createReadStream(progressPipePath!),
-                    crlfDelay: Infinity,
-                });
-
-                // Handle cancellation during progress tracking
-                const cancellationHandler = token?.onCancellationRequested(() => {
-                    rl.close();
-                    reject(new Error(Swiftly.cancellationMessage));
-                });
-
-                rl.on("line", (line: string) => {
-                    if (token?.isCancellationRequested) {
-                        rl.close();
-                        return;
-                    }
-
-                    try {
-                        const progressData = SwiftlyProgressData.parse(JSON.parse(line));
-                        progressCallback(progressData);
-                    } catch (error) {
-                        logger?.error(
-                            new Error(`Failed to parse Swiftly progress: ${line}`, { cause: error })
-                        );
-                    }
-                });
-
-                rl.on("close", () => {
-                    cancellationHandler?.dispose();
-                    resolve();
-                });
-
-                rl.on("error", err => {
-                    cancellationHandler?.dispose();
-                    reject(err);
-                });
-            });
+            progressPromise = this.readProgressPipe(
+                progressPipePath,
+                progressCallback,
+                token,
+                logger
+            );
         }
 
-        const installArgs = [
-            "install",
+        const installArgs = Swiftly.buildInstallArgs(
             version,
-            "--assume-yes",
-            "--post-install-file",
             postInstallFilePath,
-        ];
-
-        if (progressPipePath) {
-            installArgs.push("--progress-file", progressPipePath);
-        }
+            progressPipePath
+        );
 
         try {
             // Create output streams for process output
@@ -811,7 +755,7 @@ export class Swiftly {
                 stdoutStream,
                 stderrStream,
                 token || null,
-                {}
+                { cwd: cwd?.fsPath }
             );
 
             if (progressPromise) {
@@ -847,7 +791,7 @@ export class Swiftly {
                 token?.isCancellationRequested ||
                 (error as Error).message.includes(Swiftly.cancellationMessage)
             ) {
-                logger?.info(`Installation of ${version} was cancelled by user`);
+                logger?.info(`Installation of ${toolchainLabel} was cancelled by user`);
                 // eslint-disable-next-line preserve-caught-error
                 throw new Error(Swiftly.cancellationMessage);
             }
@@ -869,32 +813,115 @@ export class Swiftly {
             }
 
             if (token?.isCancellationRequested) {
-                logger?.info(`Cleaned up temporary files for cancelled installation of ${version}`);
+                logger?.info(
+                    `Cleaned up temporary files for cancelled installation of ${toolchainLabel}`
+                );
             }
         }
+    }
+
+    /**
+     * Builds the argument list for `swiftly install`.
+     *
+     * @param version The toolchain version to install, or `undefined` to let swiftly
+     *   install whichever toolchain is currently selected.
+     * @param postInstallFilePath Path swiftly should write any post-install script to.
+     * @param progressPipePath Optional named pipe swiftly should write progress to.
+     */
+    private static buildInstallArgs(
+        version: string | undefined,
+        postInstallFilePath: string,
+        progressPipePath: string | undefined
+    ): string[] {
+        const args = ["install"];
+        if (version) {
+            args.push(version);
+        }
+        args.push("--assume-yes", "--post-install-file", postInstallFilePath);
+        if (progressPipePath) {
+            args.push("--progress-file", progressPipePath);
+        }
+        return args;
+    }
+
+    /**
+     * Reads swiftly progress updates from a named pipe and forwards them to the
+     * given callback until the pipe is closed.
+     *
+     * @param progressPipePath Path to the named pipe swiftly writes progress to.
+     * @param progressCallback Callback invoked with each parsed progress update.
+     * @param token Optional cancellation token to stop reading.
+     * @param logger Optional logger for error reporting.
+     */
+    private static readProgressPipe(
+        progressPipePath: string,
+        progressCallback: (progressData: SwiftlyProgressData) => void,
+        token?: vscode.CancellationToken,
+        logger?: SwiftLogger
+    ): Promise<void> {
+        return new Promise<void>((resolve, reject) => {
+            const rl = readline.createInterface({
+                input: fsSync.createReadStream(progressPipePath),
+                crlfDelay: Infinity,
+            });
+
+            // Handle cancellation during progress tracking
+            const cancellationHandler = token?.onCancellationRequested(() => {
+                rl.close();
+                reject(new Error(Swiftly.cancellationMessage));
+            });
+
+            rl.on("line", (line: string) => {
+                if (token?.isCancellationRequested) {
+                    rl.close();
+                    return;
+                }
+
+                try {
+                    const progressData = SwiftlyProgressData.parse(JSON.parse(line));
+                    progressCallback(progressData);
+                } catch (error) {
+                    logger?.error(
+                        new Error(`Failed to parse Swiftly progress: ${line}`, { cause: error })
+                    );
+                }
+            });
+
+            rl.on("close", () => {
+                cancellationHandler?.dispose();
+                resolve();
+            });
+
+            rl.on("error", err => {
+                cancellationHandler?.dispose();
+                reject(err);
+            });
+        });
     }
 
     /**
      * Handles post-install file created by swiftly installation (Linux only)
      *
      * @param postInstallFilePath Path to the post-install script
-     * @param version The toolchain version being installed
+     * @param version The toolchain version being installed, or `undefined` when the
+     *   currently selected toolchain is being installed.
      * @param logger Optional logger for error reporting
      */
     private static async handlePostInstallFile(
         postInstallFilePath: string,
-        version: string,
+        version: string | undefined,
         extensionRoot: string,
         logger?: SwiftLogger
     ): Promise<void> {
+        const toolchainName = version ? `Swift ${version}` : "the active Swift toolchain";
         try {
             await fs.access(postInstallFilePath);
         } catch {
-            logger?.info(`No post-install steps required for toolchain ${version}`);
+            logger?.info(`No post-install steps required for ${toolchainName}`);
             return;
         }
 
-        logger?.info(`Post-install file found for toolchain ${version}`);
+        logger?.info(`Post-install file found for ${toolchainName}`);
 
         const validation = await this.validatePostInstallScript(postInstallFilePath, logger);
 
@@ -902,24 +929,28 @@ export class Swiftly {
             const errorMessage = `Post-install script contains unsafe commands. Invalid commands: ${validation.invalidCommands?.join(", ")}`;
             logger?.error(errorMessage);
             void vscode.window.showErrorMessage(
-                `Installation of Swift ${version} requires additional system packages, but the post-install script contains commands that are not allowed for security reasons.`
+                `Installation of ${toolchainName} requires additional system packages, but the post-install script contains commands that are not allowed for security reasons.`
             );
             return;
         }
 
-        const shouldExecute = await this.showPostInstallConfirmation(version, validation, logger);
+        const shouldExecute = await this.showPostInstallConfirmation(
+            toolchainName,
+            validation,
+            logger
+        );
 
         if (shouldExecute) {
             await this.executePostInstallScript(
                 postInstallFilePath,
-                version,
+                toolchainName,
                 extensionRoot,
                 logger
             );
         } else {
-            logger?.warn(`Swift ${version} post-install script execution cancelled by user`);
+            logger?.warn(`${toolchainName} post-install script execution cancelled by user`);
             void vscode.window.showWarningMessage(
-                `Swift ${version} installation is incomplete. You may need to manually install additional system packages.`
+                `${toolchainName} installation is incomplete. You may need to manually install additional system packages.`
             );
         }
     }
@@ -996,23 +1027,23 @@ export class Swiftly {
     /**
      * Shows confirmation dialog to user for running the post-install commands.
      *
-     * @param version The toolchain version being installed
+     * @param toolchainName Display name of the toolchain being installed
      * @param validation The validation result
      * @param logger
      * @returns Promise resolving to user's decision
      */
     private static async showPostInstallConfirmation(
-        version: string,
+        toolchainName: string,
         validation: PostInstallValidationResult,
         logger?: SwiftLogger
     ): Promise<boolean> {
         const detail =
-            `Swift ${version} installation requires additional system packages to be installed:\n\n` +
+            `${toolchainName} installation requires additional system packages to be installed:\n\n` +
             `${this.formatCommandsForReview(validation.scriptContent)}\n\n` +
             `Would you like to install these packages? ` +
             `You will be prompted for administrator privileges.`;
 
-        logger?.warn(`User confirmation required to install system packages for Swift ${version}.`);
+        logger?.warn(`User confirmation required to install system packages for ${toolchainName}.`);
         const choice = await vscode.window.showWarningMessage(
             "Install System Packages",
             { modal: true, detail },
@@ -1046,22 +1077,22 @@ export class Swiftly {
      * Executes post-install script with elevated permissions (Linux only)
      *
      * @param postInstallFilePath Path to the post-install script
-     * @param version The toolchain version being installed
+     * @param toolchainName Display name of the toolchain being installed
      * @param logger Optional logger for error reporting
      */
     private static async executePostInstallScript(
         postInstallFilePath: string,
-        version: string,
+        toolchainName: string,
         extensionRoot: string,
         logger?: SwiftLogger
     ): Promise<void> {
-        logger?.info(`Executing post-install script for toolchain ${version}`);
+        logger?.info(`Executing post-install script for ${toolchainName}`);
 
-        const outputChannel = vscode.window.createOutputChannel(`Swift ${version} Post-Install`);
+        const outputChannel = vscode.window.createOutputChannel(`${toolchainName} Post-Install`);
 
         try {
             outputChannel.show(true);
-            outputChannel.appendLine(`Executing post-install script for Swift ${version}...`);
+            outputChannel.appendLine(`Executing post-install script for ${toolchainName}...`);
             outputChannel.appendLine(`Script location: ${postInstallFilePath}`);
             outputChannel.appendLine("Script contents:");
             const scriptContents = await fs.readFile(postInstallFilePath, "utf-8");
@@ -1114,17 +1145,17 @@ export class Swiftly {
 
             outputChannel.appendLine("");
             outputChannel.appendLine(
-                `Post-install script completed successfully for Swift ${version}`
+                `Post-install script completed successfully for ${toolchainName}`
             );
 
             void vscode.window.showInformationMessage(
-                `Swift ${version} post-install script executed successfully. Additional system packages have been installed.`
+                `${toolchainName} post-install script executed successfully. Additional system packages have been installed.`
             );
         } catch (error) {
             logger?.error(Error("Failed to execute post-install script", { cause: error }));
             void vscode.window
                 .showErrorMessage(
-                    `Failed to execute post-install script for Swift ${version}. See command output for more details.`,
+                    `Failed to execute post-install script for ${toolchainName}. See command output for more details.`,
                     "Show Command Output"
                 )
                 .then(selected => {

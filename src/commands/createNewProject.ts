@@ -15,6 +15,7 @@ import * as fs from "fs/promises";
 import * as vscode from "vscode";
 
 import configuration from "../configuration";
+import { SwiftLogger } from "../logging/SwiftLogger";
 import { SwiftProjectTemplate, SwiftToolchain } from "../toolchain/toolchain";
 import { showToolchainError } from "../ui/ToolchainSelection";
 import { withDelayedProgress } from "../ui/withDelayedProgress";
@@ -102,12 +103,15 @@ async function executeOpenAction(
  * Prompts the user to input project details and then executes `swift package init`
  * to create the project.
  */
-export async function createNewProject(toolchain: SwiftToolchain | undefined): Promise<void> {
+export async function createNewProject(
+    toolchain: SwiftToolchain | undefined,
+    logger: SwiftLogger
+): Promise<void> {
     // It is possible for this command to be run without a valid toolchain because it can be
     // run before the Swift extension is activated. Show the toolchain error notification in
     // this case.
     if (!toolchain) {
-        void showToolchainError();
+        void showToolchainError(logger);
         return;
     }
 

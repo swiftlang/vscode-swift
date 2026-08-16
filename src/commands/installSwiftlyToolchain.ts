@@ -26,24 +26,32 @@ import {
 /**
  * Installs a Swiftly toolchain and shows a progress notification to the user.
  *
- * @param version The toolchain version to install
+ * @param version The toolchain version to install. When omitted, swiftly installs
+ *   whichever toolchain is currently selected (e.g. from a `.swift-version` file or
+ *   the global default).
  * @param logger Optional logger for error reporting
- * @param options.onError Invoked with the error when a non-cancellation failure occurs. When
- * provided, the default error notification is suppressed so the caller can report it instead.
+ * @param cwd Optional working directory used to resolve the selected toolchain when
+ *   no version is given.
+ * @param options.suppressErrorNotification Suppresses the default error notification on a
+ * non-cancellation failure so that the caller can report it instead.
  * @returns A promise that resolves to true if installation succeeded, false otherwise
  */
 export async function installSwiftlyToolchainWithProgress(
-    version: string,
+    version: string | undefined,
     extensionRoot: string,
     logger?: SwiftLogger,
     swiftlyPath?: string,
-    options?: { onError?: (error: unknown) => void }
+    cwd?: vscode.Uri,
+    options?: { suppressErrorNotification?: boolean }
 ): Promise<boolean> {
+    const toolchainName = version ? `Swift ${version}` : "the active Swift toolchain";
     try {
         await vscode.window.withProgress(
             {
                 location: vscode.ProgressLocation.Notification,
-                title: `Installing Swift ${version}`,
+                title: version
+                    ? `Installing Swift ${version}`
+                    : "Installing the active Swift toolchain",
                 cancellable: true,
             },
             async (progress, token) => {
@@ -79,28 +87,28 @@ export async function installSwiftlyToolchainWithProgress(
                     },
                     logger,
                     token,
-                    swiftlyPath
+                    swiftlyPath,
+                    cwd
                 );
             }
         );
 
-        void vscode.window.showInformationMessage(`Successfully installed Swift ${version}`);
+        void vscode.window.showInformationMessage(`Successfully installed ${toolchainName}`);
 
         return true;
     } catch (error) {
         const errorMessage = (error as Error).message;
         if (errorMessage.includes(Swiftly.cancellationMessage)) {
-            logger?.info(`Installation of Swift ${version} was cancelled by user`);
+            logger?.info(`Installation of ${toolchainName} was cancelled by user`);
             // Don't show error message for user-initiated cancellation
             return false;
         }
 
-        logger?.error(new Error(`Failed to install Swift ${version}`, { cause: error }));
-        if (options?.onError) {
-            options.onError(error);
-            return false;
+        logger?.error(new Error(`Failed to install ${toolchainName}`, { cause: error }));
+        if (!options?.suppressErrorNotification) {
+            void vscode.window.showErrorMessage(`Failed to install ${toolchainName}: ${error}`);
         }
-        void vscode.window.showErrorMessage(`Failed to install Swift ${version}: ${error}`);
+
         return false;
     }
 }

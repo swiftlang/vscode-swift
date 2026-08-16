@@ -136,11 +136,17 @@ export async function handleMissingSwiftly(
     const swiftlyPath = path.join(Swiftly.defaultHomeDir(), "bin/swiftly");
     const failedVersions: string[] = [];
     for (const version of swiftVersions) {
-        await installSwiftlyToolchainWithProgress(version, extensionRoot, logger, swiftlyPath, {
-            onError: () => {
-                failedVersions.push(version);
-            },
-        });
+        const installed = await installSwiftlyToolchainWithProgress(
+            version,
+            extensionRoot,
+            logger,
+            swiftlyPath,
+            undefined,
+            { suppressErrorNotification: true }
+        );
+        if (!installed) {
+            failedVersions.push(version);
+        }
     }
 
     // VS Code needs to be restarted after installing swiftly

@@ -625,7 +625,7 @@ async function createActiveToolchain(
         contextKeys.updateKeysBasedOnActiveVersion(toolchain.swiftVersion);
         return toolchain;
     } catch (error) {
-        if (!(await showToolchainError())) {
+        if (!(await showToolchainError(logger))) {
             throw error;
         }
         return await createActiveToolchain(extensionPath, contextKeys, logger);

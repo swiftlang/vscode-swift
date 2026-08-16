@@ -1192,11 +1192,18 @@
             "order": 98,
             "scope": "machine-overridable"
           },
+          "swift.disableAutoSwiftlyToolchainInstall": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Disable automatically installing a Swift toolchain via Swiftly when the toolchain selected by a `.swift-version` file or global default is not yet installed. When enabled, the extension shows a notification instead of installing, so you can install the toolchain manually with `swiftly install`.",
+            "order": 99,
+            "scope": "machine-overridable"
+          },
           "swift.ignoreSwiftVersionFile": {
             "type": "boolean",
             "default": false,
             "markdownDescription": "Ignore `.swift-version` files and disable automatic toolchain switching based on them. When enabled, the extension will always use the global default toolchain instead of switching based on per-project `.swift-version` files.",
-            "order": 99,
+            "order": 100,
             "scope": "machine-overridable"
           },
           "swift.diagnostics": {
@@ -1205,7 +1212,7 @@
             "markdownDescription": "Output additional diagnostics to the Swift output channel.",
             "deprecationMessage": "Deprecated: Please use \"swift.outputChannelLogLevel\" instead.",
             "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.outputChannelLogLevel#` instead.",
-            "order": 100,
+            "order": 101,
             "scope": "machine-overridable"
           }
         }
