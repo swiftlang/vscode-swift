@@ -364,16 +364,21 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
         if (this.state.type === "uninitialized") {
             throw new Error("The Swift extension has not been activated yet.");
         }
-        if (this.state.type === "initializing") {
-            this.state.cancel();
-        }
+        const previousState = this.state;
+
         let disposePromise = Promise.resolve();
-        if (this.state.type === "active") {
-            this.state.subscriptions.forEach(s => s.dispose());
-            disposePromise = this.state.context.dispose();
+        if (previousState.type === "initializing") {
+            previousState.cancel();
+            disposePromise = previousState.promise.then(
+                () => {},
+                () => {}
+            );
+        } else if (previousState.type === "active") {
+            previousState.subscriptions.forEach(s => s.dispose());
+            disposePromise = previousState.context.dispose();
         }
         const cancellationSource = new vscode.CancellationTokenSource();
-        const activatedBy = this.state.activatedBy;
+        const activatedBy = previousState.activatedBy;
         this.state = {
             type: "initializing",
             activatedBy,
