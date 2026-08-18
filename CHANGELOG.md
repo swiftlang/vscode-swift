@@ -6,15 +6,22 @@
 
 - Toolchain changes will now automatically reload the workspace ([#2196](https://github.com/swiftlang/vscode-swift/pull/2196))
 - Add a button that installs Swiftly and the latest Swift toolchain to the extension's welcome walkthrough ([#2078](https://github.com/swiftlang/vscode-swift/pull/2078))
-- Add **Clean Build Folder** automatically generated task to remove all build artifacts ([#2280](https://github.com/swiftlang/vscode-swift/pull/2280))
 
 ### Fixed
 
 - Loading large projects will no longer show the extension as unresponsive ([#1932](https://github.com/swiftlang/vscode-swift/pull/1932))
+- Capturing a diagnostics bundle will no longer fail if the extension fails to activate ([#2273](https://github.com/swiftlang/vscode-swift/pull/2273))
+
+## 2.16.7 - 2026-08-10
+
+### Added
+
+- Add **Clean Build Folder** automatically generated task to remove all build artifacts ([#2280](https://github.com/swiftlang/vscode-swift/pull/2280))
+
+### Fixed
 - Reveal the task terminal when clicking the Swift build status item instead of showing a popup ([#2254](https://github.com/swiftlang/vscode-swift/pull/2254))
 - Update sourcekit-lsp schema logic for new branch structure ([#2270](https://github.com/swiftlang/vscode-swift/pull/2270))
 - Work around an issue in older lldb-dap binaries where breakpoints would show up as unresolved even when they were hit ([#2283](https://github.com/swiftlang/vscode-swift/pull/2283))
-- Capturing a diagnostics bundle will no longer fail if the extension fails to activate ([#2273](https://github.com/swiftlang/vscode-swift/pull/2273))
 - Stop assuming that `swift.path` will point at a directory named `bin` ([#2288](https://github.com/swiftlang/vscode-swift/pull/2288))
 - Fixed code coverage information only showing for the first test target when buildnig with swift-build ([#2296](https://github.com/swiftlang/vscode-swift/pull/2296))
 - Fixed test run never completing when stopping a debug session ([#2329](https://github.com/swiftlang/vscode-swift/pull/2329))
