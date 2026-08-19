@@ -43,7 +43,7 @@ export interface RenderedMessage {
  */
 export interface SymbolLinkClickedMessage {
     type: "symbolLinkClicked";
-    data: string;
+    link: string;
 }
 
 /**

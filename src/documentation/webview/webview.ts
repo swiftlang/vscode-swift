@@ -60,7 +60,7 @@ createCommunicationBridge().then(async bridge => {
             event.preventDefault();
             const href = anchor.getAttribute("href");
             if (href) {
-                vscode.postMessage({ type: "symbolLinkClicked", data: href });
+                vscode.postMessage({ type: "symbolLinkClicked", link: href });
             }
         },
         { capture: true }
