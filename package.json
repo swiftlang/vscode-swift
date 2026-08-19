@@ -198,11 +198,15 @@
       {
         "id": "tutorial",
         "aliases": [
-          "Tutorial"
+          "Swift DocC Tutorial"
         ],
         "filenamePatterns": [
           "*.tutorial"
-        ]
+        ],
+        "extensions": [
+          ".tutorial"
+        ],
+        "configuration": "./tutorial.language-configuration.json"
       },
       {
         "id": "swift-gyb",
@@ -225,6 +229,14 @@
           "meta.embedded.control.begin.gyb": "python",
           "meta.embedded.expression.gyb": "python"
         }
+      },
+      {
+        "language": "tutorial",
+        "scopeName": "text.tutorial",
+        "path": "./syntaxes/tutorial.tmLanguage.json",
+        "injectTo": [
+          "text.html.markdown"
+        ]
       }
     ],
     "snippets": [
@@ -2131,7 +2143,7 @@
     "soundness": "scripts/soundness.sh",
     "check-package-json": "tsx ./scripts/check_package_json.ts",
     "test": "vscode-test && npm run grammar-test",
-    "grammar-test": "vscode-tmgrammar-test test/unit-tests/**/*.test.swift.gyb -g test/unit-tests/syntaxes/swift.tmLanguage.json -g test/unit-tests/syntaxes/MagicPython.tmLanguage.json",
+    "grammar-test": "vscode-tmgrammar-test test/unit-tests/syntaxes/*.test.* -g test/unit-tests/syntaxes/swift.tmLanguage.json -g test/unit-tests/syntaxes/MagicPython.tmLanguage.json",
     "integration-test": "npm run pretest && vscode-test --label integrationTests",
     "code-workspace-test": "npm run pretest && vscode-test --label codeWorkspaceTests",
     "unit-test": "npm run pretest && vscode-test --label unitTests",
