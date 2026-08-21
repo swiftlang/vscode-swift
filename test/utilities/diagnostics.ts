@@ -139,6 +139,7 @@ export function waitForDiagnostics(expectedDiagnostics: ExpectedDiagnostics): Pr
     // If there are outsanding diagnostics then we need to wait for them to arrive
     const subscriptions: Disposable[] = [];
     return withTimeout<void>(
+        "Waiting for diagnostics",
         token =>
             new Promise<void>(resolve => {
                 subscriptions.push(

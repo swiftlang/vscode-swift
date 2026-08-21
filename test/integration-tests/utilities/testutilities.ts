@@ -85,71 +85,77 @@ const extensionBootstrapper = (() => {
             // our own timeout to attach logs on failure. Mocha's timeout is kept as a backstop.
             this.timeout(SETUP_TIMEOUT_MS + USER_SETUP_TIMEOUT_MS + MOCHA_BACKSTOP_MS);
 
-            await withTimeout(async () => {
-                activationLogger.info(`Begin activating extension`);
+            await withTimeout(
+                "Swift extension activation",
+                async () => {
+                    activationLogger.info(`Begin activating extension`);
 
-                // Make sure that CodeLLDB is installed for debugging related tests
-                if (!vscode.extensions.getExtension("vadimcn.vscode-lldb")) {
-                    await logOnError(
-                        "vadimcn.vscode-lldb is not installed, installing CodeLLDB extension for the debugging tests.",
-                        () =>
-                            vscode.commands.executeCommand(
-                                "workbench.extensions.installExtension",
-                                "vadimcn.vscode-lldb"
-                            )
+                    // Make sure that CodeLLDB is installed for debugging related tests
+                    if (!vscode.extensions.getExtension("vadimcn.vscode-lldb")) {
+                        await logOnError(
+                            "vadimcn.vscode-lldb is not installed, installing CodeLLDB extension for the debugging tests.",
+                            () =>
+                                vscode.commands.executeCommand(
+                                    "workbench.extensions.installExtension",
+                                    "vadimcn.vscode-lldb"
+                                )
+                        );
+                    }
+                    // Always activate the extension. If no test assets are provided,
+                    // default to adding `defaultPackage` to the workspace.
+                    const api = await extensionBootstrapper.activateExtension(
+                        testAssets ?? ["defaultPackage"],
+                        callSite
                     );
-                }
-                // Always activate the extension. If no test assets are provided,
-                // default to adding `defaultPackage` to the workspace.
-                const api = await extensionBootstrapper.activateExtension(
-                    testAssets ?? ["defaultPackage"],
-                    callSite
-                );
-                activationLogger.info(`Extension activated successfully.`);
+                    activationLogger.info(`Extension activated successfully.`);
 
-                const workspaceContext = await api.waitForWorkspaceContext();
-                // Need the `disableSandbox` configuration which is only in 6.1
-                // https://github.com/swiftlang/sourcekit-lsp/commit/7e2d12a7a0d184cc820ae6af5ddbb8aa18b1501c
-                if (
-                    process.platform === "darwin" &&
-                    workspaceContext.globalToolchain.swiftVersion.isLessThan(
-                        new Version(6, 1, 0)
-                    ) &&
-                    requiresLSP
-                ) {
-                    activationLogger.info(`Skipping test, LSP is required but not available.`);
-                    this.skip();
-                }
-                if (requiresDebugger && configuration.debugger.disable) {
-                    activationLogger.info(
-                        `Skipping test, Debugger is required but disabled in the configuration.`
-                    );
-                    this.skip();
-                }
-                // CodeLLDB does not work with libllbd in Swift toolchains prior to 5.10
-                if (
-                    workspaceContext.globalToolchainSwiftVersion.isLessThan(new Version(5, 10, 0))
-                ) {
-                    await logOnError('Setting swift.debugger.setupCodeLLDB: "never"', () =>
-                        updateSettings({
-                            "swift.debugger.setupCodeLLDB": "never",
-                        })
-                    );
-                } else if (requiresDebugger) {
-                    const lldbLibPath = await logOnError("Getting LLDB library path", () =>
-                        getLLDBLibPath(workspaceContext.globalToolchain)
-                    );
-                    activationLogger.info(
-                        `LLDB library path is: ${lldbLibPath.success ?? "not found"}`
-                    );
-                }
+                    const workspaceContext = await api.waitForWorkspaceContext();
+                    // Need the `disableSandbox` configuration which is only in 6.1
+                    // https://github.com/swiftlang/sourcekit-lsp/commit/7e2d12a7a0d184cc820ae6af5ddbb8aa18b1501c
+                    if (
+                        process.platform === "darwin" &&
+                        workspaceContext.globalToolchain.swiftVersion.isLessThan(
+                            new Version(6, 1, 0)
+                        ) &&
+                        requiresLSP
+                    ) {
+                        activationLogger.info(`Skipping test, LSP is required but not available.`);
+                        this.skip();
+                    }
+                    if (requiresDebugger && configuration.debugger.disable) {
+                        activationLogger.info(
+                            `Skipping test, Debugger is required but disabled in the configuration.`
+                        );
+                        this.skip();
+                    }
+                    // CodeLLDB does not work with libllbd in Swift toolchains prior to 5.10
+                    if (
+                        workspaceContext.globalToolchainSwiftVersion.isLessThan(
+                            new Version(5, 10, 0)
+                        )
+                    ) {
+                        await logOnError('Setting swift.debugger.setupCodeLLDB: "never"', () =>
+                            updateSettings({
+                                "swift.debugger.setupCodeLLDB": "never",
+                            })
+                        );
+                    } else if (requiresDebugger) {
+                        const lldbLibPath = await logOnError("Getting LLDB library path", () =>
+                            getLLDBLibPath(workspaceContext.globalToolchain)
+                        );
+                        activationLogger.info(
+                            `LLDB library path is: ${lldbLibPath.success ?? "not found"}`
+                        );
+                    }
 
-                // Make sure no running tasks before setting up
-                await waitForNoRunningTasks();
+                    // Make sure no running tasks before setting up
+                    await waitForNoRunningTasks();
 
-                // Clear build all cache before starting suite
-                resetBuildAllTaskCache();
-            }, SETUP_TIMEOUT_MS).catch(error => {
+                    // Clear build all cache before starting suite
+                    resetBuildAllTaskCache();
+                },
+                SETUP_TIMEOUT_MS
+            ).catch(error => {
                 if (this.test) {
                     attachCapturedLogs(this.test, activationLogger.logs);
                 }
@@ -161,6 +167,7 @@ const extensionBootstrapper = (() => {
                 // Typically this is the promise returned from `updateSettings`, which will
                 // undo any settings changed during setup.
                 autoTeardown = await withTimeout(
+                    "Test provided setup function",
                     () =>
                         logOnError(
                             "Calling user defined setup method to configure test/suite specifics",
@@ -211,20 +218,24 @@ const extensionBootstrapper = (() => {
 
             let userTeardownError: unknown | undefined;
             try {
-                await withTimeout(async () => {
-                    // First run the users supplied teardown, then await the autoTeardown if it exists.
-                    if (teardown) {
-                        await logOnError("Running user teardown function...", () =>
-                            teardown.call(this)
-                        );
-                    }
-                    if (autoTeardown) {
-                        await logOnError(
-                            "Running auto teardown function (function returned from setup)...",
-                            () => autoTeardown!()
-                        );
-                    }
-                }, USER_TEARDOWN_TIMEOUT_MS);
+                await withTimeout(
+                    "Test provided teardown function",
+                    async () => {
+                        // First run the users supplied teardown, then await the autoTeardown if it exists.
+                        if (teardown) {
+                            await logOnError("Running user teardown function...", () =>
+                                teardown.call(this)
+                            );
+                        }
+                        if (autoTeardown) {
+                            await logOnError(
+                                "Running auto teardown function (function returned from setup)...",
+                                () => autoTeardown!()
+                            );
+                        }
+                    },
+                    USER_TEARDOWN_TIMEOUT_MS
+                );
             } catch (error) {
                 // We always want to restore settings and deactivate the extension even if the
                 // user supplied teardown fails. That way we have the best chance at not causing
@@ -363,24 +374,34 @@ const extensionBootstrapper = (() => {
             }
 
             let teardownError: unknown | undefined;
-            await withTimeout(async () => {
-                // Wait for all tasks to complete before deactivating.
-                // Long running tasks should be avoided in tests, but this is a safety net.
-                await logOnError("Waiting for no running tasks", () => waitForNoRunningTasks());
+            await withTimeout(
+                "Swift extension teardown",
+                async () => {
+                    // Wait for all tasks to complete before deactivating.
+                    // Long running tasks should be avoided in tests, but this is a safety net.
+                    await logOnError("Waiting for no running tasks", () => waitForNoRunningTasks());
 
-                // Close all editors before deactivating the extension.
-                await logOnError(`Closing all editors.`, () => closeAllEditors());
+                    // Close all editors before deactivating the extension.
+                    await logOnError(`Closing all editors.`, () => closeAllEditors());
 
-                await logOnError(`Removing root workspace folder.`, async () =>
-                    activatedAPI!.workspaceContext?.removeWorkspaceFolder(getRootWorkspaceFolder())
-                );
-            }, TEARDOWN_TIMEOUT_MS).catch(error => {
+                    await logOnError(`Removing root workspace folder.`, async () =>
+                        activatedAPI!.workspaceContext?.removeWorkspaceFolder(
+                            getRootWorkspaceFolder()
+                        )
+                    );
+                },
+                TEARDOWN_TIMEOUT_MS
+            ).catch(error => {
                 // We always want to call deactivate() even if there was an error. Store it and throw it later.
                 teardownError = error;
             });
 
             await logOnError("Running extension deactivate() function", () =>
-                withTimeout(() => activatedAPI!.deactivate(), DEACTIVATION_TIMEOUT_MS)
+                withTimeout(
+                    "Swift extension deactivate() function",
+                    () => activatedAPI!.deactivate(),
+                    DEACTIVATION_TIMEOUT_MS
+                )
             ).catch(deactivationError => {
                 if (teardownError) {
                     return;

@@ -98,6 +98,7 @@ export async function waitForClose(fixture: {
 export function waitForNoRunningTasks(options?: { timeout?: number }): Promise<void> {
     if (options?.timeout && options.timeout > 0) {
         return withTimeout(
+            "Waiting for all running tasks to complete",
             cancellationToken => pollForNoRunningTasks(cancellationToken),
             options.timeout
         );
