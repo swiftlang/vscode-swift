@@ -366,6 +366,12 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                 vscode.DiagnosticSeverity.Error
             );
             outputDiagnostic.source = "swiftc";
+            const outputRemark = new vscode.Diagnostic(
+                new vscode.Range(new vscode.Position(12, 4), new vscode.Position(12, 4)),
+                "Import of 'A' and 'B' triggered a cross-import of 'AB'",
+                vscode.DiagnosticSeverity.Information
+            );
+            outputRemark.source = "swiftc";
             let workspaceFolder: vscode.WorkspaceFolder;
 
             setup(async () => {
@@ -403,6 +409,20 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                 await waitForDiagnostics({ [mainUri.fsPath]: [outputDiagnostic] });
                 // Should only include one
                 expect(vscode.languages.getDiagnostics(mainUri)).to.have.length(1);
+            });
+
+            test("Parse remarks", async () => {
+                const fixture = testSwiftTask("swift", ["build"], workspaceFolder, toolchain);
+                const startPromise = waitForStartTaskProcess(fixture.task);
+                await vscode.tasks.executeTask(fixture.task);
+                await startPromise;
+                // Wait to spawn before writing
+                fixture.process.write(
+                    `${mainUri.fsPath}:13:5: remark: import of 'A' and 'B' triggered a cross-import of 'AB'`
+                );
+                fixture.process.close(0);
+                await waitForNoRunningTasks();
+                await waitForDiagnostics({ [mainUri.fsPath]: [outputRemark] });
             });
 
             test("New set of swiftc diagnostics clear old list", async () => {
