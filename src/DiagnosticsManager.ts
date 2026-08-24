@@ -413,7 +413,7 @@ export class DiagnosticsManager implements Disposable {
         line: string
     ): ParsedDiagnostic | vscode.DiagnosticRelatedInformation | undefined {
         const diagnosticRegex =
-            /^(?:[`-\s]*)(.*?):(\d+)(?::(\d+))?:\s+(warning|error|note):\s+(.*)$/g;
+            /^(?:[`-\s]*)(.*?):(\d+)(?::(\d+))?:\s+(warning|error|note|remark):\s+(.*)$/g;
         const switfcExtraWarningsRegex = /\[(-W|#).*?\]/g;
         const match = diagnosticRegex.exec(line);
         if (!match) {
@@ -423,7 +423,7 @@ export class DiagnosticsManager implements Disposable {
         const message = this.capitalize(match[5]).replace(switfcExtraWarningsRegex, "").trim();
         const range = this.range(match[2], match[3]);
         const severity = this.severity(match[4]);
-        if (severity === vscode.DiagnosticSeverity.Information) {
+        if (match[4] === "note") {
             return new vscode.DiagnosticRelatedInformation(
                 new vscode.Location(vscode.Uri.file(uri), range),
                 message
@@ -449,6 +449,9 @@ export class DiagnosticsManager implements Disposable {
                 severity = vscode.DiagnosticSeverity.Warning;
                 break;
             case "note":
+                severity = vscode.DiagnosticSeverity.Information;
+                break;
+            case "remark":
                 severity = vscode.DiagnosticSeverity.Information;
                 break;
             default:
