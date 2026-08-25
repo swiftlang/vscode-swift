@@ -17,9 +17,9 @@ import * as vscode from "vscode";
 import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
 import { Disposable } from "@src/utilities/Disposable";
 import { poll } from "@src/utilities/utilities";
+import { withTimeout } from "@src/utilities/withTimeout";
 
 import { SwiftTaskFixture } from "../fixtures";
-import { withTimeout } from "./withTimeout";
 
 import stripAnsi = require("strip-ansi");
 

@@ -27,18 +27,67 @@ import { buildAllTaskName, resetBuildAllTaskCache } from "@src/tasks/SwiftTaskPr
 import { Extension } from "@src/utilities/extensions";
 import { fileExists } from "@src/utilities/filesystem";
 import { Version } from "@src/utilities/version";
+import { withTimeout } from "@src/utilities/withTimeout";
 
 import { testAssetPath, testAssetUri } from "../../fixtures";
 import { attachCapturedLogs } from "../../reporters/utilities";
 import { TestLogger } from "../../utilities/TestLogger";
 import { closeAllEditors } from "../../utilities/commands";
 import { waitForNoRunningTasks } from "../../utilities/tasks";
-import { withTimeout } from "../../utilities/withTimeout";
 
 export function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     const result = vscode.workspace.workspaceFolders?.at(0);
     assert.ok(result, "No workspace folders were opened for the tests to use");
     return result;
+}
+
+/** Configuration for {@link activateExtensionForSuite} and {@link activateExtensionForTest}. */
+export interface ExtensionActivationConfig {
+    /**
+     * The timeout in milliseconds for the `setup` function. Defaults to two minutes.
+     *
+     * The `setup` function's timeout is enforced by `withTimeout` and not by Mocha, so calling
+     * `this.timeout()` from within `setup` has no effect on it. Use this instead for setup
+     * functions that need longer than the default.
+     */
+    setupTimeout?: number;
+
+    /** A function that is called immediately after the Swift extension is activated. */
+    setup?: (
+        this: Mocha.Context,
+        api: InternalSwiftExtensionApi
+    ) => Promise<(() => Promise<void>) | void>;
+
+    /**
+     * The timeout in milliseconds for the `teardown` function. Defaults to one minute. This also
+     * covers the teardown function returned from `setup`, if there is one.
+     *
+     * The `teardown` function's timeout is enforced by `withTimeout` and not by Mocha, so calling
+     * `this.timeout()` from within `teardown` has no effect on it. Use this instead for teardown
+     * functions that need longer than the default.
+     */
+    teardownTimeout?: number;
+
+    /** A function that is called immediately before the Swift extension is deactivated. */
+    teardown?: (this: Mocha.Context) => Promise<void>;
+
+    /**
+     * The names of the test assets (the package folders under `assets/test`) that the suite needs
+     * added to the workspace. Defaults to `["defaultPackage"]`.
+     */
+    testAssets?: string[];
+
+    /**
+     * Set to `true` if the suite requires SourceKit-LSP. The suite will be skipped if SourceKit-LSP
+     * is not available.
+     */
+    requiresLSP?: boolean;
+
+    /**
+     * Set to `true` if the suite requires a working debugger. The suite will be skipped if a
+     * debugger is not available.
+     */
+    requiresDebugger?: boolean;
 }
 
 const extensionBootstrapper = (() => {
@@ -50,27 +99,27 @@ const extensionBootstrapper = (() => {
     // Timeouts for the various stages of suite setup and teardown. Mocha gives us no hook to run
     // code when it times out a hook, so these are enforced by `withTimeout` instead, which lets us
     // attach the captured logs to the failure and always reach extension deactivation.
-    const SETUP_TIMEOUT_MS = 180_000;
-    const USER_SETUP_TIMEOUT_MS = 60_000;
-    const TEARDOWN_TIMEOUT_MS = 60_000;
+    const SETUP_TIMEOUT_MS = 120_000;
+    const USER_SETUP_TIMEOUT_MS = 120_000;
+    const TEARDOWN_TIMEOUT_MS = 30_000;
     const USER_TEARDOWN_TIMEOUT_MS = 60_000;
     const DEACTIVATION_TIMEOUT_MS = 20_000;
     const MOCHA_BACKSTOP_MS = 10_000;
 
     function testRunnerSetup(
         before: Mocha.HookFunction,
-        setup:
-            | ((
-                  this: Mocha.Context,
-                  api: InternalSwiftExtensionApi
-              ) => Promise<(() => Promise<void>) | void>)
-            | undefined,
         after: Mocha.HookFunction,
-        teardown: ((this: Mocha.Context) => Promise<void>) | undefined,
-        testAssets?: string[],
-        requiresLSP: boolean = false,
-        requiresDebugger: boolean = false
+        config: ExtensionActivationConfig = {}
     ) {
+        const {
+            setup,
+            teardown,
+            testAssets,
+            requiresLSP = false,
+            requiresDebugger = false,
+            setupTimeout = USER_SETUP_TIMEOUT_MS,
+            teardownTimeout = USER_TEARDOWN_TIMEOUT_MS,
+        } = config;
         let autoTeardown: void | (() => Promise<void>);
         activationLogger = new TestLogger();
         logOnError = withLogging(activationLogger);
@@ -83,7 +132,7 @@ const extensionBootstrapper = (() => {
         before("Activate Swift Extension", async function () {
             // Mocha doesn't give us a hook to run code when a before block times out, so we roll
             // our own timeout to attach logs on failure. Mocha's timeout is kept as a backstop.
-            this.timeout(SETUP_TIMEOUT_MS + USER_SETUP_TIMEOUT_MS + MOCHA_BACKSTOP_MS);
+            this.timeout(SETUP_TIMEOUT_MS + setupTimeout + MOCHA_BACKSTOP_MS);
 
             await withTimeout(
                 "Swift extension activation",
@@ -173,7 +222,7 @@ const extensionBootstrapper = (() => {
                             "Calling user defined setup method to configure test/suite specifics",
                             () => setup.call(this, activatedAPI!)
                         ),
-                    USER_SETUP_TIMEOUT_MS
+                    setupTimeout
                 ).catch(error => {
                     if (this.test) {
                         attachCapturedLogs(this.test, activationLogger.logs);
@@ -208,10 +257,7 @@ const extensionBootstrapper = (() => {
             //   b) Make sure that the InternalSwiftApi's deactivate() method is called to avoid breaking subsequent tests
             // Mocha's timeout is kept as a backstop in case one of those stages fails to time out.
             this.timeout(
-                USER_TEARDOWN_TIMEOUT_MS +
-                    TEARDOWN_TIMEOUT_MS +
-                    DEACTIVATION_TIMEOUT_MS +
-                    MOCHA_BACKSTOP_MS
+                teardownTimeout + TEARDOWN_TIMEOUT_MS + DEACTIVATION_TIMEOUT_MS + MOCHA_BACKSTOP_MS
             );
 
             activationLogger.info("Deactivating extension...");
@@ -234,7 +280,7 @@ const extensionBootstrapper = (() => {
                             );
                         }
                     },
-                    USER_TEARDOWN_TIMEOUT_MS
+                    teardownTimeout
                 );
             } catch (error) {
                 // We always want to restore settings and deactivate the extension even if the
@@ -377,10 +423,6 @@ const extensionBootstrapper = (() => {
             await withTimeout(
                 "Swift extension teardown",
                 async () => {
-                    // Wait for all tasks to complete before deactivating.
-                    // Long running tasks should be avoided in tests, but this is a safety net.
-                    await logOnError("Waiting for no running tasks", () => waitForNoRunningTasks());
-
                     // Close all editors before deactivating the extension.
                     await logOnError(`Closing all editors.`, () => closeAllEditors());
 
@@ -416,46 +458,12 @@ const extensionBootstrapper = (() => {
             activationLogger.clear();
         },
 
-        activateExtensionForSuite: function (config?: {
-            setup?: (
-                this: Mocha.Context,
-                api: InternalSwiftExtensionApi
-            ) => Promise<(() => Promise<void>) | void>;
-            teardown?: (this: Mocha.Context) => Promise<void>;
-            testAssets?: string[];
-            requiresLSP?: boolean;
-            requiresDebugger?: boolean;
-        }) {
-            testRunnerSetup(
-                mocha.before,
-                config?.setup,
-                mocha.after,
-                config?.teardown,
-                config?.testAssets,
-                config?.requiresLSP,
-                config?.requiresDebugger
-            );
+        activateExtensionForSuite: function (config?: ExtensionActivationConfig) {
+            testRunnerSetup(mocha.before, mocha.after, config);
         },
 
-        activateExtensionForTest: function (config?: {
-            setup?: (
-                this: Mocha.Context,
-                api: InternalSwiftExtensionApi
-            ) => Promise<(() => Promise<void>) | void>;
-            teardown?: (this: Mocha.Context) => Promise<void>;
-            testAssets?: string[];
-            requiresLSP?: boolean;
-            requiresDebugger?: boolean;
-        }) {
-            testRunnerSetup(
-                mocha.beforeEach,
-                config?.setup,
-                mocha.afterEach,
-                config?.teardown,
-                config?.testAssets,
-                config?.requiresLSP,
-                config?.requiresDebugger
-            );
+        activateExtensionForTest: function (config?: ExtensionActivationConfig) {
+            testRunnerSetup(mocha.beforeEach, mocha.afterEach, config);
         },
     };
 })();

@@ -16,10 +16,10 @@ import * as vscode from "vscode";
 
 import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
 import { Disposable } from "@src/utilities/Disposable";
+import { withTimeout } from "@src/utilities/withTimeout";
 
 import { executeTaskAndWaitForResult } from "./tasks";
 import { fixProcessOutput } from "./terminal";
-import { withTimeout } from "./withTimeout";
 
 function severityToString(severity: vscode.DiagnosticSeverity): string {
     switch (severity) {

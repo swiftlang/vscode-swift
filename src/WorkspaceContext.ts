@@ -228,7 +228,6 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
             this.commentCompletionProvider,
             contextKeysUpdate,
             onChangeConfig,
-            this.tasks,
             this.diagnostics,
             this.documentation,
             this.statusItem,
@@ -245,6 +244,7 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
     }
 
     async dispose(): Promise<void> {
+        await this.tasks.dispose();
         this.folders.forEach(f => f.dispose());
         this.folders.length = 0;
         this.subscriptions.forEach(item => item.dispose());
