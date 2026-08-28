@@ -79,7 +79,7 @@ export class TaskOperation implements SwiftOperation {
     }
 
     get isBuildOperation(): boolean {
-        return this.task.group === vscode.TaskGroup.Build;
+        return this.task.group?.id === vscode.TaskGroup.Build.id;
     }
 
     run(

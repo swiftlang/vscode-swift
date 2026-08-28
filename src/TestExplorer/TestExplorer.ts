@@ -182,7 +182,7 @@ export class TestExplorer {
             const execution = task.execution as vscode.ProcessExecution;
             if (
                 task.scope === folderContext.workspaceFolder &&
-                task.group === vscode.TaskGroup.Build &&
+                task.group?.id === vscode.TaskGroup.Build.id &&
                 execution?.options?.cwd === folderContext.folder.fsPath &&
                 event.exitCode === 0 &&
                 task.definition.dontTriggerTestDiscovery !== true &&

@@ -211,7 +211,7 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
         const onDidEndTask = this.tasks.onDidEndTaskProcess(event => {
             const task = event.execution.task;
             if (
-                task.group === vscode.TaskGroup.Build &&
+                task.group?.id === vscode.TaskGroup.Build.id &&
                 event.exitCode !== 0 &&
                 event.exitCode !== undefined &&
                 configuration.actionAfterBuildError === "Focus Problems"
