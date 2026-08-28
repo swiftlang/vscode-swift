@@ -20,8 +20,10 @@ export class WindowsProcessList extends BaseProcessList {
 
     protected override getCommandArguments(): string[] {
         return [
+            "-NoProfile",
+            "-NonInteractive",
             "-Command",
-            'Get-CimInstance -ClassName Win32_Process | Format-Table ProcessId, @{Label="CreationDate";Expression={"{0:yyyyMddHHmmss}" -f $_.CreationDate}}, CommandLine | Out-String -width 9999',
+            'Get-CimInstance -ClassName Win32_Process | Format-Table ProcessId, @{Label="CreationDate";Expression={"{0:yyyyMMddHHmmss}" -f $_.CreationDate}}, CommandLine | Out-String -width 9999',
         ];
     }
 
