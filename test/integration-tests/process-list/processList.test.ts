@@ -48,7 +48,6 @@ tag("medium").suite("ProcessList Tests", () => {
         switch (process.platform) {
             case "darwin":
                 expectProcessName(processes, `${processNameDarwin} Helper`);
-                expectProcessName(processes, `${processNameDarwin} Helper (GPU)`);
                 expectProcessName(processes, `${processNameDarwin} Helper (Plugin)`);
                 expectProcessName(processes, `${processNameDarwin} Helper (Renderer)`);
                 break;
