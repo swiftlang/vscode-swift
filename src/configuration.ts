@@ -724,23 +724,43 @@ const configuration = {
             .get<Record<string, boolean>>("excludePathsFromActivation", {});
     },
     get lspConfigurationBranch(): string {
-        return validateStringSetting(
-            vscode.workspace.getConfiguration("swift").get<string>("lspConfigurationBranch", ""),
-            "swift.lspConfigurationBranch"
+        const branch = getExplicitSetting<string>(
+            vscode.workspace.getConfiguration("swift.sourcekit-lsp"),
+            "configurationBranch"
         );
+        if (branch !== undefined) {
+            return validateStringSetting(branch, "swift.sourcekit-lsp.configurationBranch");
+        }
+        const deprecatedBranch = getExplicitSetting<string>(
+            vscode.workspace.getConfiguration("swift"),
+            "lspConfigurationBranch"
+        );
+        if (deprecatedBranch !== undefined) {
+            return validateStringSetting(deprecatedBranch, "swift.lspConfigurationBranch");
+        }
+        return "";
     },
     get checkLspConfigurationSchema(): boolean {
-        return validateBooleanSetting(
-            vscode.workspace
-                .getConfiguration("swift")
-                .get<boolean>("checkLspConfigurationSchema", true),
-            "swift.checkLspConfigurationSchema"
+        const check = getExplicitSetting<boolean>(
+            vscode.workspace.getConfiguration("swift.sourcekit-lsp"),
+            "checkConfigurationSchema"
         );
+        if (check !== undefined) {
+            return validateBooleanSetting(check, "swift.sourcekit-lsp.checkConfigurationSchema");
+        }
+        const deprecatedCheck = getExplicitSetting<boolean>(
+            vscode.workspace.getConfiguration("swift"),
+            "checkLspConfigurationSchema"
+        );
+        if (deprecatedCheck !== undefined) {
+            return validateBooleanSetting(deprecatedCheck, "swift.checkLspConfigurationSchema");
+        }
+        return true;
     },
     set checkLspConfigurationSchema(value: boolean) {
         void vscode.workspace
-            .getConfiguration("swift")
-            .update("checkLspConfigurationSchema", value)
+            .getConfiguration("swift.sourcekit-lsp")
+            .update("checkConfigurationSchema", value)
             .then(() => {
                 /* Put in worker queue */
             });
