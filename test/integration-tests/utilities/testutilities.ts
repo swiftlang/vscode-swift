@@ -27,6 +27,7 @@ import { buildAllTaskName, resetBuildAllTaskCache } from "@src/tasks/SwiftTaskPr
 import { Extension } from "@src/utilities/extensions";
 import { fileExists } from "@src/utilities/filesystem";
 import { Version } from "@src/utilities/version";
+import { withTimeout } from "@src/utilities/withTimeout";
 
 import { testAssetPath, testAssetUri } from "../../fixtures";
 import { attachCapturedLogs } from "../../reporters/utilities";
@@ -40,23 +41,53 @@ export function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     return result;
 }
 
-// Mocha doesn't give us a hook to run code when a before block times out.
-// This utility method can be used to dump logs right before the before block times out.
-// Ensure you pass in a timeout that is slightly less than mocha's `before` timeout.
-function configureLogDumpOnTimeout(
-    timeout: number,
-    logger: TestLogger,
-    test: Mocha.Runnable | undefined
-): NodeJS.Timeout {
-    return setTimeout(
-        () => {
-            logger.info(`Activating extension timed out!`);
-            if (test) {
-                attachCapturedLogs(test, logger.logs);
-            }
-        },
-        Math.max(0, timeout - 300)
-    );
+/** Configuration for {@link activateExtensionForSuite} and {@link activateExtensionForTest}. */
+export interface ExtensionActivationConfig {
+    /**
+     * The timeout in milliseconds for the `setup` function. Defaults to two minutes.
+     *
+     * The `setup` function's timeout is enforced by `withTimeout` and not by Mocha, so calling
+     * `this.timeout()` from within `setup` has no effect on it. Use this instead for setup
+     * functions that need longer than the default.
+     */
+    setupTimeout?: number;
+
+    /** A function that is called immediately after the Swift extension is activated. */
+    setup?: (
+        this: Mocha.Context,
+        api: InternalSwiftExtensionApi
+    ) => Promise<(() => Promise<void>) | void>;
+
+    /**
+     * The timeout in milliseconds for the `teardown` function. Defaults to one minute. This also
+     * covers the teardown function returned from `setup`, if there is one.
+     *
+     * The `teardown` function's timeout is enforced by `withTimeout` and not by Mocha, so calling
+     * `this.timeout()` from within `teardown` has no effect on it. Use this instead for teardown
+     * functions that need longer than the default.
+     */
+    teardownTimeout?: number;
+
+    /** A function that is called immediately before the Swift extension is deactivated. */
+    teardown?: (this: Mocha.Context) => Promise<void>;
+
+    /**
+     * The names of the test assets (the package folders under `assets/test`) that the suite needs
+     * added to the workspace. Defaults to `["defaultPackage"]`.
+     */
+    testAssets?: string[];
+
+    /**
+     * Set to `true` if the suite requires SourceKit-LSP. The suite will be skipped if SourceKit-LSP
+     * is not available.
+     */
+    requiresLSP?: boolean;
+
+    /**
+     * Set to `true` if the suite requires a working debugger. The suite will be skipped if a
+     * debugger is not available.
+     */
+    requiresDebugger?: boolean;
 }
 
 const extensionBootstrapper = (() => {
@@ -65,25 +96,33 @@ const extensionBootstrapper = (() => {
     let activationLogger: TestLogger;
     let logOnError: <T>(prefix: string, work: () => Thenable<T> | T) => Promise<T>;
 
+    // Timeouts for the various stages of suite setup and teardown. Mocha gives us no hook to run
+    // code when it times out a hook, so these are enforced by `withTimeout` instead, which lets us
+    // attach the captured logs to the failure and always reach extension deactivation.
+    const SETUP_TIMEOUT_MS = 120_000;
+    const USER_SETUP_TIMEOUT_MS = 120_000;
+    const TEARDOWN_TIMEOUT_MS = 30_000;
+    const USER_TEARDOWN_TIMEOUT_MS = 60_000;
+    const DEACTIVATION_TIMEOUT_MS = 20_000;
+    const MOCHA_BACKSTOP_MS = 10_000;
+
     function testRunnerSetup(
         before: Mocha.HookFunction,
-        setup:
-            | ((
-                  this: Mocha.Context,
-                  api: InternalSwiftExtensionApi
-              ) => Promise<(() => Promise<void>) | void>)
-            | undefined,
         after: Mocha.HookFunction,
-        teardown: ((this: Mocha.Context) => Promise<void>) | undefined,
-        testAssets?: string[],
-        requiresLSP: boolean = false,
-        requiresDebugger: boolean = false
+        config: ExtensionActivationConfig = {}
     ) {
+        const {
+            setup,
+            teardown,
+            testAssets,
+            requiresLSP = false,
+            requiresDebugger = false,
+            setupTimeout = USER_SETUP_TIMEOUT_MS,
+            teardownTimeout = USER_TEARDOWN_TIMEOUT_MS,
+        } = config;
         let autoTeardown: void | (() => Promise<void>);
         activationLogger = new TestLogger();
         logOnError = withLogging(activationLogger);
-        const SETUP_TIMEOUT_MS = 300_000;
-        const TEARDOWN_TIMEOUT_MS = 60_000;
 
         // Extension activation happens asynchronously which means that we need to store the
         // call site of this function to use as the activation site for the extension. This is
@@ -91,100 +130,108 @@ const extensionBootstrapper = (() => {
         const callSite = Error("Extension was activated by:");
 
         before("Activate Swift Extension", async function () {
-            // Allow enough time for the extension to activate
-            this.timeout(SETUP_TIMEOUT_MS);
+            // Mocha doesn't give us a hook to run code when a before block times out, so we roll
+            // our own timeout to attach logs on failure. Mocha's timeout is kept as a backstop.
+            this.timeout(SETUP_TIMEOUT_MS + setupTimeout + MOCHA_BACKSTOP_MS);
 
-            // Mocha doesn't give us a hook to run code when a before block times out, so
-            // we set a timeout to just before mocha's so we have time to print the logs.
-            const timer = configureLogDumpOnTimeout(SETUP_TIMEOUT_MS, activationLogger, this.test);
+            await withTimeout(
+                "Swift extension activation",
+                async () => {
+                    activationLogger.info(`Begin activating extension`);
 
-            activationLogger.info(`Begin activating extension`);
+                    // Make sure that CodeLLDB is installed for debugging related tests
+                    if (!vscode.extensions.getExtension("vadimcn.vscode-lldb")) {
+                        await logOnError(
+                            "vadimcn.vscode-lldb is not installed, installing CodeLLDB extension for the debugging tests.",
+                            () =>
+                                vscode.commands.executeCommand(
+                                    "workbench.extensions.installExtension",
+                                    "vadimcn.vscode-lldb"
+                                )
+                        );
+                    }
+                    // Always activate the extension. If no test assets are provided,
+                    // default to adding `defaultPackage` to the workspace.
+                    const api = await extensionBootstrapper.activateExtension(
+                        testAssets ?? ["defaultPackage"],
+                        callSite
+                    );
+                    activationLogger.info(`Extension activated successfully.`);
 
-            // Make sure that CodeLLDB is installed for debugging related tests
-            if (!vscode.extensions.getExtension("vadimcn.vscode-lldb")) {
-                await logOnError(
-                    "vadimcn.vscode-lldb is not installed, installing CodeLLDB extension for the debugging tests.",
-                    () =>
-                        vscode.commands.executeCommand(
-                            "workbench.extensions.installExtension",
-                            "vadimcn.vscode-lldb"
+                    const workspaceContext = await api.waitForWorkspaceContext();
+                    // Need the `disableSandbox` configuration which is only in 6.1
+                    // https://github.com/swiftlang/sourcekit-lsp/commit/7e2d12a7a0d184cc820ae6af5ddbb8aa18b1501c
+                    if (
+                        process.platform === "darwin" &&
+                        workspaceContext.globalToolchain.swiftVersion.isLessThan(
+                            new Version(6, 1, 0)
+                        ) &&
+                        requiresLSP
+                    ) {
+                        activationLogger.info(`Skipping test, LSP is required but not available.`);
+                        this.skip();
+                    }
+                    if (requiresDebugger && configuration.debugger.disable) {
+                        activationLogger.info(
+                            `Skipping test, Debugger is required but disabled in the configuration.`
+                        );
+                        this.skip();
+                    }
+                    // CodeLLDB does not work with libllbd in Swift toolchains prior to 5.10
+                    if (
+                        workspaceContext.globalToolchainSwiftVersion.isLessThan(
+                            new Version(5, 10, 0)
                         )
-                );
-            }
-            // Always activate the extension. If no test assets are provided,
-            // default to adding `defaultPackage` to the workspace.
-            const api = await extensionBootstrapper.activateExtension(
-                testAssets ?? ["defaultPackage"],
-                callSite
-            );
-            activationLogger.info(`Extension activated successfully.`);
+                    ) {
+                        await logOnError('Setting swift.debugger.setupCodeLLDB: "never"', () =>
+                            updateSettings({
+                                "swift.debugger.setupCodeLLDB": "never",
+                            })
+                        );
+                    } else if (requiresDebugger) {
+                        const lldbLibPath = await logOnError("Getting LLDB library path", () =>
+                            getLLDBLibPath(workspaceContext.globalToolchain)
+                        );
+                        activationLogger.info(
+                            `LLDB library path is: ${lldbLibPath.success ?? "not found"}`
+                        );
+                    }
 
-            await api.withWorkspaceContext(async workspaceContext => {
-                // Need the `disableSandbox` configuration which is only in 6.1
-                // https://github.com/swiftlang/sourcekit-lsp/commit/7e2d12a7a0d184cc820ae6af5ddbb8aa18b1501c
-                if (
-                    process.platform === "darwin" &&
-                    workspaceContext.globalToolchain.swiftVersion.isLessThan(
-                        new Version(6, 1, 0)
-                    ) &&
-                    requiresLSP
-                ) {
-                    activationLogger.info(`Skipping test, LSP is required but not available.`);
-                    this.skip();
-                }
-                if (requiresDebugger && configuration.debugger.disable) {
-                    activationLogger.info(
-                        `Skipping test, Debugger is required but disabled in the configuration.`
-                    );
-                    this.skip();
-                }
-                // CodeLLDB does not work with libllbd in Swift toolchains prior to 5.10
-                if (
-                    workspaceContext.globalToolchainSwiftVersion.isLessThan(new Version(5, 10, 0))
-                ) {
-                    await logOnError('Setting swift.debugger.setupCodeLLDB: "never"', () =>
-                        updateSettings({
-                            "swift.debugger.setupCodeLLDB": "never",
-                        })
-                    );
-                } else if (requiresDebugger) {
-                    const lldbLibPath = await logOnError("Getting LLDB library path", async () =>
-                        getLLDBLibPath(workspaceContext!.globalToolchain)
-                    );
-                    activationLogger.info(
-                        `LLDB library path is: ${lldbLibPath.success ?? "not found"}`
-                    );
-                    activationLogger.info(`LLDB library path is: ${lldbLibPath}`);
-                }
-            });
+                    // Make sure no running tasks before setting up
+                    await waitForNoRunningTasks();
 
-            // Make sure no running tasks before setting up
-            await waitForNoRunningTasks();
-
-            // Clear build all cache before starting suite
-            resetBuildAllTaskCache();
-
-            if (!setup) {
-                activationLogger.info("Activation complete!");
-                clearTimeout(timer);
-                return;
-            }
-            try {
-                // If the setup returns a promise it is used to undo whatever setup it did.
-                // Typically this is the promise returned from `updateSettings`, which will
-                // undo any settings changed during setup.
-                autoTeardown = await logOnError(
-                    "Calling user defined setup method to configure test/suite specifics",
-                    () => setup.call(this, activatedAPI!)
-                );
-            } catch (error: any) {
+                    // Clear build all cache before starting suite
+                    resetBuildAllTaskCache();
+                },
+                SETUP_TIMEOUT_MS
+            ).catch(error => {
                 if (this.test) {
                     attachCapturedLogs(this.test, activationLogger.logs);
                 }
                 throw error;
-            } finally {
-                clearTimeout(timer);
+            });
+
+            if (setup) {
+                // If the setup returns a promise it is used to undo whatever setup it did.
+                // Typically this is the promise returned from `updateSettings`, which will
+                // undo any settings changed during setup.
+                autoTeardown = await withTimeout(
+                    "Test provided setup function",
+                    () =>
+                        logOnError(
+                            "Calling user defined setup method to configure test/suite specifics",
+                            () => setup.call(this, activatedAPI!)
+                        ),
+                    setupTimeout
+                ).catch(error => {
+                    if (this.test) {
+                        attachCapturedLogs(this.test, activationLogger.logs);
+                    }
+                    throw error;
+                });
             }
+
+            activationLogger.info("Activation complete!");
         });
 
         mocha.beforeEach(function () {
@@ -204,31 +251,37 @@ const extensionBootstrapper = (() => {
         });
 
         after("Deactivate Swift Extension", async function () {
-            // Allow enough time for the extension to deactivate
-            this.timeout(TEARDOWN_TIMEOUT_MS);
-
-            const timer = configureLogDumpOnTimeout(
-                TEARDOWN_TIMEOUT_MS,
-                activationLogger,
-                this.test
+            // Mocha doesn't allow us to perform any actions when a timeout happens, so each stage
+            // below rolls its own timeout instead. This lets us:
+            //   a) Attach debugging info such as logs when a timeout happens
+            //   b) Make sure that the InternalSwiftApi's deactivate() method is called to avoid breaking subsequent tests
+            // Mocha's timeout is kept as a backstop in case one of those stages fails to time out.
+            this.timeout(
+                teardownTimeout + TEARDOWN_TIMEOUT_MS + DEACTIVATION_TIMEOUT_MS + MOCHA_BACKSTOP_MS
             );
 
             activationLogger.info("Deactivating extension...");
 
             let userTeardownError: unknown | undefined;
             try {
-                // First run the users supplied teardown, then await the autoTeardown if it exists.
-                if (teardown) {
-                    await logOnError("Running user teardown function...", () =>
-                        teardown.call(this)
-                    );
-                }
-                if (autoTeardown) {
-                    await logOnError(
-                        "Running auto teardown function (function returned from setup)...",
-                        () => autoTeardown!()
-                    );
-                }
+                await withTimeout(
+                    "Test provided teardown function",
+                    async () => {
+                        // First run the users supplied teardown, then await the autoTeardown if it exists.
+                        if (teardown) {
+                            await logOnError("Running user teardown function...", () =>
+                                teardown.call(this)
+                            );
+                        }
+                        if (autoTeardown) {
+                            await logOnError(
+                                "Running auto teardown function (function returned from setup)...",
+                                () => autoTeardown!()
+                            );
+                        }
+                    },
+                    teardownTimeout
+                );
             } catch (error) {
                 // We always want to restore settings and deactivate the extension even if the
                 // user supplied teardown fails. That way we have the best chance at not causing
@@ -243,16 +296,13 @@ const extensionBootstrapper = (() => {
                 await extensionBootstrapper.deactivateExtension();
             } catch (error) {
                 if (this.test) {
-                    // A deactivation timeout is handled by the log-dump timer above, but if
-                    // deactivation throws/rejects quickly the timer hasn't fired yet and the
-                    // surrounding test has usually passed, so the per-test afterEach log capture
-                    // won't fire either. Attach the logs to this hook so the reporter still
+                    // `deactivateExtension` throws on a deactivation timeout (or any other
+                    // failure). The surrounding test has usually passed, so the per-test afterEach
+                    // log capture won't fire. Attach the logs to this hook so the reporter still
                     // prints them.
                     attachCapturedLogs(this.test, activationLogger.logs);
                 }
                 throw error;
-            } finally {
-                clearTimeout(timer);
             }
             activationLogger.clear();
 
@@ -369,66 +419,51 @@ const extensionBootstrapper = (() => {
                 throw new Error("Extension is not activated. Call activateExtension() first.");
             }
 
-            // Wait for all tasks to complete before deactivating.
-            // Long running tasks should be avoided in tests, but this is a safety net.
-            await logOnError("Waiting for no running tasks", () => waitForNoRunningTasks());
+            let teardownError: unknown | undefined;
+            await withTimeout(
+                "Swift extension teardown",
+                async () => {
+                    // Close all editors before deactivating the extension.
+                    await logOnError(`Closing all editors.`, () => closeAllEditors());
 
-            // Close all editors before deactivating the extension.
-            await logOnError(`Closing all editors.`, () => closeAllEditors());
+                    await logOnError(`Removing root workspace folder.`, async () =>
+                        activatedAPI!.workspaceContext?.removeWorkspaceFolder(
+                            getRootWorkspaceFolder()
+                        )
+                    );
+                },
+                TEARDOWN_TIMEOUT_MS
+            ).catch(error => {
+                // We always want to call deactivate() even if there was an error. Store it and throw it later.
+                teardownError = error;
+            });
 
-            await logOnError(
-                `Removing root workspace folder.`,
-                () =>
-                    activatedAPI!.workspaceContext?.removeWorkspaceFolder(
-                        getRootWorkspaceFolder()
-                    ) ?? Promise.resolve()
-            );
-            await logOnError(`Running extension deactivation function.`, () =>
-                activatedAPI!.deactivate()
-            );
+            await logOnError("Running extension deactivate() function", () =>
+                withTimeout(
+                    "Swift extension deactivate() function",
+                    () => activatedAPI!.deactivate(),
+                    DEACTIVATION_TIMEOUT_MS
+                )
+            ).catch(deactivationError => {
+                if (teardownError) {
+                    return;
+                }
+                throw deactivationError;
+            });
+
+            if (teardownError) {
+                throw teardownError;
+            }
+
             activationLogger.clear();
         },
 
-        activateExtensionForSuite: function (config?: {
-            setup?: (
-                this: Mocha.Context,
-                api: InternalSwiftExtensionApi
-            ) => Promise<(() => Promise<void>) | void>;
-            teardown?: (this: Mocha.Context) => Promise<void>;
-            testAssets?: string[];
-            requiresLSP?: boolean;
-            requiresDebugger?: boolean;
-        }) {
-            testRunnerSetup(
-                mocha.before,
-                config?.setup,
-                mocha.after,
-                config?.teardown,
-                config?.testAssets,
-                config?.requiresLSP,
-                config?.requiresDebugger
-            );
+        activateExtensionForSuite: function (config?: ExtensionActivationConfig) {
+            testRunnerSetup(mocha.before, mocha.after, config);
         },
 
-        activateExtensionForTest: function (config?: {
-            setup?: (
-                this: Mocha.Context,
-                api: InternalSwiftExtensionApi
-            ) => Promise<(() => Promise<void>) | void>;
-            teardown?: (this: Mocha.Context) => Promise<void>;
-            testAssets?: string[];
-            requiresLSP?: boolean;
-            requiresDebugger?: boolean;
-        }) {
-            testRunnerSetup(
-                mocha.beforeEach,
-                config?.setup,
-                mocha.afterEach,
-                config?.teardown,
-                config?.testAssets,
-                config?.requiresLSP,
-                config?.requiresDebugger
-            );
+        activateExtensionForTest: function (config?: ExtensionActivationConfig) {
+            testRunnerSetup(mocha.beforeEach, mocha.afterEach, config);
         },
     };
 })();

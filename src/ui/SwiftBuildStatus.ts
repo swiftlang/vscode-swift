@@ -67,7 +67,7 @@ export class SwiftBuildStatus implements Disposable {
         }
 
         const execution = task.execution as SwiftExecution;
-        const isBuildTask = task.group === vscode.TaskGroup.Build;
+        const isBuildTask = task.group?.id === vscode.TaskGroup.Build.id;
         const handleTaskOutput = (
             update: (report: { message: string; increment?: number }) => void
         ) => this.awaitTaskCompletion(task, execution, isBuildTask, showBuildStatus, update);

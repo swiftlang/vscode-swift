@@ -16,10 +16,10 @@ import * as vscode from "vscode";
 
 import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
 import { Disposable } from "@src/utilities/Disposable";
+import { withTimeout } from "@src/utilities/withTimeout";
 
 import { executeTaskAndWaitForResult } from "./tasks";
 import { fixProcessOutput } from "./terminal";
-import { withTimeout } from "./withTimeout";
 
 function severityToString(severity: vscode.DiagnosticSeverity): string {
     switch (severity) {
@@ -139,6 +139,7 @@ export function waitForDiagnostics(expectedDiagnostics: ExpectedDiagnostics): Pr
     // If there are outsanding diagnostics then we need to wait for them to arrive
     const subscriptions: Disposable[] = [];
     return withTimeout<void>(
+        "Waiting for diagnostics",
         token =>
             new Promise<void>(resolve => {
                 subscriptions.push(

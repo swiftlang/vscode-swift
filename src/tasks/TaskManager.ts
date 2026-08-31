@@ -14,10 +14,19 @@
 import * as vscode from "vscode";
 
 import { WorkspaceContext } from "../WorkspaceContext";
-import { Disposable } from "../utilities/Disposable";
+import { AsyncDisposable, Disposable } from "../utilities/Disposable";
+import { withTimeout } from "../utilities/withTimeout";
 
 /** Manage task execution and completion handlers */
-export class TaskManager implements Disposable {
+export class TaskManager implements AsyncDisposable {
+    private isDisposed = false;
+    private taskId = 0;
+    private activeExecutions: Set<vscode.TaskExecution> = new Set();
+    private subscriptions: Disposable[];
+    private didEndTaskProcessEmitter = new vscode.EventEmitter<vscode.TaskProcessEndEvent>();
+    private taskStartObserver: ((event: vscode.TaskStartEvent) => unknown) | undefined;
+    private startingTaskPromise: Promise<void> | undefined;
+
     constructor(private workspaceContext: WorkspaceContext) {
         this.subscriptions = [
             vscode.tasks.onDidStartTask(event => {
@@ -42,15 +51,19 @@ export class TaskManager implements Disposable {
                 workspaceContext.logger.debug(`Task process ended: ${event.execution.task.name}`, {
                     label: "TaskManager",
                 });
-                this.taskEndObservers.forEach(observer => observer(event));
+                this.didEndTaskProcessEmitter.fire(event);
             }),
             vscode.tasks.onDidEndTask(event => {
                 workspaceContext.logger.debug(`Task ended: ${event.execution.task.name}`, {
                     label: "TaskManager",
                 });
-                this.taskEndObservers.forEach(observer =>
-                    observer({ execution: event.execution, exitCode: undefined })
-                );
+                if (this.activeExecutions.has(event.execution)) {
+                    this.activeExecutions.delete(event.execution);
+                }
+                this.didEndTaskProcessEmitter.fire({
+                    execution: event.execution,
+                    exitCode: undefined,
+                });
                 // if task disabled the task queue then re-enable it
                 if (event.execution.task.definition.disableTaskQueue) {
                     this.disableTaskQueue(event.execution.task, false);
@@ -65,18 +78,8 @@ export class TaskManager implements Disposable {
      *
      * If the task process completes then it provides the return code from the process
      * But if the process doesn't complete the return code is undefined
-     *
-     * @param observer function called when task completes
-     * @returns disposable handle. Once you have finished with the observer call dispose on this
      */
-    onDidEndTaskProcess(observer: TaskEndObserver): Disposable {
-        this.taskEndObservers.add(observer);
-        return {
-            dispose: () => {
-                this.removeObserver(observer);
-            },
-        };
-    }
+    onDidEndTaskProcess = this.didEndTaskProcessEmitter.event;
 
     /**
      * Execute task and wait until it is finished. This function assumes that no
@@ -114,6 +117,9 @@ export class TaskManager implements Disposable {
         reject: (reason?: Error) => void,
         token?: vscode.CancellationToken
     ) {
+        if (this.isDisposed) {
+            throw Error("TaskManager is disposed.");
+        }
         const disposables = [
             this.onDidEndTaskProcess(event => {
                 if (event.execution.task.definition.id === task.definition.id) {
@@ -122,7 +128,7 @@ export class TaskManager implements Disposable {
                 }
             }),
         ];
-        // setup startingTaskPromise to be resolved one task has started
+        // setup startingTaskPromise to be resolved once task has started
         if (this.startingTaskPromise !== undefined) {
             this.workspaceContext.logger.error(
                 "TaskManager: Starting promise should be undefined if we reach here."
@@ -137,6 +143,7 @@ export class TaskManager implements Disposable {
         });
         vscode.tasks.executeTask(task).then(
             execution => {
+                this.activeExecutions.add(execution);
                 if (token) {
                     disposables.push(
                         token?.onCancellationRequested(() => {
@@ -156,8 +163,44 @@ export class TaskManager implements Disposable {
         );
     }
 
-    private removeObserver(observer: TaskEndObserver) {
-        this.taskEndObservers.delete(observer);
+    /**
+     * Terminate every `swift` task that is currently running and wait for VS Code to report
+     * that each one has ended.
+     */
+    private async terminateActiveTasks(): Promise<void> {
+        const executions = [...this.activeExecutions];
+        if (executions.length === 0) {
+            return;
+        }
+        this.workspaceContext.logger.debug(
+            `Terminating running tasks: ${executions.map(e => e.task.name).join(", ")}`,
+            { label: "TaskManager" }
+        );
+        await Promise.all(executions.map(execution => this.terminate(execution)));
+    }
+
+    /**
+     * Terminate a single task execution, resolving once VS Code reports that it has ended.
+     */
+    private async terminate(execution: vscode.TaskExecution): Promise<void> {
+        const subscriptions: Disposable[] = [];
+        await withTimeout(
+            `Terminating running task "${execution.task.name}"`,
+            () =>
+                new Promise<void>(resolve => {
+                    subscriptions.push(
+                        vscode.tasks.onDidEndTask(event => {
+                            if (event.execution === execution) {
+                                resolve();
+                            }
+                        })
+                    );
+                    execution.terminate();
+                }),
+            5000
+        )
+            .catch(error => this.workspaceContext.logger.warn(error))
+            .finally(() => subscriptions.forEach(s => s.dispose()));
     }
 
     /** Find folderContext based on task an then disable/enable its task queue */
@@ -171,17 +214,10 @@ export class TaskManager implements Disposable {
         this.workspaceContext.folders[index].taskQueue.disabled = disable;
     }
 
-    dispose() {
+    async dispose() {
+        this.isDisposed = true;
+        await this.terminateActiveTasks();
         this.subscriptions.forEach(s => s.dispose());
+        this.didEndTaskProcessEmitter.dispose();
     }
-
-    private taskEndObservers: Set<TaskEndObserver> = new Set();
-    private subscriptions: Disposable[];
-    private taskStartObserver: TaskStartObserver | undefined;
-    private taskId = 0;
-    private startingTaskPromise: Promise<void> | undefined;
 }
-
-/** Workspace Folder observer function */
-type TaskStartObserver = (event: vscode.TaskStartEvent) => unknown;
-type TaskEndObserver = (execution: vscode.TaskProcessEndEvent) => unknown;

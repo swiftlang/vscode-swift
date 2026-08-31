@@ -79,7 +79,7 @@ export class TaskOperation implements SwiftOperation {
     }
 
     get isBuildOperation(): boolean {
-        return this.task.group === vscode.TaskGroup.Build;
+        return this.task.group?.id === vscode.TaskGroup.Build.id;
     }
 
     run(
@@ -169,16 +169,23 @@ export class TaskQueue implements Disposable {
     activeOperation?: QueuedOperation;
     workspaceContext: WorkspaceContext;
     disabled: boolean;
+    private isDisposed: boolean;
 
     constructor(private folderContext: FolderContext) {
         this.queue = [];
         this.workspaceContext = folderContext.workspaceContext;
         this.activeOperation = undefined;
         this.disabled = false;
+        this.isDisposed = false;
     }
 
     dispose() {
+        this.isDisposed = true;
+        // Settle any operations that will now never run. Leaving them unsettled hangs
+        // whoever is awaiting them, e.g. `SwiftPackage.foundPackage`.
+        const dropped = this.queue;
         this.queue = [];
+        dropped.forEach(operation => operation.cb({}));
         this.activeOperation = undefined;
     }
 
@@ -192,6 +199,9 @@ export class TaskQueue implements Disposable {
         operation: SwiftOperation,
         token?: vscode.CancellationToken
     ): Promise<number | undefined> {
+        if (this.isDisposed) {
+            throw Error("TaskQueue has been disposed");
+        }
         // do we already have a version of this operation in the queue. If so
         // return the promise for when that operation is complete instead of adding
         // a new operation
@@ -244,6 +254,11 @@ export class TaskQueue implements Disposable {
                 this.activeOperation = operation;
                 // wait while queue is disabled before running task
                 await this.waitWhileDisabled();
+                // the queue may have been disposed of while we were waiting
+                if (this.isDisposed) {
+                    this.finishTask(operation, { fail: Error("TaskQueue has been disposed.") });
+                    return;
+                }
                 // log start
                 if (operation.log) {
                     this.workspaceContext.logger.info(`${operation.log}: starting ... `, {
@@ -299,6 +314,6 @@ export class TaskQueue implements Disposable {
     }
 
     private async waitWhileDisabled() {
-        await poll(() => !this.disabled, 1000);
+        await poll(() => this.isDisposed || !this.disabled, 1000);
     }
 }

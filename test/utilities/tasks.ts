@@ -17,9 +17,9 @@ import * as vscode from "vscode";
 import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
 import { Disposable } from "@src/utilities/Disposable";
 import { poll } from "@src/utilities/utilities";
+import { withTimeout } from "@src/utilities/withTimeout";
 
 import { SwiftTaskFixture } from "../fixtures";
-import { withTimeout } from "./withTimeout";
 
 import stripAnsi = require("strip-ansi");
 
@@ -98,6 +98,7 @@ export async function waitForClose(fixture: {
 export function waitForNoRunningTasks(options?: { timeout?: number }): Promise<void> {
     if (options?.timeout && options.timeout > 0) {
         return withTimeout(
+            "Waiting for all running tasks to complete",
             cancellationToken => pollForNoRunningTasks(cancellationToken),
             options.timeout
         );

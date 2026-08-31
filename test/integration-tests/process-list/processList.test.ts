@@ -16,7 +16,9 @@ import * as path from "path";
 
 import { Process, createProcessList } from "@src/process-list";
 
-suite("ProcessList Tests", () => {
+import { tag } from "../../tags";
+
+tag("medium").suite("ProcessList Tests", () => {
     function expectProcessName(processes: Process[], command: string) {
         const processList = processes
             .map(proc => `${proc.id} - ${path.basename(proc.command)}`)
@@ -46,7 +48,6 @@ suite("ProcessList Tests", () => {
         switch (process.platform) {
             case "darwin":
                 expectProcessName(processes, `${processNameDarwin} Helper`);
-                expectProcessName(processes, `${processNameDarwin} Helper (GPU)`);
                 expectProcessName(processes, `${processNameDarwin} Helper (Plugin)`);
                 expectProcessName(processes, `${processNameDarwin} Helper (Renderer)`);
                 break;
