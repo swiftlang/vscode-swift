@@ -1,0 +1,46 @@
+// SYNTAX TEST "text.tutorial" "Directive scopes"
+
+@Tutorial(name: "Your Tutorial Name") {
+// <--------- entity.name.function.directives.tutorial
+//       ^ punctuation.section.parens.begin.tutorial
+//        ^^^^ variable.parameter.tutorial
+//            ^ punctuation.separator.key-value.tutorial
+//              ^^^^^^^^^^^^^^^^^^^^ string.quoted.double.tutorial
+//                                  ^ punctuation.section.parens.end.tutorial
+
+  @Steps {
+//^^^^^^ entity.name.function.directives.tutorial
+
+    @Step {
+//  ^^^^^ entity.name.function.directives.tutorial
+    }
+  }
+
+  @Choice(isCorrect: false) {
+//^^^^^^^ entity.name.function.directives.tutorial
+//       ^ punctuation.section.parens.begin.tutorial
+//        ^^^^^^^^^ variable.parameter.tutorial
+//                 ^ punctuation.separator.key-value.tutorial
+//                   ^^^^^ constant.language.boolean.tutorial
+  }
+
+  @Chapter(would: 23, joy: "lola") {
+//^^^^^^^^ entity.name.function.directives.tutorial
+//         ^^^^^ variable.parameter.tutorial
+//              ^ punctuation.separator.key-value.tutorial
+//                ^^ constant.numeric.tutorial
+//                    ^^^ variable.parameter.tutorial
+//                       ^ punctuation.separator.key-value.tutorial
+//                         ^^^^^^ string.quoted.double.tutorial
+  }
+
+  @Comment {
+//^^^^^^^^^^ comment.block.tutorial
+    I would love to have you here
+//      ^^^^^ comment.block.tutorial
+  }
+//^ comment.block.tutorial
+
+  This tutorial is regarding ``tools`` and ``Sloth``
+//                           ^^^^^^^^^ markup.inline.raw.tutorial
+}
