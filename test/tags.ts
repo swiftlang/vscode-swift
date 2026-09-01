@@ -15,7 +15,7 @@
 import type { AsyncFunc, Func, Suite, Test } from "mocha";
 
 /** The set of all available test sizes that can be applied to a test or suite. */
-export type TestSize = "small" | "medium" | "large";
+export type TestSize = "unit" | "small" | "medium" | "large";
 
 export interface MochaFunctions {
     suite: Mocha.SuiteFunction;
@@ -30,6 +30,25 @@ interface TaggedTest extends Test {
     __VSCode_Swift_size?: TestSize;
 }
 
+/**
+ * The size applied to tests and suites that haven't been tagged. Unit tests default to `unit`
+ * whereas integration tests default to `small`.
+ *
+ * The 'VSCODE_SWIFT_DEFAULT_TEST_SIZE' environment variable gets set by '.vscode-test.js'.
+ */
+function getDefaultTestSize(): TestSize {
+    const size = process.env["VSCODE_SWIFT_DEFAULT_TEST_SIZE"];
+    switch (size) {
+        case "unit":
+        case "small":
+        case "medium":
+        case "large":
+            return size;
+        default:
+            return "small";
+    }
+}
+
 function getTimeout(size: TestSize): number {
     // Don't time out when debugging.
     // The 'VSCODE_DEBUG' environment variable gets set by '.vscode-test.js'.
@@ -41,9 +60,12 @@ function getTimeout(size: TestSize): number {
     const SECOND = 1000;
     const MINUTE = 60 * SECOND;
     switch (size) {
-        case "small":
-            // Keep this up to date with the default timeout in 'vscode-test.js'.
+        case "unit":
+            // Keep this up to date with 'unitTestTimeout' in 'vscode-test.js'.
             return 2 * SECOND;
+        case "small":
+            // Keep this up to date with 'integrationTestTimeout' in 'vscode-test.js'.
+            return 30 * SECOND;
         case "medium":
             return 2 * MINUTE;
         case "large":
@@ -64,8 +86,8 @@ export function installTagSupport() {
         }
 
         // Retrieve tags either from the current test or one of its parent suites.
-        // By default all tests/suites are tagged small.
-        let testSize: TestSize = "small";
+        // Untagged tests/suites fall back to the default size for the test run.
+        let testSize: TestSize = getDefaultTestSize();
         if (currentTest.__VSCode_Swift_size) {
             testSize = currentTest.__VSCode_Swift_size;
         } else {
@@ -90,9 +112,13 @@ export function installTagSupport() {
  * Creates a wrapper around Mocha's suite() and test() functions with the provided tags. At the
  * moment we only support a single test size tag, but more could be added in the future.
  *
- * Tags are used to identify how long a test is expected to run. There are three categories:
- * - **small:** 2 second timeout used primarily for unit tests.
- * - **medium:** 2 minute timeout used for the majority of integration tests.
+ * Tags are used to identify how long a test is expected to run. There are four categories:
+ * - **unit:** 2 second timeout used for unit tests, which should never touch slow APIs. This is
+ *   the default for everything under `test/unit-tests`.
+ * - **small:** 30 second timeout used for the majority of integration tests. This is the default
+ *   for everything under `test/integration-tests`.
+ * - **medium:** 2 minute timeout used for integration tests that invoke SwiftPM, build a package,
+ *   or otherwise wait on a long running external process.
  * - **large:** 10 minute timeout used for very long running tests that should only be run
  *   in the nightly CI.
  *
