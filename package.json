@@ -917,13 +917,17 @@
           },
           "swift.lspConfigurationBranch": {
             "type": "string",
-            "markdownDescription": "Set the branch to use when setting the `$schema` property of the SourceKit-LSP configuration. For example: \"release/6.1\" or \"main\". When this setting is unset, the extension will determine the branch based on the version of the toolchain that is in use."
+            "markdownDescription": "Set the branch to use when setting the `$schema` property of the SourceKit-LSP configuration. For example: \"release/6.1\" or \"main\". When this setting is unset, the extension will determine the branch based on the version of the toolchain that is in use.",
+            "deprecationMessage": "Deprecated: Please use \"swift.sourcekit-lsp.configurationBranch\" instead.",
+            "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.sourcekit-lsp.configurationBranch#` instead."
           },
           "swift.checkLspConfigurationSchema": {
             "type": "boolean",
             "default": true,
-            "markdownDescription": "When opening a .sourckit-lsp/config.json configuration file, whether or not to check if the $schema matches the version of Swift you are using.",
-            "scope": "machine-overridable"
+            "markdownDescription": "When opening a .sourcekit-lsp/config.json configuration file, whether or not to check if the $schema matches the version of Swift you are using.",
+            "scope": "machine-overridable",
+            "deprecationMessage": "Deprecated: Please use \"swift.sourcekit-lsp.checkConfigurationSchema\" instead.",
+            "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.sourcekit-lsp.checkConfigurationSchema#` instead."
           }
         }
       },
@@ -1015,6 +1019,18 @@
             ],
             "markdownDescription": "Controls whether the symbol declaration is included in the results of `Find All References`.",
             "order": 7,
+            "scope": "machine-overridable"
+          },
+          "swift.sourcekit-lsp.configurationBranch": {
+            "type": "string",
+            "markdownDescription": "Set the branch to use when setting the `$schema` property of the SourceKit-LSP configuration. For example: \"release/6.1\" or \"main\". When this setting is unset, the extension will determine the branch based on the version of the toolchain that is in use.",
+            "order": 8
+          },
+          "swift.sourcekit-lsp.checkConfigurationSchema": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "When opening a .sourcekit-lsp/config.json configuration file, whether or not to check if the $schema matches the version of Swift you are using.",
+            "order": 9,
             "scope": "machine-overridable"
           },
           "sourcekit-lsp.support-c-cpp": {

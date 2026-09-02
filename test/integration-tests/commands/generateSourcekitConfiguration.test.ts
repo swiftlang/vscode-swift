@@ -93,6 +93,19 @@ suite("Generate SourceKit-LSP configuration Command", function () {
 
     test("Uses hardcoded path", async () => {
         resetSettings = await updateSettings({
+            "swift.sourcekit-lsp.configurationBranch": "release/6.1",
+        });
+        const result = await vscode.commands.executeCommand(Commands.GENERATE_SOURCEKIT_CONFIG);
+        expect(result).to.be.true;
+        const config = await getSchema();
+        expect(config).to.have.property(
+            "$schema",
+            `https://raw.githubusercontent.com/swiftlang/sourcekit-lsp/refs/heads/release/6.1/config.schema.json`
+        );
+    });
+
+    test("Uses hardcoded path from the deprecated setting", async () => {
+        resetSettings = await updateSettings({
             "swift.lspConfigurationBranch": "release/6.1",
         });
         const result = await vscode.commands.executeCommand(Commands.GENERATE_SOURCEKIT_CONFIG);
@@ -106,7 +119,7 @@ suite("Generate SourceKit-LSP configuration Command", function () {
 
     test('Fallsback to "main" when path does not exist', async () => {
         resetSettings = await updateSettings({
-            "swift.lspConfigurationBranch": "totally-invalid-branch",
+            "swift.sourcekit-lsp.configurationBranch": "totally-invalid-branch",
         });
         const result = await vscode.commands.executeCommand(Commands.GENERATE_SOURCEKIT_CONFIG);
         expect(result).to.be.true;
