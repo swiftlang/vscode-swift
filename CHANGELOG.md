@@ -7,6 +7,7 @@
 - Diagnostics with `remark` severity are now shown in the Problems pane ([#2338](https://github.com/swiftlang/vscode-swift/pull/2338))
 - Toolchain changes will now automatically reload the workspace ([#2196](https://github.com/swiftlang/vscode-swift/pull/2196))
 - Add a button that installs Swiftly and the latest Swift toolchain to the extension's welcome walkthrough ([#2078](https://github.com/swiftlang/vscode-swift/pull/2078))
+- Add syntax highlighing for DocC Tutorial files ([#2320](https://github.com/swiftlang/vscode-swift/pull/2320))
 
 ### Fixed
 

@@ -1,0 +1,65 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Swift DocC Tutorial",
+  "scopeName": "text.tutorial",
+  "fileTypes": ["tutorial"],
+  "patterns": [
+    { "include": "#comment-directive" },
+    { "include": "#directives-with-args" },
+    { "include": "#directives-bare" },
+    { "include": "#backticks" },
+    { "include": "#strings" }
+  ],
+  "repository": {
+    "comment-directive": {
+      "name": "comment.block.tutorial",
+      "begin": "(@Comment)\\s*(\\{)",
+      "end": "\\}"
+    },
+    "directives-with-args": {
+      "begin": "(@[A-Za-z0-9_.+]+)(\\()",
+      "beginCaptures": {
+        "1": { "name": "entity.name.function.directives.tutorial" },
+        "2": { "name": "punctuation.section.parens.begin.tutorial" }
+      },
+      "end": "\\)",
+      "endCaptures": {
+        "0": { "name": "punctuation.section.parens.end.tutorial" }
+      },
+      "patterns": [
+        { "include": "#arguments" },
+        { "include": "#strings" },
+        { "include": "#literals" }
+      ]
+    },
+    "directives-bare": {
+      "match": "@[A-Za-z0-9_.+]+",
+      "name": "entity.name.function.directives.tutorial"
+    },
+    "arguments": {
+      "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*(:)",
+      "captures": {
+        "1": { "name": "variable.parameter.tutorial" },
+        "2": { "name": "punctuation.separator.key-value.tutorial" }
+      }
+    },
+    "literals": {
+      "patterns": [
+        { "name": "constant.language.boolean.tutorial", "match": "\\b(true|false)\\b" },
+        { "name": "constant.numeric.tutorial", "match": "\\b\\d+(\\.\\d+)?\\b" }
+      ]
+    },
+    "backticks": {
+      "name": "markup.inline.raw.tutorial",
+      "begin": "``",
+      "end": "``",
+      "contentName": "storage.type.backticks.tutorial",
+      "beginCaptures": { "0": { "name": "storage.type.backticks.tutorial" } },
+      "endCaptures": { "0": { "name": "storage.type.backticks.tutorial" } }
+    },
+    "strings": {
+      "name": "string.quoted.double.tutorial",
+      "match": "\"(\\\\.|[^\"])*?\""
+    }
+  }
+}
