@@ -32,9 +32,10 @@ function log(/** @type {string} */ message) {
     }
 }
 
-// Remove the default timeout when debugging to avoid test failures when a breakpoint is hit.
-// Keep this up to date with the timeout of a 'small' test in 'test/tags.ts'.
-const timeout = isDebugRun ? 0 : 2000;
+// Remove the default timeouts when debugging to avoid test failures when a breakpoint is hit.
+// Keep these up to date with the timeouts of the corresponding test sizes in 'test/tags.ts'.
+const unitTestTimeout = isDebugRun ? 0 : 2000; // the 'unit' test size
+const integrationTestTimeout = isDebugRun ? 0 : 30000; // the 'small' test size
 
 const launchArgs = [
     "--disable-updates",
@@ -67,6 +68,11 @@ const env = {
 };
 log("Running tests against environment:\n" + JSON.stringify(env, undefined, 2));
 
+// The default test size determines the timeout applied to any test that hasn't been tagged with
+// tag() from 'test/tags.ts'. Unit tests are held to a stricter default than integration tests.
+const unitTestEnv = { ...env, VSCODE_SWIFT_DEFAULT_TEST_SIZE: "unit" };
+const integrationTestEnv = { ...env, VSCODE_SWIFT_DEFAULT_TEST_SIZE: "small" };
+
 module.exports = defineConfig({
     tests: [
         {
@@ -75,11 +81,11 @@ module.exports = defineConfig({
             version: vscodeVersion,
             workspaceFolder: "./assets/test",
             launchArgs,
-            env,
+            env: integrationTestEnv,
             mocha: {
                 ui: "tdd",
                 color: true,
-                timeout,
+                timeout: integrationTestTimeout,
                 slow: 10000,
                 retries: 1,
                 reporter: path.join(__dirname, ".mocha-reporter.js"),
@@ -108,11 +114,11 @@ module.exports = defineConfig({
             version: vscodeVersion,
             workspaceFolder: "./assets/test.code-workspace",
             launchArgs,
-            env,
+            env: integrationTestEnv,
             mocha: {
                 ui: "tdd",
                 color: true,
-                timeout,
+                timeout: integrationTestTimeout,
                 slow: 10000,
                 retries: 1,
                 reporter: path.join(__dirname, ".mocha-reporter.js"),
@@ -132,11 +138,11 @@ module.exports = defineConfig({
             files: ["dist/test/common.js", "dist/test/unit-tests/**/*.test.js"],
             version: vscodeVersion,
             launchArgs: launchArgs.concat("--disable-extensions"),
-            env,
+            env: unitTestEnv,
             mocha: {
                 ui: "tdd",
                 color: true,
-                timeout,
+                timeout: unitTestTimeout,
                 slow: 100,
                 reporter: path.join(__dirname, ".mocha-reporter.js"),
                 reporterOptions: {

@@ -16,9 +16,7 @@ import * as path from "path";
 
 import { Process, createProcessList } from "@src/process-list";
 
-import { tag } from "../../tags";
-
-tag("medium").suite("ProcessList Tests", () => {
+suite("ProcessList Tests", () => {
     function expectProcessName(processes: Process[], command: string) {
         const processList = processes
             .map(proc => `${proc.id} - ${path.basename(proc.command)}`)
