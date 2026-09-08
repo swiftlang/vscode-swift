@@ -18,7 +18,7 @@ jobs:
       artifact-id: ${{ steps.archive.outputs.artifact-id }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Build Extension
         run: |
           . .github/workflows/scripts/setup-linux.sh
