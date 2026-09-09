@@ -12,7 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 import * as readline from "readline";
-import { Readable } from "stream";
+import { PassThrough } from "stream";
 import * as vscode from "vscode";
 
 import { SwiftLogger } from "../../logging/SwiftLogger";
@@ -216,9 +216,7 @@ export class SwiftTestingOutputParser {
     ): Promise<void> {
         // Creates a reader based on the platform unless being provided in a test context.
         this.reader = pipeReader ?? this.createReader(path);
-        const readlinePipe = new Readable({
-            read() {},
-        });
+        const readlinePipe = new PassThrough();
 
         // Use readline to automatically chunk the data into lines,
         // and then take each line and parse it as JSON.

@@ -18,10 +18,12 @@ import * as fs from "fs";
 import { afterEach, beforeEach } from "mocha";
 import * as os from "os";
 import * as path from "path";
-import { Readable } from "stream";
+import { PassThrough } from "stream";
 import { promisify } from "util";
 
 import { UnixNamedPipeReader } from "@src/TestExplorer/TestParsers/TestEventStreamReader";
+
+import { tag } from "../../tags";
 
 const execFileAsync = promisify(execFile);
 
@@ -46,7 +48,7 @@ suite("UnixNamedPipeReader Suite", () => {
         }
     });
 
-    function collectData(readable: Readable): Promise<string> {
+    function collectData(readable: PassThrough): Promise<string> {
         return new Promise(resolve => {
             let out = "";
             readable.on("data", chunk => {
@@ -62,7 +64,7 @@ suite("UnixNamedPipeReader Suite", () => {
 
     test("delivers data from a single writer", async () => {
         const reader = new UnixNamedPipeReader(fifoPath);
-        const readable = new Readable({ read() {} });
+        const readable = new PassThrough();
         const collected = collectData(readable);
 
         await reader.start(readable);
@@ -80,7 +82,7 @@ suite("UnixNamedPipeReader Suite", () => {
         // reader's side the first writer's EOF tears the reader down, and the second
         // writer blocks forever on open().
         const reader = new UnixNamedPipeReader(fifoPath);
-        const readable = new Readable({ read() {} });
+        const readable = new PassThrough();
         const collected = collectData(readable);
 
         await reader.start(readable);
@@ -97,7 +99,7 @@ suite("UnixNamedPipeReader Suite", () => {
 
     test("stop() terminates the readable with EOF", async () => {
         const reader = new UnixNamedPipeReader(fifoPath);
-        const readable = new Readable({ read() {} });
+        const readable = new PassThrough();
 
         await reader.start(readable);
 
@@ -110,7 +112,7 @@ suite("UnixNamedPipeReader Suite", () => {
 
     test("stop() resolves only after buffered data has drained", async () => {
         const reader = new UnixNamedPipeReader(fifoPath);
-        const readable = new Readable({ read() {} });
+        const readable = new PassThrough();
         const collected = collectData(readable);
 
         await reader.start(readable);
@@ -122,5 +124,28 @@ suite("UnixNamedPipeReader Suite", () => {
 
         const result = await collected;
         assert.strictEqual(result, "trailing\n");
+    });
+
+    tag("small").test("delivers a payload larger than the destination's buffer", async () => {
+        // A parameterized test run pushes tens of megabytes through the FIFO. When the
+        // destination fills up the reader must resume the source once it drains again,
+        // rather than pausing it for good.
+        const reader = new UnixNamedPipeReader(fifoPath);
+        const readable = new PassThrough();
+        const payload = "x".repeat(1024 * 1024) + "\n";
+
+        await reader.start(readable);
+
+        // Deliberately not awaited: with no consumer attached the destination fills and
+        // pushes back on the source, so the write blocks until collectData drains it.
+        const written = fs.promises.writeFile(fifoPath, payload);
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+        const collected = collectData(readable);
+        await written;
+        await reader.stop();
+
+        const result = await collected;
+        assert.strictEqual(result.length, payload.length);
     });
 });
