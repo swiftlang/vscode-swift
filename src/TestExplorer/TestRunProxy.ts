@@ -40,6 +40,42 @@ export function clearTestWarningDiagnostics(): void {
 }
 
 /**
+ * The tests waiting to run, indexed by parent so that dequeuing a test can decide whether
+ * its parent still has enqueued children without walking the parent's child collection.
+ */
+class EnqueuedTests extends Set<vscode.TestItem> {
+    private enqueuedChildren = new Map<vscode.TestItem, number>();
+
+    override add(test: vscode.TestItem): this {
+        if (this.has(test)) {
+            return this;
+        }
+        super.add(test);
+        this.adjustChildCount(test.parent, 1);
+        return this;
+    }
+
+    override delete(test: vscode.TestItem): boolean {
+        if (!super.delete(test)) {
+            return false;
+        }
+        this.adjustChildCount(test.parent, -1);
+        return true;
+    }
+
+    public hasEnqueuedChildren(test: vscode.TestItem): boolean {
+        return (this.enqueuedChildren.get(test) ?? 0) > 0;
+    }
+
+    private adjustChildCount(parent: vscode.TestItem | undefined, delta: number) {
+        if (!parent) {
+            return;
+        }
+        this.enqueuedChildren.set(parent, (this.enqueuedChildren.get(parent) ?? 0) + delta);
+    }
+}
+
+/**
  * Test only structure that stores the state of test items.
  */
 export class TestRunState {
@@ -50,7 +86,7 @@ export class TestRunState {
     }[] = [];
     public passed: vscode.TestItem[] = [];
     public skipped: vscode.TestItem[] = [];
-    public enqueued = new Set<vscode.TestItem>();
+    public enqueued = new EnqueuedTests();
     public unknown: number = 0;
     public output: string[] = [];
 }
@@ -474,15 +510,7 @@ export class TestRunProxy implements vscode.CancellationToken {
     private clearEnqueuedTest(test: vscode.TestItem) {
         this.runState.enqueued.delete(test);
 
-        if (!test.parent) {
-            return;
-        }
-
-        const parentHasEnqueuedChildren = Array.from(test.parent.children).some(([_, child]) =>
-            this.runState.enqueued.has(child)
-        );
-
-        if (!parentHasEnqueuedChildren) {
+        if (test.parent && !this.runState.enqueued.hasEnqueuedChildren(test.parent)) {
             this.clearEnqueuedTest(test.parent);
         }
     }
