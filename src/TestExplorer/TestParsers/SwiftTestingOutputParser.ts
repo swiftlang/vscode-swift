@@ -259,13 +259,20 @@ export class SwiftTestingOutputParser {
     /**
      * Parses stdout of a test run looking for lines that were not captured by
      * a JSON event and injecting them in to the test run output.
+     *
+     * The whole chunk is recorded in one call, because each `recordOutput` becomes a
+     * separate round trip to the UI.
      * @param chunk A chunk of stdout emitted during a test run.
      */
     public parseStdout(chunk: string, runState: ITestRunState) {
-        for (const line of chunk.split(lineBreakRegex)) {
-            if (line.trim().length > 0) {
-                runState.recordOutput(undefined, `${line}\r\n`);
-            }
+        const output = chunk
+            .split(lineBreakRegex)
+            .filter(line => line.trim().length > 0)
+            .map(line => `${line}\r\n`)
+            .join("");
+
+        if (output.length > 0) {
+            runState.recordOutput(undefined, output);
         }
     }
 
