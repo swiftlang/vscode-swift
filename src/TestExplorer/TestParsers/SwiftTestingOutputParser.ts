@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 import * as readline from "readline";
 import { Readable } from "stream";
-import * as vscode from "vscode";
 
 import { SwiftLogger } from "../../logging/SwiftLogger";
 import { lineBreakRegex } from "../../utilities/tasks";
@@ -339,17 +338,7 @@ export class SwiftTestingOutputParser {
         // the caller that the TestClass should be added to the vscode.TestRun.
         const parameterizedTestCases = item.payload._testCases
             .map((testCase, index) =>
-                this.parameterizedFunctionTestCaseToTestClass(
-                    item.payload.id,
-                    testCase,
-                    sourceLocationToVSCodeLocation(
-                        item.payload.sourceLocation._filePath ??
-                            item.payload.sourceLocation.filePath,
-                        item.payload.sourceLocation.line,
-                        item.payload.sourceLocation.column
-                    ),
-                    index
-                )
+                this.parameterizedFunctionTestCaseToTestClass(item.payload.id, testCase, index)
             )
             .flatMap(testClass => (testClass ? [testClass] : []));
 
@@ -497,7 +486,6 @@ export class SwiftTestingOutputParser {
     private parameterizedFunctionTestCaseToTestClass(
         testId: string,
         testCase: TestCase,
-        location: vscode.Location,
         index: number
     ): TestClass {
         return {
@@ -506,7 +494,7 @@ export class SwiftTestingOutputParser {
             tags: [],
             children: [],
             style: "swift-testing",
-            location: location,
+            location: undefined,
             disabled: true,
             sortText: `${index}`.padStart(8, "0"),
         };
