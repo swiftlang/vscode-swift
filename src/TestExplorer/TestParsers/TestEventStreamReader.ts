@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 import * as fs from "fs";
 import * as net from "net";
-import { Readable } from "stream";
+import { PassThrough } from "stream";
 import { promisify } from "util";
 
 import { SwiftLogger } from "../../logging/SwiftLogger";
@@ -21,25 +21,25 @@ import { SwiftLogger } from "../../logging/SwiftLogger";
 const openAsync = promisify(fs.open);
 
 export interface INamedPipeReader {
-    start(readable: Readable): Promise<void>;
+    start(destination: PassThrough): Promise<void>;
     stop(): Promise<void>;
 }
 
 /**
- * Reads from a named pipe on Windows and forwards data to a `Readable` stream.
+ * Reads from a named pipe on Windows and forwards data to a `PassThrough` stream.
  * Note that the path must be in the Windows named pipe format of `\\.\pipe\pipename`.
  */
 export class WindowsNamedPipeReader implements INamedPipeReader {
     private server?: net.Server;
-    private readable?: Readable;
+    private destination?: PassThrough;
 
     constructor(
         private path: string,
         private logger?: SwiftLogger
     ) {}
 
-    public async start(readable: Readable) {
-        this.readable = readable;
+    public async start(destination: PassThrough) {
+        this.destination = destination;
         return new Promise<void>((resolve, reject) => {
             try {
                 // `swift test` w/ swift-testing tests launches one test target subprocess at a time.
@@ -47,7 +47,9 @@ export class WindowsNamedPipeReader implements INamedPipeReader {
                 // closes. The server must keep listening across connections so that
                 // every target's events reach the parser.
                 const server = net.createServer(stream => {
-                    stream.on("data", data => readable.push(data));
+                    // `end: false` because one target closing its connection must not end the
+                    // destination; the targets that follow still have events to write.
+                    stream.pipe(destination, { end: false });
                     stream.on("error", err => {
                         this.logger?.warn(`swift-testing pipe connection error: ${err.message}`);
                     });
@@ -62,18 +64,18 @@ export class WindowsNamedPipeReader implements INamedPipeReader {
 
     public async stop(): Promise<void> {
         const server = this.server;
-        const readable = this.readable;
+        const destination = this.destination;
         this.server = undefined;
-        this.readable = undefined;
+        this.destination = undefined;
         if (server) {
             await new Promise<void>(resolve => server.close(() => resolve()));
         }
-        readable?.push(null);
+        destination?.end();
     }
 }
 
 /**
- * Reads from a unix FIFO pipe and forwards data to a `Readable` stream.
+ * Reads from a unix FIFO pipe and forwards data to a `PassThrough` stream.
  * Note that the pipe at the supplied path should be created with `mkfifo`
  * before calling `start()`.
  */
@@ -86,7 +88,7 @@ export class UnixNamedPipeReader implements INamedPipeReader {
         private logger?: SwiftLogger
     ) {}
 
-    public async start(readable: Readable) {
+    public async start(destination: PassThrough) {
         const guardFd = await openAsync(this.path, fs.constants.O_RDWR);
         this.guardFd = guardFd;
 
@@ -106,18 +108,13 @@ export class UnixNamedPipeReader implements INamedPipeReader {
         // meaning we couldn't read from writes that were > 8kb.
         const pipe = fs.createReadStream("", { fd: readFd, autoClose: true });
         this.pipe = pipe;
-        pipe.on("data", data => {
-            if (!readable.push(data)) {
-                pipe.pause();
-            }
-        });
-        readable.on("drain", () => pipe.resume());
         pipe.on("error", err => {
             this.logger?.warn(`swift-testing pipe read error: ${err.message}`);
         });
-        pipe.on("end", () => {
-            readable.push(null);
-        });
+
+        // `pipe()` rather than a manual data/pause/resume pair: the destination is writable,
+        // so Node pauses and resumes the source off its `drain` event.
+        pipe.pipe(destination);
     }
 
     public async stop(): Promise<void> {
@@ -130,8 +127,8 @@ export class UnixNamedPipeReader implements INamedPipeReader {
         }
 
         // Dropping the guard writer lets the kernel deliver EOF to the read
-        // fd, which triggers the stream's "end" handler above and closes the
-        // read fd via autoClose. We wait for both the guard close and the
+        // fd, which ends the source, closes the read fd via autoClose and ends
+        // the destination. We wait for both the guard close and the
         // read stream to fully drain so callers can rely on all buffered
         // events having reached the parser before the FIFO is unlinked.
         const pipeDrained =
