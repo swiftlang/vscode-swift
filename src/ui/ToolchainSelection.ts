@@ -599,7 +599,7 @@ export async function setToolchainPath(
     toolchain: {
         category: SwiftToolchainItem["category"];
         swiftFolderPath?: string;
-        onDidSelect?: SwiftToolchainItem["onDidSelect"];
+        onDidSelect?: NonNullable<SwiftToolchainItem["onDidSelect"]>;
     },
     developerDir?: string,
     target?: vscode.ConfigurationTarget

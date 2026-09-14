@@ -70,13 +70,13 @@ suite("Version Suite", () => {
         test("no digits", () => {
             const version = Version.fromString("a.b.c");
 
-            expect(version).to.equal(undefined);
+            expect(version).to.be.undefined;
         });
 
         test("only one character", () => {
             const version = Version.fromString("1");
 
-            expect(version).to.equal(undefined);
+            expect(version).to.be.undefined;
         });
     });
 

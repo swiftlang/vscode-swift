@@ -192,6 +192,9 @@ suite("MockUtils Test Suite", () => {
             expect(sut.fn2("a: ")).to.equal("a: this is yet another string");
         });
 
+        // This is a compile-time test: the @ts-expect-error below fails the build if
+        // mockFn stops propagating its generic. There is nothing to assert at runtime.
+        // eslint-disable-next-line sonarjs/assertions-in-tests
         test("retains type information when mocking a function", () => {
             mockFn<() => number>(s => {
                 s.returns(

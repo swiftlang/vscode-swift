@@ -273,7 +273,6 @@ async function showCapturedDiagnosticsResults(diagnosticsPath: string) {
         await vscode.env.clipboard.writeText(diagnosticsPath);
     } else if (result === showInFinderButton) {
         const dirToShow = path.dirname(diagnosticsPath);
-        // eslint-disable-next-line sonarjs/os-command
         exec(showDirectoryCommand(dirToShow), error => {
             // Opening the explorer on windows returns an exit code of 1 despite opening successfully.
             if (error && process.platform !== "win32") {
