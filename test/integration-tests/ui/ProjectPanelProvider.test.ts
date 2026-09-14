@@ -394,7 +394,7 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
         test("Shows a flat dependency list", async () => {
             workspaceContext.contextKeys.flatDependenciesList = true;
             const items = await getHeaderChildren("Dependencies");
-            expect(items.length).to.equal(3);
+            expect(items).to.have.lengthOf(3);
             expect(items.find(n => n.name === "swift-markdown")).to.not.be.undefined;
             expect(items.find(n => n.name === "swift-cmark")).to.not.be.undefined;
             expect(items.find(n => n.name === "defaultpackage")).to.not.be.undefined;
@@ -403,7 +403,7 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
         test("Shows a nested dependency list", async () => {
             workspaceContext.contextKeys.flatDependenciesList = false;
             const items = await getHeaderChildren("Dependencies");
-            expect(items.length).to.equal(2);
+            expect(items).to.have.lengthOf(2);
             expect(items.find(n => n.name === "swift-markdown")).to.not.be.undefined;
             expect(items.find(n => n.name === "defaultpackage")).to.not.be.undefined;
         });

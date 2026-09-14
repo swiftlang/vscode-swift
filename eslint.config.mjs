@@ -106,6 +106,7 @@ export default defineConfig([
             "sonarjs/use-type-alias": "off",
             "sonarjs/function-return-type": "off",
             "sonarjs/slow-regex": "off",
+            "sonarjs/super-linear-regex": "off",
             "sonarjs/publicly-writable-directories": "off",
             "sonarjs/no-same-argument-assert": "off",
             "sonarjs/no-invariant-returns": "off",

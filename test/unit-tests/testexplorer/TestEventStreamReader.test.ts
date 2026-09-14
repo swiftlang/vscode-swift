@@ -106,6 +106,8 @@ suite("UnixNamedPipeReader Suite", () => {
         await reader.stop();
 
         await endPromise;
+
+        assert.strictEqual(readable.readableEnded, true);
     });
 
     test("stop() resolves only after buffered data has drained", async () => {

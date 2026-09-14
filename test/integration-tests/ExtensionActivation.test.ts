@@ -73,12 +73,12 @@ tag("medium").suite("Extension Activation/Deactivation Tests", () => {
         });
 
         test("Assert workspace context is created", () => {
-            assert.ok(workspaceContext);
+            expect(workspaceContext).to.not.be.undefined;
             capturedWorkspaceContext = workspaceContext;
         });
 
         test("Assert workspace context is not recreated", () => {
-            assert.strictEqual(workspaceContext, capturedWorkspaceContext);
+            expect(workspaceContext).to.equal(capturedWorkspaceContext);
         });
     });
 
@@ -93,12 +93,12 @@ tag("medium").suite("Extension Activation/Deactivation Tests", () => {
         });
 
         test("Assert workspace context is created", () => {
-            assert.ok(workspaceContext);
+            expect(workspaceContext).to.not.be.undefined;
             capturedWorkspaceContext = workspaceContext;
         });
 
         test("Assert workspace context is recreated per test", () => {
-            assert.notStrictEqual(workspaceContext, capturedWorkspaceContext);
+            expect(workspaceContext).to.not.equal(capturedWorkspaceContext);
         });
     });
 
