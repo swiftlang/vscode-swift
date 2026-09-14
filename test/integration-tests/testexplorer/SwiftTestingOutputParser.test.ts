@@ -16,6 +16,12 @@ import { beforeEach } from "mocha";
 import { Readable } from "stream";
 import * as vscode from "vscode";
 
+import { TestClass } from "@src/TestExplorer/TestDiscovery";
+import {
+    MAX_PARAMETERIZED_FAILURE_ROWS,
+    MAX_PARAMETERIZED_PENDING_ROWS,
+    ParameterizedTestCaseSink,
+} from "@src/TestExplorer/TestParsers/ParameterizedArgumentRows";
 import {
     EventMessage,
     EventRecord,
@@ -28,6 +34,8 @@ import {
 } from "@src/TestExplorer/TestParsers/SwiftTestingOutputParser";
 
 import { TestRunState, TestStatus } from "./MockTestRunState";
+
+type Outcome = "pass" | "fail" | "warn";
 
 class TestEventStream {
     constructor(private items: SwiftTestEvent[]) {}
@@ -48,11 +56,43 @@ suite("SwiftTestingOutputParser Suite", () => {
 
     beforeEach(() => {
         outputParser = new SwiftTestingOutputParser(
-            () => {},
+            {
+                clearParameterizedTestCases: () => {},
+                addParameterizedTestCase: () => undefined,
+            },
             () => {}
         );
         testRunState = new TestRunState(true);
     });
+
+    /** A sink that records every row it is handed and registers it with the run state. */
+    function recordingSink(listed: TestClass[]): ParameterizedTestCaseSink {
+        return {
+            clearParameterizedTestCases: () => {},
+            addParameterizedTestCase: testClass => {
+                listed.push(testClass);
+                return testRunState.getTestItemIndex(testClass.id);
+            },
+        };
+    }
+
+    function parameterizedRecord(testId: string, count: number): SwiftTestEvent {
+        return {
+            kind: "test",
+            version: 0,
+            payload: {
+                kind: "function",
+                id: testId,
+                name: testId,
+                isParameterized: true,
+                _testCases: Array.from({ length: count }, (_, i) => ({
+                    id: `arg-${i}`,
+                    displayName: `arg-${i}`,
+                })),
+                sourceLocation: { _filePath: "file:///f.swift", line: 1, column: 1 },
+            },
+        } as unknown as SwiftTestEvent;
+    }
 
     type ExtractPayload<T> = T extends { payload: infer E } ? E : never;
     type IssueOverrides = { isFailure?: boolean; severity?: string };
@@ -82,6 +122,217 @@ suite("SwiftTestingOutputParser Suite", () => {
             } as EventRecordPayload,
         };
     }
+
+    suite("parameterized argument budgets", () => {
+        const TEST_ID = "MyTests.MyTests/testParameterized()";
+
+        function caseEvents(testId: string, index: number, outcome: Outcome): SwiftTestEvent[] {
+            const arg = `arg-${index}`;
+            const events: SwiftTestEvent[] = [
+                testEvent("testCaseStarted", testId, undefined, undefined, arg),
+            ];
+            if (outcome !== "pass") {
+                events.push(
+                    testEvent(
+                        "issueRecorded",
+                        testId,
+                        [{ text: `issue ${index}`, symbol: TestSymbol.fail }],
+                        { _filePath: "file:///f.swift", line: 1, column: 1 },
+                        arg,
+                        outcome === "warn" ? { severity: "warning" } : undefined
+                    )
+                );
+            }
+            events.push(testEvent("testCaseEnded", testId, undefined, undefined, arg));
+            return events;
+        }
+
+        async function runFunctions(
+            functions: { id: string; outcomes: Outcome[] }[]
+        ): Promise<TestClass[]> {
+            return runEvents(
+                functions.flatMap(fn => [
+                    parameterizedRecord(fn.id, fn.outcomes.length),
+                    testEvent("testStarted", fn.id),
+                    ...fn.outcomes.flatMap((outcome, i) => caseEvents(fn.id, i, outcome)),
+                    testEvent("testEnded", fn.id),
+                ])
+            );
+        }
+
+        async function runEvents(events: SwiftTestEvent[]): Promise<TestClass[]> {
+            const listed: TestClass[] = [];
+            await new SwiftTestingOutputParser(recordingSink(listed), () => {}).watch(
+                "file:///mock/named/pipe",
+                testRunState,
+                new TestEventStream([testEvent("runStarted"), ...events, testEvent("runEnded")])
+            );
+            return listed;
+        }
+
+        const ids = (rows: TestClass[]) => rows.map(row => row.id);
+
+        function outcomes(
+            count: number,
+            fill: Outcome = "pass",
+            overrides: Record<number, Outcome> = {}
+        ): Outcome[] {
+            return Array.from({ length: count }, (_, i) => overrides[i] ?? fill);
+        }
+
+        test("Arguments are listed before any results arrive when they fit in the budget", async () => {
+            const listed = await runEvents([parameterizedRecord(TEST_ID, 3)]);
+
+            assert.deepStrictEqual(ids(listed), [
+                `${TEST_ID}/arg-0`,
+                `${TEST_ID}/arg-1`,
+                `${TEST_ID}/arg-2`,
+            ]);
+        });
+
+        test("A test with more arguments than the budget lists nothing up front", async () => {
+            const listed = await runEvents([
+                parameterizedRecord(TEST_ID, MAX_PARAMETERIZED_PENDING_ROWS + 1),
+            ]);
+
+            assert.strictEqual(listed.length, 0);
+        });
+
+        test("A test that does not fit alongside an earlier test lists nothing up front", async () => {
+            const listed = await runEvents([
+                parameterizedRecord("MyTests.MyTests/first()", MAX_PARAMETERIZED_PENDING_ROWS),
+                parameterizedRecord("MyTests.MyTests/second()", 5),
+            ]);
+
+            assert.strictEqual(listed.length, MAX_PARAMETERIZED_PENDING_ROWS);
+            assert.ok(!ids(listed).some(id => id.startsWith("MyTests.MyTests/second()")));
+        });
+
+        test("A held back test lists its failures and summarises its passes in one row", async () => {
+            const total = MAX_PARAMETERIZED_PENDING_ROWS + 3;
+
+            const listed = await runFunctions([
+                { id: TEST_ID, outcomes: outcomes(total, "pass", { 0: "fail", 1: "fail" }) },
+            ]);
+
+            assert.deepStrictEqual(ids(listed), [
+                `${TEST_ID}/arg-0`,
+                `${TEST_ID}/arg-1`,
+                `${TEST_ID}/swift.passedTestCases`,
+            ]);
+            assert.strictEqual(
+                listed[2].label,
+                `${(total - 2).toLocaleString()} test cases passed`
+            );
+        });
+
+        test("A held back test with a single passing argument summarises it in the singular", async () => {
+            const total = MAX_PARAMETERIZED_PENDING_ROWS + 1;
+
+            const listed = await runFunctions([
+                { id: TEST_ID, outcomes: outcomes(total, "fail", { [total - 1]: "pass" }) },
+            ]);
+
+            assert.strictEqual(listed[listed.length - 1].label, "1 test case passed");
+        });
+
+        test("A held back test with no passing arguments has no summary row", async () => {
+            const listed = await runFunctions([
+                { id: TEST_ID, outcomes: outcomes(MAX_PARAMETERIZED_PENDING_ROWS + 1, "fail") },
+            ]);
+
+            assert.ok(!ids(listed).some(id => id.endsWith("swift.passedTestCases")));
+        });
+
+        test("A test that fits in the budget has no summary row", async () => {
+            const listed = await runFunctions([{ id: TEST_ID, outcomes: outcomes(3) }]);
+
+            assert.ok(!ids(listed).some(id => id.endsWith("swift.passedTestCases")));
+        });
+
+        test("Failing arguments are capped by their own budget", async () => {
+            const listed = await runFunctions([
+                { id: TEST_ID, outcomes: outcomes(MAX_PARAMETERIZED_FAILURE_ROWS + 10, "fail") },
+            ]);
+
+            assert.strictEqual(listed.length, MAX_PARAMETERIZED_FAILURE_ROWS);
+        });
+
+        test("Warnings are listed like failures rather than folded into the summary", async () => {
+            const total = MAX_PARAMETERIZED_PENDING_ROWS + 1;
+
+            const listed = await runFunctions([
+                { id: TEST_ID, outcomes: outcomes(total, "pass", { 4: "warn" }) },
+            ]);
+
+            assert.deepStrictEqual(ids(listed), [
+                `${TEST_ID}/arg-4`,
+                `${TEST_ID}/swift.passedTestCases`,
+            ]);
+        });
+
+        test("The pending budget is shared across every parameterized test in the run", async () => {
+            const half = Math.floor(MAX_PARAMETERIZED_PENDING_ROWS / 2) + 50;
+
+            const listed = await runFunctions([
+                { id: "MyTests.MyTests/first()", outcomes: outcomes(half) },
+                { id: "MyTests.MyTests/second()", outcomes: outcomes(half) },
+            ]);
+
+            assert.strictEqual(listed.length, half + 1);
+            assert.strictEqual(
+                listed[listed.length - 1].id,
+                "MyTests.MyTests/second()/swift.passedTestCases"
+            );
+        });
+
+        test("A failure in a later test survives an earlier one spending the pending budget", async () => {
+            const listed = await runFunctions([
+                {
+                    id: "MyTests.MyTests/first()",
+                    outcomes: outcomes(MAX_PARAMETERIZED_PENDING_ROWS),
+                },
+                { id: "MyTests.MyTests/second()", outcomes: ["fail", "fail"] },
+            ]);
+
+            assert.ok(ids(listed).includes("MyTests.MyTests/second()/arg-0"));
+            assert.ok(ids(listed).includes("MyTests.MyTests/second()/arg-1"));
+        });
+
+        test("A failure that outruns the budget is recorded once on its test function", async () => {
+            const overBudget = 10;
+
+            await runFunctions([
+                {
+                    id: TEST_ID,
+                    outcomes: outcomes(MAX_PARAMETERIZED_FAILURE_ROWS + overBudget, "fail"),
+                },
+            ]);
+
+            const testFunction = testRunState.tests.find(test => test.name === TEST_ID);
+            assert.strictEqual(
+                testFunction?.issues?.length,
+                MAX_PARAMETERIZED_FAILURE_ROWS + overBudget
+            );
+        });
+
+        test("A failure listed without a start event is still given a start time", async () => {
+            await runEvents([
+                parameterizedRecord(TEST_ID, MAX_PARAMETERIZED_PENDING_ROWS + 1),
+                testEvent(
+                    "issueRecorded",
+                    TEST_ID,
+                    [{ text: "issue", symbol: TestSymbol.fail }],
+                    { _filePath: "file:///f.swift", line: 1, column: 1 },
+                    "arg-0"
+                ),
+                testEvent("testCaseEnded", TEST_ID, undefined, undefined, "arg-0"),
+            ]);
+
+            const row = testRunState.tests.findIndex(test => test.name === `${TEST_ID}/arg-0`);
+            assert.notStrictEqual(testRunState.startTimes.get(row), undefined);
+        });
+    });
 
     test("Passed test", async () => {
         const events = new TestEventStream([
@@ -206,6 +457,7 @@ suite("SwiftTestingOutputParser Suite", () => {
                 version: 0,
             },
             testEvent("runStarted"),
+            testEvent("testStarted", "MyTests.MyTests/testParameterized()"),
             testEvent(
                 "testCaseStarted",
                 "MyTests.MyTests/testParameterized()",
@@ -238,18 +490,7 @@ suite("SwiftTestingOutputParser Suite", () => {
             testEvent("runEnded"),
         ]);
 
-        const outputParser = new SwiftTestingOutputParser(
-            testClasses => {
-                testClasses.forEach(testClass =>
-                    testRunState.testItemFinder.tests.push({
-                        name: testClass.id,
-                        status: TestStatus.enqueued,
-                        output: [],
-                    })
-                );
-            },
-            () => {}
-        );
+        const outputParser = new SwiftTestingOutputParser(recordingSink([]), () => {});
         await outputParser.watch("file:///mock/named/pipe", testRunState, events);
 
         assert.deepEqual(testRunState.tests, [

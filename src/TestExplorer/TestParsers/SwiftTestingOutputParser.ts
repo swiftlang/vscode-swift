@@ -17,7 +17,7 @@ import { PassThrough } from "stream";
 import { SwiftLogger } from "../../logging/SwiftLogger";
 import { lineBreakRegex } from "../../utilities/tasks";
 import { colorize, sourceLocationToVSCodeLocation } from "../../utilities/utilities";
-import { TestClass } from "../TestDiscovery";
+import { ParameterizedArgumentRows, ParameterizedTestCaseSink } from "./ParameterizedArgumentRows";
 import {
     INamedPipeReader,
     UnixNamedPipeReader,
@@ -197,12 +197,15 @@ export class SwiftTestingOutputParser {
     private completionMap = new Map<number, boolean>();
     private testCaseMap = new Map<string, Map<string, TestCase>>();
     private reader?: INamedPipeReader;
+    private argumentRows: ParameterizedArgumentRows;
 
     constructor(
-        public addParameterizedTestCases: (testClasses: TestClass[], parentIndex: number) => void,
-        public onAttachment: (testIndex: number, path: string) => void,
+        testCaseSink: ParameterizedTestCaseSink,
+        private onAttachment: (testIndex: number, path: string) => void,
         private logger?: SwiftLogger
-    ) {}
+    ) {
+        this.argumentRows = new ParameterizedArgumentRows(testCaseSink);
+    }
 
     /**
      * Watches for test events on the named pipe at the supplied path.
@@ -338,16 +341,16 @@ export class SwiftTestingOutputParser {
         // map an event.payload.testID back to a test case.
         this.buildTestCaseMapForParameterizedTest(item);
 
-        const testIndex = this.testItemIndexFromTestID(item.payload.id, runState);
-        // If a test has test cases it is paramterized and we need to notify
-        // the caller that the TestClass should be added to the vscode.TestRun.
-        const parameterizedTestCases = item.payload._testCases
-            .map((testCase, index) =>
-                this.parameterizedFunctionTestCaseToTestClass(item.payload.id, testCase, index)
-            )
-            .flatMap(testClass => (testClass ? [testClass] : []));
-
-        this.addParameterizedTestCases(parameterizedTestCases, testIndex);
+        this.argumentRows.begin(
+            this.testName(item.payload.id),
+            this.testItemIndexFromTestID(item.payload.id, runState),
+            item.payload._testCases.length,
+            () =>
+                item.payload._testCases.map(testCase => ({
+                    id: this.idFromOptionalTestCase(item.payload.id, testCase),
+                    label: testCase.displayName,
+                }))
+        );
     }
 
     private handleTestStarted(payload: TestStarted, runState: ITestRunState) {
@@ -357,7 +360,16 @@ export class SwiftTestingOutputParser {
 
     private handleTestCaseStarted(payload: TestCaseStarted, runState: ITestRunState) {
         const testID = this.idFromOptionalTestCase(payload.testID, payload._testCase);
-        const testIndex = this.getTestCaseIndex(runState, testID);
+        const testIndex = this.argumentRows.noteStarted(
+            this.testName(payload.testID),
+            testID,
+            payload.instant.absolute,
+            () => this.getTestCaseIndex(runState, testID)
+        );
+        if (testIndex === undefined) {
+            return;
+        }
+
         runState.started(testIndex, payload.instant.absolute);
     }
 
@@ -368,7 +380,15 @@ export class SwiftTestingOutputParser {
 
     private handleIssueRecorded(payload: IssueRecorded, runState: ITestRunState) {
         const testID = this.idFromOptionalTestCase(payload.testID, payload._testCase);
-        const testIndex = this.getTestCaseIndex(runState, testID);
+        const argumentIndex = payload._testCase
+            ? this.argumentRows.noteIssue(
+                  this.testName(payload.testID),
+                  { id: testID, label: payload._testCase.displayName },
+                  payload.instant.absolute,
+                  runState
+              )
+            : undefined;
+        const testIndex = argumentIndex ?? this.getTestCaseIndex(runState, testID);
         const { isKnown, sourceLocation } = payload.issue;
         const filePath = sourceLocation._filePath ?? sourceLocation.filePath;
         const location = sourceLocationToVSCodeLocation(
@@ -412,15 +432,19 @@ export class SwiftTestingOutputParser {
         });
 
         if (payload._testCase && testID !== payload.testID) {
-            const testIndex = this.getTestCaseIndex(runState, payload.testID);
-            messages.forEach(message => {
-                runState.recordIssue(testIndex, message.text, isKnown, location);
-            });
+            // An argument with no row of its own already recorded against it above.
+            const functionIndex = this.getTestCaseIndex(runState, payload.testID);
+            if (functionIndex !== testIndex) {
+                messages.forEach(message => {
+                    runState.recordIssue(functionIndex, message.text, isKnown, location);
+                });
+            }
         }
     }
 
     private handleTestEnded(payload: TestEnded, runState: ITestRunState) {
         const testIndex = this.testItemIndexFromTestID(payload.testID, runState);
+        this.argumentRows.finish(this.testName(payload.testID), payload.instant.absolute, runState);
 
         // When running a single test the testEnded and testCaseEnded events
         // have the same ID, and so we'd end the same test twice.
@@ -432,7 +456,12 @@ export class SwiftTestingOutputParser {
 
     private handleTestCaseEnded(payload: TestCaseEnded, runState: ITestRunState) {
         const testID = this.idFromOptionalTestCase(payload.testID, payload._testCase);
-        const testIndex = this.getTestCaseIndex(runState, testID);
+        const testIndex = this.argumentRows.noteEnded(this.testName(payload.testID), testID, () =>
+            this.getTestCaseIndex(runState, testID)
+        );
+        if (testIndex === undefined) {
+            return;
+        }
 
         // When running a single test the testEnded and testCaseEnded events
         // have the same ID, and so we'd end the same test twice.
@@ -486,23 +515,6 @@ export class SwiftTestingOutputParser {
         return testCase
             ? this.testCaseId(testID, this.idFromTestCase(testCase))
             : this.testName(testID);
-    }
-
-    private parameterizedFunctionTestCaseToTestClass(
-        testId: string,
-        testCase: TestCase,
-        index: number
-    ): TestClass {
-        return {
-            id: this.testCaseId(testId, this.idFromTestCase(testCase)),
-            label: testCase.displayName,
-            tags: [],
-            children: [],
-            style: "swift-testing",
-            location: undefined,
-            disabled: true,
-            sortText: `${index}`.padStart(8, "0"),
-        };
     }
 
     private buildTestCaseMapForParameterizedTest(record: TestRecord) {

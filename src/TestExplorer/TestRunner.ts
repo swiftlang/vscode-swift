@@ -43,7 +43,7 @@ import { IS_RUNNING_UNDER_TEST, execFile, getErrorDescription } from "../utiliti
 import { runnableTag } from "./TestDiscovery";
 import { TestKind, isDebugging, isRelease } from "./TestKind";
 import { SwiftTestingOutputParser } from "./TestParsers/SwiftTestingOutputParser";
-import { ITestRunState, TestIssueDiff } from "./TestParsers/TestRunState";
+import { ITestRunState, TestIssueDiff, durationFrom } from "./TestParsers/TestRunState";
 import {
     IXCTestOutputParser,
     ParallelXCTestOutputParser,
@@ -114,11 +114,7 @@ export class TestRunner {
                       this.folderContext.toolchain.hasMultiLineParallelTestOutput
                   )
                 : new XCTestOutputParser();
-        this.swiftTestOutputParser = new SwiftTestingOutputParser(
-            this.testRun.addParameterizedTestCases.bind(this.testRun),
-            this.testRun.addAttachment.bind(this.testRun),
-            this.folderContext.workspaceContext.logger
-        );
+        this.swiftTestOutputParser = this.createSwiftTestOutputParser();
         this.onDebugSessionTerminated = this.debugSessionTerminatedEmitter.event;
     }
 
@@ -129,12 +125,16 @@ export class TestRunner {
      */
     public setIteration(iteration: number) {
         // The SwiftTestingOutputParser holds state and needs to be reset between iterations.
-        this.swiftTestOutputParser = new SwiftTestingOutputParser(
-            this.testRun.addParameterizedTestCases,
-            this.testRun.addAttachment,
+        this.swiftTestOutputParser = this.createSwiftTestOutputParser();
+        this.testRun.setIteration(iteration);
+    }
+
+    private createSwiftTestOutputParser(): SwiftTestingOutputParser {
+        return new SwiftTestingOutputParser(
+            this.testRun,
+            (testIndex, path) => this.testRun.addAttachment(testIndex, path),
             this.folderContext.workspaceContext.logger
         );
-        this.testRun.setIteration(iteration);
     }
 
     /**
@@ -1124,21 +1124,7 @@ export class TestRunnerTestRunState implements ITestRunState {
             return;
         }
         const test = this.testRun.testItems[index];
-        const startTime = this.startTimes.get(index);
-
-        let duration: number;
-        if ("timestamp" in timing) {
-            // Completion was specified in timestamp format but the test has no saved `started` timestamp.
-            // This is a bug in the code and can't be caused by a user.
-            if (startTime === undefined) {
-                throw Error(
-                    "Timestamp was provided on test completion, but there was no startTime set when the test was started."
-                );
-            }
-            duration = (timing.timestamp - startTime) * 1000;
-        } else {
-            duration = timing.duration * 1000;
-        }
+        const duration = durationFrom(timing, this.startTimes.get(index));
 
         const isSuite = test.children.size > 0;
         const issues = isSuite ? this.childrensIssues(test) : (this.issues.get(index) ?? []);

@@ -13,7 +13,11 @@
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
 
-import { ITestRunState, TestIssueDiff } from "@src/TestExplorer/TestParsers/TestRunState";
+import {
+    ITestRunState,
+    TestIssueDiff,
+    durationFrom,
+} from "@src/TestExplorer/TestParsers/TestRunState";
 
 /** TestStatus */
 export enum TestStatus {
@@ -85,6 +89,12 @@ export class TestRunState implements ITestRunState {
 
     public testItemFinder: ITestItemFinder;
 
+    /**
+     * The start time each test index was started with. `TestRunnerTestRunState` throws if a test
+     * completes with a timestamp but was started without one.
+     */
+    public startTimes = new Map<number, number | undefined>();
+
     get tests(): TestRunTestItem[] {
         return this.testItemFinder.tests;
     }
@@ -102,11 +112,16 @@ export class TestRunState implements ITestRunState {
         return this.testItemFinder.getIndex(id);
     }
 
-    started(index: number): void {
+    started(index: number, startTime?: number): void {
         this.testItemFinder.tests[index].status = TestStatus.started;
+        this.startTimes.set(index, startTime);
     }
 
     completed(index: number, timing: { duration: number } | { timestamp: number }): void {
+        // Validated the same way as production, so a mock run can't pass where a real one throws.
+        // The duration itself is not recorded; tests assert on the raw timing.
+        durationFrom(timing, this.startTimes.get(index));
+
         this.testItemFinder.tests[index].status =
             this.testItemFinder.tests[index].issues !== undefined
                 ? TestStatus.failed

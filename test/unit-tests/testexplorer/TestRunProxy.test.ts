@@ -16,6 +16,7 @@ import { afterEach, beforeEach } from "mocha";
 import * as vscode from "vscode";
 
 import { FolderContext } from "@src/FolderContext";
+import { TestClass, runnableTag } from "@src/TestExplorer/TestDiscovery";
 import { TestRunArguments } from "@src/TestExplorer/TestRunArguments";
 import { TestRunProxy } from "@src/TestExplorer/TestRunProxy";
 
@@ -109,6 +110,110 @@ suite("TestRunProxy Unit Test Suite", () => {
 
             expect(proxy.runState.enqueued).to.contain(suiteItem);
             expect(proxy.runState.enqueued).to.contain(second);
+        });
+    });
+
+    suite("addParameterizedTestCase()", () => {
+        function testClass(id: string, index: number): TestClass {
+            return {
+                id,
+                label: id,
+                tags: [],
+                children: [],
+                style: "swift-testing",
+                location: undefined,
+                disabled: true,
+                sortText: `${index}`.padStart(8, "0"),
+            };
+        }
+
+        function setup() {
+            const target = createTestItem("Target");
+            const suiteItem = createTestItem("Suite", target);
+            const parent = createTestItem("parameterized", suiteItem);
+            parent.tags = [runnableTag, new vscode.TestTag("swift-testing")];
+            const requestedItems = [target, suiteItem, parent];
+            const proxy = createProxy(requestedItems);
+            proxy.testRunStarted();
+            return { target, suiteItem, parent, requestedItems, proxy };
+        }
+
+        test("Adds the argument as a child of the parent", () => {
+            const { parent, proxy } = setup();
+
+            proxy.addParameterizedTestCase(testClass("arg-0", 0), 2);
+
+            expect(parent.children.size).to.equal(1);
+        });
+
+        test("Appends rather than replacing previously added arguments", () => {
+            const { parent, proxy } = setup();
+
+            proxy.addParameterizedTestCase(testClass("arg-0", 0), 2);
+            proxy.addParameterizedTestCase(testClass("arg-1", 1), 2);
+
+            expect(parent.children.size).to.equal(2);
+        });
+
+        test("Returns an index that resolves back to the added item", () => {
+            const { proxy } = setup();
+
+            const index = proxy.addParameterizedTestCase(testClass("arg-0", 0), 2);
+
+            expect(index).to.not.be.undefined;
+            expect(proxy.testItems[index!].id).to.equal("arg-0");
+        });
+
+        test("The added item is findable by id straight away", () => {
+            const { proxy } = setup();
+
+            const index = proxy.addParameterizedTestCase(testClass("arg-0", 0), 2);
+
+            expect(proxy.getTestIndex("arg-0")).to.equal(index);
+        });
+
+        test("Arguments inherit the parent's tags but are not runnable", () => {
+            const { parent, proxy } = setup();
+
+            proxy.addParameterizedTestCase(testClass("arg-0", 0), 2);
+
+            const tagIds = (parent.children.get("arg-0")?.tags ?? []).map(t => t.id);
+            expect(tagIds).to.contain("swift-testing");
+            expect(tagIds).to.contain(TestRunProxy.Tags.PARAMETERIZED_TEST_RESULT);
+            expect(tagIds).to.not.contain(runnableTag.id);
+        });
+
+        test("Added arguments are appended to the run's test items and enqueued", () => {
+            const { parent, proxy } = setup();
+            const before = proxy.testItems.length;
+
+            proxy.addParameterizedTestCase(testClass("arg-0", 0), 2);
+
+            expect(proxy.testItems).to.have.lengthOf(before + 1);
+            expect(proxy.runState.enqueued.has(parent.children.get("arg-0")!)).to.be.true;
+        });
+
+        test("An unknown parent is reported rather than throwing", () => {
+            const { proxy } = setup();
+
+            expect(proxy.addParameterizedTestCase(testClass("arg-0", 0), -1)).to.be.undefined;
+        });
+
+        test("The test items the run was asked for are left alone", () => {
+            const { requestedItems, proxy } = setup();
+
+            proxy.addParameterizedTestCase(testClass("arg-0", 0), 2);
+
+            expect(requestedItems).to.have.lengthOf(3);
+        });
+
+        test("clearParameterizedTestCases discards rows from a previous run", () => {
+            const { parent, proxy } = setup();
+            proxy.addParameterizedTestCase(testClass("arg-0", 0), 2);
+
+            proxy.clearParameterizedTestCases(2);
+
+            expect(parent.children.size).to.equal(0);
         });
     });
 });

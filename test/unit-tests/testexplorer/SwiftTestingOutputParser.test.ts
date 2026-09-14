@@ -29,7 +29,10 @@ suite("SwiftTestingOutputParser Unit Test Suite", () => {
                 recordOutput: mockFn(),
             });
             parser = new SwiftTestingOutputParser(
-                () => {},
+                {
+                    clearParameterizedTestCases: () => {},
+                    addParameterizedTestCase: () => undefined,
+                },
                 () => {}
             );
         });

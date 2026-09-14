@@ -81,3 +81,24 @@ export interface TestIssueDiff {
     expected: string;
     actual: string;
 }
+
+/**
+ * Converts a completion's timing into a duration in milliseconds.
+ *
+ * A timestamp is only half of a duration, so the test must have been started with one too.
+ * Completing without that is a bug in the parser and can't be caused by a user.
+ */
+export function durationFrom(
+    timing: { duration: number } | { timestamp: number },
+    startTime: number | undefined
+): number {
+    if (!("timestamp" in timing)) {
+        return timing.duration * 1000;
+    }
+    if (startTime === undefined) {
+        throw Error(
+            "Timestamp was provided on test completion, but there was no startTime set when the test was started."
+        );
+    }
+    return (timing.timestamp - startTime) * 1000;
+}

@@ -106,14 +106,13 @@ export class TestRunProxy implements vscode.CancellationToken {
     private testItemFinder: TestItemFinder;
     private testRunCompleteEmitter = new vscode.EventEmitter<void>();
     private coverage: TestCoverage;
-    private _testItems: vscode.TestItem[];
     private warningDiagnosticUris = new Set<string>();
 
     /**
      * The list of test items for this test run
      **/
     public get testItems(): vscode.TestItem[] {
-        return this._testItems;
+        return this.testItemFinder.testItems;
     }
 
     /**
@@ -153,19 +152,21 @@ export class TestRunProxy implements vscode.CancellationToken {
     constructor(
         private testRunRequest: vscode.TestRunRequest,
         private controller: vscode.TestController,
-        private args: TestRunArguments,
+        args: TestRunArguments,
         private folderContext: FolderContext,
         private recordDuration: boolean,
         testProfileCancellationToken: vscode.CancellationToken
     ) {
-        this._testItems = args.testItems;
         this.coverage = new TestCoverage(folderContext);
         this.token = new CompositeCancellationToken(testProfileCancellationToken);
         this.onCancellationRequested = this.token.onCancellationRequested.bind(this.token);
+        // Copied because the run appends the argument rows it discovers. These belong to the
+        // run rather than to the request that started it.
+        const testItems = [...args.testItems];
         this.testItemFinder =
             process.platform === "darwin"
-                ? new DarwinTestItemFinder(args.testItems)
-                : new NonDarwinTestItemFinder(args.testItems, this.folderContext);
+                ? new DarwinTestItemFinder(testItems)
+                : new NonDarwinTestItemFinder(testItems, this.folderContext);
         this.onTestRunComplete = this.testRunCompleteEmitter.event;
     }
 
@@ -196,60 +197,60 @@ export class TestRunProxy implements vscode.CancellationToken {
     }
 
     /**
-     * Adds a parameterized test case (a swift-testing only concept). Parameterized test cases are
-     * discovered at run time, and are linked to a parent test class.
-     * @param testClasses A list of parameterized tests to add
+     * Discards any argument rows a previous run left under a parameterized test function.
      * @param parentIndex The index of the parent `vscode.TestItem`
      */
-    public addParameterizedTestCases(testClasses: TestClass[], parentIndex: number) {
-        const addedTestItems = testClasses
-            .map(testClass => {
-                const parent = this.args.testItems[parentIndex];
-                // clear out the children before we add the new ones.
-                parent.children.replace([]);
-                return {
-                    testClass,
-                    parent,
-                };
-            })
-            .map(({ testClass, parent }) => {
+    public clearParameterizedTestCases(parentIndex: number) {
+        this.testItems[parentIndex]?.children.replace([]);
+    }
+
+    /**
+     * Adds a single parameterized test case beneath its test function. Parameterized test
+     * cases are discovered at run time, one row per call as each argument's result arrives.
+     *
+     * @param parentIndex The index of the parent `vscode.TestItem`
+     * @returns The index of the added test item, or undefined if the parent is unknown.
+     */
+    public addParameterizedTestCase(testClass: TestClass, parentIndex: number): number | undefined {
+        const parent = this.testItems[parentIndex];
+        if (!parent) {
+            return undefined;
+        }
+
+        const added = upsertTestItem(
+            this.controller,
+            {
+                ...testClass,
                 // strip the location off parameterized tests so only the parent TestItem
                 // has one. The parent collects all the issues so they're colated on the top
                 // level test item and users can cycle through them with the up/down arrows in the UI.
-                testClass.location = undefined;
+                location: undefined,
 
                 // Results should inherit any tags from the parent.
                 // Until we can rerun a swift-testing test with an individual argument, mark
                 // the argument test items as not runnable. This should be revisited when
                 // https://github.com/swiftlang/swift-testing/issues/671 is resolved.
-                testClass.tags = compactMap(parent.tags, t =>
+                tags: compactMap(parent.tags, t =>
                     t.id === runnableTag.id ? null : new vscode.TestTag(t.id)
-                ).concat(new vscode.TestTag(TestRunProxy.Tags.PARAMETERIZED_TEST_RESULT));
+                ).concat(new vscode.TestTag(TestRunProxy.Tags.PARAMETERIZED_TEST_RESULT)),
+            },
+            parent
+        );
 
-                const added = upsertTestItem(this.controller, testClass, parent);
-
-                // If we just update leaf nodes the root test controller never realizes that
-                // items have updated. This may be a bug in VS Code. We can work around it by
-                // re-adding the existing items back up the chain to refresh all the nodes along the way.
-                let p = parent;
-                while (p?.parent) {
-                    p.parent.children.add(p);
-                    p = p.parent;
-                }
-
-                return added;
-            });
-        this._testItems = [...this.testItems, ...addedTestItems];
-
-        for (const test of addedTestItems) {
-            this.enqueued(test);
+        // If we just update leaf nodes the root test controller never realizes that
+        // items have updated. This may be a bug in VS Code. We can work around it by
+        // re-adding the existing items back up the chain to refresh all the nodes along the way.
+        let p = parent;
+        while (p?.parent) {
+            p.parent.children.add(p);
+            p = p.parent;
         }
 
-        // Recreate a test item finder with the added test items
-        this.testItemFinder =
-            process.platform === "darwin"
-                ? new DarwinTestItemFinder(this.testItems)
-                : new NonDarwinTestItemFinder(this.testItems, this.folderContext);
+        // Appended in place; rebuilding the finder per row would be quadratic.
+        const index = this.testItemFinder.add(added);
+        this.enqueued(added);
+
+        return index;
     }
 
     /**
@@ -579,6 +580,12 @@ export class TestRunProxy implements vscode.CancellationToken {
 /** Interface defining how to find test items given a test id from XCTest output */
 interface TestItemFinder {
     getIndex(id: string, filename?: string): number;
+    /**
+     * Appends a test item discovered during the run, returning its index. Indices are stable, but
+     * `clearParameterizedTestCases` can detach an item from the tree while leaving it here, so an
+     * index resolves to an item that is not necessarily still shown.
+     */
+    add(item: vscode.TestItem): number;
     testItems: vscode.TestItem[];
 }
 
@@ -593,6 +600,12 @@ class DarwinTestItemFinder implements TestItemFinder {
     getIndex(id: string): number {
         return this.testItemMap.get(id) ?? -1;
     }
+
+    add(item: vscode.TestItem): number {
+        const index = this.testItems.push(item) - 1;
+        this.testItemMap.set(item.id, index);
+        return index;
+    }
 }
 
 /** Defines how to find test items given a test id from XCTest output on non-Darwin platforms */
@@ -601,6 +614,10 @@ class NonDarwinTestItemFinder implements TestItemFinder {
         public testItems: vscode.TestItem[],
         public folderContext: FolderContext
     ) {}
+
+    add(item: vscode.TestItem): number {
+        return this.testItems.push(item) - 1;
+    }
 
     /**
      * Get test item index from id for non Darwin platforms. It is a little harder to
