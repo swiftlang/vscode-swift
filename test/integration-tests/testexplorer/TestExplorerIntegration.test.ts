@@ -132,13 +132,13 @@ tag("large").suite("Test Explorer Suite", function () {
             });
         }
 
-        async function runSwiftTesting(this: Mocha.Context) {
+        async function runSwiftTesting(ctx: Mocha.Context) {
             if (
                 // swift-testing was not able to produce JSON events until 6.0.2 on Windows.
                 process.platform === "win32" &&
                 workspaceContext.globalToolchainSwiftVersion.isLessThan(new Version(6, 0, 2))
             ) {
-                this.skip();
+                ctx.skip();
             }
 
             const testId = "PackageTests.topLevelTestPassing()";
@@ -172,7 +172,7 @@ tag("large").suite("Test Explorer Suite", function () {
             test("Debugs specified XCTest test", runXCTest);
 
             test("Debugs specified swift-testing test", async function () {
-                await runSwiftTesting.call(this);
+                await runSwiftTesting(this);
             });
         });
 
@@ -212,7 +212,7 @@ tag("large").suite("Test Explorer Suite", function () {
                 if (folderContext.swiftVersion.isLessThan(new Version(6, 0, 0))) {
                     this.skip();
                 }
-                await runSwiftTesting.call(this);
+                await runSwiftTesting(this);
             });
         });
 

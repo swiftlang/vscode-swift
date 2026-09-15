@@ -172,7 +172,7 @@ suite("Utilities Unit Test Suite", () => {
 
     suite("runtimeEnv", () => {
         test("returns undefined when empty value", () => {
-            expect(runtimeEnv({}, "Path", "", ";")).to.equal(undefined);
+            expect(runtimeEnv({}, "Path", "", ";")).to.be.undefined;
         });
 
         test("returns value without separator when key doesn't exist", () => {

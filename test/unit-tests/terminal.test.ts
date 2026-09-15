@@ -160,24 +160,6 @@ suite("Terminal", () => {
         test("onDidChangeConfiguration calls update", () => {
             manager = new SwiftEnvironmentVariablesManager(instance(mockedExtensionContext));
 
-            const callback = mockedWorkspace.onDidChangeConfiguration.getCall(0).args[0];
-
-            mockedEnvironmentVariableCollection.clear.resetHistory();
-
-            callback({ affectsConfiguration: (section: string) => section === "swift.path" });
-
-            expect(mockedEnvironmentVariableCollection.clear).to.have.been.calledOnce;
-
-            mockedEnvironmentVariableCollection.clear.resetHistory();
-
-            callback({ affectsConfiguration: (section: string) => section === "other.setting" });
-
-            expect(mockedEnvironmentVariableCollection.clear).to.not.have.been.called;
-        });
-
-        test("onDidChangeConfiguration calls update", () => {
-            manager = new SwiftEnvironmentVariablesManager(instance(mockedExtensionContext));
-
             // Get the callback
             const callback = mockedWorkspace.onDidChangeConfiguration.getCall(0).args[0];
 

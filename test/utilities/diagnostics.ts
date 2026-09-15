@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 import * as assert from "assert";
+import { expect } from "chai";
 import * as vscode from "vscode";
 
 import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
@@ -154,13 +155,16 @@ export function waitForDiagnostics(expectedDiagnostics: ExpectedDiagnostics): Pr
             }),
         10_000
     )
-        .catch(error => {
-            throw Error(
-                `The following diagnostics were not found: ${diagnosticMapToString(remainingDiagnostics)}`,
-                { cause: error }
-            );
+        .catch(() => {
+            // Fall through to the assertion below, which reports what is still missing.
         })
-        .finally(() => subscriptions.forEach(s => s.dispose()));
+        .finally(() => subscriptions.forEach(s => s.dispose()))
+        .then(() => {
+            expect(
+                remainingDiagnostics,
+                `The following diagnostics were not found: ${diagnosticMapToString(remainingDiagnostics)}`
+            ).to.be.empty;
+        });
 }
 
 export async function executeTaskAndWaitForDiagnostics(

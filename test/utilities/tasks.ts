@@ -11,7 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import { AssertionError } from "chai";
+import { AssertionError, expect } from "chai";
 import * as vscode from "vscode";
 
 import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
@@ -95,15 +95,17 @@ export async function waitForClose(fixture: {
  * utility can be used to make sure no task is running
  * before starting a new test
  */
-export function waitForNoRunningTasks(options?: { timeout?: number }): Promise<void> {
+export async function waitForNoRunningTasks(options?: { timeout?: number }): Promise<void> {
     if (options?.timeout && options.timeout > 0) {
-        return withTimeout(
+        await withTimeout(
             "Waiting for all running tasks to complete",
             cancellationToken => pollForNoRunningTasks(cancellationToken),
             options.timeout
         );
+    } else {
+        await pollForNoRunningTasks();
     }
-    return pollForNoRunningTasks();
+    expect(vscode.tasks.taskExecutions, "Tasks are still running").to.be.empty;
 }
 
 function pollForNoRunningTasks(cancellationToken?: vscode.CancellationToken): Promise<void> {

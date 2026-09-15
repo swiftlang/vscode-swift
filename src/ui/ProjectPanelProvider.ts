@@ -530,13 +530,7 @@ class ErrorNode {
  * Can be either a {@link PackageNode}, {@link FileNode}, {@link TargetNode}, {@link TaskNode}, {@link ErrorNode} or {@link HeaderNode}.
  */
 export type TreeNode =
-    | PackageNode
-    | FileNode
-    | HeaderNode
-    | TaskNode
-    | TargetNode
-    | PlaygroundNode
-    | ErrorNode;
+    PackageNode | FileNode | HeaderNode | TaskNode | TargetNode | PlaygroundNode | ErrorNode;
 
 /**
  * A {@link vscode.TreeDataProvider<T> TreeDataProvider} for project dependencies, tasks and commands {@link vscode.TreeView TreeView}.

@@ -80,7 +80,7 @@ suite("BuildFlags Test Suite", () => {
 
         test("invalid name", () => {
             sdkConfig.setValue("/some/other/full/test/path/UhOh1.2.3.sdk");
-            expect(buildFlags.getDarwinTarget()).to.equal(undefined);
+            expect(buildFlags.getDarwinTarget()).to.be.undefined;
         });
     });
 
@@ -191,7 +191,7 @@ suite("BuildFlags Test Suite", () => {
             ]);
         });
 
-        test("configuration provided", () => {
+        test("configuration provided on Swift 5.9", () => {
             mockedToolchain.swiftVersion = new Version(5, 9, 0);
             buildPathConfig.setValue("/some/other/full/test/path");
             expect(buildFlags.buildPathFlags()).to.deep.equal([
