@@ -22,6 +22,7 @@ import { reduceTestItemChildren } from "@src/TestExplorer/TestUtils";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { Disposable } from "@src/utilities/Disposable";
+import { lineBreakRegex } from "@src/utilities/tasks";
 
 import stripAnsi = require("strip-ansi");
 
@@ -123,12 +124,16 @@ export function assertContains<T>(array: T[], value: T, message?: string) {
  * Asserts that an array of strings contains the value ignoring
  * leading/trailing whitespace.
  *
+ * A single entry can hold several lines of output, so each is split before comparing.
+ *
  * @param array The array to check.
  * @param value The value to check for.
  * @param message An optional message to display if the assertion fails.
  */
 export function assertContainsTrimmed(array: string[], value: string, message?: string) {
-    const found = array.find(row => row.trim() === value);
+    const found = array
+        .flatMap(row => row.split(lineBreakRegex))
+        .some(line => line.trim() === value);
     assert.ok(found, message ?? `${value} is not in ${array}`);
 }
 
