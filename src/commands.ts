@@ -120,7 +120,7 @@ export function registerCommands(api: InternalSwiftExtensionApi): Disposable[] {
             )
         ),
         vscode.commands.registerCommand("swift.pickProcess", configuration =>
-            pickProcess(configuration)
+            pickProcess(configuration, api.logger)
         ),
         vscode.commands.registerCommand("swift.installSwiftly", () =>
             handleMissingSwiftly(["latest"], api.extensionPath, api.logger, true)
