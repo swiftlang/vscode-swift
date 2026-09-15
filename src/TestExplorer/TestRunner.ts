@@ -54,12 +54,37 @@ import { TestRunProxy, TestRunState } from "./TestRunProxy";
 import { reduceTestItemChildren } from "./TestUtils";
 import { TestXUnitParser } from "./TestXUnitParser";
 
+import stripAnsi = require("strip-ansi");
+
 /**
  * The different types of test library supported by the test runner.
  */
 export enum TestLibrary {
     xctest = "XCTest",
     swiftTesting = "swift-testing",
+}
+
+/** Printed to stdout by swift-testing when the build ends and the run begins. */
+export const TEST_RUN_STARTED_MARKER = "Test run started.";
+
+/** Reports whether swift-testing has finished building and started running tests. */
+export class SwiftTestingPreamble {
+    private strippedTail = "";
+    private runStarted = false;
+
+    /** Once the run has started, every subsequent call reports `true`. */
+    public hasRunStarted(chunk: string): boolean {
+        if (this.runStarted) {
+            return true;
+        }
+        // Colour codes can interrupt the marker, and it can straddle two chunks — ex.
+        // `...Test run st` then `arted.`. Match a stripped window carrying the previous
+        // chunk's tail, since failing to match leaves the run stuck in the preamble.
+        const window = stripAnsi(this.strippedTail + chunk);
+        this.runStarted = window.includes(TEST_RUN_STARTED_MARKER);
+        this.strippedTail = window.slice(-TEST_RUN_STARTED_MARKER.length);
+        return this.runStarted;
+    }
 }
 
 export function debugSessionMatchesConfig(
@@ -1027,23 +1052,22 @@ export class TestRunner {
         testLibrary: TestLibrary,
         runState: TestRunnerTestRunState
     ): (chunk: string | Buffer) => void {
-        let preambleComplete = false;
         switch (testLibrary) {
-            case TestLibrary.swiftTesting:
+            case TestLibrary.swiftTesting: {
+                const preamble = new SwiftTestingPreamble();
                 return chunk => {
                     // Capture all the output from the build process up until the test run starts.
                     // From there the SwiftTestingOutputParser reconstructs the test output from the JSON events
                     // emitted by the swift-testing binary during the run. This allows individual messages to be
                     // associated with their respective tests while still producing a complete test run log.
-                    if (chunk.indexOf("Test run started.") !== -1) {
-                        preambleComplete = true;
-                    }
-                    if (!preambleComplete) {
-                        this.testRun.appendOutput(chunk.toString().replace(/\n/g, "\r\n"));
+                    const output = chunk.toString();
+                    if (preamble.hasRunStarted(output)) {
+                        this.swiftTestOutputParser.parseStdout(output, runState);
                     } else {
-                        this.swiftTestOutputParser.parseStdout(chunk.toString(), runState);
+                        this.testRun.appendOutput(output.replace(/\n/g, "\r\n"));
                     }
                 };
+            }
             case TestLibrary.xctest:
                 return chunk => this.xcTestOutputParser.parseResult(chunk.toString(), runState);
         }

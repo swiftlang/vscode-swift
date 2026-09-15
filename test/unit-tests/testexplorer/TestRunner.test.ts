@@ -14,7 +14,11 @@
 import { expect } from "chai";
 import * as vscode from "vscode";
 
-import { debugSessionMatchesConfig } from "@src/TestExplorer/TestRunner";
+import {
+    SwiftTestingPreamble,
+    TEST_RUN_STARTED_MARKER,
+    debugSessionMatchesConfig,
+} from "@src/TestExplorer/TestRunner";
 
 suite("TestRunner Unit Test Suite", () => {
     suite("debugSessionMatchesConfig()", () => {
@@ -58,6 +62,47 @@ suite("TestRunner Unit Test Suite", () => {
                     name: "Swift Testing: Test MyPackage",
                 })
             ).to.be.true;
+        });
+    });
+
+    suite("SwiftTestingPreamble", () => {
+        const ESC = String.fromCharCode(27);
+        const buildOutput = "Building for debugging...\nBuild complete! (0.17s)\n";
+
+        test("No run start during the build", () => {
+            const preamble = new SwiftTestingPreamble();
+
+            expect(preamble.hasRunStarted(buildOutput)).to.be.false;
+        });
+
+        test("Finds the run start", () => {
+            const preamble = new SwiftTestingPreamble();
+            preamble.hasRunStarted(buildOutput);
+
+            expect(preamble.hasRunStarted(`◇ ${TEST_RUN_STARTED_MARKER}\n`)).to.be.true;
+        });
+
+        test("Finds a colourised run start", () => {
+            const preamble = new SwiftTestingPreamble();
+            const [head, tail] = TEST_RUN_STARTED_MARKER.split(" run ");
+
+            expect(preamble.hasRunStarted(`◇ ${head}${ESC}[1m run ${tail}${ESC}[0m\n`)).to.be.true;
+        });
+
+        test("Finds a run start split across chunks", () => {
+            const preamble = new SwiftTestingPreamble();
+            const split = TEST_RUN_STARTED_MARKER.length - 4;
+
+            expect(preamble.hasRunStarted(`◇ ${TEST_RUN_STARTED_MARKER.slice(0, split)}`)).to.be
+                .false;
+            expect(preamble.hasRunStarted(`${TEST_RUN_STARTED_MARKER.slice(split)}\n`)).to.be.true;
+        });
+
+        test("Run stays started", () => {
+            const preamble = new SwiftTestingPreamble();
+            preamble.hasRunStarted(`◇ ${TEST_RUN_STARTED_MARKER}\n`);
+
+            expect(preamble.hasRunStarted("A print statement in a test.\n")).to.be.true;
         });
     });
 });
