@@ -170,7 +170,7 @@ suite("TestCodeLensProvider", () => {
         ]);
     });
 
-    test("provideCodeLenses should create code lenses only for specified types", async () => {
+    test("provideCodeLenses should create code lenses only for run and debug", async () => {
         configStub.value(["run", "debug"]);
 
         const result = await codeLensProvider.provideCodeLenses(document, token());
@@ -236,7 +236,7 @@ suite("TestCodeLensProvider", () => {
         ]);
     });
 
-    test("provideCodeLenses should create code lenses only for specified types", async () => {
+    test("provideCodeLenses should create code lenses only for run", async () => {
         configStub.value(["run"]);
 
         // Create a document that matches the URI of the test item with a range

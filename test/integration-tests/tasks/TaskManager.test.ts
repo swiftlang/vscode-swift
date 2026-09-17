@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 import * as assert from "assert";
+import { expect } from "chai";
 import * as vscode from "vscode";
 
 import { WorkspaceContext } from "@src/WorkspaceContext";
@@ -66,7 +67,7 @@ tag("medium").suite("TaskManager Test Suite", () => {
             taskManager.executeTaskAndWait(task1),
             taskManager.executeTaskAndWait(task2),
         ]);
-        assert.notStrictEqual(result, [1, 2]);
+        expect(result).to.deep.equal([1, 2]);
     });
     // check running three tasks at same time will return expected values
     /* Disabled until I can get it working

@@ -36,6 +36,17 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: "eslint-plugin-mocha"
         update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "vscode-languageclient"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "archiver"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/archiver"
+        update-types: ["version-update:semver-major"]
+      # @vscode/test-cli pins mocha ^11.7.6
+      - dependency-name: "mocha"
+        update-types: ["version-update:semver-major"]
       # Versions of plist after 3.1.0 are broken on Windows.
       - dependency-name: "plist"
       # Newer versions of fantasticon are broken on Windows.

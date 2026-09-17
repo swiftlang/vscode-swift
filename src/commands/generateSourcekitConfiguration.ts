@@ -164,12 +164,10 @@ async function getValidatedFolderContext(
     if (!folderContext.name) {
         return null; // Not a FolderContext if no "name"
     }
-    if (
-        !(
-            basename(dirname(uri.fsPath)) === sourcekitDotFolder &&
-            basename(uri.fsPath) === sourcekitConfigFileName
-        )
-    ) {
+    if (!(
+        basename(dirname(uri.fsPath)) === sourcekitDotFolder &&
+        basename(uri.fsPath) === sourcekitConfigFileName
+    )) {
         return null;
     }
     return folderContext;

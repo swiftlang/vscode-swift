@@ -36,17 +36,10 @@ type SetupCodeLLDBOptions = "prompt" | "alwaysUpdateGlobal" | "alwaysUpdateWorks
 type CFamilySupportOptions = "enable" | "disable" | "cpptools-inactive";
 type ActionAfterBuildError = "Focus Problems" | "Focus Terminal" | "Do Nothing";
 type OpenAfterCreateNewProjectOptions =
-    | "always"
-    | "alwaysNewWindow"
-    | "whenNoFolderOpen"
-    | "prompt";
+    "always" | "alwaysNewWindow" | "whenNoFolderOpen" | "prompt";
 export type ShowBuildStatusOptions = "never" | "swiftStatus" | "progress" | "notification";
 type DiagnosticCollectionOptions =
-    | "onlySwiftc"
-    | "onlySourceKit"
-    | "keepSwiftc"
-    | "keepSourceKit"
-    | "keepAll";
+    "onlySwiftc" | "onlySourceKit" | "keepSwiftc" | "keepSourceKit" | "keepAll";
 export type DiagnosticStyle = "default" | "llvm" | "swift";
 export type ValidCodeLens = "run" | "debug" | "coverage";
 
@@ -293,9 +286,14 @@ const configuration = {
                 return validateStringArraySettings(
                     vscode.workspace
                         .getConfiguration("swift", workspaceFolder)
-                        .get<
-                            string[]
-                        >("ignoreSearchingForPackagesInSubfolders", [".", ".build", "Packages", "out", "bazel-out", "bazel-bin"]),
+                        .get<string[]>("ignoreSearchingForPackagesInSubfolders", [
+                            ".",
+                            ".build",
+                            "Packages",
+                            "out",
+                            "bazel-out",
+                            "bazel-bin",
+                        ]),
                     "swift.ignoreSearchingForPackagesInSubfolders"
                 ).map(substituteVariablesInString);
             },
