@@ -144,7 +144,7 @@ Increment when making backward-compatible fixes:
 
 ## sourcekit-lsp
 
-The VS Code extension for Swift relies on Apple's [sourcekit-lsp](https://github.com/apple/sourcekit-lsp) for syntax highlighting, enumerating tests, and more. If you want to test the extension with a different version of the sourcekit-lsp you can add a `swift.sourcekit-lsp.serverPath` entry in your local `settings.json` to point to your sourcekit-lsp binary. The setting is no longer visible in the UI because it has been deprecated.
+The VS Code extension for Swift relies on Apple's [sourcekit-lsp](https://github.com/apple/sourcekit-lsp) for syntax highlighting, enumerating tests, and more. If you want to test the extension with a different version of the sourcekit-lsp you can add a `swift.sourcekit-lsp.serverPath` entry in your user `settings.json` to point to your sourcekit-lsp binary.
 
 > [!WARNING]
 > If your sourcekit-lsp version does not match your toolchain you may experience unexpected behaviour.

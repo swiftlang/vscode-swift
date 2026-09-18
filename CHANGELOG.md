@@ -9,6 +9,10 @@
 - Add a button that installs Swiftly and the latest Swift toolchain to the extension's welcome walkthrough ([#2078](https://github.com/swiftlang/vscode-swift/pull/2078))
 - Add syntax highlighing for DocC Tutorial files ([#2320](https://github.com/swiftlang/vscode-swift/pull/2320))
 
+### Changed
+
+- `swift.sourcekit-lsp.serverPath` and `swift.sourcekit-lsp.serverArguments` are now `machine` scoped, so they can only be set in user settings ([#2369](https://github.com/swiftlang/vscode-swift/pull/2369))
+
 ### Fixed
 
 - Loading large projects will no longer show the extension as unresponsive ([#1932](https://github.com/swiftlang/vscode-swift/pull/1932))
