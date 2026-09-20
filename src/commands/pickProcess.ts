@@ -14,6 +14,7 @@
 import * as path from "path";
 import * as vscode from "vscode";
 
+import { SwiftLogger } from "../logging/SwiftLogger";
 import { createProcessList } from "../process-list";
 
 interface ProcessQuickPick extends vscode.QuickPickItem {
@@ -28,12 +29,14 @@ interface ProcessQuickPick extends vscode.QuickPickItem {
  * to a number by the debug configuration provider.
  *
  * @param configuration The related debug configuration, if any
+ * @param logger A logger used to record diagnostics while listing processes
  * @returns The pid of the process as a string or undefined if cancelled.
  */
 export async function pickProcess(
-    configuration?: vscode.DebugConfiguration
+    configuration?: vscode.DebugConfiguration,
+    logger?: SwiftLogger
 ): Promise<string | undefined> {
-    const processList = createProcessList();
+    const processList = createProcessList(logger);
     const selectedProcess = await vscode.window.showQuickPick<ProcessQuickPick>(
         processList.listAllProcesses().then((processes): ProcessQuickPick[] => {
             // Sort by start date in descending order
