@@ -202,7 +202,9 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
             this.subscriptions.push(registerDebugger(this));
 
             this.subscriptions.push(new SelectedXcodeWatcher(this, process.platform));
-            this.subscriptions.push(new SwiftlyToolchainWatcher(this));
+            if (Swiftly.isSupported()) {
+                this.subscriptions.push(new SwiftlyToolchainWatcher(this));
+            }
 
             // swift module document provider
             this.subscriptions.push(getReadOnlyDocumentProvider());

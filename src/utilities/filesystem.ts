@@ -21,6 +21,56 @@ import configuration from "../configuration";
 
 export const validFileTypes = ["swift", "c", "cpp", "h", "hpp", "m", "mm"];
 
+export type SearchPredicateResult<T> =
+    | {
+          kind: "stop";
+          value: T | undefined;
+      }
+    | { kind: "continue" };
+
+/**
+ * Searches for a directory that matches the provided predicate. Continues walking up the
+ * provided path until the predicate completes.
+ *
+ * @param directory The path string to begin searching from
+ * @param predicate A function that determines when to end the search
+ * @returns The result from the predicate, or undefined if the predicate never matched
+ */
+export async function searchParentDirectories<T>(
+    directory: string,
+    predicate: (directory: string) => Promise<SearchPredicateResult<T>>
+): Promise<T | undefined> {
+    const expanded = expandPath(directory);
+    for (let i = 0; i < expanded.length; i++) {
+        const currentDirectory = expanded[i];
+        const result = await predicate(currentDirectory);
+        if (result.kind === "stop") {
+            return result.value;
+        }
+    }
+    return undefined;
+}
+
+/**
+ * Expand the provided path string into an array containing itself and each
+ * of its parent directories, in order. For example, the path "/some/file"
+ * would always expand to: ["/some/file", "/some", "/"].
+ *
+ * @param somePath The path string to expand
+ * @returns An array of strings
+ */
+export function expandPath(somePath: string): string[] {
+    const result: string[] = [];
+    let lastPath: string | undefined;
+    let currentPath = somePath;
+    while (currentPath !== lastPath) {
+        result.push(currentPath);
+        lastPath = currentPath;
+        currentPath = path.dirname(currentPath);
+    }
+    return result;
+}
+
 export function isPathInDirectory(targetPath: string, parentDir: string) {
     const relative = path.relative(parentDir, targetPath);
     return !!relative && !relative.startsWith("..") && !path.isAbsolute(relative);

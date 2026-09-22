@@ -89,6 +89,8 @@ export interface FolderConfiguration {
     readonly disableAutoResolve: boolean;
     /** Whether to ignore .swift-version files and disable automatic toolchain switching */
     readonly ignoreSwiftVersionFile: boolean;
+    /** Number of directories watched for a .swift-version file, including the folder itself */
+    readonly maxSwiftVersionFileWatchDepth: number;
     /** Whether or not the user should be prompted to install swiftly */
     readonly disableSwiftlyInstallPrompt: boolean;
     /** location to save swift-testing attachments */
@@ -321,6 +323,15 @@ const configuration = {
                         .getConfiguration("swift")
                         .get<boolean>("ignoreSwiftVersionFile", false),
                     "swift.ignoreSwiftVersionFile"
+                );
+            },
+            get maxSwiftVersionFileWatchDepth(): number {
+                return validateIntegerSetting(
+                    vscode.workspace
+                        .getConfiguration("swift", workspaceFolder)
+                        .get<number>("maxSwiftVersionFileWatchDepth", 64),
+                    "swift.maxSwiftVersionFileWatchDepth",
+                    1
                 );
             },
             pluginPermissions(pluginId?: string): PluginPermissionConfiguration {
@@ -805,6 +816,32 @@ function validateBooleanSetting(val: boolean, settingName: string): boolean {
     return val;
 }
 
+function validateIntegerSetting(val: number, settingName: string, minimum: number): number {
+    if (typeof val !== "number" || Number.isNaN(val)) {
+        notifyUserSettingUnsupported(
+            new ConfigurationValidationError(
+                settingName,
+                val,
+                `The setting \`${settingName}\` must be an integer`
+            )
+        );
+    }
+    if (val < minimum) {
+        // An out of range value is still usable, so clamp it instead of throwing. This setting is
+        // read from background tasks where throwing would silently disable the feature that uses
+        // it until the window is reloaded.
+        showUnsupportedSettingError(
+            new ConfigurationValidationError(
+                settingName,
+                val,
+                `The setting \`${settingName}\` must be greater than or equal to ${minimum}`
+            )
+        );
+        return minimum;
+    }
+    return Math.floor(val);
+}
+
 function validateStringSetting<T extends string = string>(val: string, settingName: string): T {
     if (typeof val !== "string") {
         notifyUserSettingUnsupported(
@@ -863,9 +900,9 @@ function getExplicitSetting<T>(config: vscode.WorkspaceConfiguration, key: strin
 const badSettingLookup: { [key: string]: unknown } = {};
 
 /**
- * Notify the user that a configuration setting is unsupported immediately when we try and use it.
+ * Show an error to the user that points them at a poorly configured setting.
  */
-function notifyUserSettingUnsupported(error: ConfigurationValidationError): void {
+function showUnsupportedSettingError(error: ConfigurationValidationError): void {
     if (
         !Object.prototype.hasOwnProperty.call(badSettingLookup, error.settingName) ||
         badSettingLookup[error.settingName] !== error.settingValue
@@ -878,6 +915,13 @@ function notifyUserSettingUnsupported(error: ConfigurationValidationError): void
         });
         badSettingLookup[error.settingName] = error.settingValue;
     }
+}
+
+/**
+ * Notify the user that a configuration setting is unsupported immediately when we try and use it.
+ */
+function notifyUserSettingUnsupported(error: ConfigurationValidationError): never {
+    showUnsupportedSettingError(error);
     throw error;
 }
 

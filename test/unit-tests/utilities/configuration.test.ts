@@ -84,5 +84,34 @@ suite("Configuration/Settings Test Suite", () => {
                 configuration.swiftEnvironmentVariables;
             });
         });
+
+        test("returns an integer configuration value", () => {
+            mockSetting("swift.maxSwiftVersionFileWatchDepth", 12);
+            assert.equal(configuration.folder(undefined).maxSwiftVersionFileWatchDepth, 12);
+        });
+
+        test("throws when an integer setting is not a number", () => {
+            mockSetting("swift.maxSwiftVersionFileWatchDepth", "notanumber");
+            assert.throws(() => {
+                configuration.folder(undefined).maxSwiftVersionFileWatchDepth;
+            });
+        });
+
+        test("throws when an integer setting is NaN", () => {
+            mockSetting("swift.maxSwiftVersionFileWatchDepth", NaN);
+            assert.throws(() => {
+                configuration.folder(undefined).maxSwiftVersionFileWatchDepth;
+            });
+        });
+
+        test("floors an integer setting that is not a whole number", () => {
+            mockSetting("swift.maxSwiftVersionFileWatchDepth", 2.5);
+            assert.equal(configuration.folder(undefined).maxSwiftVersionFileWatchDepth, 2);
+        });
+
+        test("clamps an integer setting that is below its minimum", () => {
+            mockSetting("swift.maxSwiftVersionFileWatchDepth", 0);
+            assert.equal(configuration.folder(undefined).maxSwiftVersionFileWatchDepth, 1);
+        });
     });
 });

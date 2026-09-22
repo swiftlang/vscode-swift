@@ -1237,6 +1237,14 @@
             "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.outputChannelLogLevel#` instead.",
             "order": 100,
             "scope": "machine-overridable"
+          },
+          "swift.maxSwiftVersionFileWatchDepth": {
+            "type": "integer",
+            "default": 64,
+            "minimum": 1,
+            "markdownDescription": "The maximum number of directories to watch for changes to a `.swift-version` file, starting at a `Package.swift` and walking upwards towards the root of the file system. A value of `1` watches the directory containing the `Package.swift` only.",
+            "order": 101,
+            "scope": "machine-overridable"
           }
         }
       }

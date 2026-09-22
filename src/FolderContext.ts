@@ -159,7 +159,7 @@ export class FolderContext implements ExternalFolderContext, Disposable {
                 }
             });
 
-        // Start watching for changes to Package.swift, Package.resolved and .swift-version
+        // Start watching for changes to Package.swift and Package.resolved
         await folderContext.packageWatcher.install();
 
         return folderContext;
