@@ -53,6 +53,7 @@ suite("BuildConfig Test Suite", () => {
             attachmentsPath: "",
             disableSwiftlyInstallPrompt: false,
             ignoreSwiftVersionFile: false,
+            maxSwiftVersionFileWatchDepth: 64,
             pluginPermissions: () => ({ trusted: false }),
             pluginArguments: () => [],
         } as FolderConfiguration;
