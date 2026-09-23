@@ -2239,7 +2239,7 @@
     "eslint-plugin-sonarjs": "^4.2.1",
     "globals": "^17.6.0",
     "husky": "^9.1.7",
-    "knip": "^6.35.1",
+    "knip": "^6.36.0",
     "lint-staged": "^17.5.1",
     "lodash.debounce": "^4.0.8",
     "lodash.throttle": "^4.1.1",
