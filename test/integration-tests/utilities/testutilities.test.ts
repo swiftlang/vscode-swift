@@ -12,7 +12,10 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
+import * as vscode from "vscode";
 
+import { testAssetPath } from "../../fixtures";
+import { terminateRunningTasks, waitForStartTaskProcess } from "../../utilities/tasks";
 import { isConfigurationSuperset } from "./testutilities";
 
 suite("Test Utilities", () => {
@@ -52,6 +55,23 @@ suite("Test Utilities", () => {
             expect(isConfigurationSuperset({ a: undefined }, { a: undefined })).to.be.true;
             expect(isConfigurationSuperset({ a: null }, { a: null })).to.be.true;
             expect(isConfigurationSuperset({ a: null }, { a: undefined })).to.be.false;
+        });
+    });
+
+    suite("terminateRunningTasks", () => {
+        test("Kills a running task", async () => {
+            const sleepTask = new vscode.Task(
+                { type: "testTask" },
+                vscode.TaskScope.Workspace,
+                "sleep",
+                "testTask",
+                new vscode.ShellExecution(testAssetPath("sleep.sh"), ["60", "0"])
+            );
+            const started = waitForStartTaskProcess(sleepTask);
+            await vscode.tasks.executeTask(sleepTask);
+            await started;
+
+            expect(await terminateRunningTasks({ timeout: 10_000 })).to.deep.equal(["sleep"]);
         });
     });
 });

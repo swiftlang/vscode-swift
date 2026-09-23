@@ -33,7 +33,7 @@ import { testAssetPath, testAssetUri } from "../../fixtures";
 import { attachCapturedLogs } from "../../reporters/utilities";
 import { TestLogger } from "../../utilities/TestLogger";
 import { closeAllEditors } from "../../utilities/commands";
-import { waitForNoRunningTasks } from "../../utilities/tasks";
+import { terminateRunningTasks, waitForNoRunningTasks } from "../../utilities/tasks";
 
 export function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     const result = vscode.workspace.workspaceFolders?.at(0);
@@ -105,6 +105,7 @@ const extensionBootstrapper = (() => {
     const USER_TEARDOWN_TIMEOUT_MS = 60_000;
     const DEACTIVATION_TIMEOUT_MS = 20_000;
     const MOCHA_BACKSTOP_MS = 10_000;
+    const LEFTOVER_TASKS_TIMEOUT_MS = 30_000;
 
     function testRunnerSetup(
         before: Mocha.HookFunction,
@@ -197,8 +198,22 @@ const extensionBootstrapper = (() => {
                         );
                     }
 
-                    // Make sure no running tasks before setting up
-                    await waitForNoRunningTasks();
+                    // Make sure no running tasks leaked by an earlier suite. Terminate any
+                    // stragglers so one leak doesn't fail every suite that follows.
+                    try {
+                        await logOnError("Waiting for leftover tasks to finish", () =>
+                            waitForNoRunningTasks({ timeout: LEFTOVER_TASKS_TIMEOUT_MS })
+                        );
+                    } catch {
+                        const terminated = await terminateRunningTasks({
+                            timeout: LEFTOVER_TASKS_TIMEOUT_MS,
+                        });
+                        if (terminated.length > 0) {
+                            activationLogger.warn(
+                                `Terminated leftover tasks: ${terminated.join(", ")}.`
+                            );
+                        }
+                    }
 
                     // Clear build all cache before starting suite
                     resetBuildAllTaskCache();

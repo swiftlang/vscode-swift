@@ -17,7 +17,7 @@ import * as vscode from "vscode";
 import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
 import { Disposable } from "@src/utilities/Disposable";
 import { poll } from "@src/utilities/utilities";
-import { withTimeout } from "@src/utilities/withTimeout";
+import { TimeoutError, withTimeout } from "@src/utilities/withTimeout";
 
 import { SwiftTaskFixture } from "../fixtures";
 
@@ -101,11 +101,33 @@ export async function waitForNoRunningTasks(options?: { timeout?: number }): Pro
             "Waiting for all running tasks to complete",
             cancellationToken => pollForNoRunningTasks(cancellationToken),
             options.timeout
-        );
+        ).catch(error => {
+            // Name the tasks that never finished so we can determine which test leaked one.
+            if (error instanceof TimeoutError) {
+                error.message += ` Still running: ${runningTaskNames().join(", ")}.`;
+            }
+            throw error;
+        });
     } else {
         await pollForNoRunningTasks();
     }
-    expect(vscode.tasks.taskExecutions, "Tasks are still running").to.be.empty;
+    expect(runningTaskNames(), "Tasks are still running").to.be.empty;
+}
+
+function runningTaskNames(): string[] {
+    return vscode.tasks.taskExecutions.map(execution => execution.task.name);
+}
+
+/**
+ * Terminates every running task, resolving once VS Code reports that none are left.
+ *
+ * @returns The names of the tasks that were terminated
+ */
+export async function terminateRunningTasks(options?: { timeout?: number }): Promise<string[]> {
+    const terminated = runningTaskNames();
+    vscode.tasks.taskExecutions.forEach(execution => execution.terminate());
+    await waitForNoRunningTasks(options);
+    return terminated;
 }
 
 function pollForNoRunningTasks(cancellationToken?: vscode.CancellationToken): Promise<void> {
