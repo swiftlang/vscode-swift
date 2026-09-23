@@ -33,7 +33,7 @@ import { testAssetPath, testAssetUri } from "../../fixtures";
 import { attachCapturedLogs } from "../../reporters/utilities";
 import { TestLogger } from "../../utilities/TestLogger";
 import { closeAllEditors } from "../../utilities/commands";
-import { terminateRunningTasks, waitForNoRunningTasks } from "../../utilities/tasks";
+import { waitForNoRunningTasks } from "../../utilities/tasks";
 
 export function getRootWorkspaceFolder(): vscode.WorkspaceFolder {
     const result = vscode.workspace.workspaceFolders?.at(0);
@@ -133,7 +133,9 @@ const extensionBootstrapper = (() => {
         before("Activate Swift Extension", async function () {
             // Mocha doesn't give us a hook to run code when a before block times out, so we roll
             // our own timeout to attach logs on failure. Mocha's timeout is kept as a backstop.
-            this.timeout(SETUP_TIMEOUT_MS + setupTimeout + MOCHA_BACKSTOP_MS);
+            this.timeout(
+                SETUP_TIMEOUT_MS + setupTimeout + LEFTOVER_TASKS_TIMEOUT_MS + MOCHA_BACKSTOP_MS
+            );
 
             await withTimeout(
                 "Swift extension activation",
@@ -198,21 +200,14 @@ const extensionBootstrapper = (() => {
                         );
                     }
 
-                    // Make sure no running tasks leaked by an earlier suite. Terminate any
-                    // stragglers so one leak doesn't fail every suite that follows.
-                    try {
-                        await logOnError("Waiting for leftover tasks to finish", () =>
-                            waitForNoRunningTasks({ timeout: LEFTOVER_TASKS_TIMEOUT_MS })
+                    // Make sure no running tasks leaked by an earlier suite
+                    const leftover = await logOnError("Waiting for leftover tasks to finish", () =>
+                        waitForNoRunningTasks({ timeout: LEFTOVER_TASKS_TIMEOUT_MS })
+                    );
+                    if (leftover.length > 0) {
+                        activationLogger.warn(
+                            `Leftover tasks still running: ${leftover.join(", ")}.`
                         );
-                    } catch {
-                        const terminated = await terminateRunningTasks({
-                            timeout: LEFTOVER_TASKS_TIMEOUT_MS,
-                        });
-                        if (terminated.length > 0) {
-                            activationLogger.warn(
-                                `Terminated leftover tasks: ${terminated.join(", ")}.`
-                            );
-                        }
                     }
 
                     // Clear build all cache before starting suite

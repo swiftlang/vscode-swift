@@ -66,7 +66,7 @@ tag("medium").suite("TaskManager Test Suite", () => {
 
         const exitCode = await withTimeout("Waiting for the terminated task", () => result, 10_000);
         expect(exitCode).to.be.undefined;
-        await waitForNoRunningTasks({ timeout: 10_000 });
+        expect(await waitForNoRunningTasks({ timeout: 10_000 })).to.be.empty;
     });
 
     // check running two tasks at same time will return expected values

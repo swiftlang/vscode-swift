@@ -15,7 +15,7 @@ import { expect } from "chai";
 import * as vscode from "vscode";
 
 import { testAssetPath } from "../../fixtures";
-import { terminateRunningTasks, waitForStartTaskProcess } from "../../utilities/tasks";
+import { waitForNoRunningTasks, waitForStartTaskProcess } from "../../utilities/tasks";
 import { isConfigurationSuperset } from "./testutilities";
 
 suite("Test Utilities", () => {
@@ -58,8 +58,8 @@ suite("Test Utilities", () => {
         });
     });
 
-    suite("terminateRunningTasks", () => {
-        test("Kills a running task", async () => {
+    suite("waitForNoRunningTasks", () => {
+        test("Names the tasks still running when it times out", async () => {
             const sleepTask = new vscode.Task(
                 { type: "testTask" },
                 vscode.TaskScope.Workspace,
@@ -68,10 +68,14 @@ suite("Test Utilities", () => {
                 new vscode.ShellExecution(testAssetPath("sleep.sh"), ["60", "0"])
             );
             const started = waitForStartTaskProcess(sleepTask);
-            await vscode.tasks.executeTask(sleepTask);
+            const execution = await vscode.tasks.executeTask(sleepTask);
             await started;
 
-            expect(await terminateRunningTasks({ timeout: 10_000 })).to.deep.equal(["sleep"]);
+            try {
+                expect(await waitForNoRunningTasks({ timeout: 1000 })).to.deep.equal(["sleep"]);
+            } finally {
+                execution.terminate();
+            }
         });
     });
 });

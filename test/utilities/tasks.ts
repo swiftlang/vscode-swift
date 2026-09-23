@@ -11,7 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import { AssertionError, expect } from "chai";
+import { AssertionError } from "chai";
 import * as vscode from "vscode";
 
 import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
@@ -94,40 +94,33 @@ export async function waitForClose(fixture: {
  * matches an old one is spawned to close together, so this
  * utility can be used to make sure no task is running
  * before starting a new test
+ *
+ * @returns The names of the tasks still running when the timeout expires, empty if they all
+ * finished. Without a timeout this waits forever, so the result is always empty
  */
-export async function waitForNoRunningTasks(options?: { timeout?: number }): Promise<void> {
+export async function waitForNoRunningTasks(options?: { timeout?: number }): Promise<string[]> {
     if (options?.timeout && options.timeout > 0) {
-        await withTimeout(
-            "Waiting for all running tasks to complete",
-            cancellationToken => pollForNoRunningTasks(cancellationToken),
-            options.timeout
-        ).catch(error => {
-            // Name the tasks that never finished so we can determine which test leaked one.
+        try {
+            await withTimeout(
+                "Waiting for all running tasks to complete",
+                cancellationToken => pollForNoRunningTasks(cancellationToken),
+                options.timeout
+            );
+        } catch (error) {
+            // Report the tasks that never finished
             if (error instanceof TimeoutError) {
-                error.message += ` Still running: ${runningTaskNames().join(", ")}.`;
+                return runningTaskNames();
             }
             throw error;
-        });
+        }
     } else {
         await pollForNoRunningTasks();
     }
-    expect(runningTaskNames(), "Tasks are still running").to.be.empty;
+    return [];
 }
 
 function runningTaskNames(): string[] {
     return vscode.tasks.taskExecutions.map(execution => execution.task.name);
-}
-
-/**
- * Terminates every running task, resolving once VS Code reports that none are left.
- *
- * @returns The names of the tasks that were terminated
- */
-export async function terminateRunningTasks(options?: { timeout?: number }): Promise<string[]> {
-    const terminated = runningTaskNames();
-    vscode.tasks.taskExecutions.forEach(execution => execution.terminate());
-    await waitForNoRunningTasks(options);
-    return terminated;
 }
 
 function pollForNoRunningTasks(cancellationToken?: vscode.CancellationToken): Promise<void> {
