@@ -105,6 +105,7 @@ const extensionBootstrapper = (() => {
     const USER_TEARDOWN_TIMEOUT_MS = 60_000;
     const DEACTIVATION_TIMEOUT_MS = 20_000;
     const MOCHA_BACKSTOP_MS = 10_000;
+    const LEFTOVER_TASKS_TIMEOUT_MS = 30_000;
 
     function testRunnerSetup(
         before: Mocha.HookFunction,
@@ -132,7 +133,9 @@ const extensionBootstrapper = (() => {
         before("Activate Swift Extension", async function () {
             // Mocha doesn't give us a hook to run code when a before block times out, so we roll
             // our own timeout to attach logs on failure. Mocha's timeout is kept as a backstop.
-            this.timeout(SETUP_TIMEOUT_MS + setupTimeout + MOCHA_BACKSTOP_MS);
+            this.timeout(
+                SETUP_TIMEOUT_MS + setupTimeout + LEFTOVER_TASKS_TIMEOUT_MS + MOCHA_BACKSTOP_MS
+            );
 
             await withTimeout(
                 "Swift extension activation",
@@ -197,8 +200,15 @@ const extensionBootstrapper = (() => {
                         );
                     }
 
-                    // Make sure no running tasks before setting up
-                    await waitForNoRunningTasks();
+                    // Make sure no running tasks leaked by an earlier suite
+                    const leftover = await logOnError("Waiting for leftover tasks to finish", () =>
+                        waitForNoRunningTasks({ timeout: LEFTOVER_TASKS_TIMEOUT_MS })
+                    );
+                    if (leftover.length > 0) {
+                        activationLogger.warn(
+                            `Leftover tasks still running: ${leftover.join(", ")}.`
+                        );
+                    }
 
                     // Clear build all cache before starting suite
                     resetBuildAllTaskCache();

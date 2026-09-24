@@ -12,7 +12,13 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
+import * as vscode from "vscode";
 
+import {
+    sleepExecution,
+    waitForNoRunningTasks,
+    waitForStartTaskProcess,
+} from "../../utilities/tasks";
 import { isConfigurationSuperset } from "./testutilities";
 
 suite("Test Utilities", () => {
@@ -52,6 +58,27 @@ suite("Test Utilities", () => {
             expect(isConfigurationSuperset({ a: undefined }, { a: undefined })).to.be.true;
             expect(isConfigurationSuperset({ a: null }, { a: null })).to.be.true;
             expect(isConfigurationSuperset({ a: null }, { a: undefined })).to.be.false;
+        });
+    });
+
+    suite("waitForNoRunningTasks", () => {
+        test("Names the tasks still running when it times out", async () => {
+            const sleepTask = new vscode.Task(
+                { type: "testTask" },
+                vscode.TaskScope.Workspace,
+                "sleep",
+                "testTask",
+                sleepExecution(60)
+            );
+            const started = waitForStartTaskProcess(sleepTask);
+            const execution = await vscode.tasks.executeTask(sleepTask);
+            await started;
+
+            try {
+                expect(await waitForNoRunningTasks({ timeout: 1000 })).to.deep.equal(["sleep"]);
+            } finally {
+                execution.terminate();
+            }
         });
     });
 });

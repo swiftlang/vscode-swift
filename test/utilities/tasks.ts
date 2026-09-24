@@ -11,13 +11,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import { AssertionError, expect } from "chai";
+import { AssertionError } from "chai";
 import * as vscode from "vscode";
 
 import { SwiftTask } from "@src/tasks/SwiftTaskProvider";
 import { Disposable } from "@src/utilities/Disposable";
 import { poll } from "@src/utilities/utilities";
-import { withTimeout } from "@src/utilities/withTimeout";
+import { TimeoutError, withTimeout } from "@src/utilities/withTimeout";
 
 import { SwiftTaskFixture } from "../fixtures";
 
@@ -94,22 +94,54 @@ export async function waitForClose(fixture: {
  * matches an old one is spawned to close together, so this
  * utility can be used to make sure no task is running
  * before starting a new test
+ *
+ * @returns The names of the tasks still running when the timeout expires, empty if they all
+ * finished. Without a timeout this waits forever, so the result is always empty
  */
-export async function waitForNoRunningTasks(options?: { timeout?: number }): Promise<void> {
+export async function waitForNoRunningTasks(options?: { timeout?: number }): Promise<string[]> {
     if (options?.timeout && options.timeout > 0) {
-        await withTimeout(
-            "Waiting for all running tasks to complete",
-            cancellationToken => pollForNoRunningTasks(cancellationToken),
-            options.timeout
-        );
+        try {
+            await withTimeout(
+                "Waiting for all running tasks to complete",
+                cancellationToken => pollForNoRunningTasks(cancellationToken),
+                options.timeout
+            );
+        } catch (error) {
+            // Report the tasks that never finished
+            if (error instanceof TimeoutError) {
+                return runningTaskNames();
+            }
+            throw error;
+        }
     } else {
         await pollForNoRunningTasks();
     }
-    expect(vscode.tasks.taskExecutions, "Tasks are still running").to.be.empty;
+    return [];
+}
+
+function runningTaskNames(): string[] {
+    return vscode.tasks.taskExecutions.map(execution => execution.task.name);
 }
 
 function pollForNoRunningTasks(cancellationToken?: vscode.CancellationToken): Promise<void> {
     return poll(() => vscode.tasks.taskExecutions.length === 0, 1000, cancellationToken);
+}
+
+/**
+ * Creates an execution that sleeps for the given number of seconds.
+ *
+ * Use this rather than `sleep.sh` for a task that needs to keep running. On Windows the shell
+ * hands `sleep.sh` off to its associated app and returns right away, so the task ends immediately.
+ */
+export function sleepExecution(seconds: number): vscode.ProcessExecution {
+    if (process.platform === "win32") {
+        return new vscode.ProcessExecution("powershell.exe", [
+            "-NoProfile",
+            "-Command",
+            `Start-Sleep -Seconds ${seconds}`,
+        ]);
+    }
+    return new vscode.ProcessExecution("sleep", [`${seconds}`]);
 }
 
 /**

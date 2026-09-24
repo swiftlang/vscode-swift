@@ -22,9 +22,10 @@ export class TaskManager implements AsyncDisposable {
     private isDisposed = false;
     private taskId = 0;
     private activeExecutions: Set<vscode.TaskExecution> = new Set();
+    private pendingExecutions: Set<Promise<unknown>> = new Set();
     private subscriptions: Disposable[];
     private didEndTaskProcessEmitter = new vscode.EventEmitter<vscode.TaskProcessEndEvent>();
-    private taskStartObserver: ((event: vscode.TaskStartEvent) => unknown) | undefined;
+    private taskStartObserver: (() => void) | undefined;
     private startingTaskPromise: Promise<void> | undefined;
 
     constructor(private workspaceContext: WorkspaceContext) {
@@ -34,7 +35,7 @@ export class TaskManager implements AsyncDisposable {
                     label: "TaskManager",
                 });
                 if (this.taskStartObserver) {
-                    this.taskStartObserver(event);
+                    this.taskStartObserver();
                 }
                 // if task is set to disable the task queue then disable it
                 if (event.execution.task.definition.disableTaskQueue) {
@@ -118,7 +119,8 @@ export class TaskManager implements AsyncDisposable {
         token?: vscode.CancellationToken
     ) {
         if (this.isDisposed) {
-            throw Error("TaskManager is disposed.");
+            reject(Error("TaskManager is disposed."));
+            return;
         }
         const disposables = [
             this.onDidEndTaskProcess(event => {
@@ -141,9 +143,15 @@ export class TaskManager implements AsyncDisposable {
                 resolve();
             };
         });
-        vscode.tasks.executeTask(task).then(
+        const pending = Promise.resolve(vscode.tasks.executeTask(task)).then(
             execution => {
                 this.activeExecutions.add(execution);
+                if (this.isDisposed) {
+                    // Disposed while VS Code was still starting the task
+                    disposables.forEach(d => d.dispose());
+                    resolve(undefined);
+                    return;
+                }
                 if (token) {
                     disposables.push(
                         token?.onCancellationRequested(() => {
@@ -161,6 +169,8 @@ export class TaskManager implements AsyncDisposable {
                 reject(error);
             }
         );
+        this.pendingExecutions.add(pending);
+        void pending.finally(() => this.pendingExecutions.delete(pending));
     }
 
     /**
@@ -168,6 +178,13 @@ export class TaskManager implements AsyncDisposable {
      * that each one has ended.
      */
     private async terminateActiveTasks(): Promise<void> {
+        // A task VS Code hasn't finished starting isn't in `activeExecutions` yet and
+        // outlives the extension, running unsupervised.
+        await withTimeout(
+            "Waiting for starting tasks before terminating them",
+            () => Promise.allSettled([...this.pendingExecutions]),
+            5000
+        ).catch(error => this.workspaceContext.logger.warn(error));
         const executions = [...this.activeExecutions];
         if (executions.length === 0) {
             return;
@@ -196,6 +213,9 @@ export class TaskManager implements AsyncDisposable {
                         })
                     );
                     execution.terminate();
+                    // VS Code ignores a `terminate()` that is called before the task has finished starting.
+                    const retry = setInterval(() => execution.terminate(), 500);
+                    subscriptions.push(new Disposable(() => clearInterval(retry)));
                 }),
             5000
         )
@@ -216,6 +236,8 @@ export class TaskManager implements AsyncDisposable {
 
     async dispose() {
         this.isDisposed = true;
+        // Release anything queued behind a task that will now never start.
+        this.taskStartObserver?.();
         await this.terminateActiveTasks();
         this.subscriptions.forEach(s => s.dispose());
         this.didEndTaskProcessEmitter.dispose();

@@ -59,12 +59,12 @@ tag("large").suite("BackgroundCompilation Test Suite", () => {
         });
 
         test("runs build task", async () => {
-            const taskStartPromise = new Promise<void>(resolve => {
+            const buildAllStarted = new Promise<string>(resolve => {
                 subscriptions.push(
                     vscode.tasks.onDidStartTask(e => {
                         const task = e.execution.task;
                         if (task.name.includes("Build All")) {
-                            resolve();
+                            resolve(task.name);
                         }
                     })
                 );
@@ -75,7 +75,7 @@ tag("large").suite("BackgroundCompilation Test Suite", () => {
             await vscode.window.showTextDocument(doc);
             await vscode.workspace.save(uri);
 
-            await taskStartPromise;
+            expect(await buildAllStarted).to.equal(buildAllTask.name);
             await waitForNoRunningTasks();
         });
     });
