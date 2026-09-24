@@ -128,6 +128,23 @@ function pollForNoRunningTasks(cancellationToken?: vscode.CancellationToken): Pr
 }
 
 /**
+ * Creates an execution that sleeps for the given number of seconds.
+ *
+ * Use this rather than `sleep.sh` for a task that needs to keep running. On Windows the shell
+ * hands `sleep.sh` off to its associated app and returns right away, so the task ends immediately.
+ */
+export function sleepExecution(seconds: number): vscode.ProcessExecution {
+    if (process.platform === "win32") {
+        return new vscode.ProcessExecution("powershell.exe", [
+            "-NoProfile",
+            "-Command",
+            `Start-Sleep -Seconds ${seconds}`,
+        ]);
+    }
+    return new vscode.ProcessExecution("sleep", [`${seconds}`]);
+}
+
+/**
  * Allows for introspection of VS Code tasks that happened while this TaskWatcher is active.
  *
  * **Note:** Use {@link withTaskWatcher} to limit the scope to the duration of a test and clean up

@@ -14,8 +14,11 @@
 import { expect } from "chai";
 import * as vscode from "vscode";
 
-import { testAssetPath } from "../../fixtures";
-import { waitForNoRunningTasks, waitForStartTaskProcess } from "../../utilities/tasks";
+import {
+    sleepExecution,
+    waitForNoRunningTasks,
+    waitForStartTaskProcess,
+} from "../../utilities/tasks";
 import { isConfigurationSuperset } from "./testutilities";
 
 suite("Test Utilities", () => {
@@ -65,7 +68,7 @@ suite("Test Utilities", () => {
                 vscode.TaskScope.Workspace,
                 "sleep",
                 "testTask",
-                new vscode.ShellExecution(testAssetPath("sleep.sh"), ["60", "0"])
+                sleepExecution(60)
             );
             const started = waitForStartTaskProcess(sleepTask);
             const execution = await vscode.tasks.executeTask(sleepTask);

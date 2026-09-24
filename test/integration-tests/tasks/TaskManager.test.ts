@@ -19,9 +19,8 @@ import { WorkspaceContext } from "@src/WorkspaceContext";
 import { TaskManager } from "@src/tasks/TaskManager";
 import { withTimeout } from "@src/utilities/withTimeout";
 
-import { testAssetPath } from "../../fixtures";
 import { tag } from "../../tags";
-import { waitForNoRunningTasks } from "../../utilities/tasks";
+import { sleepExecution, waitForNoRunningTasks } from "../../utilities/tasks";
 import { activateExtensionForSuite } from "../utilities/testutilities";
 
 tag("medium").suite("TaskManager Test Suite", () => {
@@ -57,7 +56,7 @@ tag("medium").suite("TaskManager Test Suite", () => {
             vscode.TaskScope.Workspace,
             "sleep",
             "testTask",
-            new vscode.ShellExecution(testAssetPath("sleep.sh"), ["60", "0"])
+            sleepExecution(60)
         );
         const result = manager.executeTaskAndWait(sleepTask);
 
