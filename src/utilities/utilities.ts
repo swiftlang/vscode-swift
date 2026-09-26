@@ -500,7 +500,22 @@ export function sourceLocationToVSCodeLocation(
     return new vscode.Location(vscode.Uri.file(file), new vscode.Position(line - 1, column ?? 0));
 }
 
-const regexEscapedCharacters = new Set(["(", ")", "[", "]", ".", "$", "^", "?", "|", "/", ":"]);
+const regexEscapedCharacters = new Set([
+    "(",
+    ")",
+    "[",
+    "]",
+    ".",
+    "$",
+    "^",
+    "?",
+    "|",
+    "/",
+    ":",
+    "+",
+    "{",
+    "}",
+]);
 /**
  * Escapes regular expression special characters with a backslash.
  * @param string A string to escape
