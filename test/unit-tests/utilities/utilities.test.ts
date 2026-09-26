@@ -154,6 +154,17 @@ suite("Utilities Unit Test Suite", () => {
         test("should return an empty string when input is an empty string", () => {
             expect(regexEscapedString("")).to.equal("");
         });
+
+        test("should escape regex quantifier characters", () => {
+            expect(regexEscapedString("a+b{2}")).to.equal("a\\+b\\{2\\}");
+        });
+
+        test("should produce a pattern that matches a raw identifier test ID literally", () => {
+            const id = "LibTests.Wrong/`sum a+b is ok`()";
+            const pattern = new RegExp(regexEscapedString(id, new Set(["$", "^"])));
+            expect(pattern.test(id)).to.be.true;
+            expect(pattern.test("LibTests.Wrong/`sum aab is ok`()")).to.be.false;
+        });
     });
 
     suite("swiftPlatformLibraryPathKey", () => {
