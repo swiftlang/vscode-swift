@@ -17,8 +17,10 @@ import * as vscode from "vscode";
 
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { TaskManager } from "@src/tasks/TaskManager";
+import { withTimeout } from "@src/utilities/withTimeout";
 
 import { tag } from "../../tags";
+import { sleepExecution, waitForNoRunningTasks } from "../../utilities/tasks";
 import { activateExtensionForSuite } from "../utilities/testutilities";
 
 tag("medium").suite("TaskManager Test Suite", () => {
@@ -45,6 +47,25 @@ tag("medium").suite("TaskManager Test Suite", () => {
         );
         const result = await taskManager.executeTaskAndWait(exitTask);
         assert.strictEqual(result, 1);
+    });
+
+    test("Terminates a task that starts while disposing", async () => {
+        const manager = new TaskManager(workspaceContext);
+        const sleepTask = new vscode.Task(
+            { type: "testTask" },
+            vscode.TaskScope.Workspace,
+            "sleep",
+            "testTask",
+            sleepExecution(60)
+        );
+        const result = manager.executeTaskAndWait(sleepTask);
+
+        // Dispose before VS Code has finished starting the task.
+        await manager.dispose();
+
+        const exitCode = await withTimeout("Waiting for the terminated task", () => result, 10_000);
+        expect(exitCode).to.be.undefined;
+        expect(await waitForNoRunningTasks({ timeout: 10_000 })).to.be.empty;
     });
 
     // check running two tasks at same time will return expected values

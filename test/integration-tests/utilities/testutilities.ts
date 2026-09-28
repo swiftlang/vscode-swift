@@ -105,6 +105,7 @@ const extensionBootstrapper = (() => {
     const USER_TEARDOWN_TIMEOUT_MS = 60_000;
     const DEACTIVATION_TIMEOUT_MS = 20_000;
     const MOCHA_BACKSTOP_MS = 10_000;
+    const LEFTOVER_TASKS_TIMEOUT_MS = 30_000;
 
     function testRunnerSetup(
         before: Mocha.HookFunction,
@@ -197,9 +198,6 @@ const extensionBootstrapper = (() => {
                         );
                     }
 
-                    // Make sure no running tasks before setting up
-                    await waitForNoRunningTasks();
-
                     // Clear build all cache before starting suite
                     resetBuildAllTaskCache();
                 },
@@ -257,7 +255,11 @@ const extensionBootstrapper = (() => {
             //   b) Make sure that the InternalSwiftApi's deactivate() method is called to avoid breaking subsequent tests
             // Mocha's timeout is kept as a backstop in case one of those stages fails to time out.
             this.timeout(
-                teardownTimeout + TEARDOWN_TIMEOUT_MS + DEACTIVATION_TIMEOUT_MS + MOCHA_BACKSTOP_MS
+                teardownTimeout +
+                    TEARDOWN_TIMEOUT_MS +
+                    DEACTIVATION_TIMEOUT_MS +
+                    LEFTOVER_TASKS_TIMEOUT_MS +
+                    MOCHA_BACKSTOP_MS
             );
 
             activationLogger.info("Deactivating extension...");
@@ -453,6 +455,18 @@ const extensionBootstrapper = (() => {
 
             if (teardownError) {
                 throw teardownError;
+            }
+
+            // deactivate() should have stopped every task, so anything left running is a leak.
+            // Leave them running rather than terminating them so the leak stays visible.
+            const leftover = await logOnError(
+                "Waiting for tasks to finish after deactivate()",
+                () => waitForNoRunningTasks({ timeout: LEFTOVER_TASKS_TIMEOUT_MS })
+            );
+            if (leftover.length > 0) {
+                throw new Error(
+                    `Tasks still running after deactivate(): ${leftover.join(", ")}. Either the extension or the test leaked them.`
+                );
             }
 
             activationLogger.clear();
