@@ -133,9 +133,7 @@ const extensionBootstrapper = (() => {
         before("Activate Swift Extension", async function () {
             // Mocha doesn't give us a hook to run code when a before block times out, so we roll
             // our own timeout to attach logs on failure. Mocha's timeout is kept as a backstop.
-            this.timeout(
-                SETUP_TIMEOUT_MS + setupTimeout + LEFTOVER_TASKS_TIMEOUT_MS + MOCHA_BACKSTOP_MS
-            );
+            this.timeout(SETUP_TIMEOUT_MS + setupTimeout + MOCHA_BACKSTOP_MS);
 
             await withTimeout(
                 "Swift extension activation",
@@ -200,16 +198,6 @@ const extensionBootstrapper = (() => {
                         );
                     }
 
-                    // Make sure no running tasks leaked by an earlier suite
-                    const leftover = await logOnError("Waiting for leftover tasks to finish", () =>
-                        waitForNoRunningTasks({ timeout: LEFTOVER_TASKS_TIMEOUT_MS })
-                    );
-                    if (leftover.length > 0) {
-                        activationLogger.warn(
-                            `Leftover tasks still running: ${leftover.join(", ")}.`
-                        );
-                    }
-
                     // Clear build all cache before starting suite
                     resetBuildAllTaskCache();
                 },
@@ -267,7 +255,11 @@ const extensionBootstrapper = (() => {
             //   b) Make sure that the InternalSwiftApi's deactivate() method is called to avoid breaking subsequent tests
             // Mocha's timeout is kept as a backstop in case one of those stages fails to time out.
             this.timeout(
-                teardownTimeout + TEARDOWN_TIMEOUT_MS + DEACTIVATION_TIMEOUT_MS + MOCHA_BACKSTOP_MS
+                teardownTimeout +
+                    TEARDOWN_TIMEOUT_MS +
+                    DEACTIVATION_TIMEOUT_MS +
+                    LEFTOVER_TASKS_TIMEOUT_MS +
+                    MOCHA_BACKSTOP_MS
             );
 
             activationLogger.info("Deactivating extension...");
@@ -463,6 +455,18 @@ const extensionBootstrapper = (() => {
 
             if (teardownError) {
                 throw teardownError;
+            }
+
+            // deactivate() should have stopped every task, so anything left running is a leak.
+            // Leave them running rather than terminating them so the leak stays visible.
+            const leftover = await logOnError(
+                "Waiting for tasks to finish after deactivate()",
+                () => waitForNoRunningTasks({ timeout: LEFTOVER_TASKS_TIMEOUT_MS })
+            );
+            if (leftover.length > 0) {
+                throw new Error(
+                    `Tasks still running after deactivate(): ${leftover.join(", ")}. Either the extension or the test leaked them.`
+                );
             }
 
             activationLogger.clear();
