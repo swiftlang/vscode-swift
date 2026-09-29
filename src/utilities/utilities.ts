@@ -513,6 +513,7 @@ const regexEscapedCharacters = new Set([
     "/",
     ":",
     "+",
+    "*",
     "{",
     "}",
 ]);

@@ -159,6 +159,19 @@ suite("Utilities Unit Test Suite", () => {
             expect(regexEscapedString("a+b{2}")).to.equal("a\\+b\\{2\\}");
         });
 
+        test("should escape the * quantifier", () => {
+            expect(regexEscapedString("a*b")).to.equal("a\\*b");
+        });
+
+        test("should produce a pattern that matches . and * literally", () => {
+            const id = "LibTests.Suite/`a.b * c`()";
+            const pattern = new RegExp(regexEscapedString(id, new Set(["$", "^"])));
+            expect(pattern.test(id)).to.be.true;
+            expect(pattern.test("LibTests.Suite/`axb * c`()")).to.be.false;
+            expect(pattern.test("LibTestsXSuite/`a.b * c`()")).to.be.false;
+            expect(pattern.test("LibTests.Suite/`a.b  c`()")).to.be.false;
+        });
+
         test("should produce a pattern that matches a raw identifier test ID literally", () => {
             const id = "LibTests.Wrong/`sum a+b is ok`()";
             const pattern = new RegExp(regexEscapedString(id, new Set(["$", "^"])));

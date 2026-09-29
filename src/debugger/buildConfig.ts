@@ -88,6 +88,20 @@ export function groupTestsByTarget(
     }, new Map<string, readonly string[]>());
 }
 
+/**
+ * Converts a test argument produced by `TestRunArguments` into a regex for `swift test --filter`.
+ * The test identifier is escaped so it matches literally, while the trailing `.*` wildcard
+ * appended for entire test targets is preserved.
+ */
+export function testFilterRegex(testArg: string): string {
+    const targetWildcard = ".*";
+    if (testArg.endsWith(targetWildcard)) {
+        const testId = testArg.slice(0, -targetWildcard.length);
+        return `${regexEscapedString(testId, new Set(["$", "^"]))}${targetWildcard}`;
+    }
+    return regexEscapedString(testArg, new Set(["$", "^"]));
+}
+
 export class BuildConfigurationFactory {
     public static buildAll(
         ctx: FolderContext,
@@ -575,13 +589,7 @@ export class TestingConfigurationFactory {
     }
 
     private addTestsToArgs(args: string[]): string[] {
-        return [
-            ...args,
-            ...this.testList.flatMap(arg => [
-                "--filter",
-                regexEscapedString(arg, new Set(["$", "^"])),
-            ]),
-        ];
+        return [...args, ...this.testList.flatMap(arg => ["--filter", testFilterRegex(arg)])];
     }
 
     private addXCTestExecutableTestsToArgs(args: string[]): string[] {
