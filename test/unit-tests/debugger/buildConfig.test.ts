@@ -27,6 +27,7 @@ import {
     effectiveBuildSystem,
     groupTestsByTarget,
     swiftTestingEventStreamVersion,
+    testFilterRegex,
 } from "@src/debugger/buildConfig";
 import { BuildFlags } from "@src/toolchain/BuildFlags";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
@@ -425,6 +426,38 @@ suite("BuildConfig Test Suite", () => {
             const c99ToName = new Map([["Other_Target", "Other-Target"]]);
             const result = groupTestsByTarget(["My_Target.SomeTests.test"], c99ToName);
             expect(result.get("My_Target")).to.deep.equal(["My_Target.SomeTests.test"]);
+        });
+    });
+
+    suite("testFilterRegex", () => {
+        test("escapes regex characters in a test ID so they match literally", () => {
+            const id = "MyTests.Suite/`a.b * c`()";
+            const filter = testFilterRegex(id);
+            expect(filter).to.equal("MyTests\\.Suite\\/`a\\.b \\* c`\\(\\)");
+            const pattern = new RegExp(filter);
+            expect(pattern.test(id)).to.be.true;
+            expect(pattern.test("MyTestsXSuite/`a.b * c`()")).to.be.false;
+            expect(pattern.test("MyTests.Suite/`axb * c`()")).to.be.false;
+        });
+
+        test("preserves the trailing .* wildcard used for test targets", () => {
+            const filter = testFilterRegex("MyTests.*");
+            expect(filter).to.equal("MyTests.*");
+            const pattern = new RegExp(filter);
+            expect(pattern.test("MyTests.Suite/testA")).to.be.true;
+            expect(pattern.test("MyTests.OtherSuite/testB()")).to.be.true;
+        });
+
+        test("escapes the test ID but not the wildcard for test targets with special characters", () => {
+            const filter = testFilterRegex("My.Tests.*");
+            expect(filter).to.equal("My\\.Tests.*");
+            const pattern = new RegExp(filter);
+            expect(pattern.test("My.Tests.Suite/testA")).to.be.true;
+            expect(pattern.test("MyXTests.Suite/testA")).to.be.false;
+        });
+
+        test("does not escape $ and ^ terminators", () => {
+            expect(testFilterRegex("MyTests.Suite/testA$")).to.equal("MyTests\\.Suite\\/testA$");
         });
     });
 
