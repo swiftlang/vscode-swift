@@ -180,8 +180,10 @@ tag("large").suite("Test Explorer Suite", function () {
             let resetSettings: (() => Promise<void>) | undefined;
             beforeEach(async function () {
                 // CodeLLDB on windows doesn't print output and so cannot be parsed
+                // CodeLLDB tests get stuck on macOS
                 if (
                     process.platform === "win32" ||
+                    process.platform === "darwin" ||
                     (process.platform === "linux" &&
                         folderContext.swiftVersion.isGreaterThanOrEqual(new Version(6, 2, 0)))
                 ) {
