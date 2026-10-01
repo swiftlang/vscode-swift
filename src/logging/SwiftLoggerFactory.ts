@@ -52,15 +52,16 @@ export class SwiftLoggerFactory {
     }
 
     /**
-     * Creates a transport that writes to the given log file. Trace messages are included
-     * when `swift.enableTraceLogging` is enabled.
+     * Creates a transport that writes to the given log file at the level set by
+     * `swift.logFileLogLevel`.
      */
     private createFileTransport(logFileName: string): FileTransport {
-        const fileLevel = () => (configuration.enableTraceLogging ? "trace" : "debug");
-        const transport = new FileTransport(this.logFilePath(logFileName), { level: fileLevel() });
+        const transport = new FileTransport(this.logFilePath(logFileName), {
+            level: configuration.logFileLogLevel,
+        });
         const configListener = vscode.workspace.onDidChangeConfiguration(e => {
-            if (e.affectsConfiguration("swift.enableTraceLogging")) {
-                transport.level = fileLevel();
+            if (e.affectsConfiguration("swift.logFileLogLevel")) {
+                transport.level = configuration.logFileLogLevel;
             }
         });
         // Winston unpipes a transport when it's removed or the logger closes

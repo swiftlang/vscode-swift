@@ -773,11 +773,10 @@ const configuration = {
             "swift.outputChannelLogLevel"
         );
     },
-    /** Whether or not trace level messages are written to the extension's log file */
-    get enableTraceLogging(): boolean {
-        return validateBooleanSetting(
-            vscode.workspace.getConfiguration("swift").get<boolean>("enableTraceLogging", false),
-            "swift.enableTraceLogging"
+    get logFileLogLevel(): string {
+        return validateStringSetting(
+            vscode.workspace.getConfiguration("swift").get("logFileLogLevel", "debug"),
+            "swift.logFileLogLevel"
         );
     },
     parameterHintsEnabled(documentUri: vscode.Uri): boolean {

@@ -8,7 +8,7 @@
 - Toolchain changes will now automatically reload the workspace ([#2196](https://github.com/swiftlang/vscode-swift/pull/2196))
 - Add a button that installs Swiftly and the latest Swift toolchain to the extension's welcome walkthrough ([#2078](https://github.com/swiftlang/vscode-swift/pull/2078))
 - Add syntax highlighing for DocC Tutorial files ([#2320](https://github.com/swiftlang/vscode-swift/pull/2320))
-- Add `swift.enableTraceLogging` setting to write trace level messages to the extension's log file ([#2379](https://github.com/swiftlang/vscode-swift/pull/2379))
+- Add `swift.logFileLogLevel` setting to control the verbosity of the extension's log file ([#2379](https://github.com/swiftlang/vscode-swift/pull/2379))
 - Add `trace` option to the `swift.outputChannelLogLevel` setting ([#2379](https://github.com/swiftlang/vscode-swift/pull/2379))
 
 ### Changed

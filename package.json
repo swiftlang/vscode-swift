@@ -806,10 +806,17 @@
             ],
             "scope": "machine-overridable"
           },
-          "swift.enableTraceLogging": {
-            "type": "boolean",
-            "default": false,
-            "markdownDescription": "Write trace level messages to the extension's log file. This only affects the verbosity of the log file and has no effect on the Swift output channel.",
+          "swift.logFileLogLevel": {
+            "type": "string",
+            "default": "debug",
+            "markdownDescription": "The log level of the extension's log file. This has no effect on the verbosity of messages written to the Swift output channel.",
+            "enum": [
+              "trace",
+              "debug",
+              "info",
+              "warn",
+              "error"
+            ],
             "scope": "machine-overridable"
           }
         }
