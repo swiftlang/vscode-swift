@@ -16,6 +16,7 @@ import * as path from "path";
 import * as vscode from "vscode";
 import * as winston from "winston";
 
+import configuration from "../configuration";
 import { FileTransport } from "./FileTransport";
 import { LoggedOutputChannel } from "./LoggedOutputChannel";
 import { SwiftLogger } from "./SwiftLogger";
@@ -47,7 +48,24 @@ export class SwiftLoggerFactory {
         if (path.isAbsolute(logFileName)) {
             throw Error(`Log file must be a relative path: "${logFileName}"`);
         }
-        return new SwiftLogger([new FileTransport(this.logFilePath(logFileName)), ...transports]);
+        return new SwiftLogger([this.createFileTransport(logFileName), ...transports]);
+    }
+
+    /**
+     * Creates a transport that writes to the given log file. Trace messages are included
+     * when `swift.enableTraceLogging` is enabled.
+     */
+    private createFileTransport(logFileName: string): FileTransport {
+        const fileLevel = () => (configuration.enableTraceLogging ? "trace" : "debug");
+        const transport = new FileTransport(this.logFilePath(logFileName), { level: fileLevel() });
+        const configListener = vscode.workspace.onDidChangeConfiguration(e => {
+            if (e.affectsConfiguration("swift.enableTraceLogging")) {
+                transport.level = fileLevel();
+            }
+        });
+        // Winston unpipes a transport when it's removed or the logger closes
+        transport.once("unpipe", () => configListener.dispose());
+        return transport;
     }
 
     /**

@@ -798,11 +798,18 @@
             "default": "info",
             "markdownDescription": "The log level of the Swift output channel. This has no effect on the verbosity of messages written to the extension's log file.",
             "enum": [
+              "trace",
               "debug",
               "info",
               "warn",
               "error"
             ],
+            "scope": "machine-overridable"
+          },
+          "swift.enableTraceLogging": {
+            "type": "boolean",
+            "default": false,
+            "markdownDescription": "Write trace level messages to the extension's log file. This only affects the verbosity of the log file and has no effect on the Swift output channel.",
             "scope": "machine-overridable"
           }
         }
@@ -1227,15 +1234,6 @@
             "default": false,
             "markdownDescription": "Ignore `.swift-version` files and disable automatic toolchain switching based on them. When enabled, the extension will always use the global default toolchain instead of switching based on per-project `.swift-version` files.",
             "order": 99,
-            "scope": "machine-overridable"
-          },
-          "swift.diagnostics": {
-            "type": "boolean",
-            "default": false,
-            "markdownDescription": "Output additional diagnostics to the Swift output channel.",
-            "deprecationMessage": "Deprecated: Please use \"swift.outputChannelLogLevel\" instead.",
-            "markdownDeprecationMessage": "**Deprecated**: Please use `#swift.outputChannelLogLevel#` instead.",
-            "order": 100,
             "scope": "machine-overridable"
           },
           "swift.maxSwiftVersionFileWatchDepth": {

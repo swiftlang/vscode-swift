@@ -620,13 +620,6 @@ const configuration = {
             "swift.actionAfterBuildError"
         );
     },
-    /** output additional diagnostics */
-    get diagnostics(): boolean {
-        return validateBooleanSetting(
-            vscode.workspace.getConfiguration("swift").get<boolean>("diagnostics", false),
-            "swift.diagnostics"
-        );
-    },
     /**
      *  Test coverage settings
      */
@@ -778,6 +771,13 @@ const configuration = {
         return validateStringSetting(
             vscode.workspace.getConfiguration("swift").get("outputChannelLogLevel", "info"),
             "swift.outputChannelLogLevel"
+        );
+    },
+    /** Whether or not trace level messages are written to the extension's log file */
+    get enableTraceLogging(): boolean {
+        return validateBooleanSetting(
+            vscode.workspace.getConfiguration("swift").get<boolean>("enableTraceLogging", false),
+            "swift.enableTraceLogging"
         );
     },
     parameterHintsEnabled(documentUri: vscode.Uri): boolean {

@@ -18,8 +18,11 @@ import { RollingLog } from "./RollingLog";
 import TransportStream = require("winston-transport");
 
 export class RollingLogTransport extends TransportStream {
-    constructor(private rollingLog: RollingLog) {
-        super({ level: "debug" });
+    constructor(
+        private rollingLog: RollingLog,
+        level: string = "debug"
+    ) {
+        super({ level });
     }
 
     public log(info: winston.Logform.TransformableInfo, next: () => void): void {

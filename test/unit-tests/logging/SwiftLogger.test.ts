@@ -48,6 +48,17 @@ suite("SwiftLogger Unit Test Suite", () => {
         ]);
     });
 
+    test("Writes trace messages to trace transports", () => {
+        const traceLog = new RollingLog(100);
+        logger.addTransport(new RollingLogTransport(traceLog, "trace"));
+
+        logger.trace("this is a trace message");
+
+        expect(traceLog.logs).to.deep.equal([
+            "[2026-06-10 00:00:00.000] [trace] this is a trace message",
+        ]);
+    });
+
     test("includes the provided label in the log entry", () => {
         logger.info("test", { label: "MyComponent" });
 
