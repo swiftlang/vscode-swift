@@ -24,7 +24,7 @@ import { resolveFolderDependencies } from "./commands/dependencies/resolve";
 import { registerSourceKitSchemaWatcher } from "./commands/generateSourcekitConfiguration";
 import { handleMissingSwiftly } from "./commands/installSwiftly";
 import { isSwiftInstalled } from "./commands/isSwiftInstalled";
-import configuration, { ConfigurationValidationError } from "./configuration";
+import configuration from "./configuration";
 import { registerDebugger } from "./debugger/debugAdapterFactory";
 import { makeDebugConfigurations } from "./debugger/launch";
 import { OutputChannelTransport } from "./logging/OutputChannelTransport";
@@ -316,10 +316,6 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
                 { label: "Extension" }
             );
             this.state = { type: "failed", error, activatedBy };
-            // Handle configuration validation errors with UI that points the user to the poorly configured setting
-            if (error instanceof ConfigurationValidationError) {
-                return; // User is notified by code in configuration.ts
-            }
             const errorMessage = getErrorDescription(error);
             // show this error message as the VS Code error message only shows when running
             // the extension through the debugger
