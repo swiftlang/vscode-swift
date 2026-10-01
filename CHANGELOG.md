@@ -8,10 +8,16 @@
 - Toolchain changes will now automatically reload the workspace ([#2196](https://github.com/swiftlang/vscode-swift/pull/2196))
 - Add a button that installs Swiftly and the latest Swift toolchain to the extension's welcome walkthrough ([#2078](https://github.com/swiftlang/vscode-swift/pull/2078))
 - Add syntax highlighing for DocC Tutorial files ([#2320](https://github.com/swiftlang/vscode-swift/pull/2320))
+- Add `swift.enableTraceLogging` setting to write trace level messages to the extension's log file ([#2379](https://github.com/swiftlang/vscode-swift/pull/2379))
+- Add `trace` option to the `swift.outputChannelLogLevel` setting ([#2379](https://github.com/swiftlang/vscode-swift/pull/2379))
 
 ### Changed
 
 - `swift.sourcekit-lsp.serverPath` and `swift.sourcekit-lsp.serverArguments` are now `machine` scoped, so they can only be set in user settings ([#2369](https://github.com/swiftlang/vscode-swift/pull/2369))
+
+### Removed
+
+- The deprecated `swift.diagnostics` setting. Use `swift.outputChannelLogLevel` instead.
 
 ### Fixed
 
