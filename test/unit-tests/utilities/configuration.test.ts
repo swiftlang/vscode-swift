@@ -11,7 +11,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import * as assert from "assert";
 import { expect } from "chai";
+import * as fs from "fs";
 import { setup } from "mocha";
 import { match } from "sinon";
 import * as vscode from "vscode";
@@ -19,6 +21,7 @@ import * as vscode from "vscode";
 import configuration, { resetReportedSettingWarnings } from "@src/configuration";
 
 import { instance, mockFn, mockGlobalObject, mockObject } from "../../MockUtils";
+import { distPath } from "../../fixtures";
 
 suite("Configuration/Settings Test Suite", () => {
     suite("Type validation", () => {
@@ -286,6 +289,89 @@ suite("Configuration/Settings Test Suite", () => {
         test("clamps an integer setting that is below its minimum", () => {
             mockSetting("swift.maxSwiftVersionFileWatchDepth", 0);
             expect(configuration.folder(undefined).maxSwiftVersionFileWatchDepth).to.equal(1);
+        });
+
+        test("returns an enum configuration value", () => {
+            mockSetting("swift.diagnosticsStyle", "llvm");
+            assert.equal(configuration.diagnosticsStyle, "llvm");
+            assert.ok(mockWindow.showWarningMessage.notCalled);
+        });
+
+        test("uses the default when an enum setting is not an allowed value", () => {
+            mockSetting("swift.diagnosticsStyle", "notastyle");
+            assert.equal(configuration.diagnosticsStyle, "default");
+            assertSettingWarningShown("swift.diagnosticsStyle");
+        });
+
+        test("uses the default when an enum setting is not a string", () => {
+            mockSetting("swift.showBuildStatus", 42);
+            assert.equal(configuration.showBuildStatus, "swiftStatus");
+            assertSettingWarningShown("swift.showBuildStatus");
+        });
+
+        suite("enum settings accept every value in package.json", () => {
+            const enumSettingGetters: { [settingName: string]: () => unknown } = {
+                "sourcekit-lsp.support-c-cpp": () => configuration.lsp.supportCFamily,
+                "swift.sourcekit-lsp.includeDeclarationInFindAllReferences": () =>
+                    configuration.lsp.includeDeclarationInFindAllReferences,
+                "swift.sourcekit-lsp.trace.server": () => configuration.lsp.traceServer,
+                "swift.sourcekit-lsp.backgroundIndexing": () => configuration.backgroundIndexing,
+                "swift.debugger.debugAdapter": () => configuration.debugger.debugAdapter,
+                "swift.debugger.setupCodeLLDB": () => configuration.debugger.setupCodeLLDB,
+                "swift.sanitizer": () => configuration.sanitizer,
+                "swift.diagnosticsCollection": () => configuration.diagnosticsCollection,
+                "swift.diagnosticsStyle": () => configuration.diagnosticsStyle,
+                "swift.showBuildStatus": () => configuration.showBuildStatus,
+                "swift.actionAfterBuildError": () => configuration.actionAfterBuildError,
+                "swift.openAfterCreateNewProject": () => configuration.openAfterCreateNewProject,
+                "swift.outputChannelLogLevel": () => configuration.outputChannelLogLevel,
+                "swift.logFileLogLevel": () => configuration.logFileLogLevel,
+            };
+            // Enum settings that are not validated as enums by the extension.
+            const unvalidatedEnumSettings = [
+                // Falls back to the toolchain's Swift version, which may not be in the enum.
+                "swift.scriptSwiftLanguageVersion",
+                // Read directly by the language client rather than through configuration.ts.
+                "sourcekit-lsp.trace.server",
+            ];
+
+            const packageJSON = JSON.parse(fs.readFileSync(distPath("../package.json"), "utf-8"));
+            const enumSettings: { [settingName: string]: string[] } = {};
+            for (const section of [packageJSON.contributes.configuration].flat()) {
+                for (const [settingName, schema] of Object.entries<{ enum?: string[] }>(
+                    section.properties
+                )) {
+                    if (schema.enum && !unvalidatedEnumSettings.includes(settingName)) {
+                        enumSettings[settingName] = schema.enum;
+                    }
+                }
+            }
+
+            test("every enum setting in package.json is validated", () => {
+                assert.deepEqual(
+                    Object.keys(enumSettings).sort((a, b) => a.localeCompare(b)),
+                    Object.keys(enumSettingGetters).sort((a, b) => a.localeCompare(b))
+                );
+            });
+
+            for (const [settingName, allowedValues] of Object.entries(enumSettings)) {
+                test(settingName, () => {
+                    const getter = enumSettingGetters[settingName];
+                    assert.ok(getter, `No getter found for ${settingName}`);
+                    for (const value of allowedValues) {
+                        mockSetting(settingName, value);
+                        getter();
+                    }
+                    assert.ok(
+                        mockWindow.showWarningMessage.notCalled,
+                        `${settingName} rejected a value from package.json`
+                    );
+
+                    mockSetting(settingName, "notavalidvalue");
+                    getter();
+                    assertSettingWarningShown(settingName);
+                });
+            }
         });
     });
 });

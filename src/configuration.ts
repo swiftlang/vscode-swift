@@ -18,16 +18,49 @@ import * as vscode from "vscode";
 
 import { SwiftToolchain } from "./toolchain/toolchain";
 
-type DebugAdapters = "auto" | "lldb-dap" | "CodeLLDB";
-type SetupCodeLLDBOptions = "prompt" | "alwaysUpdateGlobal" | "alwaysUpdateWorkspace" | "never";
-type CFamilySupportOptions = "enable" | "disable" | "cpptools-inactive";
-type ActionAfterBuildError = "Focus Problems" | "Focus Terminal" | "Do Nothing";
-type OpenAfterCreateNewProjectOptions =
-    "always" | "alwaysNewWindow" | "whenNoFolderOpen" | "prompt";
-export type ShowBuildStatusOptions = "never" | "swiftStatus" | "progress" | "notification";
-type DiagnosticCollectionOptions =
-    "onlySwiftc" | "onlySourceKit" | "keepSwiftc" | "keepSourceKit" | "keepAll";
-export type DiagnosticStyle = "default" | "llvm" | "swift";
+// Allowed values for enumeration settings. These must match the enums in package.json.
+const debugAdapters = ["auto", "lldb-dap", "CodeLLDB"] as const;
+export type DebugAdapters = (typeof debugAdapters)[number];
+const setupCodeLLDBOptions = [
+    "prompt",
+    "alwaysUpdateGlobal",
+    "alwaysUpdateWorkspace",
+    "never",
+] as const;
+export type SetupCodeLLDBOptions = (typeof setupCodeLLDBOptions)[number];
+const cFamilySupportOptions = ["enable", "disable", "cpptools-inactive"] as const;
+export type CFamilySupportOptions = (typeof cFamilySupportOptions)[number];
+const includeDeclarationOptions = ["default", "always", "never"] as const;
+export type IncludeDeclarationOptions = (typeof includeDeclarationOptions)[number];
+const traceServerOptions = ["off", "messages", "verbose"] as const;
+export type TraceServerOptions = (typeof traceServerOptions)[number];
+const backgroundIndexingOptions = ["on", "off", "auto"] as const;
+export type BackgroundIndexingOptions = (typeof backgroundIndexingOptions)[number];
+const sanitizerOptions = ["off", "thread", "address"] as const;
+export type SanitizerOptions = (typeof sanitizerOptions)[number];
+const logLevels = ["trace", "debug", "info", "warn", "error"] as const;
+export type LogLevel = (typeof logLevels)[number];
+const actionAfterBuildErrorOptions = ["Focus Problems", "Focus Terminal", "Do Nothing"] as const;
+export type ActionAfterBuildError = (typeof actionAfterBuildErrorOptions)[number];
+const openAfterCreateNewProjectOptions = [
+    "always",
+    "alwaysNewWindow",
+    "whenNoFolderOpen",
+    "prompt",
+] as const;
+export type OpenAfterCreateNewProjectOptions = (typeof openAfterCreateNewProjectOptions)[number];
+const showBuildStatusOptions = ["never", "swiftStatus", "progress", "notification"] as const;
+export type ShowBuildStatusOptions = (typeof showBuildStatusOptions)[number];
+const diagnosticCollectionOptions = [
+    "onlySwiftc",
+    "onlySourceKit",
+    "keepSwiftc",
+    "keepSourceKit",
+    "keepAll",
+] as const;
+export type DiagnosticCollectionOptions = (typeof diagnosticCollectionOptions)[number];
+const diagnosticStyles = ["default", "llvm", "swift"] as const;
+export type DiagnosticStyle = (typeof diagnosticStyles)[number];
 export type ValidCodeLens = "run" | "debug" | "coverage";
 
 /** sourcekit-lsp configuration */
@@ -43,9 +76,9 @@ interface LSPConfiguration {
     /** Is SourceKit-LSP disabled */
     readonly disable: boolean;
     /** Include declaration in Find All References results */
-    readonly includeDeclarationInFindAllReferences: "default" | "always" | "never";
+    readonly includeDeclarationInFindAllReferences: IncludeDeclarationOptions;
     /** Is the trace server enabled */
-    readonly traceServer: "off" | "messages" | "verbose";
+    readonly traceServer: TraceServerOptions;
 }
 
 /** debugger configuration */
@@ -136,10 +169,11 @@ const configuration = {
                 ).map(substituteVariablesInString);
             },
             get supportCFamily(): CFamilySupportOptions {
-                return validateStringSetting(
+                return validateEnumSetting(
                     vscode.workspace.getConfiguration("sourcekit-lsp").get("support-c-cpp"),
                     "sourcekit-lsp.support-c-cpp",
-                    "cpptools-inactive"
+                    "cpptools-inactive",
+                    cFamilySupportOptions
                 );
             },
             get supportedLanguages() {
@@ -148,7 +182,7 @@ const configuration = {
                         .getConfiguration("swift.sourcekit-lsp")
                         .get("supported-languages"),
                     "swift.sourcekit-lsp.supported-languages",
-                    ["swift", "c", "cpp", "objective-c", "objective-cpp"]
+                    ["swift", "objective-c", "objective-cpp", "c", "cpp"]
                 );
             },
             get disable(): boolean {
@@ -158,20 +192,22 @@ const configuration = {
                     false
                 );
             },
-            get includeDeclarationInFindAllReferences(): "default" | "always" | "never" {
-                return validateStringSetting<"default" | "always" | "never">(
+            get includeDeclarationInFindAllReferences(): IncludeDeclarationOptions {
+                return validateEnumSetting(
                     vscode.workspace
                         .getConfiguration("swift.sourcekit-lsp")
                         .get("includeDeclarationInFindAllReferences"),
                     "swift.sourcekit-lsp.includeDeclarationInFindAllReferences",
-                    "default"
+                    "default",
+                    includeDeclarationOptions
                 );
             },
-            get traceServer(): "off" | "messages" | "verbose" {
-                return validateStringSetting<"off" | "messages" | "verbose">(
+            get traceServer(): TraceServerOptions {
+                return validateEnumSetting(
                     vscode.workspace.getConfiguration("swift.sourcekit-lsp.trace").get("server"),
                     "swift.sourcekit-lsp.trace.server",
-                    "off"
+                    "off",
+                    traceServerOptions
                 );
             },
         };
@@ -296,7 +332,7 @@ const configuration = {
                             .getConfiguration("swift", workspaceFolder)
                             .get("attachmentsPath"),
                         "swift.attachmentsPath",
-                        "./.build/attachments"
+                        ".build/attachments"
                     )
                 );
             },
@@ -370,10 +406,11 @@ const configuration = {
                 if (process.platform === "win32" && process.arch === "arm64") {
                     useDebugAdapterFromToolchain = useDebugAdapterFromToolchain ?? true;
                 }
-                const selectedAdapter = validateStringSetting<DebugAdapters>(
+                const selectedAdapter = validateEnumSetting(
                     vscode.workspace.getConfiguration("swift.debugger").get("debugAdapter"),
                     "swift.debugger.debugAdapter",
-                    "auto"
+                    "auto",
+                    debugAdapters
                 );
                 if (selectedAdapter === "auto") {
                     if (useDebugAdapterFromToolchain !== undefined) {
@@ -400,10 +437,11 @@ const configuration = {
                 );
             },
             get setupCodeLLDB(): SetupCodeLLDBOptions {
-                return validateStringSetting(
+                return validateEnumSetting(
                     vscode.workspace.getConfiguration("swift.debugger").get("setupCodeLLDB"),
                     "swift.debugger.setupCodeLLDB",
-                    "prompt"
+                    "prompt",
+                    setupCodeLLDBOptions
                 );
             },
         };
@@ -435,7 +473,7 @@ const configuration = {
         return validateStringArraySettings(
             vscode.workspace.getConfiguration("swift").get("excludePathsFromPackageDependencies"),
             "swift.excludePathsFromPackageDependencies",
-            []
+            ["**/.git", "**/.github"]
         );
     },
     /** Path to folder that include swift executable */
@@ -520,11 +558,12 @@ const configuration = {
         ).map(substituteVariablesInString);
     },
     /** thread/address sanitizer */
-    get sanitizer(): string {
-        return validateStringSetting(
+    get sanitizer(): SanitizerOptions {
+        return validateEnumSetting(
             vscode.workspace.getConfiguration("swift").get("sanitizer"),
             "swift.sanitizer",
-            "off"
+            "off",
+            sanitizerOptions
         );
     },
     get buildPath(): string {
@@ -553,26 +592,29 @@ const configuration = {
     },
     /** include build errors in problems view */
     get diagnosticsCollection(): DiagnosticCollectionOptions {
-        return validateStringSetting(
+        return validateEnumSetting(
             vscode.workspace.getConfiguration("swift").get("diagnosticsCollection"),
             "swift.diagnosticsCollection",
-            "keepSourceKit"
+            "keepSourceKit",
+            diagnosticCollectionOptions
         );
     },
     /** set the -diagnostic-style option when running `swift` tasks */
     get diagnosticsStyle(): DiagnosticStyle {
-        return validateStringSetting(
+        return validateEnumSetting(
             vscode.workspace.getConfiguration("swift").get("diagnosticsStyle"),
             "swift.diagnosticsStyle",
-            "default"
+            "default",
+            diagnosticStyles
         );
     },
     /** where to show the build progress for the running task */
     get showBuildStatus(): ShowBuildStatusOptions {
-        return validateStringSetting(
+        return validateEnumSetting(
             vscode.workspace.getConfiguration("swift").get("showBuildStatus"),
             "swift.showBuildStatus",
-            "swiftStatus"
+            "swiftStatus",
+            showBuildStatusOptions
         );
     },
     /** create build tasks for the library products of the package(s) */
@@ -610,7 +652,7 @@ const configuration = {
         };
     },
     /** background indexing */
-    get backgroundIndexing(): "on" | "off" | "auto" {
+    get backgroundIndexing(): BackgroundIndexingOptions {
         const value = vscode.workspace
             .getConfiguration("swift.sourcekit-lsp")
             .get("backgroundIndexing", "auto");
@@ -619,26 +661,29 @@ const configuration = {
         if (typeof value === "boolean") {
             return value ? "on" : "off";
         } else {
-            return validateStringSetting<"on" | "off" | "auto">(
+            return validateEnumSetting(
                 value,
                 "swift.sourcekit-lsp.backgroundIndexing",
-                "auto"
+                "auto",
+                backgroundIndexingOptions
             );
         }
     },
     /** focus on problems view whenever there is a build error */
     get actionAfterBuildError(): ActionAfterBuildError {
-        return validateStringSetting(
+        return validateEnumSetting(
             vscode.workspace.getConfiguration("swift").get("actionAfterBuildError"),
             "swift.actionAfterBuildError",
-            "Focus Terminal"
+            "Focus Terminal",
+            actionAfterBuildErrorOptions
         );
     },
     get openAfterCreateNewProject(): OpenAfterCreateNewProjectOptions {
-        return validateStringSetting(
+        return validateEnumSetting(
             vscode.workspace.getConfiguration("swift").get("openAfterCreateNewProject"),
             "swift.openAfterCreateNewProject",
-            "prompt"
+            "prompt",
+            openAfterCreateNewProjectOptions
         );
     },
     /** Whether or not the extension should warn about being unable to create symlinks on Windows */
@@ -734,18 +779,20 @@ const configuration = {
                 /* Put in worker queue */
             });
     },
-    get outputChannelLogLevel(): string {
-        return validateStringSetting(
+    get outputChannelLogLevel(): LogLevel {
+        return validateEnumSetting(
             vscode.workspace.getConfiguration("swift").get("outputChannelLogLevel"),
             "swift.outputChannelLogLevel",
-            "info"
+            "info",
+            logLevels
         );
     },
-    get logFileLogLevel(): string {
-        return validateStringSetting(
+    get logFileLogLevel(): LogLevel {
+        return validateEnumSetting(
             vscode.workspace.getConfiguration("swift").get("logFileLogLevel"),
             "swift.logFileLogLevel",
-            "debug"
+            "debug",
+            logLevels
         );
     },
     parameterHintsEnabled(documentUri: vscode.Uri): boolean {
@@ -843,6 +890,21 @@ function validateStringSetting<T extends string = string>(
         defaultValue,
         (v): v is T => typeof v === "string",
         "a string"
+    );
+}
+
+function validateEnumSetting<T>(
+    val: unknown,
+    settingName: string,
+    defaultValue: NoInfer<T>,
+    allowedValues: readonly T[]
+): T {
+    return validateSetting(
+        val,
+        settingName,
+        defaultValue,
+        (v): v is T => typeof v === "string" && (allowedValues as readonly string[]).includes(v),
+        "one of " + allowedValues.map(v => "`" + v + "`").join(", ")
     );
 }
 
