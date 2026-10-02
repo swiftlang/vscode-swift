@@ -11,12 +11,16 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import type * as winston from "winston";
+
 import { RollingLog } from "@src/logging/RollingLog";
 import { RollingLogTransport } from "@src/logging/RollingLogTransport";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 
 export class TestLogger extends SwiftLogger {
     private rollingLog: RollingLog;
+    // Trace messages help diagnose test failures in GitHub Actions, so only capture them in CI
+    private captureLevel: string;
 
     get logs(): string[] {
         return this.rollingLog.logs.slice();
@@ -24,8 +28,13 @@ export class TestLogger extends SwiftLogger {
 
     constructor(maxLogs: number = 100) {
         super();
+        this.captureLevel = process.env.CI === "1" ? "trace" : "debug";
         this.rollingLog = new RollingLog(maxLogs);
-        this.addTransport(new RollingLogTransport(this.rollingLog));
+        this.addTransport(new RollingLogTransport(this.rollingLog, this.captureLevel));
+    }
+
+    createTransport(level: string = this.captureLevel): winston.transport {
+        return super.createTransport(level);
     }
 
     clear(): void {

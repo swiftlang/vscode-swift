@@ -17,13 +17,20 @@ import { Disposable } from "../utilities/Disposable";
 
 import TransportStream = require("winston-transport");
 
+// Winston's default log levels have no "trace", so add one below all the others.
+const logLevels = { ...winston.config.npm.levels, trace: 7 };
+winston.addColors({ trace: "gray" });
+
 export class SwiftLogger implements Disposable {
     private logger: winston.Logger;
     private isDisposed: boolean = false;
 
     private static readonly Transport = class extends TransportStream {
-        constructor(private logger: SwiftLogger) {
-            super({ level: "debug" });
+        constructor(
+            private logger: SwiftLogger,
+            level: string
+        ) {
+            super({ level });
         }
 
         log(info: winston.Logform.TransformableInfo, next: () => void): void {
@@ -41,6 +48,7 @@ export class SwiftLogger implements Disposable {
 
     constructor(transports?: winston.transport[]) {
         this.logger = winston.createLogger({
+            levels: logLevels,
             transports: transports,
             format: winston.format.combine(
                 winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss.SSS" }),
@@ -63,8 +71,13 @@ export class SwiftLogger implements Disposable {
         });
     }
 
-    createTransport(): winston.transport {
-        return new SwiftLogger.Transport(this);
+    /**
+     * Creates a transport that forwards messages to this logger.
+     *
+     * @param level The most verbose level to forward.
+     */
+    createTransport(level: string = "debug"): winston.transport {
+        return new SwiftLogger.Transport(this, level);
     }
 
     addTransport(transport: winston.transport): void {
@@ -73,6 +86,10 @@ export class SwiftLogger implements Disposable {
 
     removeTransport(transport: winston.transport): void {
         this.logger.remove(transport);
+    }
+
+    trace(message: unknown, meta: { label?: string } = {}) {
+        this.log("trace", message, meta);
     }
 
     debug(message: unknown, meta: { label?: string } = {}) {

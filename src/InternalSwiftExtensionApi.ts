@@ -101,6 +101,8 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
 
     logger: SwiftLogger;
 
+    private outputChannelTransport: OutputChannelTransport;
+
     constructor(
         public readonly version: Version,
         private readonly extensionContext: vscode.ExtensionContext
@@ -108,9 +110,12 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
         this.contextKeys = new ContextKeyManager();
         const logSetupStartTime = Date.now();
         this.outputChannel = vscode.window.createOutputChannel("Swift");
+        this.outputChannelTransport = new OutputChannelTransport(this.outputChannel, {
+            level: configuration.outputChannelLogLevel,
+        });
         this.loggerFactory = new SwiftLoggerFactory(extensionContext.logUri);
         this.logger = this.loggerFactory.createLogger("swift-vscode-extension.log", [
-            new OutputChannelTransport(this.outputChannel),
+            this.outputChannelTransport,
         ]);
         const logSetupElapsed = Date.now() - logSetupStartTime;
         this.logger.info(`Log setup completed in ${logSetupElapsed}ms`);
@@ -124,6 +129,9 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
      * @returns A disposable that unregisters the provider when disposed.
      */
     private handleConfigurationChangeEvent(event: vscode.ConfigurationChangeEvent): void {
+        if (event.affectsConfiguration("swift.outputChannelLogLevel")) {
+            this.outputChannelTransport.level = configuration.outputChannelLogLevel;
+        }
         // Toolchain configuration changes require a reload of the workspace
         if (
             (event.affectsConfiguration("swift.path") &&

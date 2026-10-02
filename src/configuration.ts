@@ -620,13 +620,6 @@ const configuration = {
             "swift.actionAfterBuildError"
         );
     },
-    /** output additional diagnostics */
-    get diagnostics(): boolean {
-        return validateBooleanSetting(
-            vscode.workspace.getConfiguration("swift").get<boolean>("diagnostics", false),
-            "swift.diagnostics"
-        );
-    },
     /**
      *  Test coverage settings
      */
@@ -778,6 +771,12 @@ const configuration = {
         return validateStringSetting(
             vscode.workspace.getConfiguration("swift").get("outputChannelLogLevel", "info"),
             "swift.outputChannelLogLevel"
+        );
+    },
+    get logFileLogLevel(): string {
+        return validateStringSetting(
+            vscode.workspace.getConfiguration("swift").get("logFileLogLevel", "debug"),
+            "swift.logFileLogLevel"
         );
     },
     parameterHintsEnabled(documentUri: vscode.Uri): boolean {

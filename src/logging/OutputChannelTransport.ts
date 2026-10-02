@@ -17,8 +17,11 @@ import type * as winston from "winston";
 import TransportStream = require("winston-transport");
 
 export class OutputChannelTransport extends TransportStream {
-    constructor(private readonly ouptutChannel: vscode.OutputChannel) {
-        super();
+    constructor(
+        private readonly ouptutChannel: vscode.OutputChannel,
+        opts?: TransportStream.TransportStreamOptions
+    ) {
+        super(opts);
     }
 
     public log(info: winston.Logform.TransformableInfo, next: () => void): void {
