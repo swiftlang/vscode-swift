@@ -21,6 +21,7 @@ import configuration, {
     substituteVariablesInString,
 } from "../configuration";
 import { BuildConfigurationFactory } from "../debugger/buildConfig";
+import { SwiftLogger } from "../logging/SwiftLogger";
 import { SwiftExecution } from "../tasks/SwiftExecution";
 import { SwiftProcess } from "../tasks/SwiftProcess";
 import { SwiftToolchain } from "../toolchain/toolchain";
@@ -49,6 +50,7 @@ interface TaskConfig {
     disableTaskQueue?: boolean;
     dontTriggerTestDiscovery?: boolean;
     showBuildStatus?: ShowBuildStatusOptions;
+    logger?: SwiftLogger;
 }
 
 export interface TaskPlatformSpecificConfig {
@@ -154,6 +156,7 @@ export async function createBuildAllTask(
     folderContext: FolderContext,
     release: boolean = false
 ): Promise<SwiftTask> {
+    const logger = folderContext.workspaceContext.logger;
     const args = (await BuildConfigurationFactory.buildAll(folderContext, false, release)).args;
     const buildTaskName = buildAllTaskName(folderContext, release);
     const task = createSwiftTask(
@@ -167,6 +170,7 @@ export async function createBuildAllTask(
                 reveal: getBuildRevealOption(),
             },
             disableTaskQueue: true,
+            logger,
         },
         folderContext.toolchain
     );
@@ -174,7 +178,12 @@ export async function createBuildAllTask(
     // Ensures there is one Build All task per folder context, since this can be called multiple
     // times and we want the same instance each time. Otherwise, VS Code may try and execute
     // one instance while our extension code tries to listen to events on an instance created earlier/later.
-    return buildAllTaskCache.get(buildTaskName, folderContext, task);
+    const cachedTask = buildAllTaskCache.get(buildTaskName, folderContext, task);
+    logger.trace(
+        `${cachedTask === task ? "Caching new" : "Using cached"} build all task: ${buildTaskName}, folder=${folderContext.name}`,
+        { label: "SwiftTaskProvider" }
+    );
+    return cachedTask;
 }
 
 /**
@@ -187,10 +196,17 @@ export async function getBuildAllTask(
     release: boolean = false,
     findDefault: boolean = true
 ): Promise<vscode.Task> {
+    const logger = folderContext.workspaceContext.logger;
     const buildTaskName = buildAllTaskName(folderContext, release);
     const folderWorkingDir = folderContext.workspaceFolder.uri.fsPath;
     // search for build all task in task.json first, that are valid for folder
+    logger.trace(`Fetching tasks to find build all task: folder=${folderContext.name}`, {
+        label: "SwiftTaskProvider",
+    });
     const tasks = await vscode.tasks.fetchTasks();
+    logger.trace(`Fetched ${tasks.length} task(s): folder=${folderContext.name}`, {
+        label: "SwiftTaskProvider",
+    });
     const workspaceTasks = tasks.filter(task => {
         if (task.source !== "Workspace") {
             return false;
@@ -216,15 +232,26 @@ export async function getBuildAllTask(
             task => task.group?.id === vscode.TaskGroup.Build.id && task.group?.isDefault === true
         );
         if (task) {
+            logger.debug(
+                `Using default build task from tasks.json: ${task.name}, folder=${folderContext.name}`,
+                { label: "SwiftTaskProvider" }
+            );
             return task;
         }
     }
     // find task with name "swift: Build All"
     task = workspaceTasks.find(task => task.name === `swift: ${buildTaskName}`);
     if (task) {
+        logger.debug(
+            `Using build all task from tasks.json: ${task.name}, folder=${folderContext.name}`,
+            { label: "SwiftTaskProvider" }
+        );
         return task;
     }
     // search for generated tasks
+    logger.trace(`Fetching swift tasks to find build all task: folder=${folderContext.name}`, {
+        label: "SwiftTaskProvider",
+    });
     const swiftTasks = await vscode.tasks.fetchTasks({ type: "swift" });
     task = swiftTasks.find(
         task =>
@@ -233,7 +260,15 @@ export async function getBuildAllTask(
             task.source === "swift"
     );
     if (!task) {
+        logger.trace(
+            `No provided build all task found, creating one: ${buildTaskName}, folder=${folderContext.name}`,
+            { label: "SwiftTaskProvider" }
+        );
         task = await createBuildAllTask(folderContext, release);
+    } else {
+        logger.trace(`Using provided build all task: ${task.name}, folder=${folderContext.name}`, {
+            label: "SwiftTaskProvider",
+        });
     }
 
     return task;
@@ -258,6 +293,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
             packageName: packageName(folderContext),
             disableTaskQueue: true,
             dontTriggerTestDiscovery: true,
+            logger: folderContext.workspaceContext.logger,
         },
         folderContext.toolchain
     );
@@ -277,6 +313,7 @@ function createBuildTasks(product: Product, folderContext: FolderContext): vscod
             packageName: packageName(folderContext),
             disableTaskQueue: true,
             dontTriggerTestDiscovery: true,
+            logger: folderContext.workspaceContext.logger,
         },
         folderContext.toolchain
     );
@@ -350,6 +387,7 @@ export function createSwiftTask(
                 env: env,
                 presentation,
                 readOnlyTerminal: options.readOnlyTerminal,
+                logger: config.logger,
             },
             swiftProcess
         )
@@ -359,6 +397,9 @@ export function createSwiftTask(
     task.detail = `swift ${args.join(" ")}`;
     task.group = config?.group;
     task.presentationOptions = presentation;
+    config.logger?.trace(`Created task: ${name}, cwd=${cwd}, args="${args.join(" ")}"`, {
+        label: "SwiftTaskProvider",
+    });
     return task as SwiftTask;
 }
 
@@ -388,17 +429,32 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
      */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async provideTasks(token: vscode.CancellationToken): Promise<vscode.Task[]> {
+        const logger = this.workspaceContext.logger;
         if (this.workspaceContext.folders.length === 0) {
+            logger.trace("No folders, providing no tasks", { label: "SwiftTaskProvider" });
             return [];
         }
+        logger.trace(`Providing tasks for ${this.workspaceContext.folders.length} folder(s)`, {
+            label: "SwiftTaskProvider",
+        });
         const tasks = [];
 
         for (const folderContext of this.workspaceContext.folders) {
+            logger.trace(`Waiting for package to be found: folder=${folderContext.name}`, {
+                label: "SwiftTaskProvider",
+            });
             if (!(await folderContext.swiftPackage.foundPackage)) {
+                logger.trace(`No package found, skipping tasks: folder=${folderContext.name}`, {
+                    label: "SwiftTaskProvider",
+                });
                 continue;
             }
             const disabledTask = this.createDisabledBuildTask(folderContext);
             if (disabledTask) {
+                logger.trace(
+                    `Build tasks disabled while ${folderContext.taskQueue.activeOperation?.operation.name} runs: folder=${folderContext.name}`,
+                    { label: "SwiftTaskProvider" }
+                );
                 tasks.push(disabledTask);
                 continue;
             }
@@ -415,6 +471,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
                         packageName: packageName(folderContext),
                         presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
                         group: vscode.TaskGroup.Build,
+                        logger,
                     },
                     folderContext.toolchain
                 )
@@ -427,6 +484,7 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
 
             tasks.push(...(await this.createLibraryBuildTasks(folderContext)));
         }
+        logger.trace(`Provided ${tasks.length} task(s)`, { label: "SwiftTaskProvider" });
         return tasks;
     }
 
@@ -482,6 +540,10 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
         const currentFolder =
             this.workspaceContext.currentFolder ?? this.workspaceContext.folders[0];
         if (!currentFolder) {
+            this.workspaceContext.logger.trace(
+                `No folder to resolve task against, returning it unchanged: ${task.name}`,
+                { label: "SwiftTaskProvider" }
+            );
             return task;
         }
         // We need to create a new Task object here.
@@ -512,12 +574,17 @@ export class SwiftTaskProvider implements vscode.TaskProvider {
                 cwd: fullCwd,
                 env: fullEnv,
                 presentation,
+                logger: this.workspaceContext.logger,
             }),
             task.problemMatchers
         );
         newTask.detail = task.detail ?? `swift ${args.join(" ")}`;
         newTask.group = task.group;
         newTask.presentationOptions = presentation;
+        this.workspaceContext.logger.trace(
+            `Resolved task: ${newTask.name}, folder=${currentFolder.name}, cwd=${fullCwd}, args="${args.join(" ")}"`,
+            { label: "SwiftTaskProvider" }
+        );
 
         return newTask;
     }

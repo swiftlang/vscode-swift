@@ -22,7 +22,7 @@ import { DarwinCompatibleTarget, SwiftToolchain } from "@src/toolchain/toolchain
 import * as utilities from "@src/utilities/utilities";
 import { Version } from "@src/utilities/version";
 
-import { MockedObject, instance, mockGlobalValue, mockObject } from "../../MockUtils";
+import { MockedObject, instance, mockFn, mockGlobalValue, mockObject } from "../../MockUtils";
 
 suite("BuildFlags Test Suite", () => {
     const mockedPlatform = mockGlobalValue(process, "platform");
@@ -603,6 +603,7 @@ suite("BuildFlags Test Suite", () => {
         const buildArgsConfig = mockGlobalValue(configuration, "buildArguments");
         let execSwiftSpy: sinon.SinonSpy;
         const logger: MockedObject<SwiftLogger> = mockObject<SwiftLogger>({
+            trace: mockFn(),
             warn: sinon.spy(),
         });
 

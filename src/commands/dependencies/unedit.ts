@@ -62,7 +62,11 @@ async function uneditFolderDependency(
                 // doesn't clash with another swifr process
             }
         );
+        ctx.logger.trace(`Queueing "swift package unedit ${[...args, identifier].join(" ")}"`, {
+            label: folder.name,
+        });
         await folder.taskQueue.queueOperation(uneditOperation);
+        ctx.logger.debug(`Finished "swift package unedit ${identifier}"`, { label: folder.name });
 
         await ctx.fireEvent(folder, FolderOperation.resolvedUpdated);
         // find workspace folder, and check folder still exists
@@ -74,12 +78,18 @@ async function uneditFolderDependency(
                 // check folder exists. if error thrown remove folder
                 await fs.stat(vscode.workspace.workspaceFolders![folderIndex].uri.fsPath);
             } catch {
+                ctx.logger.trace(`Edited folder for ${identifier} no longer exists, removing`, {
+                    label: folder.name,
+                });
                 vscode.workspace.updateWorkspaceFolders(folderIndex, 1);
             }
         }
         return true;
     } catch (error) {
         const execError = error as { stderr: string };
+        ctx.logger.debug(`"swift package unedit ${identifier}" failed: ${error}`, {
+            label: folder.name,
+        });
         // if error contains "has uncommited changes" then ask if user wants to force the unedit
         if (/has uncommited changes/.exec(execError.stderr)) {
             const result = await vscode.window.showWarningMessage(

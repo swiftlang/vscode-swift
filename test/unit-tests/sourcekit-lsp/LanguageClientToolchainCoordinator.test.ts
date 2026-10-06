@@ -101,8 +101,12 @@ suite("LanguageClientToolchainCoordinator Unit Tests", () => {
         swiftVersion: Version
     ): Promise<MockedObject<FolderContext>> {
         const uuid = randomUUID();
-        const mockedToolchain = mockObject<SwiftToolchain>({ swiftVersion });
+        const mockedToolchain = mockObject<SwiftToolchain>({
+            swiftVersion,
+            swiftFolderPath: `/toolchains/${swiftVersion}`,
+        });
         const folder = mockObject<FolderContext>({
+            name: uuid,
             folder: vscode.Uri.file(`/${uuid}`),
             workspaceFolder: {
                 uri: vscode.Uri.file(`/${uuid}`),
@@ -136,7 +140,10 @@ suite("LanguageClientToolchainCoordinator Unit Tests", () => {
         folder: MockedObject<FolderContext>,
         swiftVersion: Version
     ): Promise<void> {
-        const newToolchain = mockObject<SwiftToolchain>({ swiftVersion });
+        const newToolchain = mockObject<SwiftToolchain>({
+            swiftVersion,
+            swiftFolderPath: `/toolchains/${swiftVersion}`,
+        });
         folder.toolchain = instance(newToolchain);
         folder.swiftVersion = swiftVersion;
         await onDidChangeFolders.fire({

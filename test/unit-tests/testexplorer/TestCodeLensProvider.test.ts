@@ -15,12 +15,14 @@ import { expect } from "chai";
 import * as sinon from "sinon";
 import * as vscode from "vscode";
 
+import { FolderContext } from "@src/FolderContext";
 import { TestCodeLensProvider } from "@src/TestExplorer/TestCodeLensProvider";
 import { TestExplorer } from "@src/TestExplorer/TestExplorer";
 import * as TestUtils from "@src/TestExplorer/TestUtils";
 import configuration from "@src/configuration";
 
 import { instance, mockObject } from "../../MockUtils";
+import { TestLogger } from "../../utilities/TestLogger";
 
 suite("TestCodeLensProvider", () => {
     let sandbox: sinon.SinonSandbox;
@@ -66,6 +68,9 @@ suite("TestCodeLensProvider", () => {
         testExplorer = mockObject<TestExplorer>({
             controller: instance(testController),
             onTestItemsDidChange: onTestItemsDidChangeStub,
+            folderContext: instance(
+                mockObject<FolderContext>({ name: "folder", logger: new TestLogger() })
+            ),
         }) as unknown as TestExplorer; // allows for a partial mock of TestExplorer
 
         document = instance(

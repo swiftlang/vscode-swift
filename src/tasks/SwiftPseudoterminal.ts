@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
 
+import { SwiftLogger } from "../logging/SwiftLogger";
 import { Disposable } from "../utilities/Disposable";
 import { SwiftProcess } from "./SwiftProcess";
 
@@ -29,7 +30,8 @@ export class SwiftPseudoterminal implements vscode.Pseudoterminal, Disposable {
 
     constructor(
         private createSwiftProcess: () => SwiftProcess,
-        private options: vscode.TaskPresentationOptions
+        private options: vscode.TaskPresentationOptions,
+        private logger?: SwiftLogger
     ) {}
 
     private disposables: Disposable[] = [];
@@ -37,6 +39,9 @@ export class SwiftPseudoterminal implements vscode.Pseudoterminal, Disposable {
     open(initialDimensions: vscode.TerminalDimensions | undefined): void {
         this.swiftProcess = this.createSwiftProcess();
         const commandLine = [this.swiftProcess.command, ...this.swiftProcess.args].join(" ");
+        this.logger?.trace(`Pseudoterminal opened: ${commandLine}`, {
+            label: "SwiftPseudoterminal",
+        });
         try {
             // Convert the pty's events to the ones expected by the Tasks API
             this.disposables.push(
@@ -51,6 +56,9 @@ export class SwiftPseudoterminal implements vscode.Pseudoterminal, Disposable {
                     this.writeEmitter.fire(data.replace(/\n(\r)?/g, "\n\r"));
                 }),
                 this.swiftProcess.onDidThrowError(e => {
+                    this.logger?.trace(`Pseudoterminal process error: ${commandLine}, error=${e}`, {
+                        label: "SwiftPseudoterminal",
+                    });
                     void vscode.window.showErrorMessage(
                         `Failed to run Swift command "${commandLine}":\n${e}`
                     );
@@ -58,6 +66,10 @@ export class SwiftPseudoterminal implements vscode.Pseudoterminal, Disposable {
                     this.dispose();
                 }),
                 this.swiftProcess.onDidClose(event => {
+                    this.logger?.trace(
+                        `Pseudoterminal process closed: ${commandLine}, exitCode=${event}`,
+                        { label: "SwiftPseudoterminal" }
+                    );
                     this.closeEmitter.fire(event);
                     this.dispose();
                 })
@@ -66,13 +78,17 @@ export class SwiftPseudoterminal implements vscode.Pseudoterminal, Disposable {
             if (initialDimensions) {
                 this.setDimensions(initialDimensions);
             }
-        } catch {
+        } catch (error) {
+            this.logger?.trace(`Pseudoterminal failed to open: ${commandLine}, error=${error}`, {
+                label: "SwiftPseudoterminal",
+            });
             this.closeEmitter.fire();
             this.dispose();
         }
     }
 
     dispose() {
+        this.logger?.trace("Disposing pseudoterminal", { label: "SwiftPseudoterminal" });
         for (const disposable of this.disposables) {
             disposable.dispose();
         }
@@ -90,6 +106,9 @@ export class SwiftPseudoterminal implements vscode.Pseudoterminal, Disposable {
         const buf: Buffer = Buffer.from(data);
         // Terminate process on ctrl+c
         if (buf.length === 1 && buf[0] === 3) {
+            this.logger?.debug("Ctrl+C received, terminating process", {
+                label: "SwiftPseudoterminal",
+            });
             this.swiftProcess?.terminate();
         } else {
             this.swiftProcess?.handleInput(data);
@@ -105,6 +124,10 @@ export class SwiftPseudoterminal implements vscode.Pseudoterminal, Disposable {
     onDidClose: vscode.Event<number | void> = this.closeEmitter.event;
 
     close(): void {
+        this.logger?.trace(
+            `Pseudoterminal closed by VS Code, hasProcess=${this.swiftProcess !== undefined}`,
+            { label: "SwiftPseudoterminal" }
+        );
         this.swiftProcess?.terminate();
         // Terminal may be re-used so only dispose of these on close
         this.writeEmitter.dispose();

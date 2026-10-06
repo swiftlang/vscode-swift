@@ -15,6 +15,7 @@ import * as vscode from "vscode";
 
 import { FolderContext } from "../FolderContext";
 import { SwiftPackage } from "../SwiftPackage";
+import { SwiftLogger } from "../logging/SwiftLogger";
 import { SourceKitLanguageClient } from "../sourcekit-lsp/client/SourceKitLanguageClient";
 import {
     LSPTestItem,
@@ -36,6 +37,10 @@ export class LSPTestDiscovery {
         return this.folderContext.languageClient;
     }
 
+    private get logger(): SwiftLogger {
+        return this.folderContext.logger;
+    }
+
     constructor(private folderContext: FolderContext) {}
 
     /**
@@ -46,16 +51,37 @@ export class LSPTestDiscovery {
         swiftPackage: SwiftPackage,
         document: vscode.Uri
     ): Promise<TestDiscovery.TestClass[]> {
+        const uri = document.toString();
+        this.logger.trace(
+            `Waiting for language client before requesting document tests for ${uri}`,
+            {
+                label: "LSPTestDiscovery",
+            }
+        );
         return await this.languageClient.useLanguageClient(async (client, token) => {
             // Only use the lsp for this request if it supports the
             // textDocument/tests method, and is at least version 2.
             if (!client.checkExperimentalCapability(TextDocumentTestsRequest.method, 2)) {
+                this.logger.trace(
+                    `${TextDocumentTestsRequest.method} v2 not supported by language server, skipping ${uri}`,
+                    { label: "LSPTestDiscovery" }
+                );
                 throw new Error(`${TextDocumentTestsRequest.method} requests not supported`);
             }
+            this.logger.trace(
+                `Language client ready, sending ${TextDocumentTestsRequest.method} for ${uri}`,
+                {
+                    label: "LSPTestDiscovery",
+                }
+            );
             const testsInDocument = await client.sendRequest(
                 TextDocumentTestsRequest.type,
                 { textDocument: { uri: document.toString() } },
                 token
+            );
+            this.logger.trace(
+                `${TextDocumentTestsRequest.method} returned ${testsInDocument.length} top level tests for ${uri} (cancelled=${token.isCancellationRequested})`,
+                { label: "LSPTestDiscovery" }
             );
             return this.transformToTestClass(swiftPackage, testsInDocument);
         });
@@ -66,14 +92,39 @@ export class LSPTestDiscovery {
      * @param workspaceRoot Root of current workspace folder
      */
     async getWorkspaceTests(swiftPackage: SwiftPackage): Promise<TestDiscovery.TestClass[]> {
+        const folderName = this.folderContext.name;
+        this.logger.trace(
+            `Waiting for language client before requesting workspace tests for ${folderName}`,
+            {
+                label: "LSPTestDiscovery",
+            }
+        );
         return await this.languageClient.useLanguageClient(async (client, token) => {
             // Only use the lsp for this request if it supports the
             // workspace/tests method, and is at least version 2.
             if (!client.checkExperimentalCapability(WorkspaceTestsRequest.method, 2)) {
+                this.logger.trace(
+                    `${WorkspaceTestsRequest.method} v2 not supported by language server for ${folderName}`,
+                    { label: "LSPTestDiscovery" }
+                );
                 throw new Error(`${WorkspaceTestsRequest.method} requests not supported`);
             }
+            this.logger.trace(
+                `Language client ready, sending ${WorkspaceTestsRequest.method} for ${folderName}`,
+                {
+                    label: "LSPTestDiscovery",
+                }
+            );
             const tests = await client.sendRequest(WorkspaceTestsRequest.type, token);
-            return await this.transformToTestClass(swiftPackage, tests);
+            this.logger.trace(
+                `${WorkspaceTestsRequest.method} returned ${tests.length} top level tests for ${folderName} (cancelled=${token.isCancellationRequested})`,
+                { label: "LSPTestDiscovery" }
+            );
+            const result = await this.transformToTestClass(swiftPackage, tests);
+            this.logger.trace(`Transformed workspace tests for ${folderName}`, {
+                label: "LSPTestDiscovery",
+            });
+            return result;
         });
     }
 

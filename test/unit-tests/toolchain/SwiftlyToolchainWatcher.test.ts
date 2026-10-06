@@ -123,7 +123,14 @@ suite("Swiftly Toolchain Watcher", () => {
         );
         onDidChangeWorkspaceEmitter = new vscode.EventEmitter();
         mockSwiftExtensionApi = mockObject<InternalSwiftExtensionApi>({
-            logger: instance(mockObject<SwiftLogger>({ error: mockFn(), warn: mockFn() })),
+            logger: instance(
+                mockObject<SwiftLogger>({
+                    trace: mockFn(),
+                    debug: mockFn(),
+                    error: mockFn(),
+                    warn: mockFn(),
+                })
+            ),
             onDidChangeWorkspaceContext: mockFn(s =>
                 s.callsFake(onDidChangeWorkspaceEmitter.event.bind(onDidChangeWorkspaceEmitter))
             ),

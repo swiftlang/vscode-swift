@@ -244,12 +244,23 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
     }
 
     async dispose(): Promise<void> {
+        this.logger.trace(
+            `Disposing workspace context: disposing task manager (${this.folders.length} folders)`,
+            { label: "Workspace" }
+        );
         await this.tasks.dispose();
+        this.logger.trace("Disposing workspace context: task manager disposed", {
+            label: "Workspace",
+        });
         this.folders.forEach(f => f.dispose());
         this.folders.length = 0;
         this.subscriptions.forEach(item => item.dispose());
         this.subscriptions.length = 0;
+        this.logger.trace("Disposing workspace context: disposing language clients", {
+            label: "Workspace",
+        });
         await this.languageClientManager.dispose();
+        this.logger.trace("Disposed workspace context", { label: "Workspace" });
     }
 
     get globalToolchainSwiftVersion() {
@@ -265,6 +276,10 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
                 console.log("Trying to run onDidChangeWorkspaceFolders on deleted context");
                 return;
             }
+            this.logger.trace(
+                `Workspace folders changed: ${event.added.length} added, ${event.removed.length} removed`,
+                { label: "Workspace" }
+            );
             void this.onDidChangeWorkspaceFolders(event);
         });
         // add event listener for when the active edited text document changes
@@ -274,6 +289,10 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
                 console.log("Trying to run onDidChangeWorkspaceFolders on deleted context");
                 return;
             }
+            this.logger.trace(
+                `Active text editor changed: ${editor?.document.uri.toString() ?? "none"}`,
+                { label: "Workspace" }
+            );
             await this.focusTextEditor(editor);
         });
         this.subscriptions.push(onWorkspaceChange, onDidChangeActiveWindow);
@@ -282,9 +301,16 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
     /** Add workspace folders at initialisation */
     async addWorkspaceFolders() {
         // add workspace folders, already loaded
+        this.logger.trace(
+            `Adding initial workspace folders (${vscode.workspace.workspaceFolders?.length ?? 0})`,
+            { label: "Workspace" }
+        );
         if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders.length > 0) {
             for (const folder of vscode.workspace.workspaceFolders) {
                 const singleFolderStartTime = Date.now();
+                this.logger.trace(`Adding workspace folder ${folder.uri.fsPath}`, {
+                    label: "Workspace",
+                });
                 await this.addWorkspaceFolder(folder);
                 const singleFolderElapsed = Date.now() - singleFolderStartTime;
                 this.logger.info(
@@ -297,6 +323,10 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
         // on the first root folder found in the workspace if there is only one.
         if (this.currentFolder === undefined) {
             const rootFolders = this.folders.filter(folder => folder.isRootFolder);
+            this.logger.debug(
+                `No current folder after adding workspace folders, ${rootFolders.length} root folders`,
+                { label: "Workspace" }
+            );
             if (rootFolders.length === 1) {
                 await this.focusFolder(rootFolders[0]);
             } else {
@@ -313,9 +343,24 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
      * @param operation event type
      */
     async fireEvent(folder: FolderContext | null, operation: FolderOperation) {
+        const folderName = folder?.name ?? "null";
+        this.logger.trace(
+            `Firing folder event ${operation} for ${folderName} to ${this.observers.size} observers`,
+            { label: "Workspace" }
+        );
+        let observerIndex = 0;
         for (const observer of this.observers) {
+            const index = observerIndex++;
+            this.logger.trace(
+                `Folder event ${operation} for ${folderName}: calling observer ${index} ${observer.name}`,
+                { label: "Workspace" }
+            );
             try {
                 await observer({ folder, operation, workspace: this });
+                this.logger.trace(
+                    `Folder event ${operation} for ${folderName}: observer ${index} finished`,
+                    { label: "Workspace" }
+                );
             } catch (error) {
                 // Make sure one observer does not stop all others from being called
                 this.logger.error(
@@ -326,6 +371,9 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
                 );
             }
         }
+        this.logger.trace(`Fired folder event ${operation} for ${folderName}`, {
+            label: "Workspace",
+        });
     }
 
     /**
@@ -337,9 +385,17 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
         // has been setup, null means we want to send focus events but for a null
         // folder
         if (folderContext === this.currentFolder) {
+            this.logger.trace(
+                `Focus folder: ${folderContext?.name ?? folderContext} is already focused`,
+                { label: "Workspace" }
+            );
             return;
         }
 
+        this.logger.trace(
+            `Focus folder: ${this.currentFolder?.name ?? this.currentFolder} -> ${folderContext?.name ?? folderContext}`,
+            { label: "Workspace" }
+        );
         // send unfocus event for previous folder observers
         if (this.currentFolder !== undefined) {
             await this.fireEvent(this.currentFolder, FolderOperation.unfocus);
@@ -384,12 +440,19 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
      */
     async onDidChangeWorkspaceFolders(event: vscode.WorkspaceFoldersChangeEvent) {
         for (const folder of event.added) {
+            this.logger.trace(`Workspace folder added: ${folder.uri.fsPath}`, {
+                label: "Workspace",
+            });
             await this.addWorkspaceFolder(folder);
         }
 
         for (const folder of event.removed) {
+            this.logger.trace(`Workspace folder removed: ${folder.uri.fsPath}`, {
+                label: "Workspace",
+            });
             await this.removeWorkspaceFolder(folder);
         }
+        this.logger.trace("Finished handling workspace folder changes", { label: "Workspace" });
     }
 
     /**
@@ -398,6 +461,9 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
      */
     async addWorkspaceFolder(workspaceFolder: vscode.WorkspaceFolder) {
         const searchStartTime = Date.now();
+        this.logger.trace(`Searching for packages in ${workspaceFolder.uri.fsPath}`, {
+            label: "Workspace",
+        });
         const folders = await searchForPackages(
             workspaceFolder.uri,
             configuration.disableSwiftPMIntegration,
@@ -423,6 +489,10 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
         );
 
         if (this.getActiveWorkspaceFolder(vscode.window.activeTextEditor) === workspaceFolder) {
+            this.logger.trace(
+                `Active editor is in ${workspaceFolder.name}, focusing it after adding folder`,
+                { label: "Workspace" }
+            );
             await this.focusTextEditor(vscode.window.activeTextEditor);
         }
     }
@@ -439,8 +509,13 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
             this.logger.warn(`Existing folder was created by ${existingFolder.creationStack}`);
             return existingFolder;
         }
+        this.logger.trace(`Creating folder context for ${folder.fsPath}`, { label: "Workspace" });
         const folderContext = await FolderContext.create(folder, workspaceFolder, this);
         this.folders.push(folderContext);
+        this.logger.trace(
+            `Folder context created for ${folder.fsPath} (${this.folders.length} folders)`,
+            { label: "Workspace" }
+        );
 
         await this.fireEvent(folderContext, FolderOperation.add);
         return folderContext;
@@ -455,6 +530,7 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
             if (folder.workspaceFolder !== workspaceFolder) {
                 continue;
             }
+            this.logger.trace(`Removing folder ${folder.name}`, { label: "Workspace" });
             // if current folder is this folder send unfocus event by setting
             // current folder to undefined
             if (this.currentFolder === folder) {
@@ -463,6 +539,10 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
             // run observer functions in reverse order when removing
             const observersReversed = [...this.observers];
             observersReversed.reverse();
+            this.logger.trace(
+                `Firing folder event remove for ${folder.name} to ${observersReversed.length} observers in reverse order`,
+                { label: "Workspace" }
+            );
             for (const observer of observersReversed) {
                 try {
                     await observer({ folder, operation: FolderOperation.remove, workspace: this });
@@ -470,6 +550,7 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
                     this.logger.error(`Failed to remove folder ${folder.name}: ${error}`);
                 }
             }
+            this.logger.trace(`Disposing removed folder ${folder.name}`, { label: "Workspace" });
             folder.dispose();
         }
         this.folders = this.folders.filter(folder => folder.workspaceFolder !== workspaceFolder);
@@ -478,6 +559,10 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
     onDidChangeFolders: vscode.Event<FolderEvent> = (listener, thisArg, disposables) => {
         const observer = listener.bind(thisArg);
         this.observers.add(observer);
+        this.logger.trace(
+            `Folder observer added (${this.observers.size} observers), replaying add for ${this.folders.length} folders and focus for ${this.currentFolder?.name ?? "no folder"}`,
+            { label: "Workspace" }
+        );
 
         // https://github.com/swiftlang/vscode-swift/issues/1944
         // make sure no FolderOperation are missed by fast activation
@@ -492,7 +577,10 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
             });
         }
 
-        const disposable = new Disposable(() => this.observers.delete(observer));
+        const disposable = new Disposable(() => {
+            this.logger.trace("Folder observer removed", { label: "Workspace" });
+            return this.observers.delete(observer);
+        });
         if (disposables) {
             disposables.push(disposable);
         }
@@ -537,6 +625,9 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
     /** set focus based on the file */
     async focusPackageUri(uri: vscode.Uri) {
         if (isExcluded(uri)) {
+            this.logger.trace(`Focus package uri: ${uri.fsPath} is excluded`, {
+                label: "Workspace",
+            });
             return;
         }
         const packageFolder = await this.getPackageFolder(uri);
@@ -552,12 +643,24 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
                 // To avoid this if we are still initialising we store the last uri to get focus
                 // and once the initialisation is complete we call focusUri again from the function
                 // initialisationComplete.
+                this.logger.debug(
+                    `Focus package uri: deferring ${uri.fsPath} until initialisation completes`,
+                    { label: "Workspace" }
+                );
                 this.lastFocusUri = uri;
             } else {
                 const workspaceFolder = vscode.workspace.getWorkspaceFolder(packageFolder);
                 if (!workspaceFolder) {
+                    this.logger.debug(
+                        `Focus package uri: no workspace folder for ${packageFolder.fsPath}`,
+                        { label: "Workspace" }
+                    );
                     return;
                 }
+                this.logger.debug(
+                    `Focus package uri: adding new package folder ${packageFolder.fsPath}`,
+                    { label: "Workspace" }
+                );
                 await this.unfocusCurrentFolder();
                 const folderContext = await this.addPackageFolder(packageFolder, workspaceFolder);
                 await this.focusFolder(folderContext);
@@ -568,6 +671,10 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
     }
 
     private async initialisationComplete() {
+        this.logger.trace(
+            `Initialisation complete, deferredFocusUri=${this.lastFocusUri?.fsPath ?? "none"}`,
+            { label: "Workspace" }
+        );
         this.initialisationFinished = true;
         if (this.lastFocusUri) {
             await this.focusUri(this.lastFocusUri);
@@ -648,6 +755,10 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
     /** send unfocus event to current focussed folder and clear current folder */
     private async unfocusCurrentFolder() {
         // send unfocus event for previous folder observers
+        this.logger.trace(
+            `Unfocusing current folder ${this.currentFolder?.name ?? this.currentFolder}`,
+            { label: "Workspace" }
+        );
         if (this.currentFolder !== undefined) {
             await this.fireEvent(this.currentFolder, FolderOperation.unfocus);
         }

@@ -31,6 +31,10 @@ export class TestCodeLensProvider implements vscode.CodeLensProvider, Disposable
     }
 
     dispose() {
+        this.testExplorer.folderContext.logger.trace(
+            `Disposing test code lens provider for ${this.testExplorer.folderContext.name}`,
+            { label: "TestCodeLensProvider" }
+        );
         this.disposables.forEach(disposable => disposable.dispose());
     }
 
@@ -44,9 +48,14 @@ export class TestCodeLensProvider implements vscode.CodeLensProvider, Disposable
         }
 
         const items = flattenTestItemCollection(this.testExplorer.controller.items);
-        return items
+        const lenses = items
             .filter(item => item.uri?.fsPath === document.uri.fsPath)
             .flatMap(item => this.codeLensesForTestItem(item, config));
+        this.testExplorer.folderContext.logger.trace(
+            `Provided ${lenses.length} test code lenses for ${document.uri.toString()} from ${items.length} test items`,
+            { label: "TestCodeLensProvider" }
+        );
+        return lenses;
     }
 
     private codeLensesForTestItem(

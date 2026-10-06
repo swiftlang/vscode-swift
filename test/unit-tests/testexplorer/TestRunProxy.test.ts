@@ -19,8 +19,10 @@ import { FolderContext } from "@src/FolderContext";
 import { TestClass, runnableTag } from "@src/TestExplorer/TestDiscovery";
 import { TestRunArguments } from "@src/TestExplorer/TestRunArguments";
 import { TestRunProxy } from "@src/TestExplorer/TestRunProxy";
+import { WorkspaceContext } from "@src/WorkspaceContext";
 
 import { instance, mockObject } from "../../MockUtils";
+import { TestLogger } from "../../utilities/TestLogger";
 
 suite("TestRunProxy Unit Test Suite", () => {
     let controller: vscode.TestController;
@@ -47,7 +49,10 @@ suite("TestRunProxy Unit Test Suite", () => {
     function createProxy(testItems: vscode.TestItem[]): TestRunProxy {
         const request = new vscode.TestRunRequest(testItems);
         const args = mockObject<TestRunArguments>({ testItems });
-        const folderContext = mockObject<FolderContext>({});
+        const folderContext = mockObject<FolderContext>({
+            name: "folder",
+            workspaceContext: instance(mockObject<WorkspaceContext>({ logger: new TestLogger() })),
+        });
         return new TestRunProxy(
             request,
             controller,

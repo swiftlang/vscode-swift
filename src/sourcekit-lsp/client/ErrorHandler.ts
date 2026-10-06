@@ -21,6 +21,8 @@ import {
     Message,
 } from "vscode-languageclient";
 
+import { SwiftLogger } from "../../logging/SwiftLogger";
+
 /**
  * SourceKit-LSP error handler. Copy of the default error handler, except it includes
  * an error message that asks if you want to restart the sourcekit-lsp server again
@@ -29,7 +31,10 @@ import {
 export class SourceKitLSPErrorHandler implements ErrorHandler {
     private restarts: number[];
 
-    constructor(private maxRestartCount: number) {
+    constructor(
+        private maxRestartCount: number,
+        private logger?: SwiftLogger
+    ) {
         this.restarts = [];
     }
 
@@ -39,18 +44,32 @@ export class SourceKitLSPErrorHandler implements ErrorHandler {
         count: number | undefined
     ): Promise<ErrorHandlerResult> {
         if (count && count <= 3) {
+            this.logger?.trace(`Connection error (count=${count}), continuing=${_error.message}`, {
+                label: "SourceKit-LSP",
+            });
             return { action: ErrorAction.Continue };
         }
+        this.logger?.debug(`Connection error (count=${count}), shutting down: ${_error.message}`, {
+            label: "SourceKit-LSP",
+        });
         return { action: ErrorAction.Shutdown };
     }
 
     async closed(): Promise<CloseHandlerResult> {
         this.restarts.push(Date.now());
         if (this.restarts.length <= this.maxRestartCount) {
+            this.logger?.debug(
+                `Connection closed, restarting (restart ${this.restarts.length} of ${this.maxRestartCount})`,
+                { label: "SourceKit-LSP" }
+            );
             return { action: CloseAction.Restart };
         } else {
             const diff = this.restarts[this.restarts.length - 1] - this.restarts[0];
             if (diff <= 3 * 60 * 1000) {
+                this.logger?.debug(
+                    `Connection closed, too many restarts in ${diff}ms, prompting user`,
+                    { label: "SourceKit-LSP" }
+                );
                 return new Promise<CloseHandlerResult>(resolve => {
                     void vscode.window
                         .showErrorMessage(
@@ -61,6 +80,9 @@ export class SourceKitLSPErrorHandler implements ErrorHandler {
                             "No"
                         )
                         .then(result => {
+                            this.logger?.debug(`Restart prompt result: ${result}`, {
+                                label: "SourceKit-LSP",
+                            });
                             if (result === "Yes") {
                                 this.restarts = [];
                                 resolve({ action: CloseAction.Restart });
@@ -70,6 +92,7 @@ export class SourceKitLSPErrorHandler implements ErrorHandler {
                         });
                 });
             } else {
+                this.logger?.debug("Connection closed, restarting", { label: "SourceKit-LSP" });
                 this.restarts.shift();
                 return { action: CloseAction.Restart };
             }

@@ -57,11 +57,18 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async provideTasks(token: vscode.CancellationToken): Promise<vscode.Task[]> {
         if (this.workspaceContext.folders.length === 0) {
+            this.workspaceContext.logger.debug("No folders, providing no plugin tasks", {
+                label: "SwiftPluginTaskProvider",
+            });
             return [];
         }
         const tasks = [];
 
         for (const folderContext of this.workspaceContext.folders) {
+            this.workspaceContext.logger.trace(
+                `Providing ${folderContext.swiftPackage.plugins.length} plugin task(s): folder=${folderContext.name}`,
+                { label: "SwiftPluginTaskProvider" }
+            );
             for (const plugin of folderContext.swiftPackage.plugins) {
                 tasks.push(
                     this.createSwiftPluginTask(plugin, folderContext.toolchain, {
@@ -90,6 +97,10 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
         const currentFolder =
             this.workspaceContext.currentFolder ?? this.workspaceContext.folders[0];
         if (!currentFolder) {
+            this.workspaceContext.logger.trace(
+                `No folder to resolve plugin task against, returning it unchanged: ${task.name}`,
+                { label: "SwiftPluginTaskProvider" }
+            );
             return task;
         }
         // We need to create a new Task object here.
@@ -113,11 +124,16 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
                 cwd,
                 env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
                 presentation: task.presentationOptions,
+                logger: this.workspaceContext.logger,
             }),
             task.problemMatchers
         );
         newTask.detail = task.detail ?? `swift ${swiftArgs.join(" ")}`;
         newTask.presentationOptions = task.presentationOptions;
+        this.workspaceContext.logger.trace(
+            `Resolved plugin task: ${newTask.name}, folder=${currentFolder.name}, cwd=${cwd}, args="${swiftArgs.join(" ")}"`,
+            { label: "SwiftPluginTaskProvider" }
+        );
 
         return newTask;
     }
@@ -157,11 +173,16 @@ export class SwiftPluginTaskProvider implements vscode.TaskProvider {
                 cwd: config.cwd.fsPath,
                 env: { ...configuration.swiftEnvironmentVariables, ...swiftRuntimeEnv() },
                 presentation,
+                logger: this.workspaceContext.logger,
             }),
             []
         );
         task.detail = `swift ${swiftArgs.join(" ")}`;
         task.presentationOptions = presentation;
+        this.workspaceContext.logger.trace(
+            `Created plugin task: ${plugin.name}, scope=${config.scope.name}, cwd=${config.cwd.fsPath}, args="${swiftArgs.join(" ")}"`,
+            { label: "SwiftPluginTaskProvider" }
+        );
         return task as SwiftTask;
     }
 
