@@ -301,6 +301,11 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
     }
 
     override async start(): Promise<void> {
+        // The base client calls `start()` before every request and notification, only
+        // log when this actually starts the server.
+        if (this.state !== State.Stopped) {
+            return super.start();
+        }
         const startTime = Date.now();
         this.swiftLogger.trace(
             `Starting (folders=${this.addedFolders.map(f => f.name).join(", ")})`,

@@ -19,6 +19,9 @@ import * as vscode from "vscode";
 import { FolderContext } from "@src/FolderContext";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { Commands } from "@src/commands";
+import { RollingLog } from "@src/logging/RollingLog";
+import { RollingLogTransport } from "@src/logging/RollingLogTransport";
+import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
 import {
     FileNode,
@@ -31,7 +34,6 @@ import { Version } from "@src/utilities/version";
 
 import { testAssetPath } from "../../fixtures";
 import { tag } from "../../tags";
-import { TestLogger } from "../../utilities/TestLogger";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
 import {
     activateExtensionForSuite,
@@ -52,11 +54,13 @@ tag("medium").suite("ProjectPanelProvider Test Suite", function () {
             await vscode.workspace.openTextDocument(
                 path.join(folderContext.folder.fsPath, "Package.swift")
             );
-            const logger = new TestLogger();
+            const rollingLog = new RollingLog(100);
+            const logger = new SwiftLogger([new RollingLogTransport(rollingLog, "warn")]);
             try {
                 ctx.logger.info("Loading swift plugins");
                 await folderContext.loadSwiftPlugins(logger);
-                expect(logger.logs, "loadSwiftPlugins() should not log anything").to.be.empty;
+                expect(rollingLog.logs, "loadSwiftPlugins() should not log warnings or errors").to
+                    .be.empty;
                 expect(workspaceContext.folders).to.not.have.lengthOf(0);
             } finally {
                 logger.dispose();
