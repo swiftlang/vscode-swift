@@ -15,7 +15,7 @@
 import { cp, readdir, rm, stat } from "fs/promises";
 import * as path from "path";
 import * as semver from "semver";
-import simpleGit, { ResetMode } from "simple-git";
+import { ResetMode, simpleGit } from "simple-git";
 
 import { exec, getRootDirectory, main, withTemporaryDirectory } from "./lib/utilities";
 
