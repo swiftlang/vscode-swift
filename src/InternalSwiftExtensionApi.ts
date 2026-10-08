@@ -493,7 +493,7 @@ export async function checkForSwiftlyInstallation(
  * The welcome walkthrough uses this context variable to render a check mark once Swift is
  * available on the system.
  */
-export async function checkForSwiftLangInstallation(): Promise<void> {
+async function checkForSwiftLangInstallation(): Promise<void> {
     const isInstalled = await isSwiftInstalled();
     await vscode.commands.executeCommand("setContext", "swiftInstalled", isInstalled);
 }

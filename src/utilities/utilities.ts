@@ -23,40 +23,11 @@ import { Disposable } from "./Disposable";
 import { safeBareRepositoryEnvironmentOverride } from "./gitConfig";
 
 /**
- * Whether or not this is a production build.
- *
- * Code that checks for this will be removed completely when the extension is packaged into
- * a VSIX.
- */
-export const IS_PRODUCTION_BUILD = process.env.NODE_ENV === "production";
-
-/**
- * Whether or not the code is being run in a Github Actions workflow.
- */
-export const IS_RUNNING_UNDER_GITHUB_ACTIONS = process.env.GITHUB_ACTIONS === "true";
-
-/**
- * Whether or not the code is being run by `act` CLT.
- */
-export const IS_RUNNING_UNDER_ACT = process.env.ACT === "true";
-
-/**
- * Whether or not the code is being run in a docker container.
- */
-export const IS_RUNNING_UNDER_DOCKER = IS_RUNNING_UNDER_ACT || IS_RUNNING_UNDER_GITHUB_ACTIONS;
-
-/**
  * Whether or not the code is being run as part of a test suite.
  *
  * This will NOT be removed when the extension is packaged into a VSIX, unlike "CI" variable.
  */
 export const IS_RUNNING_UNDER_TEST = process.env.RUNNING_UNDER_VSCODE_TEST_CLI === "1";
-
-/**
- * Determined by the presence of the `VSCODE_DEBUG` environment variable, set by the
- * launch.json when debugging the extension.
- */
-export const IS_RUNNING_UNDER_DEBUGGER = process.env["VSCODE_DEBUG"] === "1";
 
 /** Determines whether the provided object has any properties set to non-null values. */
 export function isEmptyObject(obj: { [key: string]: unknown }): boolean {
