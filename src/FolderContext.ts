@@ -81,18 +81,24 @@ export class FolderContext implements ExternalFolderContext, Disposable {
     }
 
     public async reloadToolchain(): Promise<void> {
+        this.logger.trace("Reloading toolchain", { label: this.name });
         const toolchain = await FolderContext.createToolchain(
             this.folder,
             this.workspaceFolder,
             this.workspaceContext
         );
         this.toolchain = toolchain;
+        this.logger.debug(`Toolchain reloaded (${toolchain.swiftFolderPath}), reloading package`, {
+            label: this.name,
+        });
         await this.swiftPackage.reload(this);
+        this.logger.trace("Package reloaded after toolchain change", { label: this.name });
         await this.workspaceContext.fireEvent(this, FolderOperation.swiftVersionUpdated);
     }
 
     /** dispose of anything FolderContext holds */
     dispose() {
+        this.logger.trace("Disposing folder context", { label: this.name });
         this.linuxMain?.dispose();
         this.swiftPackage.dispose();
         this.packageWatcher.dispose();
@@ -114,6 +120,9 @@ export class FolderContext implements ExternalFolderContext, Disposable {
         workspaceContext: WorkspaceContext
     ): Promise<FolderContext> {
         const statusItemText = `Loading Package (${FolderContext.uriName(folder)})`;
+        const label = { label: FolderContext.uriName(folder) };
+        const createStartTime = Date.now();
+        workspaceContext.logger.trace(`Creating folder context for ${folder.fsPath}`, label);
 
         const result = await workspaceContext.statusItem.showStatusWhileRunning(
             statusItemText,
@@ -123,10 +132,15 @@ export class FolderContext implements ExternalFolderContext, Disposable {
                     workspaceFolder,
                     workspaceContext
                 );
+                workspaceContext.logger.trace(
+                    `Folder toolchain created (${toolchain.swiftFolderPath}), creating package`,
+                    label
+                );
                 const [linuxMain, swiftPackage] = await Promise.all([
                     LinuxMain.create(folder),
                     SwiftPackage.create(folder),
                 ]);
+                workspaceContext.logger.trace("Folder package created", label);
                 return { linuxMain, swiftPackage, toolchain };
             }
         );
@@ -144,11 +158,18 @@ export class FolderContext implements ExternalFolderContext, Disposable {
         );
 
         // List the package's dependencies without blocking folder creation
+        folderContext.logger.trace("Loading package state in background", {
+            label: folderContext.name,
+        });
         void swiftPackage
             .loadPackageState(folderContext, configuration.disableSwiftPMIntegration)
             .then(async () => await swiftPackage.error)
             .catch(error => error)
             .then(async error => {
+                folderContext.logger.trace(
+                    `Background package state load finished (error=${error?.message ?? "none"})`,
+                    { label: folderContext.name }
+                );
                 if (error) {
                     void vscode.window.showErrorMessage(
                         `Failed to load ${folderContext.name}/Package.swift: ${error.message}`
@@ -161,6 +182,9 @@ export class FolderContext implements ExternalFolderContext, Disposable {
 
         // Start watching for changes to Package.swift and Package.resolved
         await folderContext.packageWatcher.install();
+        folderContext.logger.trace(`Folder context created in ${Date.now() - createStartTime}ms`, {
+            label: folderContext.name,
+        });
 
         return folderContext;
     }
@@ -243,16 +267,20 @@ export class FolderContext implements ExternalFolderContext, Disposable {
 
     /** reload swift package for this folder */
     async reload() {
+        this.logger.trace("Reloading package", { label: this.name });
         await this.swiftPackage.reload(this, configuration.disableSwiftPMIntegration);
+        this.logger.trace("Package reloaded", { label: this.name });
     }
 
     /** reload Package.resolved for this folder */
     async reloadPackageResolved() {
+        this.logger.trace("Reloading Package.resolved", { label: this.name });
         await this.swiftPackage.reloadPackageResolved();
     }
 
     /** reload workspace-state.json for this folder */
     async reloadWorkspaceState() {
+        this.logger.trace("Reloading workspace-state.json", { label: this.name });
         await this.swiftPackage.reloadWorkspaceState();
     }
 
@@ -291,6 +319,7 @@ export class FolderContext implements ExternalFolderContext, Disposable {
                 this.logger,
                 this.workspaceContext.onDidChangeSwiftFiles.bind(this.workspaceContext)
             );
+            this.logger.trace("Test explorer created", { label: this.name });
             this.testExplorerResolver?.(this.testExplorer);
         }
         return this.testExplorer;
@@ -298,6 +327,7 @@ export class FolderContext implements ExternalFolderContext, Disposable {
 
     /** Remove Test explorer from this folder */
     removeTestExplorer() {
+        this.logger.trace("Removing test explorer", { label: this.name });
         this.testExplorer?.dispose();
         this.testExplorer = undefined;
     }
@@ -305,6 +335,7 @@ export class FolderContext implements ExternalFolderContext, Disposable {
     /** Refresh the tests in the test explorer for this folder */
     async refreshTestExplorer() {
         if (this.testExplorer?.controller.resolveHandler) {
+            this.logger.trace("Refreshing test explorer", { label: this.name });
             return this.testExplorer.controller.resolveHandler(undefined);
         }
     }

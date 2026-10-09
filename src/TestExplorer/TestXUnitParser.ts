@@ -52,9 +52,15 @@ export class TestXUnitParser {
         runState: ITestRunState,
         logger: SwiftLogger
     ): Promise<TestResults | undefined> {
+        logger.trace(`Parsing ${buffer.length} chars of xUnit XML`, { label: "TestXUnitParser" });
         const xml = await xml2js.parseStringPromise(buffer);
         try {
-            return await this.parseXUnit(xml, runState);
+            const results = await this.parseXUnit(xml, runState);
+            logger.trace(
+                `Parsed xUnit results: ${results.tests} tests, ${results.failures} failures, ${results.errors} errors`,
+                { label: "TestXUnitParser" }
+            );
+            return results;
         } catch (error) {
             // ignore error
             logger.error(`Error parsing xUnit output: ${error}`);

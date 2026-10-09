@@ -14,10 +14,15 @@
 import * as vscode from "vscode";
 
 import { Disposable } from "../utilities/Disposable";
-import { ReadOnlySwiftProcess, SwiftProcess, SwiftPtyProcess } from "./SwiftProcess";
+import {
+    ReadOnlySwiftProcess,
+    SwiftProcess,
+    SwiftProcessOptions,
+    SwiftPtyProcess,
+} from "./SwiftProcess";
 import { SwiftPseudoterminal } from "./SwiftPseudoterminal";
 
-interface SwiftExecutionOptions extends vscode.ProcessExecutionOptions {
+interface SwiftExecutionOptions extends SwiftProcessOptions {
     presentation?: vscode.TaskPresentationOptions;
     readOnlyTerminal?: boolean;
 }
@@ -41,8 +46,16 @@ export class SwiftExecution extends vscode.CustomExecution implements Disposable
         private swiftProcess: SwiftProcess | undefined = undefined
     ) {
         super(async () => {
+            options.logger?.trace(
+                `Custom execution started: ${args[0] ?? command}, cwd=${options.cwd}, readOnlyTerminal=${options.readOnlyTerminal ?? false}, providedProcess=${swiftProcess !== undefined}`,
+                { label: "SwiftExecution" }
+            );
             const createSwiftProcess = () => {
                 if (!swiftProcess) {
+                    options.logger?.trace(
+                        `Creating ${options.readOnlyTerminal ? "read-only" : "pty"} swift process: ${args[0] ?? command}, cwd=${options.cwd}`,
+                        { label: "SwiftExecution" }
+                    );
                     this.swiftProcess = options.readOnlyTerminal
                         ? new ReadOnlySwiftProcess(command, args, options)
                         : new SwiftPtyProcess(command, args, options);
@@ -50,7 +63,11 @@ export class SwiftExecution extends vscode.CustomExecution implements Disposable
                 }
                 return this.swiftProcess!;
             };
-            return new SwiftPseudoterminal(createSwiftProcess, options.presentation || {});
+            return new SwiftPseudoterminal(
+                createSwiftProcess,
+                options.presentation || {},
+                options.logger
+            );
         });
         if (this.swiftProcess) {
             this.listen(this.swiftProcess);
@@ -90,6 +107,10 @@ export class SwiftExecution extends vscode.CustomExecution implements Disposable
      * Terminate the underlying executable.
      */
     terminate(signal?: NodeJS.Signals) {
+        this.options.logger?.trace(
+            `Terminate execution: ${this.args[0] ?? this.command}, hasProcess=${this.swiftProcess !== undefined}`,
+            { label: "SwiftExecution" }
+        );
         this.swiftProcess?.terminate(signal);
     }
 }

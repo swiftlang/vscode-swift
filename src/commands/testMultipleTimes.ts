@@ -47,9 +47,16 @@ export async function runTestMultipleTimes(
         numExecutions = parseInt(str);
     }
 
+    const logger = currentFolder.workspaceContext.logger;
+    const label = currentFolder.name;
     if (!currentFolder.testExplorer) {
+        logger.debug("No test explorer, not running tests multiple times", { label });
         return;
     }
+    logger.debug(
+        `Running ${tests.length} tests ${numExecutions} times as ${kind}, untilFailure=${untilFailure}`,
+        { label }
+    );
     const token = new vscode.CancellationTokenSource();
     const testExplorer = currentFolder.testExplorer;
     const request = new vscode.TestRunRequest(tests);
@@ -63,7 +70,10 @@ export async function runTestMultipleTimes(
 
     // If the user terminates a debugging session we want
     // to cancel the remaining iterations.
-    const terminationListener = runner.onDebugSessionTerminated(() => token.cancel());
+    const terminationListener = runner.onDebugSessionTerminated(() => {
+        logger.trace("Debug session terminated, cancelling remaining iterations", { label });
+        token.cancel();
+    });
 
     testExplorer.onDidCreateTestRunEmitter.fire(runner.testRun);
 
@@ -88,16 +98,25 @@ export async function runTestMultipleTimes(
         }
 
         runStates.push(runState);
+        logger.trace(
+            `Iteration ${i + 1} finished: passed=${runState.passed.length}, failed=${runState.failed.length}, skipped=${runState.skipped.length}`,
+            { label }
+        );
 
         if (
             runner.testRun.isCancellationRequested ||
             (untilFailure && runState.failed.length > 0)
         ) {
+            logger.debug(
+                `Stopping after iteration ${i + 1}: cancelled=${runner.testRun.isCancellationRequested}, failed=${runState.failed.length}`,
+                { label }
+            );
             break;
         }
     }
     await runner.testRun.end();
     terminationListener.dispose();
+    logger.debug(`Finished ${runStates.length} iterations`, { label });
 
     return runStates;
 }

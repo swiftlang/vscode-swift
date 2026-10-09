@@ -23,7 +23,7 @@ import { BuildFlags } from "@src/toolchain/BuildFlags";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
 import * as utilities from "@src/utilities/utilities";
 
-import { instance, mockGlobalFunction, mockGlobalValue, mockObject } from "../MockUtils";
+import { instance, mockFn, mockGlobalFunction, mockGlobalValue, mockObject } from "../MockUtils";
 
 suite("SwiftPackage Suite", () => {
     suite("loadSwiftPlugins", () => {
@@ -78,7 +78,7 @@ suite("SwiftPackage Suite", () => {
 
             await pkg.loadSwiftPlugins(
                 instance(mockObject<SwiftToolchain>({})),
-                instance(mockObject<SwiftLogger>({}))
+                instance(mockObject<SwiftLogger>({ trace: mockFn(), debug: mockFn() }))
             );
 
             expect(pkg.workspaceState).to.deep.equal(JSON.parse(refreshedWs));
@@ -109,7 +109,7 @@ suite("SwiftPackage Suite", () => {
 
             const pkg = await SwiftPackage.create(vscode.Uri.file("/tmp/swift-package-test"));
             const toolchain = instance(mockObject<SwiftToolchain>({}));
-            const logger = instance(mockObject<SwiftLogger>({}));
+            const logger = instance(mockObject<SwiftLogger>({ trace: mockFn(), debug: mockFn() }));
 
             const callA = pkg.loadSwiftPlugins(toolchain, logger);
             const callB = pkg.loadSwiftPlugins(toolchain, logger);
@@ -186,7 +186,7 @@ suite("SwiftPackage Suite", () => {
 
             const callPromise = pkg.loadSwiftPlugins(
                 instance(mockObject<SwiftToolchain>({})),
-                instance(mockObject<SwiftLogger>({}))
+                instance(mockObject<SwiftLogger>({ trace: mockFn(), debug: mockFn() }))
             );
 
             // Let microtasks settle so loadPlugins has completed and we are
@@ -288,7 +288,7 @@ suite("SwiftPackage Suite", () => {
 
             await pkg.loadSwiftPlugins(
                 instance(mockObject<SwiftToolchain>({})),
-                instance(mockObject<SwiftLogger>({}))
+                instance(mockObject<SwiftLogger>({ trace: mockFn(), debug: mockFn() }))
             );
 
             // `--list` ran against the relocated scratch directory...

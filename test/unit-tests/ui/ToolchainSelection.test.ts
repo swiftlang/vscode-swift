@@ -55,7 +55,7 @@ suite("ToolchainSelection Unit Test Suite", () => {
             new Error("execFile was not properly mocked for this test.")
         );
 
-        mockedLogger = mockObject<SwiftLogger>({});
+        mockedLogger = mockObject<SwiftLogger>({ trace: mockFn(), debug: mockFn() });
 
         // Set up VSCode mocks
         mockedVSCodeWindow.showQuickPick.resolves(undefined);

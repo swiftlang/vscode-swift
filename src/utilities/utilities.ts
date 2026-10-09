@@ -170,14 +170,29 @@ export async function execFile(
         ...options,
         maxBuffer: options.maxBuffer ?? 1024 * 1024 * 64, // 64MB
     };
+    const logger = folderContext?.workspaceContext.logger;
+    const startTime = Date.now();
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
-        cp.execFile(executable, args, options, (error, stdout, stderr) => {
+        const child = cp.execFile(executable, args, options, (error, stdout, stderr) => {
             if (error) {
+                const execError = error as cp.ExecFileException;
+                logger?.trace(
+                    `Exec failed: "${executable}" (pid=${child.pid}, code=${execError.code}, signal=${execError.signal}, killed=${execError.killed}, ${Date.now() - startTime}ms)`,
+                    { label: folderContext?.name }
+                );
                 reject(new ExecFileError(error, stdout.toString(), stderr.toString()));
             } else {
+                logger?.trace(
+                    `Exec finished: "${executable}" (pid=${child.pid}, ${Date.now() - startTime}ms)`,
+                    { label: folderContext?.name }
+                );
                 resolve({ stdout: stdout.toString(), stderr: stderr.toString() });
             }
         });
+        logger?.trace(
+            `Exec started: "${executable}" (pid=${child.pid}, cwd=${options.cwd}, timeout=${options.timeout ?? "none"})`,
+            { label: folderContext?.name }
+        );
     });
 }
 
@@ -224,18 +239,33 @@ export async function execFileStreamOutput(
     if (Object.keys(bareRepositoryOverride).length > 0) {
         options.env = { ...(options.env ?? process.env), ...bareRepositoryOverride };
     }
+    const logger = folderContext?.workspaceContext.logger;
+    const startTime = Date.now();
     return new Promise<void>((resolve, reject) => {
         let cancellation: Disposable;
         const p = cp.execFile(executable, args, options, error => {
             if (error) {
+                const execError = error as cp.ExecFileException;
+                logger?.trace(
+                    `Exec failed: "${executable}" (pid=${p.pid}, code=${execError.code}, signal=${execError.signal}, killed=${execError.killed}, ${Date.now() - startTime}ms)`,
+                    { label: folderContext?.name }
+                );
                 reject(error);
             } else {
+                logger?.trace(
+                    `Exec finished: "${executable}" (pid=${p.pid}, ${Date.now() - startTime}ms)`,
+                    { label: folderContext?.name }
+                );
                 resolve();
             }
             if (cancellation) {
                 cancellation.dispose();
             }
         });
+        logger?.trace(
+            `Exec started: "${executable}" (pid=${p.pid}, cwd=${options.cwd}, cancellable=${token !== null})`,
+            { label: folderContext?.name }
+        );
         if (stdout) {
             p.stdout?.pipe(stdout);
         }
@@ -244,6 +274,9 @@ export async function execFileStreamOutput(
         }
         if (token) {
             cancellation = token.onCancellationRequested(() => {
+                logger?.trace(`Exec cancelled, killing pid ${p.pid} with ${killSignal}`, {
+                    label: folderContext?.name,
+                });
                 p.kill(killSignal);
             });
         }

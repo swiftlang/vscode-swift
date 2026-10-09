@@ -25,7 +25,7 @@ suite("LoggingDebugAdapterTracker Unit Test Suite", () => {
     let session: vscode.DebugSession;
 
     setup(() => {
-        logger = mockObject<SwiftLogger>({ error: mockFn() });
+        logger = mockObject<SwiftLogger>({ trace: mockFn(), error: mockFn() });
         session = { id: "session-1" } as vscode.DebugSession;
     });
 

@@ -74,9 +74,16 @@ export class SwiftlyToolchainWatcher implements Disposable {
      */
     private enqueueUpdate(update: () => void | Promise<void>): void {
         if (this.isDisposed) {
+            this.logger.trace("Ignoring update queued after dispose", {
+                label: "SwiftlyToolchainWatcher",
+            });
             return;
         }
         this.queuedUpdates.push(update);
+        this.logger.trace(
+            `Queued update (queueLength=${this.queuedUpdates.length}, processing=${this.isProcessingUpdate})`,
+            { label: "SwiftlyToolchainWatcher" }
+        );
         this.processQueuedUpdates();
     }
 
@@ -96,7 +103,9 @@ export class SwiftlyToolchainWatcher implements Disposable {
 
     private async runUpdate(update: () => void | Promise<void>): Promise<void> {
         try {
+            this.logger.trace("Running queued update", { label: "SwiftlyToolchainWatcher" });
             await update();
+            this.logger.trace("Finished queued update", { label: "SwiftlyToolchainWatcher" });
         } catch (error) {
             this.logger.error(Error("Failed to process queued update", { cause: error }), {
                 label: "SwiftlyToolchainWatcher",
@@ -116,10 +125,21 @@ export class SwiftlyToolchainWatcher implements Disposable {
             vscode.workspace.onDidChangeConfiguration(this.handleConfigurationChanged, this)
         );
 
+        this.logger.trace("Querying initial global swiftly version", {
+            label: "SwiftlyToolchainWatcher",
+        });
         this.globalSwiftVersion = await Swiftly.inUseVersion();
+        this.logger.debug(
+            `Initial global swiftly version: ${this.globalSwiftVersion ?? "<none>"}`,
+            { label: "SwiftlyToolchainWatcher" }
+        );
         this.interval = setInterval(() => {
             void this.checkGlobalSwiftlyVersion();
         }, SwiftlyToolchainWatcher.CHECK_INTERVAL);
+        this.logger.trace(
+            `Started polling global swiftly version every ${SwiftlyToolchainWatcher.CHECK_INTERVAL}ms`,
+            { label: "SwiftlyToolchainWatcher" }
+        );
     }
 
     private handleConfigurationChanged(event: vscode.ConfigurationChangeEvent): void {
@@ -129,10 +149,16 @@ export class SwiftlyToolchainWatcher implements Disposable {
         ) {
             return;
         }
+        this.logger.trace("Swift version file settings changed, rewatching all folders", {
+            label: "SwiftlyToolchainWatcher",
+        });
         this.enqueueUpdate(() => this.rewatchAllFolders());
     }
 
     private handleWorkspaceContextChanged(workspaceContext: WorkspaceContext): void {
+        this.logger.trace("Workspace context changed, resetting watched folders", {
+            label: "SwiftlyToolchainWatcher",
+        });
         this.workspaceSubscriptions.forEach(s => s.dispose());
         this.workspaceSubscriptions = [];
         this.enqueueUpdate(() => {
@@ -155,9 +181,13 @@ export class SwiftlyToolchainWatcher implements Disposable {
         return searchParentDirectories(directory, async directory => {
             const versionFile = path.join(directory, ".swift-version");
             try {
+                const value = (await fs.readFile(versionFile, "utf-8")).trim();
+                this.logger.trace(`Read "${value}" from ${versionFile}`, {
+                    label: "SwiftlyToolchainWatcher",
+                });
                 return {
                     kind: "stop",
-                    value: (await fs.readFile(versionFile, "utf-8")).trim(),
+                    value,
                 };
             } catch (error) {
                 if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
@@ -179,9 +209,15 @@ export class SwiftlyToolchainWatcher implements Disposable {
 
         switch (operation) {
             case FolderOperation.add:
+                this.logger.trace(`Folder added: ${folder.folder.fsPath}`, {
+                    label: "SwiftlyToolchainWatcher",
+                });
                 this.enqueueUpdate(() => this.addFolder(folder));
                 break;
             case FolderOperation.remove:
+                this.logger.trace(`Folder removed: ${folder.folder.fsPath}`, {
+                    label: "SwiftlyToolchainWatcher",
+                });
                 this.enqueueUpdate(() => this.removeFolder(folder));
                 break;
         }
@@ -189,11 +225,18 @@ export class SwiftlyToolchainWatcher implements Disposable {
 
     private async addFolder(folder: FolderContext): Promise<void> {
         if (this.watchedFolders.has(folder.folder.fsPath)) {
+            this.logger.trace(`Folder already watched: ${folder.folder.fsPath}`, {
+                label: "SwiftlyToolchainWatcher",
+            });
             return;
         }
 
         const folderConfiguration = configuration.folder(folder.workspaceFolder);
         if (folderConfiguration.ignoreSwiftVersionFile) {
+            this.logger.trace(
+                `Ignoring .swift-version files for ${folder.folder.fsPath} per settings`,
+                { label: "SwiftlyToolchainWatcher" }
+            );
             return;
         }
 
@@ -204,6 +247,10 @@ export class SwiftlyToolchainWatcher implements Disposable {
         watchedPaths.forEach(directory => this.addDirectoryWatcher(directory));
         const version = await this.resolveSwiftVersion(folder);
         this.watchedFolders.set(folder.folder.fsPath, { folder, watchedPaths, version });
+        this.logger.trace(
+            `Watching ${watchedPaths.length} director(ies) for ${folder.folder.fsPath}, version=${version ?? "<none>"}`,
+            { label: "SwiftlyToolchainWatcher" }
+        );
     }
 
     private removeFolder(folder: FolderContext): void {
@@ -212,6 +259,9 @@ export class SwiftlyToolchainWatcher implements Disposable {
             return;
         }
         this.watchedFolders.delete(folder.folder.fsPath);
+        this.logger.trace(`Stopped watching ${folder.folder.fsPath}`, {
+            label: "SwiftlyToolchainWatcher",
+        });
         watchedFolder.watchedPaths.forEach(directory => this.releaseDirectoryWatcher(directory));
     }
 
@@ -251,8 +301,12 @@ export class SwiftlyToolchainWatcher implements Disposable {
         const watcher = vscode.workspace.createFileSystemWatcher(
             new vscode.RelativePattern(vscode.Uri.file(directory), ".swift-version")
         );
-        const handleChange = () =>
+        const handleChange = () => {
+            this.logger.trace(`.swift-version file event in ${directory}`, {
+                label: "SwiftlyToolchainWatcher",
+            });
             this.enqueueUpdate(() => this.handleSwiftVersionFileChanged(directory));
+        };
         this.directoryWatchers.set(directory, {
             watcher,
             subscriptions: [
@@ -274,6 +328,9 @@ export class SwiftlyToolchainWatcher implements Disposable {
             return;
         }
         this.directoryWatchers.delete(directory);
+        this.logger.trace(`Disposing .swift-version watcher for ${directory}`, {
+            label: "SwiftlyToolchainWatcher",
+        });
         disposeDirectoryWatcher(directoryWatcher);
     }
 
@@ -299,12 +356,24 @@ export class SwiftlyToolchainWatcher implements Disposable {
             affectedFolders.map(async watcher => {
                 const oldSwiftVersion = watcher.version;
                 const newSwiftVersion = await this.resolveSwiftVersion(watcher.folder);
+                const folderPath = watcher.folder.folder.fsPath;
                 if (newSwiftVersion === oldSwiftVersion) {
+                    this.logger.trace(
+                        `Swift version unchanged for ${folderPath}: ${newSwiftVersion ?? "<none>"}`,
+                        { label: "SwiftlyToolchainWatcher" }
+                    );
                     return;
                 }
 
                 watcher.version = newSwiftVersion;
+                this.logger.debug(
+                    `Swift version for ${folderPath} changed from ${oldSwiftVersion ?? "<none>"} to ${newSwiftVersion ?? "<none>"}`,
+                    { label: "SwiftlyToolchainWatcher" }
+                );
                 if (newSwiftVersion === "") {
+                    this.logger.trace(`Empty .swift-version for ${folderPath}, skipping reload`, {
+                        label: "SwiftlyToolchainWatcher",
+                    });
                     // An empty file is almost always a write that is still in progress, as
                     // Swiftly.use() creates the file before asking swiftly to populate it.
                     // Record the version so that the real write is still seen as a change, but
@@ -312,9 +381,19 @@ export class SwiftlyToolchainWatcher implements Disposable {
                     return;
                 }
                 if (watcher.folder.toolchain.manager !== "swiftly") {
+                    this.logger.debug(
+                        `Toolchain for ${folderPath} is not managed by swiftly, skipping reload`,
+                        { label: "SwiftlyToolchainWatcher" }
+                    );
                     return;
                 }
+                this.logger.trace(`Reloading toolchain for ${folderPath}`, {
+                    label: "SwiftlyToolchainWatcher",
+                });
                 await watcher.folder.reloadToolchain();
+                this.logger.trace(`Reloaded toolchain for ${folderPath}`, {
+                    label: "SwiftlyToolchainWatcher",
+                });
             })
         );
     }
@@ -331,14 +410,27 @@ export class SwiftlyToolchainWatcher implements Disposable {
             return;
         }
 
+        this.logger.debug(
+            `Global swiftly version changed from ${oldSwiftVersion} to ${newSwiftVersion}`,
+            { label: "SwiftlyToolchainWatcher" }
+        );
         const toolchainManager = this.api.workspaceContext?.globalToolchain.manager ?? "swiftly";
         if (toolchainManager !== "swiftly") {
+            this.logger.debug(`Global toolchain manager is ${toolchainManager}, skipping reload`, {
+                label: "SwiftlyToolchainWatcher",
+            });
             return;
         }
+        this.logger.trace("Reloading workspace context for global swiftly change", {
+            label: "SwiftlyToolchainWatcher",
+        });
         this.api.reloadWorkspaceContext();
     }
 
     dispose(): void {
+        this.logger.trace(`Disposing (dropping ${this.queuedUpdates.length} queued update(s))`, {
+            label: "SwiftlyToolchainWatcher",
+        });
         this.isDisposed = true;
         this.queuedUpdates = [];
         this.subscriptions.forEach(s => s.dispose());

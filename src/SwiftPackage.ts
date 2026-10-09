@@ -160,6 +160,17 @@ function isError(state: SwiftPackageState): state is Error {
     return state instanceof Error;
 }
 
+/** Short summary of a package state for trace logging */
+function describePackageState(state: SwiftPackageState): string {
+    if (state === undefined) {
+        return "no package";
+    }
+    if (isError(state)) {
+        return `error: ${state.message}`;
+    }
+    return `${state.name ?? "unnamed"} (${state.targets?.length ?? 0} targets, ${state.dependencies?.length ?? 0} dependencies)`;
+}
+
 /**
  * Class holding Swift Package Manager Package
  */
@@ -230,7 +241,11 @@ export class SwiftPackage implements ExternalSwiftPackage, Disposable {
         disableSwiftPMIntegration: boolean = false
     ): Promise<SwiftPackageState> {
         const resolve = this.contentsResolve;
+        folderContext.logger.trace("Loading package state", { label: folderContext.name });
         const result = await this.performLoadPackageState(folderContext, disableSwiftPMIntegration);
+        folderContext.logger.debug(`Package state loaded: ${describePackageState(result)}`, {
+            label: folderContext.name,
+        });
         resolve(result);
         return result;
     }
@@ -241,6 +256,9 @@ export class SwiftPackage implements ExternalSwiftPackage, Disposable {
     ): Promise<SwiftPackageState> {
         // When SwiftPM integration is disabled, return undefined to disable all features
         if (disableSwiftPMIntegration) {
+            folderContext.logger.debug("SwiftPM integration disabled, skipping package load", {
+                label: folderContext.name,
+            });
             return undefined;
         }
 
@@ -249,10 +267,16 @@ export class SwiftPackage implements ExternalSwiftPackage, Disposable {
         // (e.g. projects with only compile_commands.json or BSP config).
         const packageSwiftPath = path.join(folderContext.folder.fsPath, "Package.swift");
         if (!(await fileExists(packageSwiftPath))) {
+            folderContext.logger.debug("No Package.swift found, skipping package load", {
+                label: folderContext.name,
+            });
             return undefined;
         }
 
         // If there is an existing package load, cancel any running tasks first before loading a new one.
+        folderContext.logger.trace("Cancelling any previous package load", {
+            label: folderContext.name,
+        });
         this.tokenSource.cancel();
         this.tokenSource.dispose();
         this.tokenSource = new vscode.CancellationTokenSource();
@@ -260,10 +284,19 @@ export class SwiftPackage implements ExternalSwiftPackage, Disposable {
         try {
             // Use swift package describe to describe the package targets, products, and platforms
             // Use swift package show-dependencies to get the dependencies in a tree format
-            const describe = await describePackage(folderContext, this.tokenSource.token);
-            const dependencies = await showPackageDependencies(
-                folderContext,
-                this.tokenSource.token
+            const token = this.tokenSource.token;
+            folderContext.logger.trace(`Running "swift package describe"`, {
+                label: folderContext.name,
+            });
+            const describe = await describePackage(folderContext, token);
+            folderContext.logger.trace(
+                `"swift package describe" finished, running "swift package show-dependencies" (cancelled=${token.isCancellationRequested})`,
+                { label: folderContext.name }
+            );
+            const dependencies = await showPackageDependencies(folderContext, token);
+            folderContext.logger.trace(
+                `"swift package show-dependencies" finished (cancelled=${token.isCancellationRequested})`,
+                { label: folderContext.name }
             );
 
             const packageState = {
@@ -301,10 +334,16 @@ export class SwiftPackage implements ExternalSwiftPackage, Disposable {
     ): Promise<PackagePlugin[]> {
         // When SwiftPM integration is disabled, return empty plugin list
         if (disableSwiftPMIntegration) {
+            logger.debug("SwiftPM integration disabled, skipping plugin list", {
+                label: "SwiftPackage",
+            });
             return [];
         }
 
         try {
+            logger.trace(`Running "swift package plugin --list" in ${folder.fsPath}`, {
+                label: "SwiftPackage",
+            });
             // Pin the scratch path so `swift package plugin --list` regenerates
             // workspace-state.json in the exact directory loadWorkspaceState
             // reads it back from.
@@ -328,6 +367,9 @@ export class SwiftPackage implements ExternalSwiftPackage, Disposable {
                     });
                 }
             }
+            logger.debug(`Found ${plugins.length} plugins in ${folder.fsPath}`, {
+                label: "SwiftPackage",
+            });
             return plugins;
         } catch (error) {
             logger.error(`Failed to load plugins: ${error}`);
@@ -363,9 +405,14 @@ export class SwiftPackage implements ExternalSwiftPackage, Disposable {
         this.contentsPromise = promise;
         this.contentsResolve = resolve;
 
+        folderContext.logger.trace("Reloading package state", { label: folderContext.name });
         const loadedContents = await this.performLoadPackageState(
             folderContext,
             disableSwiftPMIntegration
+        );
+        folderContext.logger.debug(
+            `Package state reloaded: ${describePackageState(loadedContents)}`,
+            { label: folderContext.name }
         );
 
         this._contents = loadedContents;
@@ -392,7 +439,11 @@ export class SwiftPackage implements ExternalSwiftPackage, Disposable {
         // package plugin --list` regenerates it as a side effect and trusted-plugin
         // URL checks (see TrustedPlugins.ts) require the two fields to move
         // together.
+        logger.trace(`Queueing plugin load for ${this.folder.fsPath}`, { label: "SwiftPackage" });
         const next = this.pluginLoadQueue.then(async () => {
+            logger.trace(`Starting plugin load for ${this.folder.fsPath}`, {
+                label: "SwiftPackage",
+            });
             const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(
                 this.folder.fsPath,
                 true
@@ -410,6 +461,9 @@ export class SwiftPackage implements ExternalSwiftPackage, Disposable {
             );
             this.plugins = newPlugins;
             this.workspaceState = newWorkspaceState;
+            logger.trace(`Finished plugin load for ${this.folder.fsPath}`, {
+                label: "SwiftPackage",
+            });
         });
         this.pluginLoadQueue = next.catch(() => undefined);
         await next;

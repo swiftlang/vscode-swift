@@ -35,6 +35,11 @@ export async function executeTaskWithUI(
     checkAlreadyRunning: boolean = false,
     token?: vscode.CancellationToken
 ): Promise<boolean> {
+    const logger = folderContext.workspaceContext.logger;
+    logger.trace(
+        `Queueing task with UI: ${task.name}, folder=${folderContext.name}, checkAlreadyRunning=${checkAlreadyRunning}, hasToken=${token !== undefined}`,
+        { label: "executeTaskWithUI" }
+    );
     try {
         const exitCode = await folderContext.taskQueue.queueOperation(
             new TaskOperation(task, {
@@ -43,6 +48,10 @@ export async function executeTaskWithUI(
                 log: description,
             }),
             token
+        );
+        logger.trace(
+            `Task with UI finished: ${task.name}, folder=${folderContext.name}, exitCode=${exitCode}`,
+            { label: "executeTaskWithUI" }
         );
         if (exitCode === 0) {
             return true;
@@ -53,6 +62,10 @@ export async function executeTaskWithUI(
             return false;
         }
     } catch (error) {
+        logger.trace(
+            `Task with UI failed: ${task.name}, folder=${folderContext.name}, error=${error}`,
+            { label: "executeTaskWithUI" }
+        );
         if (showErrors) {
             void vscode.window.showErrorMessage(`${description} failed: ${error}`);
         }
@@ -73,6 +86,10 @@ export function updateAfterError(result: boolean, folderContext: FolderContext) 
     folderContext.hasResolveErrors = !result;
 
     if (triggerResolvedUpdatedEvent && !folderContext.hasResolveErrors) {
+        folderContext.workspaceContext.logger.trace(
+            `Resolve errors cleared, firing resolvedUpdated: folder=${folderContext.name}`,
+            { label: "updateAfterError" }
+        );
         void folderContext.fireEvent(FolderOperation.resolvedUpdated);
     }
 }

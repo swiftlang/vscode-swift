@@ -15,6 +15,9 @@ import { FolderOperation, WorkspaceContext } from "../../WorkspaceContext";
 
 export function updateDependenciesViewList(ctx: WorkspaceContext, flatList: boolean) {
     if (ctx.currentFolder) {
+        ctx.logger.trace(`Updating dependencies view (flatList=${flatList})`, {
+            label: ctx.currentFolder.name,
+        });
         ctx.contextKeys.flatDependenciesList = flatList;
         void ctx.fireEvent(ctx.currentFolder, FolderOperation.packageViewUpdated);
     }

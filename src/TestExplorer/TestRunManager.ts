@@ -38,10 +38,20 @@ export class TestRunManager {
         tokenSource: vscode.CancellationTokenSource
     ) {
         const key = this.getTestRunKey(folder);
+        const replaced = this.activeTestRuns.get(key);
+        this.trace(
+            folder,
+            `Registering test run ${testRun.runId}, replacing active run ${replaced?.testRun.runId ?? "none"}, ${this.activeTestRuns.size} active runs`
+        );
         this.activeTestRuns.set(key, { testRun, tokenSource });
 
         // When the test run completes, remove it from active test runs
         testRun.onTestRunComplete(() => {
+            const active = this.activeTestRuns.get(key);
+            this.trace(
+                folder,
+                `Test run ${testRun.runId} completed, removing active run ${active?.testRun.runId ?? "none"}`
+            );
             this.activeTestRuns.delete(key);
         });
     }
@@ -54,8 +64,11 @@ export class TestRunManager {
         const key = this.getTestRunKey(folder);
         const activeRun = this.activeTestRuns.get(key);
         if (activeRun) {
+            this.trace(folder, `Cancelling active test run ${activeRun.testRun.runId}`);
             activeRun.testRun.skipPendingTests();
             activeRun.tokenSource.cancel();
+        } else {
+            this.trace(folder, "No active test run to cancel");
         }
     }
 
@@ -77,5 +90,9 @@ export class TestRunManager {
      */
     private getTestRunKey(folder: FolderContext) {
         return folder.folder.fsPath;
+    }
+
+    private trace(folder: FolderContext, message: string) {
+        folder.workspaceContext.logger.trace(message, { label: folder.name });
     }
 }

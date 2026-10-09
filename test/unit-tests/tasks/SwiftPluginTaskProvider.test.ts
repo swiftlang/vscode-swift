@@ -29,6 +29,7 @@ import { SwiftToolchain } from "@src/toolchain/toolchain";
 import { Version } from "@src/utilities/version";
 
 import { MockedObject, instance, mockFn, mockGlobalValue, mockObject } from "../../MockUtils";
+import { TestLogger } from "../../utilities/TestLogger";
 import { makeWorkspaceState } from "./fixtures/pluginFixtures";
 
 suite("SwiftPluginTaskProvider Unit Test Suite", () => {
@@ -52,6 +53,7 @@ suite("SwiftPluginTaskProvider Unit Test Suite", () => {
             ),
         });
         const folderContext = mockObject<FolderContext>({
+            name: "folder",
             workspaceContext: instance(workspaceContext),
             workspaceFolder,
             toolchain: instance(toolchain),
@@ -59,6 +61,7 @@ suite("SwiftPluginTaskProvider Unit Test Suite", () => {
         workspaceContext = mockObject<WorkspaceContext>({
             globalToolchain: instance(toolchain),
             currentFolder: instance(folderContext),
+            logger: new TestLogger(),
         });
         workspaceFolder = {
             uri: vscode.Uri.file("/path/to/workspace"),

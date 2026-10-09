@@ -41,6 +41,7 @@ export async function debugBuild(ctx: WorkspaceContext, target?: string) {
 export async function cleanBuild(ctx: WorkspaceContext) {
     const current = ctx.currentFolder;
     if (!current) {
+        ctx.logger.debug("No current folder, skipping clean build", { label: "build" });
         return;
     }
     return await folderCleanBuild(current);
@@ -60,6 +61,7 @@ async function folderCleanBuild(folderContext: FolderContext) {
             packageName: packageName(folderContext),
             presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
             group: vscode.TaskGroup.Clean,
+            logger: folderContext.workspaceContext.logger,
         },
         folderContext.toolchain
     );
@@ -109,13 +111,25 @@ async function debugBuildWithOptions(
 
     const launchConfig = await getLaunchConfiguration(target.name, "debug", current);
     if (launchConfig) {
+        ctx.logger.debug(
+            `Starting debug launch: target=${target.name}, folder=${current.name}, noDebug=${options.noDebug ?? false}`,
+            { label: "build" }
+        );
         ctx.buildStarted(target.name, launchConfig, options);
         const result = await debugLaunchConfig(
             vscode.workspace.workspaceFile ? undefined : current.workspaceFolder,
             launchConfig,
             options
         );
+        ctx.logger.debug(
+            `Debug launch finished: target=${target.name}, folder=${current.name}, result=${result}`,
+            { label: "build" }
+        );
         ctx.buildFinished(target.name, launchConfig, options);
         return result;
     }
+    ctx.logger.debug(
+        `No launch configuration found: target=${target.name}, folder=${current.name}`,
+        { label: "build" }
+    );
 }

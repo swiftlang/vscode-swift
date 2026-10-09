@@ -198,6 +198,8 @@ export class SwiftTestingOutputParser {
     private testCaseMap = new Map<string, Map<string, TestCase>>();
     private reader?: INamedPipeReader;
     private argumentRows: ParameterizedArgumentRows;
+    private linesReceived = 0;
+    private unknownKindsSeen = new Set<string>();
 
     constructor(
         testCaseSink: ParameterizedTestCaseSink,
@@ -217,7 +219,13 @@ export class SwiftTestingOutputParser {
         pipeReader?: INamedPipeReader
     ): Promise<void> {
         // Creates a reader based on the platform unless being provided in a test context.
+        if (this.reader) {
+            this.trace("Watching swift-testing pipe while a previous reader is still open");
+        }
         this.reader = pipeReader ?? this.createReader(path);
+        this.linesReceived = 0;
+        this.unknownKindsSeen.clear();
+        this.trace(`Watching swift-testing pipe ${path}`);
         const readlinePipe = new PassThrough();
 
         // Use readline to automatically chunk the data into lines,
@@ -232,6 +240,10 @@ export class SwiftTestingOutputParser {
         // synchronously. Swallow the bad line and carry on so one malformed
         // payload can't bring the extension down.
         rl.on("line", line => {
+            this.linesReceived++;
+            if (this.linesReceived === 1) {
+                this.trace("Received first swift-testing event");
+            }
             try {
                 this.parse(JSON.parse(line), runState);
             } catch (error) {
@@ -241,7 +253,13 @@ export class SwiftTestingOutputParser {
             }
         });
 
-        void this.reader.start(readlinePipe);
+        rl.on("close", () => {
+            this.trace(`swift-testing event stream ended after ${this.linesReceived} events`);
+        });
+
+        void this.reader.start(readlinePipe).then(() => {
+            this.trace(`swift-testing pipe reader started for ${path}`);
+        });
     }
 
     /**
@@ -253,7 +271,29 @@ export class SwiftTestingOutputParser {
     public async close() {
         const reader = this.reader;
         this.reader = undefined;
+        if (!reader) {
+            this.trace("No swift-testing pipe reader to close");
+        } else {
+            this.trace(`Closing swift-testing pipe reader, ${this.linesReceived} events so far`);
+        }
         await reader?.stop();
+        if (reader) {
+            this.trace(`Closed swift-testing pipe reader, ${this.linesReceived} events received`);
+        }
+    }
+
+    // Logs each unrecognised kind once per watch so busy streams don't flood the log.
+    private traceUnknownKind(type: string, kind: unknown) {
+        const key = `${type}:${String(kind)}`;
+        if (this.unknownKindsSeen.has(key)) {
+            return;
+        }
+        this.unknownKindsSeen.add(key);
+        this.trace(`Unhandled swift-testing ${type} kind: ${String(kind)}`);
+    }
+
+    private trace(message: string) {
+        this.logger?.trace(message, { label: "SwiftTestingOutputParser" });
     }
 
     /**
@@ -290,6 +330,10 @@ export class SwiftTestingOutputParser {
             case "event":
                 this.handleEventRecord(item.payload, runState);
                 break;
+            case "metadata":
+                break;
+            default:
+                this.traceUnknownKind("record", (item as { kind?: unknown }).kind);
         }
     }
 
@@ -302,6 +346,10 @@ export class SwiftTestingOutputParser {
     private handleEventRecord(payload: EventRecordPayload, runState: ITestRunState) {
         switch (payload.kind) {
             case "runStarted":
+                this.trace("swift-testing runStarted event received");
+                break;
+            case "runEnded":
+                this.trace("swift-testing runEnded event received");
                 break;
             case "testStarted":
                 this.handleTestStarted(payload, runState);
@@ -324,6 +372,8 @@ export class SwiftTestingOutputParser {
             case "_valueAttached":
                 this.handleValueAttached(payload, runState);
                 break;
+            default:
+                this.traceUnknownKind("event", (payload as { kind?: unknown }).kind);
         }
     }
 

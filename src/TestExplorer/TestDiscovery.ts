@@ -14,6 +14,7 @@
 import * as vscode from "vscode";
 
 import { SwiftPackage, TargetType } from "../SwiftPackage";
+import { SwiftLogger } from "../logging/SwiftLogger";
 import { LSPTestItem } from "../sourcekit-lsp/extensions";
 import { reduceTestItemChildren } from "./TestUtils";
 
@@ -46,8 +47,13 @@ const defaultTags = [runnableTag.id, "test-target", "XCTest", "swift-testing"];
 export async function updateTestsFromClasses(
     testController: vscode.TestController,
     swiftPackage: SwiftPackage,
-    testItems: TestClass[]
+    testItems: TestClass[],
+    logger?: SwiftLogger
 ) {
+    logger?.trace(
+        `Updating tests from ${testItems.length} top level LSP tests, awaiting test targets`,
+        { label: "Test Discovery" }
+    );
     const targets = await swiftPackage.getTargets(TargetType.test);
     const results: TestClass[] = [];
     for (const target of targets) {
@@ -70,7 +76,11 @@ export async function updateTestsFromClasses(
             tags: [],
         });
     }
-    updateTests(testController, results);
+    logger?.trace(
+        `Grouped LSP tests into ${results.length} test targets: ${results.map(r => r.id + " (" + r.children.length + ")").join(", ")}`,
+        { label: "Test Discovery" }
+    );
+    updateTests(testController, results, undefined, logger);
 }
 
 function isFileDisambiguated(id: string): boolean {
@@ -83,8 +93,13 @@ export function updateTestsForTarget(
     testController: vscode.TestController,
     testTarget: { id: string; label: string },
     testItems: TestClass[],
-    filterFile?: vscode.Uri
+    filterFile?: vscode.Uri,
+    logger?: SwiftLogger
 ) {
+    logger?.trace(
+        `Updating ${testItems.length} top level tests for target ${testTarget.id} in ${filterFile?.toString() ?? "all files"}`,
+        { label: "Test Discovery" }
+    );
     // Because swift-testing suites can be defined through nested extensions the tests
     // provided might not be directly parented to the test target. For instance, the
     // target might be `Foo`, and one of the child `testItems` might be `Foo.Bar/Baz`.
@@ -141,7 +156,7 @@ export function updateTestsForTarget(
         style: "test-target",
         tags: [],
     };
-    updateTests(testController, [testTargetClass], filterFile);
+    updateTests(testController, [testTargetClass], filterFile, logger);
 }
 
 /**
@@ -153,9 +168,11 @@ export function updateTestsForTarget(
 export function updateTests(
     testController: vscode.TestController,
     testItems: TestClass[],
-    filterFile?: vscode.Uri
+    filterFile?: vscode.Uri,
+    logger?: SwiftLogger
 ) {
     const incomingTestsLookup = createIncomingTestLookup(testItems);
+    let removedCount = 0;
     function removeOldTests(testItem: vscode.TestItem) {
         testItem.children.forEach(child => removeOldTests(child));
 
@@ -171,9 +188,15 @@ export function updateTests(
                 testItemHasParameterizedTestResultChildren(testItem)
             ) {
                 collection.delete(testItem.id);
+                removedCount++;
             }
         }
     }
+
+    logger?.trace(
+        `Updating test controller with ${testItems.length} top level tests (${incomingTestsLookup.size} total incoming, ${testController.items.size} existing root items) in ${filterFile?.toString() ?? "all files"}`,
+        { label: "Test Discovery" }
+    );
 
     // Skip removing tests if the test explorer is empty
     if (testController.items.size !== 0) {
@@ -184,6 +207,11 @@ export function updateTests(
     testItems.forEach(testItem => {
         upsertTestItem(testController, testItem);
     });
+
+    logger?.trace(
+        `Removed ${removedCount} stale test items, controller now has ${testController.items.size} root items`,
+        { label: "Test Discovery" }
+    );
 }
 
 /**

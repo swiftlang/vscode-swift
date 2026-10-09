@@ -107,6 +107,12 @@ export class TestRunProxy implements vscode.CancellationToken {
     private testRunCompleteEmitter = new vscode.EventEmitter<void>();
     private coverage: TestCoverage;
     private warningDiagnosticUris = new Set<string>();
+    private static nextRunId = 0;
+
+    /**
+     * Identifies this run in trace logs so interleaved runs can be told apart.
+     */
+    public readonly runId = ++TestRunProxy.nextRunId;
 
     /**
      * The list of test items for this test run
@@ -168,6 +174,21 @@ export class TestRunProxy implements vscode.CancellationToken {
                 ? new DarwinTestItemFinder(testItems)
                 : new NonDarwinTestItemFinder(testItems, this.folderContext);
         this.onTestRunComplete = this.testRunCompleteEmitter.event;
+        this.trace(
+            `Test run created with ${testItems.length} items, cancelled=${testProfileCancellationToken.isCancellationRequested}`
+        );
+    }
+
+    private trace(message: string) {
+        this.folderContext.workspaceContext.logger.trace(`[test run ${this.runId}] ${message}`, {
+            label: this.folderContext.name,
+        });
+    }
+
+    private debug(message: string) {
+        this.folderContext.workspaceContext.logger.debug(`[test run ${this.runId}] ${message}`, {
+            label: this.folderContext.name,
+        });
     }
 
     /**
@@ -178,12 +199,18 @@ export class TestRunProxy implements vscode.CancellationToken {
             return;
         }
 
+        this.trace(
+            `Test run started, flushing ${this.queuedOutput.length} queued output chunks and enqueuing ${this.testItems.length} items`
+        );
         this.runStarted = true;
         this.resetTags(this.controller);
         this.clearWarningDiagnostics();
 
         this.testRun = this.controller.createTestRun(this.testRunRequest);
         this.token.add(this.testRun.token);
+        if (this.testRun.token.isCancellationRequested) {
+            this.trace("VS Code test run token already cancelled at creation");
+        }
 
         // Forward any output captured before the testRun was created.
         for (const outputLine of this.queuedOutput) {
@@ -290,6 +317,7 @@ export class TestRunProxy implements vscode.CancellationToken {
      */
     public unknownTestRan() {
         this.runState.unknown++;
+        this.trace(`Unknown test ran, unknown count=${this.runState.unknown}`);
     }
 
     /**
@@ -297,6 +325,7 @@ export class TestRunProxy implements vscode.CancellationToken {
      * @param test The test that started
      */
     public started(test: vscode.TestItem) {
+        this.trace(`Test started: ${test.id}`);
         this.clearEnqueuedTest(test);
         this.runState.pending.push(test);
         this.testRun?.started(test);
@@ -307,6 +336,7 @@ export class TestRunProxy implements vscode.CancellationToken {
      * @param test The test that was skipped
      */
     public skipped(test: vscode.TestItem) {
+        this.trace(`Test skipped: ${test.id}`);
         this.clearEnqueuedTest(test);
         test.tags = [...test.tags, new vscode.TestTag(TestRunProxy.Tags.SKIPPED)];
 
@@ -321,6 +351,7 @@ export class TestRunProxy implements vscode.CancellationToken {
      * @param duration How long the test took to execute, in milliseconds.
      */
     public passed(test: vscode.TestItem, duration?: number) {
+        this.trace(`Test passed: ${test.id}`);
         this.clearEnqueuedTest(test);
         this.runState.passed.push(test);
         this.clearPendingTest(test);
@@ -338,6 +369,7 @@ export class TestRunProxy implements vscode.CancellationToken {
         message: vscode.TestMessage | readonly vscode.TestMessage[],
         duration?: number
     ) {
+        this.trace(`Test failed: ${test.id}`);
         this.clearEnqueuedTest(test);
         this.runState.failed.push({ test, message });
         this.clearPendingTest(test);
@@ -350,6 +382,7 @@ export class TestRunProxy implements vscode.CancellationToken {
      * Otherwise, pending tests will be marked as failing as we assume they crashed.
      */
     public skipPendingTests() {
+        this.trace(`Skipping ${this.runState.pending.length} pending tests`);
         this.runState.pending.forEach(test => {
             this.skipped(test);
         });
@@ -362,9 +395,13 @@ export class TestRunProxy implements vscode.CancellationToken {
      * will be marked as failed, and any enqueued tests will be marked as skipped.
      */
     public async end() {
+        this.trace(
+            `Ending test run: started=${this.runStarted}, cancelled=${this.isCancellationRequested}, ${this.summary()}`
+        );
         // If the test run never started (typically due to a build error)
         // start it to flush any queued output, and then immediately end it.
         if (!this.runStarted) {
+            this.trace("Test run never started, starting it to flush output before ending");
             this.testRunStarted();
         }
 
@@ -381,8 +418,14 @@ export class TestRunProxy implements vscode.CancellationToken {
 
         // Finally, mark the underlying test run as ended.
         this.testRun?.end();
+        this.debug(`Test run ended, ${this.summary()}`);
         this.testRunCompleteEmitter.fire();
         this.token.dispose();
+    }
+
+    private summary(): string {
+        const state = this.runState;
+        return `enqueued=${state.enqueued.size}, pending=${state.pending.length}, passed=${state.passed.length}, failed=${state.failed.length}, skipped=${state.skipped.length}, unknown=${state.unknown}`;
     }
 
     /**
@@ -390,6 +433,7 @@ export class TestRunProxy implements vscode.CancellationToken {
      * @param iteration The iteration number
      */
     public setIteration(iteration: number) {
+        this.trace(`Starting iteration ${iteration + 1}, previous ${this.summary()}`);
         this.runState = new TestRunState();
         this.iteration = iteration;
         if (this.testRun) {
@@ -411,6 +455,7 @@ export class TestRunProxy implements vscode.CancellationToken {
      * @param testLibrary The test library to capture coverage for
      */
     public captureCoverage(testLibrary: TestLibrary) {
+        this.trace(`Capturing ${testLibrary} coverage`);
         return this.coverage.captureCoverage(testLibrary);
     }
 
@@ -419,10 +464,13 @@ export class TestRunProxy implements vscode.CancellationToken {
      */
     public async computeCoverage() {
         if (!this.testRun) {
+            this.trace("Skipping coverage computation, test run never started");
             return;
         }
 
+        this.trace("Computing coverage");
         await this.coverage.computeCoverage(this.testRun);
+        this.trace("Computed coverage");
     }
 
     /**
@@ -484,12 +532,20 @@ export class TestRunProxy implements vscode.CancellationToken {
     }
 
     private markPendingAsFailed() {
+        if (this.runState.pending.length > 0) {
+            this.trace(
+                `Marking ${this.runState.pending.length} pending tests as failed (did not complete)`
+            );
+        }
         this.runState.pending.forEach(test => {
             this.failed(test, new vscode.TestMessage("Test did not complete."));
         });
     }
 
     private markEnqueuedAsSkipped() {
+        if (this.runState.enqueued.size > 0) {
+            this.trace(`Marking ${this.runState.enqueued.size} enqueued tests as skipped`);
+        }
         this.runState.enqueued.forEach(test => {
             // Omit adding the root test item as a skipped test to keep just the suites/tests
             // in the test run output, just like a regular pass/fail test run.

@@ -36,6 +36,7 @@ import {
 } from "@src/sourcekit-lsp/extensions";
 
 import { MockedObject, instance, mockFn, mockObject } from "../../MockUtils";
+import { TestLogger } from "../../utilities/TestLogger";
 
 class TestLanguageClient {
     private responses = new Map<string, unknown>();
@@ -51,7 +52,9 @@ class TestLanguageClient {
                     : Promise.reject("Method not implemented");
             })
         ),
-        useLanguageClient: mockFn(s => s.callsFake(fn => fn(instance(this.client)))),
+        useLanguageClient: mockFn(s =>
+            s.callsFake(fn => fn(instance(this.client), new vscode.CancellationTokenSource().token))
+        ),
     });
 
     public get languageClient(): SourceKitLanguageClient {
@@ -84,7 +87,11 @@ suite("LSPTestDiscovery Suite", () => {
         pkg.getTarget = () => Promise.resolve(undefined);
 
         client = new TestLanguageClient();
-        folder = mockObject<FolderContext>({ languageClient: client.languageClient });
+        folder = mockObject<FolderContext>({
+            name: "folder",
+            languageClient: client.languageClient,
+            logger: new TestLogger(),
+        });
         discoverer = new LSPTestDiscovery(instance(folder));
     });
 

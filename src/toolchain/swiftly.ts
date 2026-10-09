@@ -177,7 +177,11 @@ export async function handleMissingSwiftlyToolchain(
 
     // Prompt the user to install the required toolchain, or select an alternative one if it is
     // not available via Swiftly.
+    logger.trace(`Showing missing toolchain dialog for ${version}`, { label: "Swiftly" });
     const userConsent = await showMissingToolchainDialog(version, logger, folder);
+    logger.trace(`Missing toolchain dialog for ${version} returned: ${userConsent}`, {
+        label: "Swiftly",
+    });
     if (!userConsent) {
         logger.info(`User declined to install missing toolchain: ${version}`);
         return false;
@@ -185,7 +189,12 @@ export async function handleMissingSwiftlyToolchain(
 
     // Use the existing installation function without showing reload notification
     // (since we want to continue the current operation)
-    return await installSwiftlyToolchainWithProgress(version, extensionRoot, logger);
+    logger.trace(`Installing missing toolchain ${version}`, { label: "Swiftly" });
+    const installed = await installSwiftlyToolchainWithProgress(version, extensionRoot, logger);
+    logger.trace(`Install of missing toolchain ${version} finished: ${installed}`, {
+        label: "Swiftly",
+    });
+    return installed;
 }
 
 export class Swiftly {
@@ -212,6 +221,7 @@ export class Swiftly {
             throw new Error("Swiftly is not supported on this platform");
         }
 
+        logger?.trace(`Installing swiftly for platform ${process.platform}`, { label: "Swiftly" });
         switch (process.platform) {
             case "darwin":
                 await this.installSwiftlyDarwin(progress, logger);
@@ -234,6 +244,7 @@ export class Swiftly {
         try {
             progress.report({ message: "Installing Swiftly package..." });
 
+            logger?.trace(`Running "installer -pkg ${downloadedPkgPath}"`, { label: "Swiftly" });
             await execFile("installer", [
                 "-pkg",
                 downloadedPkgPath,
@@ -242,6 +253,7 @@ export class Swiftly {
             ]);
 
             progress.report({ message: "Initializing Swiftly...", increment: -100 });
+            logger?.trace(`Running "swiftly init --assume-yes"`, { label: "Swiftly" });
             await execFile(path.join(os.homedir(), ".swiftly", "bin", "swiftly"), [
                 "init",
                 "--assume-yes",
@@ -285,12 +297,14 @@ export class Swiftly {
 
             progress.report({ message: "Extracting Swiftly..." });
 
+            logger?.trace(`Extracting ${downloadedTarPath} to ${tmpDir}`, { label: "Swiftly" });
             await extract({
                 file: downloadedTarPath,
                 cwd: tmpDir,
             });
 
             progress.report({ message: "Initializing Swiftly..." });
+            logger?.trace(`Running "./swiftly init" in ${tmpDir}`, { label: "Swiftly" });
             await execFile(
                 "./swiftly",
                 ["init", "--assume-yes", "--quiet-shell-followup", "--skip-install"],
@@ -393,7 +407,11 @@ export class Swiftly {
         let filePath: string | undefined;
 
         try {
+            logger?.trace(`Fetching swiftly installer from ${url}`, { label: "Swiftly" });
             const response = await fetch(url);
+            logger?.trace(`Swiftly installer fetch returned HTTP ${response.status}`, {
+                label: "Swiftly",
+            });
             if (!response.ok) {
                 throw new Error(`Failed to download installer: HTTP ${response.status}`);
             }
@@ -411,6 +429,9 @@ export class Swiftly {
             const fileStream = fsSync.createWriteStream(filePath);
             const reader = response.body.getReader();
 
+            logger?.trace(`Streaming swiftly installer (${totalLength} bytes) to ${filePath}`, {
+                label: "Swiftly",
+            });
             await this.streamResponseToFile(reader, fileStream, totalLength, progress);
 
             progress.report({ message: "Download completed" });
@@ -435,8 +456,14 @@ export class Swiftly {
             return undefined;
         }
         try {
+            logger?.trace(`Running "swiftly --version"`, { label: "Swiftly" });
             const { stdout } = await execFile("swiftly", ["--version"]);
-            return Version.fromString(stdout.trim());
+            const version = Version.fromString(stdout.trim());
+            logger?.trace(
+                `"swiftly --version" returned "${stdout.trim()}", parsed=${version?.toString() ?? "<unparseable>"}`,
+                { label: "Swiftly" }
+            );
+            return version;
         } catch (error) {
             logger?.error(`Failed to retrieve Swiftly version: ${error}`);
             return undefined;
@@ -455,7 +482,12 @@ export class Swiftly {
         try {
             const { stdout } = await execFile("swiftly", ["--version"]);
             const version = Version.fromString(stdout.trim());
-            return version?.isGreaterThanOrEqual(new Version(1, 1, 0)) ?? false;
+            const supportsJson = version?.isGreaterThanOrEqual(new Version(1, 1, 0)) ?? false;
+            logger?.trace(
+                `Swiftly ${version?.toString() ?? "<unparseable>"} supports JSON output: ${supportsJson}`,
+                { label: "Swiftly" }
+            );
+            return supportsJson;
         } catch (error) {
             logger?.error(`Failed to check Swiftly JSON support: ${error}`);
             return false;
@@ -480,6 +512,7 @@ export class Swiftly {
         }
 
         if (!(await Swiftly.supportsJsonOutput(logger))) {
+            logger?.trace("Listing swiftly toolchains from config file", { label: "Swiftly" });
             return (await Swiftly.listFromSwiftlyConfig(logger)).map(name => ({ name }));
         }
 
@@ -488,8 +521,12 @@ export class Swiftly {
 
     private static async listUsingJSONFormat(logger?: SwiftLogger): Promise<InstalledToolchain[]> {
         try {
+            logger?.trace(`Running "swiftly list --format=json"`, { label: "Swiftly" });
             const { stdout } = await execFile("swiftly", ["list", "--format=json"]);
             const parsed = SwiftlyListResult.parse(JSON.parse(stdout));
+            logger?.trace(`"swiftly list" returned ${parsed.toolchains.length} toolchain(s)`, {
+                label: "Swiftly",
+            });
             type ParsedToolchain = (typeof parsed.toolchains)[number];
             const isKnownVersionType = (
                 toolchain: ParsedToolchain
@@ -512,10 +549,14 @@ export class Swiftly {
         try {
             const swiftlyHomeDir: string | undefined = process.env["SWIFTLY_HOME_DIR"];
             if (!swiftlyHomeDir) {
+                logger?.trace("SWIFTLY_HOME_DIR not set, no toolchains from config", {
+                    label: "Swiftly",
+                });
                 return [];
             }
             const swiftlyConfig = await Swiftly.getConfig();
             if (!swiftlyConfig || !("installedToolchains" in swiftlyConfig)) {
+                logger?.trace("Swiftly config has no installedToolchains", { label: "Swiftly" });
                 return [];
             }
             const installedToolchains = swiftlyConfig.installedToolchains;
@@ -552,9 +593,20 @@ export class Swiftly {
      * @param swiftlyPath Optional path to the Swiftly binary.
      * @param cwd Optional current working directory to check within.
      */
-    public static async inUseLocation(swiftlyPath: string = "swiftly", cwd?: vscode.Uri) {
+    public static async inUseLocation(
+        swiftlyPath: string = "swiftly",
+        cwd?: vscode.Uri,
+        logger?: SwiftLogger
+    ) {
+        logger?.trace(
+            `Running "${swiftlyPath} use --print-location" in ${cwd?.fsPath ?? "<no cwd>"}`,
+            { label: "Swiftly" }
+        );
         const { stdout: inUse } = await execFile(swiftlyPath, ["use", "--print-location"], {
             cwd: cwd?.fsPath,
+        });
+        logger?.trace(`"swiftly use --print-location" returned: ${inUse.trimEnd()}`, {
+            label: "Swiftly",
         });
         return inUse.trimEnd();
     }
@@ -575,17 +627,32 @@ export class Swiftly {
         }
 
         if (!(await Swiftly.supportsJsonOutput())) {
+            logger?.trace("Swiftly does not support JSON output, in-use version unknown", {
+                label: "Swiftly",
+            });
             return undefined;
         }
 
+        logger?.trace(
+            `Running "${swiftlyPath} use --format=json" in ${cwd?.fsPath ?? "<no cwd>"}`,
+            {
+                label: "Swiftly",
+            }
+        );
         const { stdout } = await execFile(swiftlyPath, ["use", "--format=json"], {
             cwd: cwd?.fsPath,
         });
         if (stdout.trim() === "") {
+            logger?.trace(`"swiftly use --format=json" returned empty output`, {
+                label: "Swiftly",
+            });
             return undefined;
         }
         try {
             const result = InUseVersionResult.parse(JSON.parse(stdout));
+            logger?.trace(`Swiftly in-use version: ${result.version ?? "<none>"}`, {
+                label: "Swiftly",
+            });
             return result.version;
         } catch (error) {
             logger?.error(
@@ -603,7 +670,7 @@ export class Swiftly {
      * @param version The version name to use. Obtainable via {@link Swiftly.list}.
      * @param [cwd] Optional working directory to set the toolchain within.
      */
-    public static async use(version: string, cwd?: string): Promise<void> {
+    public static async use(version: string, cwd?: string, logger?: SwiftLogger): Promise<void> {
         if (!this.isSupported()) {
             throw new Error("Swiftly is not supported on this platform");
         }
@@ -616,7 +683,11 @@ export class Swiftly {
             useArgs.push("--global-default");
         }
         useArgs.push(version);
+        logger?.trace(`Running "swiftly ${useArgs.join(" ")}" in ${cwd ?? "<global>"}`, {
+            label: "Swiftly",
+        });
         await execFile("swiftly", useArgs, options);
+        logger?.trace(`"swiftly use ${version}" completed`, { label: "Swiftly" });
     }
 
     /**
@@ -639,12 +710,17 @@ export class Swiftly {
         cwd?: vscode.Uri
     ): Promise<string> {
         try {
-            return await Swiftly.inUseLocation("swiftly", cwd);
+            return await Swiftly.inUseLocation("swiftly", cwd, logger);
         } catch (error: unknown) {
+            logger.trace(`"swiftly use --print-location" failed: ${error}`, { label: "Swiftly" });
             if (error instanceof ExecFileError) {
                 // Check if this is a missing toolchain error
                 const missingToolchainError = parseSwiftlyMissingToolchainError(error.stderr);
                 if (missingToolchainError) {
+                    logger.trace(
+                        `Detected missing swiftly toolchain ${missingToolchainError.version}`,
+                        { label: "Swiftly" }
+                    );
                     // Attempt automatic installation
                     const installed = await handleMissingSwiftlyToolchain(
                         missingToolchainError.version,
@@ -654,10 +730,16 @@ export class Swiftly {
                     );
                     if (installed) {
                         // Retry toolchain location after successful installation
+                        logger.trace("Retrying active toolchain lookup after install", {
+                            label: "Swiftly",
+                        });
                         return await this.getActiveToolchain(extensionRoot, logger, cwd);
                     } else if (cwd) {
                         // If the user dismisses the installation prompt then fall back
                         // to using the global toolchain
+                        logger.debug("Falling back to global swiftly toolchain", {
+                            label: "Swiftly",
+                        });
                         return await Swiftly.getActiveToolchain(extensionRoot, logger);
                     }
                 }
@@ -702,7 +784,9 @@ export class Swiftly {
             if (branch) {
                 args.push(branch);
             }
+            logger?.trace(`Running "swiftly ${args.join(" ")}"`, { label: "Swiftly" });
             const { stdout: availableStdout } = await execFile("swiftly", args);
+            logger?.trace(`"swiftly list-available" completed`, { label: "Swiftly" });
             return SwiftlyListAvailableResult.parse(JSON.parse(availableStdout))
                 .toolchains.filter((t): t is AvailableToolchain =>
                     ["system", "stable", "snapshot"].includes(t.version.type)
@@ -745,6 +829,7 @@ export class Swiftly {
         if (progressCallback) {
             progressPipePath = path.join(tmpDir, `progress-${version}.pipe`);
 
+            logger?.trace(`Creating progress pipe ${progressPipePath}`, { label: "Swiftly" });
             await execFile("mkfifo", [progressPipePath]);
 
             progressPromise = new Promise<void>((resolve, reject) => {
@@ -755,12 +840,23 @@ export class Swiftly {
 
                 // Handle cancellation during progress tracking
                 const cancellationHandler = token?.onCancellationRequested(() => {
+                    logger?.trace(`Cancellation requested while reading progress for ${version}`, {
+                        label: "Swiftly",
+                    });
                     rl.close();
                     reject(new Error(Swiftly.cancellationMessage));
                 });
+                if (cancellationHandler) {
+                    logger?.trace(`Registered progress cancellation handler for ${version}`, {
+                        label: "Swiftly",
+                    });
+                }
 
                 rl.on("line", (line: string) => {
                     if (token?.isCancellationRequested) {
+                        logger?.trace("Progress line received after cancellation, closing", {
+                            label: "Swiftly",
+                        });
                         rl.close();
                         return;
                     }
@@ -776,11 +872,15 @@ export class Swiftly {
                 });
 
                 rl.on("close", () => {
+                    logger?.trace(`Progress pipe closed for ${version}`, { label: "Swiftly" });
                     cancellationHandler?.dispose();
                     resolve();
                 });
 
                 rl.on("error", err => {
+                    logger?.trace(`Progress pipe error for ${version}: ${err}`, {
+                        label: "Swiftly",
+                    });
                     cancellationHandler?.dispose();
                     reject(err);
                 });
@@ -805,6 +905,10 @@ export class Swiftly {
             const stderrStream = new Stream.PassThrough();
 
             // Use execFileStreamOutput with cancellation token
+            logger?.trace(
+                `Running "${swiftlyPath ?? "swiftly"} ${installArgs.join(" ")}" (cancellable=${token !== undefined})`,
+                { label: "Swiftly" }
+            );
             const installPromise = execFileStreamOutput(
                 swiftlyPath ?? "swiftly",
                 installArgs,
@@ -815,22 +919,34 @@ export class Swiftly {
             );
 
             if (progressPromise) {
+                logger?.trace(`Waiting for install and progress of ${version}`, {
+                    label: "Swiftly",
+                });
                 await Promise.race([
                     Promise.all([installPromise, progressPromise]),
                     new Promise<never>((_, reject) => {
                         if (token) {
-                            token.onCancellationRequested(() =>
-                                reject(new Error(Swiftly.cancellationMessage))
-                            );
+                            token.onCancellationRequested(() => {
+                                logger?.trace(
+                                    `Cancellation requested during install of ${version}`,
+                                    { label: "Swiftly" }
+                                );
+                                reject(new Error(Swiftly.cancellationMessage));
+                            });
                         }
                     }),
                 ]);
             } else {
+                logger?.trace(`Waiting for install of ${version}`, { label: "Swiftly" });
                 await installPromise;
             }
+            logger?.debug(`swiftly install ${version} finished`, { label: "Swiftly" });
 
             // Check for cancellation before post-install
             if (token?.isCancellationRequested) {
+                logger?.trace(`Install of ${version} cancelled before post-install`, {
+                    label: "Swiftly",
+                });
                 throw new Error(Swiftly.cancellationMessage);
             }
 
@@ -843,6 +959,7 @@ export class Swiftly {
                 );
             }
         } catch (error) {
+            logger?.trace(`Install of ${version} failed: ${error}`, { label: "Swiftly" });
             if (
                 token?.isCancellationRequested ||
                 (error as Error).message.includes(Swiftly.cancellationMessage)
@@ -908,6 +1025,9 @@ export class Swiftly {
         }
 
         const shouldExecute = await this.showPostInstallConfirmation(version, validation, logger);
+        logger?.trace(`Post-install confirmation for ${version}: ${shouldExecute}`, {
+            label: "Swiftly",
+        });
 
         if (shouldExecute) {
             await this.executePostInstallScript(
@@ -1018,6 +1138,9 @@ export class Swiftly {
             { modal: true, detail },
             "Install"
         );
+        logger?.debug(`Install System Packages prompt choice: ${choice ?? "<dismissed>"}`, {
+            label: "Swiftly",
+        });
 
         return choice === "Install";
     }
@@ -1086,6 +1209,9 @@ export class Swiftly {
                 },
             });
 
+            logger?.trace(`Running post-install script with sudo for ${version}`, {
+                label: "Swiftly",
+            });
             await withAskpassServer(
                 async (nonce, port) => {
                     await execFileStreamOutput(
@@ -1112,6 +1238,7 @@ export class Swiftly {
                 { title: "sudo password for Swiftly post-install script" }
             );
 
+            logger?.debug(`Post-install script for ${version} finished`, { label: "Swiftly" });
             outputChannel.appendLine("");
             outputChannel.appendLine(
                 `Post-install script completed successfully for Swift ${version}`

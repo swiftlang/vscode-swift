@@ -130,6 +130,9 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
      */
     private handleConfigurationChangeEvent(event: vscode.ConfigurationChangeEvent): void {
         if (event.affectsConfiguration("swift.outputChannelLogLevel")) {
+            this.logger.trace("Configuration changed: swift.outputChannelLogLevel", {
+                label: "Extension",
+            });
             this.outputChannelTransport.level = configuration.outputChannelLogLevel;
         }
         // Toolchain configuration changes require a reload of the workspace
@@ -139,6 +142,10 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
                     this.workspaceContext?.currentFolder?.toolchain.swiftFolderPath) ||
             event.affectsConfiguration("swift.swiftEnvironmentVariables")
         ) {
+            this.logger.debug(
+                "Configuration changed: toolchain settings changed, reloading workspace context",
+                { label: "Extension" }
+            );
             this.reloadWorkspaceContext();
         }
         // on sdk config change, restart sourcekit-lsp
@@ -146,6 +153,9 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
             event.affectsConfiguration("swift.SDK") ||
             event.affectsConfiguration("swift.swiftSDK")
         ) {
+            this.logger.debug("Configuration changed: SDK settings changed, restarting LSP", {
+                label: "Extension",
+            });
             void vscode.commands.executeCommand(Commands.RESTART_LSP).then(() => {
                 /* Put in worker queue */
             });
@@ -153,6 +163,9 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
     }
 
     async waitForWorkspaceContext(): Promise<WorkspaceContext> {
+        this.logger.trace(`Waiting for workspace context, state=${this.state.type}`, {
+            label: "Extension",
+        });
         if (this.state.type === "uninitialized") {
             throw new Error("The Swift extension has not been activated yet.");
         }
@@ -162,7 +175,9 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
         if (this.state.type === "active") {
             return this.state.context;
         }
-        return await this.state.promise;
+        const result = await this.state.promise;
+        this.logger.trace("Waiting for workspace context: resolved", { label: "Extension" });
+        return result;
     }
 
     async withWorkspaceContext<T>(task: (ctx: WorkspaceContext) => T | Promise<T>): Promise<T> {
@@ -173,6 +188,7 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
     // This method is synchronous on purpose. All asynchronous loading should be done within initializeWorkspace()
     // to avoid delaying extension activation.
     activate(callSite?: Error): void {
+        this.logger.trace(`Activate called, state=${this.state.type}`, { label: "Extension" });
         if (this.state.type !== "uninitialized") {
             this.logger.error(
                 new Error(
@@ -223,20 +239,35 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
             );
 
             const subscriptionsElapsed = Date.now() - subscriptionsStartTime;
+            this.logger.trace(
+                `Activation subscriptions registered in ${subscriptionsElapsed}ms (${this.subscriptions.length} subscriptions)`,
+                { label: "Extension" }
+            );
 
             const finalStepsStartTime = Date.now();
             const cancellationSource = new vscode.CancellationTokenSource();
+            const logger = this.logger;
+            logger.trace("Extension state: uninitialized -> initializing (activate)", {
+                label: "Extension",
+            });
             this.state = {
                 type: "initializing",
                 activatedBy,
                 promise: this.initializeWorkspace(cancellationSource.token)
                     .then(async ({ workspaceContext, subscriptions }) => {
                         if (cancellationSource.token.isCancellationRequested) {
+                            this.logger.trace(
+                                "Workspace initialized after activation was cancelled, disposing",
+                                { label: "Extension" }
+                            );
                             await workspaceContext.dispose();
                             subscriptions.forEach(s => s.dispose());
                             throw new vscode.CancellationError();
                         }
 
+                        this.logger.trace("Extension state: initializing -> active (activate)", {
+                            label: "Extension",
+                        });
                         this.state = {
                             type: "active",
                             activatedBy,
@@ -244,15 +275,30 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
                             subscriptions,
                         };
                         this.workspaceChangeEmitter.fire(workspaceContext);
+                        this.logger.trace("Fired onDidChangeWorkspaceContext (activate)", {
+                            label: "Extension",
+                        });
                         return workspaceContext;
                     })
                     .catch(error => {
                         if (!cancellationSource.token.isCancellationRequested) {
+                            this.logger.debug(
+                                `Extension state: initializing -> failed (activate): ${getErrorDescription(error)}`,
+                                { label: "Extension" }
+                            );
                             this.state = { type: "failed", activatedBy, error };
+                        } else {
+                            this.logger.trace(
+                                `Activation initialization rejected after cancellation: ${getErrorDescription(error)}`,
+                                { label: "Extension" }
+                            );
                         }
                         throw error;
                     }),
                 cancel() {
+                    logger.trace("Cancelling workspace initialization (activate)", {
+                        label: "Extension",
+                    });
                     cancellationSource.cancel();
                 },
             };
@@ -265,6 +311,10 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
                 `Extension activation completed in ${totalActivationTime}ms (subscriptions: ${subscriptionsElapsed}ms, final-steps: ${finalStepsElapsed}ms)`
             );
         } catch (error) {
+            this.logger.trace(
+                `Extension state: ${this.state.type} -> failed (activation threw): ${getErrorDescription(error)}`,
+                { label: "Extension" }
+            );
             this.state = { type: "failed", error, activatedBy };
             // Handle configuration validation errors with UI that points the user to the poorly configured setting
             if (error instanceof ConfigurationValidationError) {
@@ -284,9 +334,15 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
         subscriptions: Disposable[];
     }> {
         if (token.isCancellationRequested) {
+            this.logger.trace("Workspace initialization cancelled before start", {
+                label: "Extension",
+            });
             throw new vscode.CancellationError();
         }
 
+        this.logger.trace("Workspace initialization: creating active toolchain", {
+            label: "Extension",
+        });
         const activationStartTime = Date.now();
         const toolchainStartTime = Date.now();
         const toolchain = await createActiveToolchain(
@@ -295,8 +351,15 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
             this.logger
         );
         const toolchainElapsed = Date.now() - toolchainStartTime;
+        this.logger.trace(
+            `Workspace initialization: toolchain created in ${toolchainElapsed}ms (${toolchain.swiftFolderPath})`,
+            { label: "Extension" }
+        );
 
         if (token.isCancellationRequested) {
+            this.logger.trace("Workspace initialization cancelled after toolchain creation", {
+                label: "Extension",
+            });
             throw new vscode.CancellationError();
         }
 
@@ -310,6 +373,10 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
             toolchain
         );
         const workspaceContextElapsed = Date.now() - workspaceContextStartTime;
+        this.logger.trace(
+            `Workspace initialization: WorkspaceContext created in ${workspaceContextElapsed}ms`,
+            { label: "Extension" }
+        );
 
         const subscriptionsStartTime = Date.now();
         const subscriptions: Disposable[] = [];
@@ -353,10 +420,22 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
 
         // setup workspace context with initial workspace folders
         const workspaceFoldersStartTime = Date.now();
+        this.logger.trace(
+            `Workspace initialization: subscriptions registered in ${subscriptionsElapsed}ms, adding workspace folders`,
+            { label: "Extension" }
+        );
         await workspaceContext.addWorkspaceFolders();
         const workspaceFoldersElapsed = Date.now() - workspaceFoldersStartTime;
+        this.logger.trace(
+            `Workspace initialization: workspace folders added in ${workspaceFoldersElapsed}ms`,
+            { label: "Extension" }
+        );
 
         if (token.isCancellationRequested) {
+            this.logger.trace(
+                "Workspace initialization cancelled after adding workspace folders, disposing",
+                { label: "Extension" }
+            );
             subscriptions.forEach(s => s.dispose());
             await workspaceContext.dispose();
             throw new vscode.CancellationError();
@@ -371,6 +450,9 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
     }
 
     reloadWorkspaceContext(): void {
+        this.logger.debug(`Reload workspace context called, state=${this.state.type}`, {
+            label: "Extension",
+        });
         if (this.state.type === "uninitialized") {
             throw new Error("The Swift extension has not been activated yet.");
         }
@@ -378,17 +460,27 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
 
         let disposePromise = Promise.resolve();
         if (previousState.type === "initializing") {
+            this.logger.debug("Reload: cancelling in-progress initialization", {
+                label: "Extension",
+            });
             previousState.cancel();
             disposePromise = previousState.promise.then(
                 () => {},
                 () => {}
             );
         } else if (previousState.type === "active") {
+            this.logger.trace("Reload: disposing active workspace context", {
+                label: "Extension",
+            });
             previousState.subscriptions.forEach(s => s.dispose());
             disposePromise = previousState.context.dispose();
         }
         const cancellationSource = new vscode.CancellationTokenSource();
         const activatedBy = previousState.activatedBy;
+        const logger = this.logger;
+        logger.trace(`Extension state: ${previousState.type} -> initializing (reload)`, {
+            label: "Extension",
+        });
         this.state = {
             type: "initializing",
             activatedBy,
@@ -400,12 +492,23 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
                         })
                     )
                 )
-                .then(() => this.initializeWorkspace(cancellationSource.token))
+                .then(() => {
+                    this.logger.trace("Reload: previous context disposed, initializing workspace", {
+                        label: "Extension",
+                    });
+                    return this.initializeWorkspace(cancellationSource.token);
+                })
                 .then(({ workspaceContext, subscriptions }) => {
                     if (cancellationSource.token.isCancellationRequested) {
+                        this.logger.trace("Workspace initialized after reload was cancelled", {
+                            label: "Extension",
+                        });
                         throw new vscode.CancellationError();
                     }
 
+                    this.logger.trace("Extension state: initializing -> active (reload)", {
+                        label: "Extension",
+                    });
                     this.state = {
                         type: "active",
                         activatedBy,
@@ -413,15 +516,30 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
                         subscriptions,
                     };
                     this.workspaceChangeEmitter.fire(workspaceContext);
+                    this.logger.trace("Fired onDidChangeWorkspaceContext (reload)", {
+                        label: "Extension",
+                    });
                     return workspaceContext;
                 })
                 .catch(error => {
                     if (!cancellationSource.token.isCancellationRequested) {
+                        this.logger.debug(
+                            `Extension state: initializing -> failed (reload): ${getErrorDescription(error)}`,
+                            { label: "Extension" }
+                        );
                         this.state = { type: "failed", activatedBy, error };
+                    } else {
+                        this.logger.trace(
+                            `Reload initialization rejected after cancellation: ${getErrorDescription(error)}`,
+                            { label: "Extension" }
+                        );
                     }
                     throw error;
                 }),
             cancel() {
+                logger.trace("Cancelling workspace initialization (reload)", {
+                    label: "Extension",
+                });
                 cancellationSource.cancel();
             },
         };
@@ -429,20 +547,33 @@ export class InternalSwiftExtensionApi implements SwiftExtensionApi {
 
     async deactivate(): Promise<void> {
         const currentState = this.state;
+        const deactivateStartTime = Date.now();
+        this.logger.debug(`Extension state: ${currentState.type} -> uninitialized (deactivate)`, {
+            label: "Extension",
+        });
         this.state = { type: "uninitialized" };
         this.contextKeys.isActivated = false;
         if (currentState.type === "initializing") {
             currentState.cancel();
         }
         if (currentState.type === "active") {
+            this.logger.trace("Deactivate: disposing workspace context", { label: "Extension" });
             await currentState.context.dispose();
+            this.logger.trace("Deactivate: workspace context disposed", { label: "Extension" });
             currentState.subscriptions.forEach(s => s.dispose());
         }
+        this.logger.trace(`Deactivate: disposing ${this.subscriptions.length} subscriptions`, {
+            label: "Extension",
+        });
         this.subscriptions.forEach(subscription => subscription.dispose());
         this.subscriptions.length = 0;
+        this.logger.debug(`Deactivate completed in ${Date.now() - deactivateStartTime}ms`, {
+            label: "Extension",
+        });
     }
 
     dispose(): void {
+        this.logger.trace("Disposing extension API", { label: "Extension" });
         this.outputChannel.dispose();
         this.logger.dispose();
         this.subscriptions.forEach(s => s.dispose());
@@ -563,6 +694,10 @@ function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise
     async function folderAdded(folder: FolderContext, workspace: WorkspaceContext) {
         const disableAutoResolve = configuration.folder(folder.workspaceFolder).disableAutoResolve;
         const backgroundCompilationEnabled = configuration.backgroundCompilation.enabled;
+        logger.debug(
+            `Folder added handler: disableAutoResolve=${disableAutoResolve}, backgroundCompilation=${backgroundCompilationEnabled}`,
+            { label: folder.name }
+        );
         if (!disableAutoResolve || backgroundCompilationEnabled) {
             // if background compilation is set then run compile at startup unless
             // this folder is a sub-folder of the workspace folder. This is to avoid
@@ -571,16 +706,30 @@ function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise
                 configuration.backgroundCompilation.enabled &&
                 folder.workspaceFolder.uri === folder.folder
             ) {
+                logger.trace("Folder added handler: running background compilation", {
+                    label: folder.name,
+                });
                 await folder.backgroundCompilation.runTask();
+                logger.trace("Folder added handler: background compilation finished", {
+                    label: folder.name,
+                });
             } else {
+                logger.trace("Folder added handler: resolving dependencies", {
+                    label: folder.name,
+                });
                 await resolveFolderDependencies(folder, true);
+                logger.trace("Folder added handler: dependencies resolved", {
+                    label: folder.name,
+                });
             }
 
             if (folder.toolchain.swiftVersion.isGreaterThanOrEqual(new Version(5, 6, 0))) {
                 void workspace.statusItem.showStatusWhileRunning(
                     `Loading Swift Plugins (${FolderContext.uriName(folder.workspaceFolder.uri)})`,
                     async () => {
+                        logger.trace("Loading Swift plugins", { label: folder.name });
                         await folder.loadSwiftPlugins(logger);
+                        logger.trace("Swift plugins loaded", { label: folder.name });
                         workspace.contextKeys.updateForPlugins(workspace.folders);
                     }
                 );
@@ -590,9 +739,13 @@ function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise
 
     return async ({ folder, operation, workspace }) => {
         if (!folder) {
+            logger.trace(`Folder event handler: ${operation} with no folder, ignoring`, {
+                label: "Extension",
+            });
             return;
         }
 
+        logger.trace(`Folder event handler: ${operation}`, { label: folder.name });
         switch (operation) {
             case FolderOperation.add:
                 // Create launch.json files based on package description, don't block execution.
@@ -600,6 +753,9 @@ function handleFolderEvent(logger: SwiftLogger): (event: FolderEvent) => Promise
 
                 // Do not await for this, let packages resolve in parallel
                 void folder.swiftPackage.foundPackage.then(async foundPackage => {
+                    logger.trace(`Folder event handler: foundPackage=${foundPackage}`, {
+                        label: folder.name,
+                    });
                     if (foundPackage) {
                         await folderAdded(folder, workspace);
                     }
@@ -635,14 +791,19 @@ async function createActiveToolchain(
     logger: SwiftLogger
 ): Promise<SwiftToolchain> {
     try {
+        logger.trace("Creating active toolchain", { label: "Extension" });
         const toolchain = await SwiftToolchain.create(extensionPath, logger);
         toolchain.logDiagnostics(logger);
         contextKeys.updateKeysBasedOnActiveVersion(toolchain.swiftVersion);
         return toolchain;
     } catch (error) {
+        logger.debug(`Failed to create active toolchain: ${getErrorDescription(error)}`, {
+            label: "Extension",
+        });
         if (!(await showToolchainError())) {
             throw error;
         }
+        logger.trace("Retrying active toolchain creation", { label: "Extension" });
         return await createActiveToolchain(extensionPath, contextKeys, logger);
     }
 }
