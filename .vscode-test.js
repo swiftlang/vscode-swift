@@ -46,6 +46,9 @@ const launchArgs = [
     "--disable-gpu-sandbox",
     "--disable-chromium-sandbox",
     "--disable-extension=vscode.git",
+    // Keep secrets out of the macOS keychain, which blocks on an access prompt
+    // that nobody is around to answer on CI.
+    "--use-inmemory-secretstorage",
 ];
 if (dataDir) {
     launchArgs.push("--user-data-dir", dataDir);
