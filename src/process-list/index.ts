@@ -11,6 +11,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import { SwiftLogger } from "../logging/SwiftLogger";
 import { DarwinProcessList } from "./platforms/DarwinProcessList";
 import { LinuxProcessList } from "./platforms/LinuxProcessList";
 import { WindowsProcessList } from "./platforms/WindowsProcessList";
@@ -37,13 +38,13 @@ export interface ProcessList {
 }
 
 /** Returns a {@link ProcessList} based on the current platform. */
-export function createProcessList(): ProcessList {
+export function createProcessList(logger?: SwiftLogger): ProcessList {
     switch (process.platform) {
         case "darwin":
-            return new DarwinProcessList();
+            return new DarwinProcessList(logger);
         case "win32":
-            return new WindowsProcessList();
+            return new WindowsProcessList(logger);
         default:
-            return new LinuxProcessList();
+            return new LinuxProcessList(logger);
     }
 }
