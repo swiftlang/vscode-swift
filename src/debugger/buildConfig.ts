@@ -447,6 +447,7 @@ export class TestingConfigurationFactory {
             DYLD_LIBRARY_PATH: libraryPath,
             SWT_SF_SYMBOLS_ENABLED: "0",
             SWT_EXPERIMENTAL_EVENT_STREAM_FIELDS_ENABLED: "1",
+            SWIFT_TESTING_EVENT_STREAM_MESSAGES_FIELD_ENABLED: "1",
         };
 
         if (swiftPMTestingHelperPath) {
@@ -494,6 +495,7 @@ export class TestingConfigurationFactory {
                 ...this.sanitizerRuntimeEnvironment,
                 SWT_SF_SYMBOLS_ENABLED: "0",
                 SWT_EXPERIMENTAL_EVENT_STREAM_FIELDS_ENABLED: "1",
+                SWIFT_TESTING_EVENT_STREAM_MESSAGES_FIELD_ENABLED: "1",
             },
             preLaunchTask:
                 this.testKind === TestKind.coverage ? undefined : baseConfig.preLaunchTask,
