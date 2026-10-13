@@ -25,6 +25,9 @@ import { executeTaskWithUI, updateAfterError } from "../utilities";
 export async function resolveDependencies(ctx: WorkspaceContext) {
     const current = ctx.currentFolder;
     if (!current) {
+        ctx.logger.debug("No current folder, not resolving dependencies", {
+            label: "resolveDependencies",
+        });
         return false;
     }
     return await resolveFolderDependencies(current);
@@ -50,12 +53,22 @@ export async function resolveFolderDependencies(
         folderContext.toolchain
     );
 
+    const logger = folderContext.workspaceContext.logger;
+    const startTime = Date.now();
+    logger.debug(
+        `Starting "swift package resolve" (checkAlreadyRunning=${checkAlreadyRunning ?? false})`,
+        { label: folderContext.name }
+    );
     const success = await executeTaskWithUI(
         task,
         "Resolving Dependencies",
         folderContext,
         false,
         checkAlreadyRunning
+    );
+    logger.debug(
+        `Finished "swift package resolve" in ${Date.now() - startTime}ms (success=${success})`,
+        { label: folderContext.name }
     );
     updateAfterError(success, folderContext);
     return success;

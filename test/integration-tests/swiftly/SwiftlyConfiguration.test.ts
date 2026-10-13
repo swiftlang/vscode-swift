@@ -60,6 +60,7 @@ suite("Swiftly Configuration Tests", () => {
             } as any);
 
             const mockLogger = mockObject<SwiftLogger>({
+                trace: mockFn(),
                 error: mockFn(),
                 debug: mockFn(),
             });
@@ -85,9 +86,7 @@ suite("Swiftly Configuration Tests", () => {
                 ignoreSwiftVersionFile: false,
             } as any);
 
-            const mockLogger = mockObject<SwiftLogger>({
-                debug: mockFn(),
-            });
+            const mockLogger = mockObject<SwiftLogger>({ trace: mockFn(), debug: mockFn() });
 
             await checkForSwiftlyInstallation("extensionPath", {} as any, instance(mockLogger));
 
@@ -106,9 +105,7 @@ suite("Swiftly Configuration Tests", () => {
                 ignoreSwiftVersionFile: true,
             } as any);
 
-            const mockLogger = mockObject<SwiftLogger>({
-                debug: mockFn(),
-            });
+            const mockLogger = mockObject<SwiftLogger>({ trace: mockFn(), debug: mockFn() });
 
             await checkForSwiftlyInstallation("extensionPath", {} as any, instance(mockLogger));
 
@@ -134,9 +131,7 @@ suite("Swiftly Configuration Tests", () => {
                 stderr: "",
             });
 
-            const mockLogger = mockObject<SwiftLogger>({
-                debug: mockFn(),
-            });
+            const mockLogger = mockObject<SwiftLogger>({ trace: mockFn(), debug: mockFn() });
 
             await checkForSwiftlyInstallation("extensionPath", {} as any, instance(mockLogger));
 
@@ -154,9 +149,7 @@ suite("Swiftly Configuration Tests", () => {
                 ignoreSwiftVersionFile: false,
             } as any);
 
-            const mockLogger = mockObject<SwiftLogger>({
-                debug: mockFn(),
-            });
+            const mockLogger = mockObject<SwiftLogger>({ trace: mockFn(), debug: mockFn() });
 
             await checkForSwiftlyInstallation("extensionPath", {} as any, instance(mockLogger));
 
@@ -176,9 +169,7 @@ suite("Swiftly Configuration Tests", () => {
             // Mock no .swift-version files found
             mockGlobDirectory.resolves([]);
 
-            const mockLogger = mockObject<SwiftLogger>({
-                debug: mockFn(),
-            });
+            const mockLogger = mockObject<SwiftLogger>({ trace: mockFn(), debug: mockFn() });
 
             await checkForSwiftlyInstallation("extensionPath", {} as any, instance(mockLogger));
 

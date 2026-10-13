@@ -313,7 +313,9 @@ export class BuildFlags {
         const cacheKey = `${workspacePath}:${buildConfiguration}:${buildArgsHash}${idSuffix}`;
 
         if (BuildFlags.buildPathCache.has(cacheKey)) {
-            return BuildFlags.buildPathCache.get(cacheKey)!;
+            const cachedPath = BuildFlags.buildPathCache.get(cacheKey)!;
+            logger.trace(`Using cached build binary path: ${cachedPath}`, { label: "BuildFlags" });
+            return cachedPath;
         }
 
         // Filters down build arguments to those affecting the bin path
@@ -331,10 +333,14 @@ export class BuildFlags {
 
         try {
             // Execute swift build --show-bin-path
+            logger.trace(`Running "swift ${fullArgs.join(" ")}" in ${workspacePath}`, {
+                label: "BuildFlags",
+            });
             const result = await execSwift(fullArgs, this.toolchain, {
                 cwd: workspacePath,
             });
             const binPath = result.stdout.trim();
+            logger.trace(`Resolved build binary path: ${binPath}`, { label: "BuildFlags" });
 
             // Cache the result
             BuildFlags.buildPathCache.set(cacheKey, binPath);
@@ -348,6 +354,9 @@ export class BuildFlags {
                 BuildFlags.buildDirectoryFromWorkspacePath(workspacePath, true),
                 buildConfiguration
             );
+            logger.trace(`Using fallback build binary path: ${fallbackPath}`, {
+                label: "BuildFlags",
+            });
             return fallbackPath;
         }
     }

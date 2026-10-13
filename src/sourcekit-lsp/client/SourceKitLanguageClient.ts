@@ -29,6 +29,7 @@ import { FolderContext } from "../../FolderContext";
 import { WorkspaceContext } from "../../WorkspaceContext";
 import { promptForDiagnostics } from "../../commands/captureDiagnostics";
 import configuration from "../../configuration";
+import { SwiftLogger } from "../../logging/SwiftLogger";
 import { ArgumentFilter, BuildFlags } from "../../toolchain/BuildFlags";
 import { SwiftToolchain } from "../../toolchain/toolchain";
 import { AsyncDisposable, Disposable } from "../../utilities/Disposable";
@@ -74,6 +75,11 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
 
     private folderContextFeature: FolderContextFeature;
     private cancellationTokenSource = new vscode.CancellationTokenSource();
+    private readonly swiftLogger: SwiftLogger;
+
+    private get logLabel(): { label: string } {
+        return { label: `SourceKit-LSP ${this.toolchain.swiftVersion.toString()}` };
+    }
 
     get swiftVersion(): Version {
         return this.toolchain.swiftVersion;
@@ -111,6 +117,10 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
             const isCustomPath = Boolean(
                 serverPathConfig && !isPathInDirectory(serverPathConfig, toolchain.toolchainPath)
             );
+            this.swiftLogger.debug(
+                `Spawning server: "${inv.command} ${inv.args.join(" ")}" (cwd=${this.addedFolders.at(0)?.folder.fsPath})`,
+                this.logLabel
+            );
             const proc = spawn(inv.command, inv.args, {
                 cwd: this.addedFolders.at(0)?.folder.fsPath,
                 env: {
@@ -120,6 +130,13 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
                     ...configuration.swiftEnvironmentVariables,
                     ...swiftRuntimeEnv(),
                 },
+            });
+            this.swiftLogger.trace(`Server process spawned (pid=${proc.pid})`, this.logLabel);
+            proc.once("exit", (code, signal) => {
+                this.swiftLogger.debug(
+                    `Server process ${proc.pid} exited (code=${code}, signal=${signal})`,
+                    this.logLabel
+                );
             });
             return proc;
         };
@@ -251,7 +268,7 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
                 })(),
             },
             uriConverters,
-            errorHandler: new SourceKitLSPErrorHandler(5),
+            errorHandler: new SourceKitLSPErrorHandler(5, workspaceContext.logger),
             // Avoid attempting to reinitialize multiple times. If we fail to initialize
             // we aren't doing anything different the second time and so will fail again.
             initializationFailedHandler: () => false,
@@ -264,12 +281,61 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
             serverOptions,
             clientOptions
         );
-        this.folderContextFeature = new FolderContextFeature(this);
+        this.swiftLogger = workspaceContext.logger;
+        this.swiftLogger.trace(
+            `Created language client for toolchain ${toolchain.swiftFolderPath}`,
+            this.logLabel
+        );
+        this.onDidChangeState(event => {
+            this.swiftLogger.trace(
+                `State changed: ${State[event.oldState]} -> ${State[event.newState]}`,
+                this.logLabel
+            );
+        });
+        this.folderContextFeature = new FolderContextFeature(this, workspaceContext.logger);
         this.registerFeature(this.folderContextFeature);
         this.registerFeature(new LoggingFeature(this));
         this.registerFeature(new ActiveDocumentFeature(this));
         this.registerFeature(new PeekDocumentsFeature(this));
         this.registerFeature(new GetReferenceDocumentFeature(this));
+    }
+
+    override async start(): Promise<void> {
+        // The base client calls `start()` before every request and notification, only
+        // log when this actually starts the server.
+        if (this.state !== State.Stopped) {
+            return super.start();
+        }
+        const startTime = Date.now();
+        this.swiftLogger.trace(
+            `Starting (folders=${this.addedFolders.map(f => f.name).join(", ")})`,
+            this.logLabel
+        );
+        try {
+            await super.start();
+            this.swiftLogger.debug(`Started in ${Date.now() - startTime}ms`, this.logLabel);
+        } catch (error) {
+            this.swiftLogger.debug(`Failed to start: ${error}`, this.logLabel);
+            throw error;
+        }
+    }
+
+    override async stop(timeout?: number): Promise<void> {
+        const stopTime = Date.now();
+        this.swiftLogger.trace(`Stopping (state=${State[this.state]})`, this.logLabel);
+        try {
+            await super.stop(timeout);
+            this.swiftLogger.debug(`Stopped in ${Date.now() - stopTime}ms`, this.logLabel);
+        } catch (error) {
+            this.swiftLogger.debug(`Failed to stop: ${error}`, this.logLabel);
+            throw error;
+        }
+    }
+
+    override async restart(): Promise<void> {
+        this.swiftLogger.debug(`Restarting (state=${State[this.state]})`, this.logLabel);
+        await super.restart();
+        this.swiftLogger.trace("Restarted", this.logLabel);
     }
 
     override registerFeature(feature: StaticFeature | DynamicFeature<unknown>): void {
@@ -310,12 +376,20 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
         ) => Promise<Return>
     ): Promise<Return> {
         if (this.state !== State.Running) {
+            this.swiftLogger.trace(
+                `useLanguageClient: waiting for client to be running (state=${State[this.state]})`,
+                this.logLabel
+            );
             const subscriptions: Disposable[] = [];
             await Promise.race([
                 new Promise<void>(resolve => {
                     subscriptions.push(
                         this.onDidChangeState(event => {
                             if (event.newState === State.Running) {
+                                this.swiftLogger.trace(
+                                    "useLanguageClient: client is running",
+                                    this.logLabel
+                                );
                                 resolve();
                             }
                         })
@@ -323,21 +397,50 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
                 }),
                 new Promise<void>((_resolve, reject) => {
                     subscriptions.push(
-                        this.cancellationTokenSource.token.onCancellationRequested(() =>
-                            reject(Error("The operation was cancelled."))
-                        )
+                        this.cancellationTokenSource.token.onCancellationRequested(() => {
+                            this.swiftLogger.trace(
+                                "useLanguageClient: cancelled while waiting for client",
+                                this.logLabel
+                            );
+                            reject(Error("The operation was cancelled."));
+                        })
                     );
                 }),
             ]).finally(() => subscriptions.forEach(s => s.dispose()));
         }
-        return process(this, this.cancellationTokenSource.token);
+        const startTime = Date.now();
+        this.swiftLogger.trace("useLanguageClient: running request", this.logLabel);
+        const result = process(this, this.cancellationTokenSource.token);
+        // Observe the outcome for tracing only, the original promise is returned unchanged.
+        void result.then(
+            () =>
+                this.swiftLogger.trace(
+                    `useLanguageClient: request finished in ${Date.now() - startTime}ms`,
+                    this.logLabel
+                ),
+            error =>
+                this.swiftLogger.trace(
+                    `useLanguageClient: request failed after ${Date.now() - startTime}ms: ${error}`,
+                    this.logLabel
+                )
+        );
+        return result;
     }
 
     override async dispose(timeout?: number): Promise<void> {
+        const disposeTime = Date.now();
+        this.swiftLogger.trace(
+            `Disposing (state=${State[this.state]}, timeout=${timeout})`,
+            this.logLabel
+        );
         this.cancellationTokenSource.cancel();
         this.cancellationTokenSource.dispose();
         try {
             await super.dispose(timeout);
+            this.swiftLogger.trace(`Disposed in ${Date.now() - disposeTime}ms`, this.logLabel);
+        } catch (error) {
+            this.swiftLogger.trace(`Failed to dispose: ${error}`, this.logLabel);
+            throw error;
         } finally {
             this.outputChannel.dispose();
         }

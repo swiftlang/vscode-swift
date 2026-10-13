@@ -22,6 +22,7 @@ export class TaskManager implements AsyncDisposable {
     private isDisposed = false;
     private taskId = 0;
     private activeExecutions: Set<vscode.TaskExecution> = new Set();
+    private processIds = new WeakMap<vscode.TaskExecution, number>();
     private pendingExecutions: Set<Promise<unknown>> = new Set();
     private subscriptions: Disposable[];
     private didEndTaskProcessEmitter = new vscode.EventEmitter<vscode.TaskProcessEndEvent>();
@@ -35,6 +36,10 @@ export class TaskManager implements AsyncDisposable {
                     label: "TaskManager",
                 });
                 if (this.taskStartObserver) {
+                    workspaceContext.logger.trace(
+                        `Task start observed, releasing starting task promise: ${event.execution.task.name}`,
+                        { label: "TaskManager" }
+                    );
                     this.taskStartObserver();
                 }
                 // if task is set to disable the task queue then disable it
@@ -43,15 +48,19 @@ export class TaskManager implements AsyncDisposable {
                 }
             }),
             vscode.tasks.onDidStartTaskProcess(event => {
-                workspaceContext.logger.debug(
-                    `Task process started: ${event.execution.task.name}`,
+                this.processIds.set(event.execution, event.processId);
+                workspaceContext.logger.trace(
+                    `Task process started: ${event.execution.task.name}, id=${event.execution.task.definition.id}, pid=${event.processId}`,
                     { label: "TaskManager" }
                 );
             }),
             vscode.tasks.onDidEndTaskProcess(event => {
-                workspaceContext.logger.debug(`Task process ended: ${event.execution.task.name}`, {
-                    label: "TaskManager",
-                });
+                // The end event doesn't carry the process ID, so pair it with the start event
+                workspaceContext.logger.trace(
+                    `Task process ended: ${event.execution.task.name}, id=${event.execution.task.definition.id}, pid=${this.processIds.get(event.execution)}, exitCode=${event.exitCode}`,
+                    { label: "TaskManager" }
+                );
+                this.processIds.delete(event.execution);
                 this.didEndTaskProcessEmitter.fire(event);
             }),
             vscode.tasks.onDidEndTask(event => {
@@ -61,6 +70,10 @@ export class TaskManager implements AsyncDisposable {
                 if (this.activeExecutions.has(event.execution)) {
                     this.activeExecutions.delete(event.execution);
                 }
+                workspaceContext.logger.trace(
+                    `Task ended: ${event.execution.task.name}, id=${event.execution.task.definition.id}, activeExecutions=${this.activeExecutions.size}`,
+                    { label: "TaskManager" }
+                );
                 this.didEndTaskProcessEmitter.fire({
                     execution: event.execution,
                     exitCode: undefined,
@@ -96,6 +109,10 @@ export class TaskManager implements AsyncDisposable {
         // set id on definition to catch this task when completing
         task.definition.id = this.taskId;
         this.taskId += 1;
+        this.workspaceContext.logger.trace(
+            `Execute task and wait: ${task.name}, id=${task.definition.id}, scope=${scopeName(task)}, hasToken=${token !== undefined}`,
+            { label: "TaskManager" }
+        );
         return new Promise<number | undefined>((resolve, reject) => {
             // There is a bug in the vscode task execution code where if you start two
             // tasks with the name but different scopes at the same time the second one
@@ -103,9 +120,17 @@ export class TaskManager implements AsyncDisposable {
             // one will run. The startingTaskPromise is setup when a executeTask is
             // called and resolved at the point it actually starts
             if (this.startingTaskPromise) {
-                void this.startingTaskPromise.then(() =>
-                    this.executeTaskAndResolve(task, resolve, reject, token)
+                this.workspaceContext.logger.trace(
+                    `Waiting for previous task to start: ${task.name}, id=${task.definition.id}`,
+                    { label: "TaskManager" }
                 );
+                void this.startingTaskPromise.then(() => {
+                    this.workspaceContext.logger.trace(
+                        `Previous task started, executing: ${task.name}, id=${task.definition.id}`,
+                        { label: "TaskManager" }
+                    );
+                    this.executeTaskAndResolve(task, resolve, reject, token);
+                });
             } else {
                 this.executeTaskAndResolve(task, resolve, reject, token);
             }
@@ -119,12 +144,20 @@ export class TaskManager implements AsyncDisposable {
         token?: vscode.CancellationToken
     ) {
         if (this.isDisposed) {
+            this.workspaceContext.logger.trace(
+                `TaskManager is disposed, rejecting task: ${task.name}, id=${task.definition.id}`,
+                { label: "TaskManager" }
+            );
             reject(Error("TaskManager is disposed."));
             return;
         }
         const disposables = [
             this.onDidEndTaskProcess(event => {
                 if (event.execution.task.definition.id === task.definition.id) {
+                    this.workspaceContext.logger.trace(
+                        `Resolving task: ${task.name}, id=${task.definition.id}, exitCode=${event.exitCode}`,
+                        { label: "TaskManager" }
+                    );
                     disposables.forEach(d => d.dispose());
                     resolve(event.exitCode);
                 }
@@ -143,18 +176,38 @@ export class TaskManager implements AsyncDisposable {
                 resolve();
             };
         });
+        this.workspaceContext.logger.trace(
+            `Calling vscode.tasks.executeTask: ${task.name}, id=${task.definition.id}`,
+            { label: "TaskManager" }
+        );
         const pending = Promise.resolve(vscode.tasks.executeTask(task)).then(
             execution => {
                 this.activeExecutions.add(execution);
+                this.workspaceContext.logger.trace(
+                    `vscode.tasks.executeTask returned: ${task.name}, id=${task.definition.id}, activeExecutions=${this.activeExecutions.size}`,
+                    { label: "TaskManager" }
+                );
                 if (this.isDisposed) {
                     // Disposed while VS Code was still starting the task
+                    this.workspaceContext.logger.trace(
+                        `TaskManager disposed while task was starting: ${task.name}, id=${task.definition.id}`,
+                        { label: "TaskManager" }
+                    );
                     disposables.forEach(d => d.dispose());
                     resolve(undefined);
                     return;
                 }
                 if (token) {
+                    this.workspaceContext.logger.trace(
+                        `Registering cancellation handler: ${task.name}, id=${task.definition.id}, alreadyCancelled=${token.isCancellationRequested}`,
+                        { label: "TaskManager" }
+                    );
                     disposables.push(
                         token?.onCancellationRequested(() => {
+                            this.workspaceContext.logger.trace(
+                                `Cancellation requested, terminating task: ${task.name}, id=${task.definition.id}`,
+                                { label: "TaskManager" }
+                            );
                             execution.terminate();
                             disposables.forEach(d => d.dispose());
                             resolve(undefined);
@@ -180,6 +233,10 @@ export class TaskManager implements AsyncDisposable {
     private async terminateActiveTasks(): Promise<void> {
         // A task VS Code hasn't finished starting isn't in `activeExecutions` yet and
         // outlives the extension, running unsupervised.
+        this.workspaceContext.logger.trace(
+            `Waiting for starting tasks before terminating: pendingExecutions=${this.pendingExecutions.size}`,
+            { label: "TaskManager" }
+        );
         await withTimeout(
             "Waiting for starting tasks before terminating them",
             () => Promise.allSettled([...this.pendingExecutions]),
@@ -187,6 +244,9 @@ export class TaskManager implements AsyncDisposable {
         ).catch(error => this.workspaceContext.logger.warn(error));
         const executions = [...this.activeExecutions];
         if (executions.length === 0) {
+            this.workspaceContext.logger.trace("No running tasks to terminate", {
+                label: "TaskManager",
+            });
             return;
         }
         this.workspaceContext.logger.debug(
@@ -194,6 +254,9 @@ export class TaskManager implements AsyncDisposable {
             { label: "TaskManager" }
         );
         await Promise.all(executions.map(execution => this.terminate(execution)));
+        this.workspaceContext.logger.debug("Finished terminating running tasks", {
+            label: "TaskManager",
+        });
     }
 
     /**
@@ -208,13 +271,26 @@ export class TaskManager implements AsyncDisposable {
                     subscriptions.push(
                         vscode.tasks.onDidEndTask(event => {
                             if (event.execution === execution) {
+                                this.workspaceContext.logger.trace(
+                                    `Terminated task ended: ${execution.task.name}`,
+                                    { label: "TaskManager" }
+                                );
                                 resolve();
                             }
                         })
                     );
+                    this.workspaceContext.logger.trace(`Terminating task: ${execution.task.name}`, {
+                        label: "TaskManager",
+                    });
                     execution.terminate();
                     // VS Code ignores a `terminate()` that is called before the task has finished starting.
-                    const retry = setInterval(() => execution.terminate(), 500);
+                    const retry = setInterval(() => {
+                        this.workspaceContext.logger.trace(
+                            `Retrying terminate: ${execution.task.name}`,
+                            { label: "TaskManager" }
+                        );
+                        execution.terminate();
+                    }, 500);
                     subscriptions.push(new Disposable(() => clearInterval(retry)));
                 }),
             5000
@@ -229,17 +305,37 @@ export class TaskManager implements AsyncDisposable {
             context => context.folder.fsPath === task.definition.cwd
         );
         if (index === -1) {
+            this.workspaceContext.logger.trace(
+                `No folder matches task cwd, task queue unchanged: ${task.name}, cwd=${task.definition.cwd}`,
+                { label: "TaskManager" }
+            );
             return;
         }
+        this.workspaceContext.logger.trace(
+            `Task queue ${disable ? "disabled" : "enabled"} by task: ${task.name}, folder=${this.workspaceContext.folders[index].name}`,
+            { label: "TaskManager" }
+        );
         this.workspaceContext.folders[index].taskQueue.disabled = disable;
     }
 
     async dispose() {
+        this.workspaceContext.logger.trace(
+            `Disposing TaskManager: activeExecutions=${this.activeExecutions.size}, pendingExecutions=${this.pendingExecutions.size}, taskStarting=${this.startingTaskPromise !== undefined}`,
+            { label: "TaskManager" }
+        );
         this.isDisposed = true;
         // Release anything queued behind a task that will now never start.
         this.taskStartObserver?.();
         await this.terminateActiveTasks();
         this.subscriptions.forEach(s => s.dispose());
         this.didEndTaskProcessEmitter.dispose();
+        this.workspaceContext.logger.trace("TaskManager disposed", { label: "TaskManager" });
     }
+}
+
+function scopeName(task: vscode.Task): string {
+    if (task.scope === vscode.TaskScope.Workspace || task.scope === vscode.TaskScope.Global) {
+        return vscode.TaskScope[task.scope];
+    }
+    return task.scope?.name ?? "undefined";
 }

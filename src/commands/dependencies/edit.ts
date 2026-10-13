@@ -31,6 +31,9 @@ export async function editDependency(
 ) {
     const currentFolder = folder ?? ctx.currentFolder;
     if (!currentFolder) {
+        ctx.logger.debug("No current folder, not editing dependency", {
+            label: "editDependency",
+        });
         return;
     }
 
@@ -45,12 +48,16 @@ export async function editDependency(
         currentFolder.toolchain
     );
 
+    ctx.logger.debug(`Starting "swift package edit ${identifier}"`, { label: currentFolder.name });
     const success = await executeTaskWithUI(
         task,
         `edit locally ${identifier}`,
         currentFolder,
         true
     );
+    ctx.logger.debug(`Finished "swift package edit ${identifier}" (success=${success})`, {
+        label: currentFolder.name,
+    });
 
     if (success) {
         await ctx.fireEvent(currentFolder, FolderOperation.resolvedUpdated);

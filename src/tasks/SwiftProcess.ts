@@ -15,11 +15,16 @@ import * as child_process from "child_process";
 import type * as nodePty from "node-pty";
 import * as vscode from "vscode";
 
+import { SwiftLogger } from "../logging/SwiftLogger";
 import { Disposable } from "../utilities/Disposable";
 import { safeBareRepositoryEnvironmentOverride } from "../utilities/gitConfig";
 import { requireNativeModule } from "../utilities/native";
 
 const { spawn } = requireNativeModule<typeof nodePty>("node-pty");
+
+export interface SwiftProcessOptions extends vscode.ProcessExecutionOptions {
+    logger?: SwiftLogger;
+}
 
 export interface SwiftProcess extends Disposable {
     /**
@@ -84,7 +89,13 @@ class CloseHandler implements Disposable {
 
     event = this.closeEmitter.event;
 
+    logger?: SwiftLogger;
+    description: () => string = () => "";
+
     handle(exitCode: number | void) {
+        this.logger?.trace(`Process exit handled: ${this.description()}, exitCode=${exitCode}`, {
+            label: "SwiftProcess",
+        });
         this.exitCode = exitCode;
         this.queueClose();
     }
@@ -102,6 +113,10 @@ class CloseHandler implements Disposable {
 
     private queueClose() {
         this.closeTimeout = setTimeout(() => {
+            this.logger?.trace(
+                `Firing process close: ${this.description()}, exitCode=${this.exitCode}`,
+                { label: "SwiftProcess" }
+            );
             this.closeEmitter.fire(this.exitCode);
         }, 250);
     }
@@ -123,8 +138,10 @@ export class SwiftPtyProcess implements SwiftProcess {
     constructor(
         public readonly command: string,
         public readonly args: string[],
-        private options: vscode.ProcessExecutionOptions = {}
+        private options: SwiftProcessOptions = {}
     ) {
+        this.closeHandler.logger = options.logger;
+        this.closeHandler.description = () => this.describe();
         this.disposables.push(
             this.spawnEmitter,
             this.writeEmitter,
@@ -133,13 +150,22 @@ export class SwiftPtyProcess implements SwiftProcess {
         );
     }
 
+    private describe(): string {
+        return `${this.args[0] ?? this.command}, pid=${this.spawnedProcess?.pid}`;
+    }
+
     spawn(): void {
+        const logger = this.options.logger;
         try {
             const isWindows = process.platform === "win32";
             // The pty process hangs on Windows when debugging the extension if we use conpty
             // See https://github.com/microsoft/node-pty/issues/640
             const useConpty = isWindows && process.env["VSCODE_DEBUG"] === "1" ? false : true;
             const env = { ...process.env, ...this.options.env };
+            logger?.trace(
+                `Spawning pty process: "${this.command} ${this.args.join(" ")}", cwd=${this.options.cwd}`,
+                { label: "SwiftProcess" }
+            );
             this.spawnedProcess = spawn(this.command, this.args, {
                 cwd: this.options.cwd,
                 env: { ...env, ...safeBareRepositoryEnvironmentOverride(env) },
@@ -148,12 +174,17 @@ export class SwiftPtyProcess implements SwiftProcess {
                 // Causing weird truncation issues
                 cols: isWindows ? 4096 : undefined,
             });
+            logger?.trace(`Spawned pty process: ${this.describe()}`, { label: "SwiftProcess" });
             this.spawnEmitter.fire();
             this.spawnedProcess.onData(data => {
                 this.writeEmitter.fire(data);
                 this.closeHandler.reset();
             });
             this.spawnedProcess.onExit(event => {
+                logger?.trace(
+                    `Pty process exited: ${this.describe()}, exitCode=${event.exitCode}, signal=${event.signal}`,
+                    { label: "SwiftProcess" }
+                );
                 if (event.signal) {
                     this.closeHandler.handle(event.signal);
                 } else if (typeof event.exitCode === "number") {
@@ -164,10 +195,16 @@ export class SwiftPtyProcess implements SwiftProcess {
             });
             this.disposables.push(
                 this.onDidClose(() => {
+                    logger?.trace(`Pty process closed, disposing: ${this.describe()}`, {
+                        label: "SwiftProcess",
+                    });
                     this.dispose();
                 })
             );
         } catch (error) {
+            logger?.debug(`Failed to spawn pty process: "${this.command}", error=${error}`, {
+                label: "SwiftProcess",
+            });
             this.errorEmitter.fire(new Error(`${error}`));
             this.closeHandler.handle();
         }
@@ -179,8 +216,16 @@ export class SwiftPtyProcess implements SwiftProcess {
 
     terminate(signal?: NodeJS.Signals): void {
         if (!this.spawnedProcess) {
+            this.options.logger?.trace(
+                `Terminate requested before pty process spawned: "${this.command}"`,
+                { label: "SwiftProcess" }
+            );
             return;
         }
+        this.options.logger?.trace(
+            `Terminating pty process: ${this.describe()}, signal=${signal ?? "default"}`,
+            { label: "SwiftProcess" }
+        );
         this.spawnedProcess.kill(signal);
     }
 
@@ -194,6 +239,9 @@ export class SwiftPtyProcess implements SwiftProcess {
     }
 
     dispose() {
+        this.options.logger?.trace(`Disposing pty process: ${this.describe()}`, {
+            label: "SwiftProcess",
+        });
         this.disposables.forEach(d => d.dispose());
     }
 
@@ -230,8 +278,10 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
     constructor(
         public readonly command: string,
         public readonly args: string[],
-        private readonly options: vscode.ProcessExecutionOptions = {}
+        private readonly options: SwiftProcessOptions = {}
     ) {
+        this.closeHandler.logger = options.logger;
+        this.closeHandler.description = () => this.describe();
         this.disposables.push(
             this.spawnEmitter,
             this.writeEmitter,
@@ -242,13 +292,23 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
         );
     }
 
+    private describe(): string {
+        return `${this.args[0] ?? this.command}, pid=${this.spawnedProcess?.pid}`;
+    }
+
     spawn(): void {
+        const logger = this.options.logger;
         try {
             const env = { ...process.env, ...this.options.env };
+            logger?.trace(
+                `Spawning child process: "${this.command} ${this.args.join(" ")}", cwd=${this.options.cwd}`,
+                { label: "SwiftProcess" }
+            );
             this.spawnedProcess = child_process.spawn(this.command, this.args, {
                 cwd: this.options.cwd,
                 env: { ...env, ...safeBareRepositoryEnvironmentOverride(env) },
             });
+            logger?.trace(`Spawned child process: ${this.describe()}`, { label: "SwiftProcess" });
             this.spawnEmitter.fire();
 
             this.spawnedProcess.stdout.on("data", data => {
@@ -266,20 +326,33 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
             });
 
             this.spawnedProcess.on("error", error => {
+                logger?.trace(`Child process error: ${this.describe()}, error=${error}`, {
+                    label: "SwiftProcess",
+                });
                 this.errorEmitter.fire(new Error(`${error}`));
                 this.closeHandler.handle();
             });
 
-            this.spawnedProcess.once("exit", code => {
+            this.spawnedProcess.once("exit", (code, signal) => {
+                logger?.trace(
+                    `Child process exited: ${this.describe()}, exitCode=${code}, signal=${signal}`,
+                    { label: "SwiftProcess" }
+                );
                 this.closeHandler.handle(code ?? undefined);
             });
 
             this.disposables.push(
                 this.onDidClose(() => {
+                    logger?.trace(`Child process closed, disposing: ${this.describe()}`, {
+                        label: "SwiftProcess",
+                    });
                     this.dispose();
                 })
             );
         } catch (error) {
+            logger?.debug(`Failed to spawn child process: "${this.command}", error=${error}`, {
+                label: "SwiftProcess",
+            });
             this.errorEmitter.fire(new Error(`${error}`));
             this.closeHandler.handle();
         }
@@ -291,8 +364,16 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
 
     terminate(signal?: NodeJS.Signals): void {
         if (!this.spawnedProcess) {
+            this.options.logger?.trace(
+                `Terminate requested before child process spawned: "${this.command}"`,
+                { label: "SwiftProcess" }
+            );
             return;
         }
+        this.options.logger?.trace(
+            `Terminating child process: ${this.describe()}, signal=${signal ?? "default"}`,
+            { label: "SwiftProcess" }
+        );
         this.spawnedProcess.kill(signal);
         this.dispose();
     }
@@ -302,6 +383,9 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
     }
 
     dispose(): void {
+        this.options.logger?.trace(`Disposing child process: ${this.describe()}`, {
+            label: "SwiftProcess",
+        });
         this.spawnedProcess?.stdout.removeAllListeners();
         this.spawnedProcess?.stderr.removeAllListeners();
         this.spawnedProcess?.removeAllListeners();

@@ -45,6 +45,7 @@ import {
     mockGlobalValue,
     mockObject,
 } from "../../MockUtils";
+import { TestLogger } from "../../utilities/TestLogger";
 
 suite("SwiftTaskProvider Unit Test Suite", () => {
     let workspaceContext: MockedObject<WorkspaceContext>;
@@ -70,6 +71,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
             ),
         });
         const folderContext = mockObject<FolderContext>({
+            name: "folder",
             workspaceContext: instance(workspaceContext),
             workspaceFolder,
             toolchain: instance(toolchain),
@@ -78,6 +80,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
             globalToolchain: instance(toolchain),
             currentFolder: instance(folderContext),
             folders: [],
+            logger: new TestLogger(),
         });
         workspaceFolder = {
             uri: vscode.Uri.file("/path/to/workspace"),
@@ -710,6 +713,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
 
         setup(() => {
             folderContext = mockObject<FolderContext>({
+                name: "folder",
                 workspaceContext: instance(workspaceContext),
                 workspaceFolder: workspaceFolder,
                 folder: workspaceFolder.uri,
@@ -796,6 +800,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
             );
 
             const folderContext = mockObject<FolderContext>({
+                name: "folder",
                 workspaceContext: instance(workspaceContext),
                 workspaceFolder,
                 folder: workspaceFolder.uri,
@@ -834,6 +839,7 @@ suite("SwiftTaskProvider Unit Test Suite", () => {
             );
 
             const folderContext = mockObject<FolderContext>({
+                name: "folder",
                 workspaceContext: instance(workspaceContext),
                 workspaceFolder,
                 folder: workspaceFolder.uri,

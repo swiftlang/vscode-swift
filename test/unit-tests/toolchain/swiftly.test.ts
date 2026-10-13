@@ -117,9 +117,7 @@ suite("Swiftly Unit Tests", () => {
 
         setup(() => {
             mockLogger = instance(
-                mockObject<SwiftLogger>({
-                    error: mockFn(),
-                })
+                mockObject<SwiftLogger>({ trace: mockFn(), debug: mockFn(), error: mockFn() })
             );
             // Mock version check to return 1.1.1
             mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
@@ -445,6 +443,7 @@ suite("Swiftly Unit Tests", () => {
                 error: () => {},
                 warn: () => {},
                 debug: () => {},
+                trace: () => {},
             };
 
             // Mock version to return undefined (not installed)
@@ -465,6 +464,7 @@ suite("Swiftly Unit Tests", () => {
                 error: () => {},
                 warn: () => {},
                 debug: () => {},
+                trace: () => {},
             };
 
             mockUtilities.execFile.withArgs("swiftly", ["--version"]).rejects(new Error("error"));
@@ -511,6 +511,7 @@ suite("Swiftly Unit Tests", () => {
                 error: () => {},
                 warn: () => {},
                 debug: () => {},
+                trace: () => {},
             };
 
             mockUtilities.execFile
@@ -541,6 +542,7 @@ suite("Swiftly Unit Tests", () => {
                 error: () => {},
                 warn: () => {},
                 debug: () => {},
+                trace: () => {},
             };
 
             mockUtilities.execFile
@@ -1508,6 +1510,7 @@ apt-get -y install libncurses5-dev
 
         setup(() => {
             mockLogger = mockObject<SwiftLogger>({
+                trace: mockFn(),
                 info: mockFn(),
                 warn: mockFn(),
                 error: mockFn(),
@@ -1576,6 +1579,8 @@ apt-get -y install libncurses5-dev
             mockWindow.showInformationMessage.resolves(undefined);
 
             const mockLogger = mockObject<SwiftLogger>({
+                trace: mockFn(),
+                debug: mockFn(),
                 info: mockFn(),
             });
 

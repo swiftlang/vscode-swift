@@ -143,25 +143,37 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
         logger: SwiftLogger,
         folder?: vscode.Uri
     ): Promise<SwiftToolchain> {
-        const swiftBinaryPath = await this.findSwiftBinaryInPath();
+        logger.trace(`Creating toolchain for folder: ${folder?.fsPath ?? "<global>"}`, {
+            label: "Toolchain",
+        });
+        const swiftBinaryPath = await this.findSwiftBinaryInPath(logger);
         const swiftFolderPath = path.dirname(swiftBinaryPath);
+        logger.trace(`Resolved swift binary path: ${swiftBinaryPath}`, { label: "Toolchain" });
         const { toolchainPath, toolchainManager } = await this.getToolchainPath(
             swiftBinaryPath,
             extensionRoot,
             logger,
             folder
         );
+        logger.trace(`Resolved toolchain path: ${toolchainPath} (manager=${toolchainManager})`, {
+            label: "Toolchain",
+        });
         const targetInfo = await this.getSwiftTargetInfo(
             this._getToolchainExecutable(swiftFolderPath, "swift"),
             folder?.fsPath,
             logger
         );
-        const swiftVersion = this.getSwiftVersion(targetInfo);
+        const swiftVersion = this.getSwiftVersion(targetInfo, logger);
+        logger.trace("Resolving runtime path and default SDK", { label: "Toolchain" });
         const [runtimePath, defaultSDK] = await Promise.all([
             this.getRuntimePath(targetInfo),
             this.getDefaultSDK(),
         ]);
         const customSDK = this.getCustomSDK();
+        logger.trace(
+            `Resolved runtimePath=${runtimePath ?? "<none>"}, defaultSDK=${defaultSDK ?? "<none>"}, customSDK=${customSDK ?? "<none>"}`,
+            { label: "Toolchain" }
+        );
         const [xcTestPath, swiftTestingPath, swiftPMTestingHelperPath] = await Promise.all([
             this.getXCTestPath(
                 targetInfo,
@@ -180,6 +192,13 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
             ),
             this.getSwiftPMTestingHelperPath(toolchainPath),
         ]);
+        logger.trace(
+            `Resolved xcTestPath=${xcTestPath ?? "<none>"}, swiftTestingPath=${swiftTestingPath ?? "<none>"}, swiftPMTestingHelperPath=${swiftPMTestingHelperPath ?? "<none>"}`,
+            { label: "Toolchain" }
+        );
+        logger.debug(`Created toolchain Swift ${swiftVersion.toString()} at ${toolchainPath}`, {
+            label: "Toolchain",
+        });
 
         return new SwiftToolchain(
             toolchainManager,
@@ -536,18 +555,27 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
         logger.debug(this.diagnostics);
     }
 
-    private static async findSwiftBinaryInPath(): Promise<string> {
+    private static async findSwiftBinaryInPath(logger?: SwiftLogger): Promise<string> {
         if (configuration.path !== "") {
+            logger?.trace(`Using swift.path setting: ${configuration.path}`, {
+                label: "Toolchain",
+            });
             const pathFromSettings = expandFilePathTilde(configuration.path);
             const windowsExeSuffix = process.platform === "win32" ? ".exe" : "";
 
             return path.join(pathFromSettings, `swift${windowsExeSuffix}`);
         }
+        logger?.trace("swift.path setting is empty, searching PATH for swift", {
+            label: "Toolchain",
+        });
         return await findBinaryInPath("swift");
     }
 
     private static async isXcrunShim(binary: string, logger?: SwiftLogger): Promise<boolean> {
         if (!(await fileExists(binary))) {
+            logger?.trace(`Not an xcrun shim, file does not exist: ${binary}`, {
+                label: "Toolchain",
+            });
             return false;
         }
         // Make sure that either Xcode or CommandLineTools are installed before attempting to run objdump.
@@ -559,8 +587,13 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
         }
         // Use objdump to determine if this is an xcrun shim.
         try {
+            logger?.trace(`Running "xcrun objdump -h ${binary}" to check for xcrun shim`, {
+                label: "Toolchain",
+            });
             const objdumpOutput = await execFile("xcrun", ["objdump", "-h", binary]);
-            return objdumpOutput.stdout.includes("__xcrun_shim");
+            const isShim = objdumpOutput.stdout.includes("__xcrun_shim");
+            logger?.trace(`Binary ${binary} is xcrun shim: ${isShim}`, { label: "Toolchain" });
+            return isShim;
         } catch (error) {
             logger?.error(error);
             return false;
@@ -582,13 +615,22 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
         try {
             // swift may be a symbolic link
             const realSwiftBinaryPath = await fs.realpath(swiftBinaryPath);
+            logger?.trace(`Real swift binary path: ${realSwiftBinaryPath}`, {
+                label: "Toolchain",
+            });
             // Check if the swift binary is managed by xcrun
             if (
                 process.platform === "darwin" &&
                 (await this.isXcrunShim(realSwiftBinaryPath, logger))
             ) {
+                logger?.trace(`Swift binary is managed by xcrun, running "xcrun --find swift"`, {
+                    label: "Toolchain",
+                });
                 const { stdout } = await execFile("xcrun", ["--find", "swift"], {
                     env: configuration.swiftEnvironmentVariables,
+                });
+                logger?.trace(`"xcrun --find swift" returned: ${stdout.trim()}`, {
+                    label: "Toolchain",
                 });
                 return {
                     toolchainPath: path.resolve(stdout.trim(), "../../"),
@@ -597,11 +639,17 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
             }
             // Check if the swift binary is managed by swiftly
             if (await Swiftly.isManagedBySwiftly(swiftBinaryPath)) {
+                logger?.trace("Swift binary is managed by swiftly, querying active toolchain", {
+                    label: "Toolchain",
+                });
                 const swiftlyToolchainPath = await Swiftly.getActiveToolchain(
                     extensionRoot,
                     logger,
                     cwd
                 );
+                logger?.trace(`Swiftly active toolchain: ${swiftlyToolchainPath}`, {
+                    label: "Toolchain",
+                });
                 return {
                     toolchainPath: path.resolve(swiftlyToolchainPath, "usr"),
                     toolchainManager: "swiftly",
@@ -615,7 +663,16 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
                 try {
                     const swiftenvPath = path.join(realSwiftBinaryPath, "../..");
                     const swiftenv = path.join(swiftenvPath, "libexec", "swiftenv");
+                    logger?.trace(
+                        `Swift binary is a swiftenv shim, running "${swiftenv} which swift"`,
+                        {
+                            label: "Toolchain",
+                        }
+                    );
                     const { stdout } = await execFile(swiftenv, ["which", "swift"]);
+                    logger?.trace(`"swiftenv which swift" returned: ${stdout.trim()}`, {
+                        label: "Toolchain",
+                    });
                     return {
                         toolchainPath: path.resolve(stdout.trim(), "../.."),
                         toolchainManager: "swiftenv",
@@ -625,6 +682,12 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
                 }
             }
             // Unable to determine who manages the swift toolchain.
+            logger?.debug(
+                "Unable to determine toolchain manager, falling back to binary location",
+                {
+                    label: "Toolchain",
+                }
+            );
             return {
                 toolchainPath: path.resolve(realSwiftBinaryPath, "../.."),
                 toolchainManager: "unknown",
@@ -787,12 +850,18 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
                 ? runtimePath
                 : undefined;
         if (!sdkroot) {
+            logger?.trace(`No SDK root, using fallback ${type} path: ${fallbackPath ?? "<none>"}`, {
+                label: "Toolchain",
+            });
             return fallbackPath;
         }
 
         const platformPath = path.dirname(path.dirname(path.dirname(sdkroot)));
         const platformManifest = path.join(platformPath, "Info.plist");
         if ((await pathExists(platformManifest)) !== true) {
+            logger?.trace(`Platform manifest not found: ${platformManifest}`, {
+                label: "Toolchain",
+            });
             if (fallbackPath) {
                 return fallbackPath;
             }
@@ -865,6 +934,9 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
     ): Promise<SwiftTargetInfo> {
         try {
             try {
+                logger?.trace(`Running "${swiftExecutable} -print-target-info"`, {
+                    label: "Toolchain",
+                });
                 const { stdout } = await execSwift(
                     ["-print-target-info"],
                     { swiftExecutable },
@@ -878,14 +950,30 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
                 }
 
                 if (targetInfo.compilerVersion) {
+                    logger?.trace(
+                        `"swift -print-target-info" compiler version: ${targetInfo.compilerVersion}`,
+                        {
+                            label: "Toolchain",
+                        }
+                    );
                     return targetInfo;
                 }
+                logger?.trace(
+                    `"swift -print-target-info" had no compilerVersion, falling back to "swift --version"`,
+                    {
+                        label: "Toolchain",
+                    }
+                );
             } catch (error) {
                 // hit error while running `swift -print-target-info`. We are possibly running
                 // a version of swift 5.3 or older
                 logger?.warn(`Error while running 'swift -print-target-info': ${error}`);
             }
+            logger?.trace(`Running "${swiftExecutable} --version"`, { label: "Toolchain" });
             const { stdout } = await execSwift(["--version"], { swiftExecutable });
+            logger?.trace(`"swift --version" first line: ${stdout.split(lineBreakRegex, 1)[0]}`, {
+                label: "Toolchain",
+            });
             return {
                 compilerVersion: stdout.split(lineBreakRegex, 1)[0],
                 paths: { runtimeLibraryPaths: [""] },
@@ -903,11 +991,19 @@ export class SwiftToolchain implements ExternalSwiftToolchain {
      * @param targetInfo swift target info
      * @returns swift version object
      */
-    private static getSwiftVersion(targetInfo: SwiftTargetInfo): Version {
+    private static getSwiftVersion(targetInfo: SwiftTargetInfo, logger?: SwiftLogger): Version {
         const match = /Swift version (\S+)/.exec(targetInfo.compilerVersion);
         let version: Version | undefined;
         if (match) {
             version = Version.fromString(match[1]);
+        }
+        if (version) {
+            logger?.trace(`Parsed Swift version: ${version.toString()}`, { label: "Toolchain" });
+        } else {
+            logger?.trace(
+                `Unable to parse Swift version from "${targetInfo.compilerVersion}", using 0.0.0`,
+                { label: "Toolchain" }
+            );
         }
         return version ?? new Version(0, 0, 0);
     }

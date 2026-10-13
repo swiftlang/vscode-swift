@@ -479,9 +479,7 @@ suite("getLaunchConfiguration Tests", () => {
         const mockToolchain = mockObject<SwiftToolchain>({
             buildFlags: instance(mockBuildFlags),
         });
-        const mockLogger = mockObject<SwiftLogger>({
-            info: mockFn(),
-        });
+        const mockLogger = mockObject<SwiftLogger>({ trace: mockFn(), info: mockFn() });
         const mockWorkspaceCtx = mockObject<WorkspaceContext>({
             logger: instance(mockLogger),
         });

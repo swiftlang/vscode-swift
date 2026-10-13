@@ -53,11 +53,12 @@ tag("medium").suite("SwiftPluginTaskProvider Test Suite", function () {
                 "Located command-plugin folder in root workspace at " + folderContext.folder.fsPath
             );
             const rollingLog = new RollingLog(100);
-            const logger = new SwiftLogger([new RollingLogTransport(rollingLog)]);
+            const logger = new SwiftLogger([new RollingLogTransport(rollingLog, "warn")]);
             try {
                 ctx.logger.info("Loading swift plugins");
                 await folderContext.loadSwiftPlugins(logger);
-                expect(rollingLog.logs, "loadSwiftPlugins() should not log anything").to.be.empty;
+                expect(rollingLog.logs, "loadSwiftPlugins() should not log warnings or errors").to
+                    .be.empty;
                 expect(workspaceContext.folders).to.not.have.lengthOf(0);
             } finally {
                 logger.dispose();

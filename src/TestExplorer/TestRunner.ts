@@ -141,6 +141,21 @@ export class TestRunner {
                 : new XCTestOutputParser();
         this.swiftTestOutputParser = this.createSwiftTestOutputParser();
         this.onDebugSessionTerminated = this.debugSessionTerminatedEmitter.event;
+        this.trace(
+            `Created ${testKind} test runner: ${this.testArgs.testItems.length} items, XCTest=${this.testArgs.hasXCTests} (${this.testArgs.xcTestArgs.length} args), swift-testing=${this.testArgs.hasSwiftTestingTests} (${this.testArgs.swiftTestArgs.length} args)`
+        );
+    }
+
+    private trace(message: string) {
+        this.workspaceContext.logger.trace(`[test run ${this.testRun.runId}] ${message}`, {
+            label: this.folderContext.name,
+        });
+    }
+
+    private debug(message: string) {
+        this.workspaceContext.logger.debug(`[test run ${this.testRun.runId}] ${message}`, {
+            label: this.folderContext.name,
+        });
     }
 
     /**
@@ -149,6 +164,7 @@ export class TestRunner {
      * @param iteration The iteration counter
      */
     public setIteration(iteration: number) {
+        this.trace(`Setting iteration ${iteration + 1}, resetting swift-testing parser`);
         // The SwiftTestingOutputParser holds state and needs to be reset between iterations.
         this.swiftTestOutputParser = this.createSwiftTestOutputParser();
         this.testRun.setIteration(iteration);
@@ -322,8 +338,15 @@ export class TestRunner {
         onCreateTestRun: vscode.EventEmitter<TestRunProxy>,
         postRunHandler?: (runner: TestRunner) => Promise<void>
     ): Promise<void> {
+        const logger = folderContext.workspaceContext.logger;
+        const label = folderContext.name;
+        logger.debug(
+            `Test run requested: profile=${testKind}, include=${request.include?.length ?? "all"}, exclude=${request.exclude?.length ?? 0}, cancelled=${token.isCancellationRequested}`,
+            { label }
+        );
         // If there's an active test run, prompt the user to cancel
         if (folderContext.hasActiveTestRun()) {
+            logger.trace("Test run already active, asking to replace it", { label });
             const cancelOption = "Replace Running Test";
             const result = IS_RUNNING_UNDER_TEST
                 ? cancelOption
@@ -335,8 +358,13 @@ export class TestRunner {
 
             if (result === cancelOption && !token.isCancellationRequested) {
                 // Cancel the active test run
+                logger.debug("Replacing active test run", { label });
                 folderContext.cancelTestRun();
             } else {
+                logger.debug(
+                    `Not replacing active test run (choice=${result ?? "none"}, cancelled=${token.isCancellationRequested}), dropping request`,
+                    { label }
+                );
                 return;
             }
         }
@@ -357,16 +385,18 @@ export class TestRunner {
 
         // If the user terminates a debugging session for swift-testing
         // we want to prevent XCTest from starting.
-        const terminationListener = runner.onDebugSessionTerminated(() =>
-            compositeTokenSource.cancel()
-        );
+        const terminationListener = runner.onDebugSessionTerminated(() => {
+            runner.debug("Debug session terminated by user, cancelling remaining test run");
+            compositeTokenSource.cancel();
+        });
 
         // If the user cancels the test run via the VS Code UI, skip the pending tests
         // so they don't appear as failed. Any pending tests left over at the end of a run
         // are assumed to have crashed.
-        const cancellationListener = compositeToken.onCancellationRequested(() =>
-            runner.testRun.skipPendingTests()
-        );
+        const cancellationListener = compositeToken.onCancellationRequested(() => {
+            runner.debug("Test run request cancelled, skipping pending tests");
+            runner.testRun.skipPendingTests();
+        });
 
         // Register the test run with the manager
         folderContext.registerTestRun(runner.testRun, compositeTokenSource);
@@ -375,14 +405,18 @@ export class TestRunner {
         onCreateTestRun.fire(runner.testRun);
 
         // Run the tests
+        runner.trace("Awaiting run handler");
         await runner.runHandler();
+        runner.trace("Run handler returned");
 
         terminationListener.dispose();
         cancellationListener.dispose();
 
         // Run the post-run handler if provided
         if (postRunHandler) {
+            runner.trace("Running post-run handler");
             await postRunHandler(runner);
+            runner.trace("Post-run handler finished");
         }
     }
 
@@ -406,6 +440,7 @@ export class TestRunner {
      */
     async runHandler() {
         if (this.testRun.isCancellationRequested) {
+            this.debug("Test run cancelled before it began, not running");
             return;
         }
 
@@ -415,16 +450,22 @@ export class TestRunner {
         const runState = new TestRunnerTestRunState(this.testRun);
 
         const cancellationDisposable = this.testRun.onCancellationRequested(() => {
+            this.trace("Cancellation requested during run handler");
             this.testRun.appendOutput("\r\nTest run cancelled.");
         });
 
+        this.trace(
+            `Run handler starting ${isDebugging(this.testKind) ? "debug" : "run"} session for targets: ${testTargets.join(", ")}`
+        );
         try {
             if (isDebugging(this.testKind)) {
                 await this.debugSession(runState);
             } else {
                 await this.runSession(runState);
             }
+            this.trace(`Session completed, cancelled=${this.testRun.isCancellationRequested}`);
         } catch (error) {
+            this.trace(`Session threw: ${getErrorDescription(error)}`);
             this.workspaceContext.logger.error(`Error: ${getErrorDescription(error)}`);
             this.testRun.appendOutput(`\r\nError: ${getErrorDescription(error)}`);
         }
@@ -438,6 +479,7 @@ export class TestRunner {
         await this.testRun.end();
 
         this.workspaceContext.testsFinished(this.folderContext, this.testKind, testTargets);
+        this.trace("Run handler finished");
     }
 
     /** Run test session without attaching to a debugger */
@@ -447,12 +489,15 @@ export class TestRunner {
         if (this.testArgs.hasSwiftTestingTests) {
             const testRunTime = Date.now();
             const fifoPipePath = this.generateFifoPipePath(testRunTime);
+            this.trace(`Starting swift-testing run session, pipe=${fifoPipePath}`);
 
             await TemporaryFolder.withNamedTemporaryFiles([fifoPipePath], async () => {
                 // macOS/Linux require us to create the named pipe before we use it.
                 // Windows just lets us communicate by specifying a pipe path without any ceremony.
                 if (process.platform !== "win32") {
+                    this.trace("Creating swift-testing FIFO");
                     await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
+                    this.trace("Created swift-testing FIFO");
                 }
                 // Create the swift-testing configuration JSON file, peparing any
                 // directories the configuration may require.
@@ -473,6 +518,9 @@ export class TestRunner {
                 );
 
                 if (testBuildConfig === null || this.testRun.isCancellationRequested) {
+                    this.debug(
+                        `Skipping swift-testing run: config=${testBuildConfig === null ? "null" : "ok"}, cancelled=${this.testRun.isCancellationRequested}`
+                    );
                     return this.testRun.runState;
                 }
 
@@ -480,7 +528,9 @@ export class TestRunner {
 
                 // Watch the pipe for JSONL output and parse the events into test explorer updates.
                 // The await simply waits for the watching to be configured.
+                this.trace("Setting up swift-testing pipe watch");
                 await this.swiftTestOutputParser.watch(fifoPipePath, runState);
+                this.trace("swift-testing pipe watch set up");
 
                 this.testRun.testRunStarted();
 
@@ -498,7 +548,9 @@ export class TestRunner {
                     // target can all reach the parser. Now that `swift test` has
                     // exited we must stop the reader to release the fd before the
                     // FIFO is unlinked below.
+                    this.trace("Closing swift-testing pipe reader");
                     await this.swiftTestOutputParser.close();
+                    this.trace("Closed swift-testing pipe reader");
                 }
 
                 await SwiftTestingConfigurationSetup.cleanupAttachmentFolder(
@@ -510,6 +562,7 @@ export class TestRunner {
         }
 
         if (this.testArgs.hasXCTests) {
+            this.trace("Starting XCTest run session");
             const testBuildConfig = await TestingConfigurationFactory.xcTestConfig(
                 this.folderContext,
                 this.testKind,
@@ -518,6 +571,9 @@ export class TestRunner {
             );
 
             if (testBuildConfig === null || this.testRun.isCancellationRequested) {
+                this.debug(
+                    `Skipping XCTest run: config=${testBuildConfig === null ? "null" : "ok"}, cancelled=${this.testRun.isCancellationRequested}`
+                );
                 return this.testRun.runState;
             }
 
@@ -542,6 +598,7 @@ export class TestRunner {
         testBuildConfig: vscode.DebugConfiguration,
         testLibrary: TestLibrary
     ) {
+        this.trace(`Launching ${testLibrary} tests as ${testKind}`);
         try {
             switch (testKind) {
                 case TestKind.coverage:
@@ -554,7 +611,9 @@ export class TestRunner {
                     await this.runStandardSession(outputStream, testBuildConfig, testKind);
                     break;
             }
+            this.trace(`${testLibrary} tests finished successfully`);
         } catch (error) {
+            this.trace(`${testLibrary} tests finished with error: ${getErrorDescription(error)}`);
             if (error === TestRunner.CANCELLATION_ERROR) {
                 this.testRun.appendOutput(`\r\n${error}`);
             } else if (error !== 1) {
@@ -615,6 +674,7 @@ export class TestRunner {
                     scope: resolveScope(this.folderContext.workspaceFolder),
                     packageName: packageName(this.folderContext),
                     presentationOptions: { reveal: vscode.TaskRevealKind.Never },
+                    logger: this.folderContext.workspaceContext.logger,
                 },
                 this.folderContext.toolchain,
                 { ...process.env, ...testBuildConfig.env },
@@ -634,11 +694,13 @@ export class TestRunner {
 
             // If the test run is iterrupted by a cancellation request from VS Code, ensure the task is terminated.
             const cancellationDisposable = this.testRun.onCancellationRequested(() => {
+                this.trace(`Cancellation requested, sending SIGINT to "${task.name}"`);
                 task.execution.terminate("SIGINT");
                 reject(TestRunner.CANCELLATION_ERROR);
             });
 
             task.execution.onDidClose(code => {
+                this.trace(`Task "${task.name}" closed with exit code ${code}`);
                 cancellationDisposable.dispose();
 
                 // undefined or 0 are viewed as success
@@ -649,6 +711,9 @@ export class TestRunner {
                 }
             });
 
+            this.trace(
+                `Queueing task "${task.name}" (${testKind}), cancelled=${this.testRun.isCancellationRequested}`
+            );
             void this.folderContext.taskQueue.queueOperation(new TaskOperation(task), this.testRun);
         });
     }
@@ -668,7 +733,9 @@ export class TestRunner {
             }
         }
 
+        this.trace(`Capturing ${testLibrary} coverage`);
         await this.testRun.captureCoverage(testLibrary);
+        this.trace(`Captured ${testLibrary} coverage`);
     }
 
     /** Run tests in parallel outside of debugger */
@@ -697,11 +764,18 @@ export class TestRunner {
                 }
             }
 
+            this.trace(`Reading xUnit output from ${filename}`);
             const buffer = await asyncfs.readFile(filename, "utf8");
+            this.trace(`Read ${buffer.length} chars of xUnit output`);
             const xUnitParser = new TestXUnitParser(
                 this.folderContext.toolchain.hasMultiLineParallelTestOutput
             );
             const results = await xUnitParser.parse(buffer, runState, this.workspaceContext.logger);
+            this.trace(
+                results
+                    ? `Parsed xUnit output: ${results.tests} tests, ${results.failures} failures, ${results.errors} errors`
+                    : "Failed to parse xUnit output"
+            );
             if (results) {
                 this.testRun.appendOutput(
                     `\r\nExecuted ${results.tests} tests, with ${results.failures} failures and ${results.errors} errors.\r\n`
@@ -718,6 +792,7 @@ export class TestRunner {
         if (performBuild) {
             // Perform a build all first to produce the binaries we'll run later.
             let buildOutput = "";
+            this.trace("Building tests before debugging");
             try {
                 await this.runStandardSession(
                     // Capture the output to print it in case of a build error.
@@ -735,7 +810,9 @@ export class TestRunner {
                     ),
                     this.testKind
                 );
+                this.debug("Build before debugging succeeded");
             } catch (buildExitCode) {
+                this.debug(`Build before debugging failed: ${getErrorDescription(buildExitCode)}`);
                 runState.recordOutput(undefined, buildOutput);
                 // Check if we should open test results panel on compiler error
                 this.openTestResultsPanel();
@@ -755,12 +832,15 @@ export class TestRunner {
                 ...configuration.folder(this.folderContext.workspaceFolder).additionalTestArguments,
             ];
             const buildSystem = effectiveBuildSystem(this.folderContext.swiftVersion, allBuildArgs);
+            this.trace(`Creating debug configurations, build system=${buildSystem}`);
 
             if (this.testArgs.hasSwiftTestingTests) {
                 // macOS/Linux require us to create the named pipe before we use it.
                 // Windows just lets us communicate by specifying a pipe path without any ceremony.
                 if (process.platform !== "win32") {
+                    this.trace(`Creating swift-testing FIFO ${fifoPipePath}`);
                     await execFile("mkfifo", [fifoPipePath], undefined, this.folderContext);
+                    this.trace("Created swift-testing FIFO");
                 }
                 // Create the swift-testing configuration JSON file, preparing any
                 // directories the configuration may require.
@@ -798,7 +878,11 @@ export class TestRunner {
             });
 
             // Run each debugging session sequentially
+            this.debug(
+                `Running ${debugRuns.length} debug sessions sequentially (${buildConfigs.length - debugRuns.length} configs skipped)`
+            );
             await debugRuns.reduce((p, fn) => p.then(() => fn()), Promise.resolve());
+            this.trace("All debug sessions finished");
 
             // Clean up any leftover resources
             await SwiftTestingConfigurationSetup.cleanupAttachmentFolder(
@@ -959,6 +1043,7 @@ export class TestRunner {
     ): Promise<void> {
         return new Promise<void>((resolve, reject) => {
             if (this.testRun.isCancellationRequested) {
+                this.debug(`Not starting debug session "${config.name}", test run cancelled`);
                 resolve();
                 return;
             }
@@ -966,21 +1051,29 @@ export class TestRunner {
             let startedSessionId: string | undefined;
 
             let settled = false;
-            const finish = () => {
+            const finish = (reason: string) => {
                 if (settled) {
+                    this.trace(
+                        `Debug session "${config.name}" already finished, ignoring ${reason}`
+                    );
                     return;
                 }
+                this.debug(`Debug session "${config.name}" finished: ${reason}`);
                 settled = true;
                 subscriptions.forEach(sub => sub.dispose());
                 if (config.testType === TestLibrary.swiftTesting) {
                     void this.swiftTestOutputParser.close();
                 }
-                void vscode.commands
-                    .executeCommand("workbench.view.extension.test")
-                    .then(() => resolve());
+                void vscode.commands.executeCommand("workbench.view.extension.test").then(() => {
+                    this.trace(`Debug session "${config.name}" resolved`);
+                    resolve();
+                });
             };
 
             const startSession = vscode.debug.onDidStartDebugSession(session => {
+                this.trace(
+                    `Debug session started: id=${session.id}, name="${session.name}", expecting "${config.name}"`
+                );
                 startedSessionId = session.id;
                 const outputHandler = this.testOutputHandler(config.testType, runState);
                 outputHandler(`> ${config.program} ${config.args.join(" ")}\n\n\r`);
@@ -990,21 +1083,21 @@ export class TestRunner {
                     this.workspaceContext.logger,
                     output => outputHandler(output),
                     exitCode => {
+                        this.trace(
+                            `Debug session ${session.id} process exited with code ${exitCode}`
+                        );
                         if (exitCode === 9) {
                             this.debugSessionTerminatedEmitter.fire();
                         }
-                        this.workspaceContext.logger.debug("Test Debugging Process Exited", {
-                            label: this.folderContext.name,
-                        });
-                        finish();
+                        finish(`process exited with code ${exitCode}`);
                     }
                 );
 
                 const cancellation = this.testRun.onCancellationRequested(() => {
-                    this.workspaceContext.logger.debug("Test Debugging Cancelled", {
-                        label: this.folderContext.name,
-                    });
-                    void vscode.debug.stopDebugging(session).then(finish, finish);
+                    void vscode.debug.stopDebugging(session).then(
+                        () => finish("stopped after cancellation"),
+                        () => finish("failed to stop after cancellation")
+                    );
                 });
                 subscriptions.push(cancellation);
             });
@@ -1012,26 +1105,28 @@ export class TestRunner {
 
             const terminateSession = vscode.debug.onDidTerminateDebugSession(e => {
                 if (!debugSessionMatchesConfig(config, startedSessionId, e)) {
+                    this.trace(
+                        `Ignoring termination of unrelated debug session id=${e.id}, name="${e.name}"`
+                    );
                     return;
                 }
-                this.workspaceContext.logger.debug("Stop Test Debugging", {
-                    label: this.folderContext.name,
-                });
-                finish();
+                finish(`session ${e.id} terminated`);
             });
             subscriptions.push(terminateSession);
 
+            this.debug(`Starting debug session "${config.name}" (${config.testType})`);
             vscode.debug.startDebugging(this.folderContext.workspaceFolder, config).then(
                 async started => {
+                    this.trace(`startDebugging for "${config.name}" returned ${started}`);
                     if (started) {
                         if (config.testType === TestLibrary.swiftTesting) {
+                            this.trace("Setting up swift-testing pipe watch for debug session");
                             await this.swiftTestOutputParser.watch(fifoPipePath, runState);
+                            this.trace(
+                                `swift-testing pipe watch set up, session settled=${settled}`
+                            );
                         }
                         this.testRun.testRunStarted();
-
-                        this.workspaceContext.logger.debug("Start Test Debugging", {
-                            label: this.folderContext.name,
-                        });
                     } else {
                         settled = true;
                         subscriptions.forEach(sub => sub.dispose());
@@ -1039,6 +1134,9 @@ export class TestRunner {
                     }
                 },
                 reason => {
+                    this.trace(
+                        `startDebugging for "${config.name}" failed: ${getErrorDescription(reason)}`
+                    );
                     settled = true;
                     subscriptions.forEach(sub => sub.dispose());
                     reject(reason);
@@ -1055,6 +1153,7 @@ export class TestRunner {
         switch (testLibrary) {
             case TestLibrary.swiftTesting: {
                 const preamble = new SwiftTestingPreamble();
+                let sawRunStart = false;
                 return chunk => {
                     // Capture all the output from the build process up until the test run starts.
                     // From there the SwiftTestingOutputParser reconstructs the test output from the JSON events
@@ -1062,6 +1161,10 @@ export class TestRunner {
                     // associated with their respective tests while still producing a complete test run log.
                     const output = chunk.toString();
                     if (preamble.hasRunStarted(output)) {
+                        if (!sawRunStart) {
+                            sawRunStart = true;
+                            this.trace("swift-testing stdout reported test run started");
+                        }
                         this.swiftTestOutputParser.parseStdout(output, runState);
                     } else {
                         this.testRun.appendOutput(output.replace(/\n/g, "\r\n"));

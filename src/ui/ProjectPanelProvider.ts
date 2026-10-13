@@ -559,6 +559,7 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
     }
 
     dispose() {
+        this.workspaceContext.logger.trace("Disposing project panel", { label: "ProjectPanel" });
         this.workspaceObserver?.dispose();
         this.buildPluginFolderWatcher?.dispose();
         this.playgroundWatcher?.dispose();
@@ -567,7 +568,15 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
     }
 
     observeTasks(ctx: WorkspaceContext) {
-        this.disposables.push(new TaskPoller(() => this.didChangeTreeDataEmitter.fire()));
+        this.disposables.push(
+            new TaskPoller(() => {
+                this.workspaceContext.logger.trace(
+                    "Project panel updating after swift task list changed",
+                    { label: "ProjectPanel" }
+                );
+                this.didChangeTreeDataEmitter.fire();
+            })
+        );
 
         this.disposables.push(
             vscode.tasks.onDidStartTask(e => {
@@ -695,11 +704,21 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
             this.buildPluginFolderWatcher.dispose();
         }
 
-        const fire = () => this.didChangeTreeDataEmitter.fire();
+        const fire = () => {
+            this.workspaceContext.logger.trace(
+                `Project panel updating after build plugin outputs changed for ${folderContext.name}`,
+                { label: "ProjectPanel" }
+            );
+            this.didChangeTreeDataEmitter.fire();
+        };
         const buildPath = path.join(folderContext.folder.fsPath, ".build/plugins/outputs");
         this.buildPluginFolderWatcher = watchForFolder(
             buildPath,
             () => {
+                this.workspaceContext.logger.trace(
+                    `Build plugin outputs folder available, watching ${buildPath}`,
+                    { label: "ProjectPanel" }
+                );
                 this.buildPluginOutputWatcher = vscode.workspace.createFileSystemWatcher(
                     new vscode.RelativePattern(buildPath, "{*,*/*}")
                 );
@@ -721,9 +740,13 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
 
         const playgroundProvider = folderContext.playgroundProvider;
         if (playgroundProvider) {
-            this.playgroundWatcher = playgroundProvider.onDidChangePlaygrounds(() =>
-                this.didChangeTreeDataEmitter.fire()
-            );
+            this.playgroundWatcher = playgroundProvider.onDidChangePlaygrounds(() => {
+                this.workspaceContext.logger.trace(
+                    `Project panel updating after playgrounds changed for ${folderContext.name}`,
+                    { label: "ProjectPanel" }
+                );
+                this.didChangeTreeDataEmitter.fire();
+            });
         }
     }
 
@@ -738,16 +761,31 @@ export class ProjectPanelProvider implements vscode.TreeDataProvider<TreeNode> {
         }
 
         if (!element && folderContext.hasResolveErrors) {
+            this.workspaceContext.logger.trace(
+                `Project panel showing resolve error for ${folderContext.name}`,
+                { label: "ProjectPanel" }
+            );
             return [
                 new ErrorNode("Error Parsing Package.swift", folderContext.folder),
                 ...this.lastComputedNodes,
             ];
+        }
+        const startTime = Date.now();
+        if (!element) {
+            this.workspaceContext.logger.trace(
+                `Project panel computing root nodes for ${folderContext.name}`,
+                { label: "ProjectPanel" }
+            );
         }
         const nodes = await this.computeChildren(folderContext, element);
 
         // If we're fetching the root nodes then save them in case we have an error later,
         // in which case we show the ErrorNode along with the last known good nodes.
         if (!element) {
+            this.workspaceContext.logger.trace(
+                `Project panel computed ${nodes.length} root nodes for ${folderContext.name} in ${Date.now() - startTime}ms`,
+                { label: "ProjectPanel" }
+            );
             this.lastComputedNodes = nodes;
         }
         return nodes;

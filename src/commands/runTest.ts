@@ -19,19 +19,27 @@ import { WorkspaceContext } from "../WorkspaceContext";
 export async function runTest(ctx: WorkspaceContext, testKind: TestKind, test: vscode.TestItem) {
     const testExplorer = ctx.currentFolder?.testExplorer;
     if (testExplorer === undefined) {
+        ctx.logger.debug("No test explorer for current folder, not running tests", {
+            label: "runTest",
+        });
         return;
     }
 
     const profile = testExplorer.testRunProfiles.find(profile => profile.label === testKind);
     if (profile === undefined) {
+        ctx.logger.debug(`No test run profile for ${testKind}, not running tests`, {
+            label: "runTest",
+        });
         return;
     }
 
     const tokenSource = new vscode.CancellationTokenSource();
+    ctx.logger.trace(`Running ${test.id} with ${testKind} profile`, { label: "runTest" });
     await profile.runHandler(
         new vscode.TestRunRequest([test], undefined, profile),
         tokenSource.token
     );
+    ctx.logger.trace(`Finished running ${test.id}`, { label: "runTest" });
 
     await vscode.commands.executeCommand("testing.showMostRecentOutput");
 }

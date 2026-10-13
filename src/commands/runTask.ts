@@ -19,12 +19,15 @@ import { TaskOperation } from "../tasks/TaskQueue";
 export async function runTask(api: InternalSwiftExtensionApi, name: string): Promise<boolean> {
     const ctx = await api.waitForWorkspaceContext();
     if (!ctx.currentFolder) {
+        ctx.logger.debug(`No current folder, not running task: ${name}`, { label: "runTask" });
         return false;
     }
 
+    ctx.logger.trace(`Fetching tasks to run: ${name}`, { label: "runTask" });
     const tasks = await vscode.tasks.fetchTasks();
     let task = tasks.find(task => task.name === name);
     if (!task) {
+        ctx.logger.debug(`Task not found, searching plugin tasks: ${name}`, { label: "runTask" });
         const pluginTaskProvider = ctx.pluginProvider;
         const pluginTasks = await pluginTaskProvider.provideTasks(
             new vscode.CancellationTokenSource().token
@@ -33,11 +36,16 @@ export async function runTask(api: InternalSwiftExtensionApi, name: string): Pro
     }
 
     if (!task) {
+        ctx.logger.debug(`Task not found: ${name}`, { label: "runTask" });
         void vscode.window.showErrorMessage(`Task "${name}" not found`);
         return false;
     }
 
-    return ctx.currentFolder.taskQueue
-        .queueOperation(new TaskOperation(task))
-        .then(result => result === 0);
+    ctx.logger.trace(`Queueing task: ${name}, folder=${ctx.currentFolder.name}`, {
+        label: "runTask",
+    });
+    return ctx.currentFolder.taskQueue.queueOperation(new TaskOperation(task)).then(result => {
+        ctx.logger.trace(`Task finished: ${name}, exitCode=${result}`, { label: "runTask" });
+        return result === 0;
+    });
 }

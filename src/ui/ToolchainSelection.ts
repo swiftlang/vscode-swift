@@ -117,6 +117,9 @@ export async function showMissingToolchainDialog(
     const folderName = folder ? `${FolderContext.uriName(folder)}: ` : "";
 
     if (await isSwiftlyToolchainAvailable(version, logger)) {
+        logger.trace(`Prompting to install missing Swift ${version} via swiftly`, {
+            label: "ToolchainSelection",
+        });
         const choice = await vscode.window.showInformationMessage(
             `${folderName}Swift ${version} is not installed`,
             {
@@ -125,9 +128,15 @@ export async function showMissingToolchainDialog(
             },
             "Install Toolchain"
         );
+        logger.debug(`Install missing toolchain prompt choice: ${choice ?? "<dismissed>"}`, {
+            label: "ToolchainSelection",
+        });
         return choice === "Install Toolchain";
     }
 
+    logger.trace(`Swift ${version} is not available via swiftly, prompting to select`, {
+        label: "ToolchainSelection",
+    });
     const choice = await vscode.window.showInformationMessage(
         `${folderName}Swift ${version} is not available`,
         {
@@ -136,6 +145,9 @@ export async function showMissingToolchainDialog(
         },
         "Select Toolchain"
     );
+    logger.debug(`Unavailable toolchain prompt choice: ${choice ?? "<dismissed>"}`, {
+        label: "ToolchainSelection",
+    });
     if (choice === "Select Toolchain") {
         await showToolchainSelectionQuickPick(undefined, logger, folder);
     }
@@ -148,7 +160,12 @@ export async function showMissingToolchainDialog(
 async function isSwiftlyToolchainAvailable(version: string, logger: SwiftLogger): Promise<boolean> {
     const branch = swiftlySnapshotBranch(version);
     const availableToolchains = await Swiftly.listAvailable(branch, logger);
-    return availableToolchains.some(toolchain => toolchain.version.name === version);
+    const isAvailable = availableToolchains.some(toolchain => toolchain.version.name === version);
+    logger.trace(
+        `Swift ${version} via swiftly: available=${isAvailable}, branch=${branch ?? "<stable>"}`,
+        { label: "ToolchainSelection" }
+    );
+    return isAvailable;
 }
 
 /**
@@ -226,6 +243,7 @@ async function getQuickPickItems(
     logger: SwiftLogger,
     cwd?: vscode.Uri
 ): Promise<SelectToolchainItem[]> {
+    logger.trace("Gathering toolchain quick pick items", { label: "ToolchainSelection" });
     // Find any Xcode installations on the system
     const xcodes = (await SwiftToolchain.findXcodeInstalls())
         // Sort in descending order alphabetically
@@ -249,8 +267,12 @@ async function getQuickPickItems(
                 swiftFolderPath: path.join(toolchainPath, "bin"),
             };
         });
+    logger.trace(`Found ${xcodes.length} Xcode installation(s)`, { label: "ToolchainSelection" });
     // Find any Swift toolchains installed via Swiftly
     const installedSwiftlyToolchains = await Swiftly.list(logger);
+    logger.trace(`Found ${installedSwiftlyToolchains.length} swiftly toolchain(s)`, {
+        label: "ToolchainSelection",
+    });
     const swiftlyLocations = new Set(
         installedSwiftlyToolchains
             .map(t => t.location)
@@ -263,12 +285,15 @@ async function getQuickPickItems(
         version: toolchain.name,
         onDidSelect: async target => {
             try {
+                logger.trace(`Selected swiftly toolchain ${toolchain.name} (target=${target})`, {
+                    label: "ToolchainSelection",
+                });
                 if (target === vscode.ConfigurationTarget.Global) {
-                    await Swiftly.use(toolchain.name);
+                    await Swiftly.use(toolchain.name, undefined, logger);
                 } else {
                     await Promise.all(
                         vscode.workspace.workspaceFolders?.map(async folder => {
-                            await Swiftly.use(toolchain.name, folder.uri.fsPath);
+                            await Swiftly.use(toolchain.name, folder.uri.fsPath, logger);
                         }) ?? []
                     );
                 }
@@ -303,6 +328,9 @@ async function getQuickPickItems(
             }
             return result;
         });
+    logger.trace(`Found ${publicToolchains.length} public toolchain(s)`, {
+        label: "ToolchainSelection",
+    });
 
     if (activeToolchain) {
         let currentSwiftlyVersion: string | undefined = undefined;
@@ -313,6 +341,10 @@ async function getQuickPickItems(
                 // toolchain version. Fall back to using the active toolchain version as a
                 // last resort.
                 currentSwiftlyVersion = activeToolchain.swiftVersion.toString();
+                logger.debug(
+                    `No swiftly in-use version, falling back to ${currentSwiftlyVersion}`,
+                    { label: "ToolchainSelection" }
+                );
             }
         }
         const toolchainInUse = [...xcodes, ...publicToolchains, ...swiftlyToolchains].find(
@@ -332,6 +364,9 @@ async function getQuickPickItems(
                 );
             }
         );
+        logger.trace(`Toolchain in use: ${toolchainInUse?.label ?? "<not in list>"}`, {
+            label: "ToolchainSelection",
+        });
         if (toolchainInUse) {
             toolchainInUse.description = "$(check) in use";
         } else {
@@ -419,6 +454,7 @@ export async function showToolchainSelectionQuickPick(
     cwd?: vscode.Uri
 ) {
     let xcodePaths: string[] = [];
+    logger.trace("Showing toolchain selection quick pick", { label: "ToolchainSelection" });
     const selectedToolchain = await vscode.window.showQuickPick<SelectToolchainItem>(
         getQuickPickItems(activeToolchain, logger, cwd).then(result => {
             xcodePaths = result
@@ -431,6 +467,10 @@ export async function showToolchainSelectionQuickPick(
             placeHolder: "Pick a Swift toolchain that VS Code will use",
             canPickMany: false,
         }
+    );
+    logger.debug(
+        `Toolchain quick pick selection: ${selectedToolchain?.label ?? "<dismissed>"} (${selectedToolchain?.type ?? "none"})`,
+        { label: "ToolchainSelection" }
     );
     if (selectedToolchain?.type === "action") {
         return await selectedToolchain.run();
@@ -446,12 +486,18 @@ export async function showToolchainSelectionQuickPick(
         } else {
             const selectedDeveloperDir = await showDeveloperDirQuickPick(xcodePaths);
             if (!selectedDeveloperDir) {
+                logger.debug("Developer directory selection dismissed", {
+                    label: "ToolchainSelection",
+                });
                 return;
             }
             developerDir = selectedDeveloperDir.developerDir;
         }
+        logger.trace(`Selected developer directory: ${developerDir ?? "<none>"}`, {
+            label: "ToolchainSelection",
+        });
         // Update the toolchain configuration
-        await setToolchainPath(selectedToolchain, developerDir);
+        await setToolchainPath(selectedToolchain, developerDir, undefined, logger);
     }
 }
 
@@ -602,14 +648,20 @@ export async function setToolchainPath(
         onDidSelect?: NonNullable<SwiftToolchainItem["onDidSelect"]>;
     },
     developerDir?: string,
-    target?: vscode.ConfigurationTarget
+    target?: vscode.ConfigurationTarget,
+    logger?: SwiftLogger
 ): Promise<void> {
     target = target ?? (await askWhereToSetToolchain());
     if (!target) {
+        logger?.debug("Configuration target selection dismissed", { label: "ToolchainSelection" });
         return;
     }
     const toolchainPath = toolchain.category !== "swiftly" ? toolchain.swiftFolderPath : undefined;
     const swiftConfiguration = vscode.workspace.getConfiguration("swift");
+    logger?.debug(
+        `Updating swift.path to ${toolchainPath ?? "<unset>"}, DEVELOPER_DIR to ${developerDir ?? "<unset>"} (target=${target})`,
+        { label: "ToolchainSelection" }
+    );
     await swiftConfiguration.update("path", toolchainPath, target);
     const swiftEnvironmentVariables = {
         ...configuration.swiftEnvironmentVariables,
@@ -620,13 +672,17 @@ export async function setToolchainPath(
         isEmptyObject(swiftEnvironmentVariables) ? undefined : swiftEnvironmentVariables,
         target
     );
-    await checkAndRemoveWorkspaceSetting(target);
+    logger?.trace("Updated toolchain settings", { label: "ToolchainSelection" });
+    await checkAndRemoveWorkspaceSetting(target, logger);
     if (toolchain.onDidSelect) {
         await toolchain.onDidSelect(target);
     }
 }
 
-async function checkAndRemoveWorkspaceSetting(target: vscode.ConfigurationTarget | undefined) {
+async function checkAndRemoveWorkspaceSetting(
+    target: vscode.ConfigurationTarget | undefined,
+    logger?: SwiftLogger
+) {
     // Check to see if the configuration would be overridden by workspace settings
     if (target !== vscode.ConfigurationTarget.Global) {
         return;
@@ -637,6 +693,10 @@ async function checkAndRemoveWorkspaceSetting(target: vscode.ConfigurationTarget
             "You already have a Swift path configured in Workspace Settings which takes precedence over User Settings." +
                 " Would you like to remove the setting from your workspace and use the User Settings instead?",
             "Remove Workspace Setting"
+        );
+        logger?.debug(
+            `Remove workspace swift.path prompt choice: ${confirmation ?? "<dismissed>"}`,
+            { label: "ToolchainSelection" }
         );
         if (confirmation !== "Remove Workspace Setting") {
             return;

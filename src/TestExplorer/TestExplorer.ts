@@ -58,6 +58,9 @@ export class TestExplorer {
         private logger: SwiftLogger,
         private onDidChangeSwiftFiles: (listener: (event: SwiftFileEvent) => void) => Disposable
     ) {
+        this.logger.trace(`Creating test explorer for ${folderContext.name}`, {
+            label: "Test Explorer",
+        });
         this.onTestItemsDidChange = this.onTestItemsDidChangeEmitter.event;
         this.onCreateTestRun = this.onDidCreateTestRunEmitter.event;
 
@@ -81,6 +84,10 @@ export class TestExplorer {
             this.onTestItemsDidChange(() => this.updateSwiftTestContext()),
             this.discoverUpdatedTestsAfterBuild(folderContext),
             this.folderContext.workspaceContext.onDidFinishIndexing(() => {
+                this.logger.trace(
+                    `Indexing finished, rediscovering tests for ${this.folderContext.name}`,
+                    { label: "Test Explorer" }
+                );
                 void this.discoverTestsInWorkspace(this.tokenSource.token);
             }),
         ];
@@ -100,6 +107,10 @@ export class TestExplorer {
         uri: vscode.Uri,
         symbols: vscode.DocumentSymbol[]
     ): Promise<void> {
+        this.logger.trace(
+            `Getting document tests for ${uri.toString()} (${symbols.length} symbols), awaiting target lookup`,
+            { label: "Test Explorer" }
+        );
         const target = await folder.swiftPackage.getTarget(uri.fsPath);
         if (target?.type !== "test") {
             this.logger.info(
@@ -119,7 +130,8 @@ export class TestExplorer {
                 this.controller,
                 { id: target.c99name, label: target.name },
                 tests,
-                uri
+                uri,
+                this.logger
             );
             this.logger.info(
                 `Emitting test item change after LSP test discovery for ${uri.toString()}`,
@@ -132,6 +144,10 @@ export class TestExplorer {
                 { label: "Test Explorer" }
             );
             // Fallback to parsing document symbols for XCTests only
+            this.logger.debug(
+                `Falling back to document symbol test discovery for ${uri.toString()}`,
+                { label: "Test Explorer" }
+            );
             const tests = parseTestsFromDocumentSymbols(target.name, symbols, uri);
             this.logger.info(
                 `Parsed ${tests.length} top level tests from document symbols from ${uri.toString()}`,
@@ -142,6 +158,10 @@ export class TestExplorer {
     }
 
     public dispose() {
+        this.logger.trace(
+            `Disposing test explorer for ${this.folderContext.name}, cancelling pending discovery`,
+            { label: "Test Explorer" }
+        );
         this.tokenSource.cancel();
         this.subscriptions.forEach(element => element.dispose());
         this.subscriptions = [];
@@ -164,8 +184,15 @@ export class TestExplorer {
         );
 
         controller.resolveHandler = async item => {
+            this.logger.trace(
+                `resolveHandler invoked for ${folderContext.name} with item ${item?.id ?? "undefined"}`,
+                { label: "Test Explorer" }
+            );
             if (!item) {
                 await this.discoverTestsInWorkspace(this.tokenSource.token);
+                this.logger.trace(`resolveHandler finished for ${folderContext.name}`, {
+                    label: "Test Explorer",
+                });
             }
         };
 
@@ -182,6 +209,15 @@ export class TestExplorer {
             const execution = task.execution as vscode.ProcessExecution;
             if (
                 task.scope === folderContext.workspaceFolder &&
+                task.group?.id === vscode.TaskGroup.Build.id
+            ) {
+                this.logger.trace(
+                    `Build task "${task.name}" ended for ${folderContext.name} (exitCode=${event.exitCode}, testFileEdited=${testFileEdited}, dontTriggerTestDiscovery=${task.definition.dontTriggerTestDiscovery === true})`,
+                    { label: "Test Explorer" }
+                );
+            }
+            if (
+                task.scope === folderContext.workspaceFolder &&
                 task.group?.id === vscode.TaskGroup.Build.id &&
                 execution?.options?.cwd === folderContext.folder.fsPath &&
                 event.exitCode === 0 &&
@@ -192,6 +228,10 @@ export class TestExplorer {
 
                 // only run discover tests if the library has tests
                 void folderContext.swiftPackage.getTargets(TargetType.test).then(targets => {
+                    this.logger.trace(
+                        `Build finished for ${folderContext.name} with ${targets.length} test targets, ${targets.length > 0 ? "rediscovering tests" : "skipping test discovery"}`,
+                        { label: "Test Explorer" }
+                    );
                     if (targets.length > 0) {
                         void this.discoverTestsInWorkspace(this.tokenSource.token);
                     }
@@ -204,6 +244,10 @@ export class TestExplorer {
             if (testFileEdited === false) {
                 void folderContext.getTestTarget(uri).then(target => {
                     if (target) {
+                        this.logger.trace(
+                            `Test file changed in ${folderContext.name}, rediscovering tests after next build: ${uri.toString()}`,
+                            { label: "Test Explorer" }
+                        );
                         testFileEdited = true;
                     }
                 });
@@ -226,6 +270,10 @@ export class TestExplorer {
                 case FolderOperation.add:
                 case FolderOperation.packageUpdated:
                     if (folder) {
+                        workspaceContext.logger.trace(
+                            `Folder ${folder.name} changed (${operation}), setting up test explorer`,
+                            { label: "Test Explorer" }
+                        );
                         void this.setupTestExplorerForFolder(folder, tokenSource.token);
                     }
                     break;
@@ -245,8 +293,13 @@ export class TestExplorer {
         folder: FolderContext,
         token: vscode.CancellationToken
     ) {
+        const logger = folder.workspaceContext.logger;
         const targets = await folder.swiftPackage.getTargets(TargetType.test);
         const hasTestTargets = targets.length > 0;
+        logger.debug(
+            `Setting up test explorer for ${folder.name}: ${targets.length} test targets, hasTestExplorer=${folder.hasTestExplorer()}`,
+            { label: "Test Explorer" }
+        );
         if (hasTestTargets && !folder.hasTestExplorer()) {
             const testExplorer = folder.addTestExplorer();
             if (
@@ -256,12 +309,25 @@ export class TestExplorer {
             ) {
                 // On Windows 5.9 and earlier discoverTestsInWorkspace kicks off a build,
                 // which will perform a resolve.
+                logger.debug(`Skipping initial test discovery for ${folder.name}`, {
+                    label: "Test Explorer",
+                });
                 return;
             }
             await testExplorer.discoverTestsInWorkspace(token);
+            logger.trace(`Initial test discovery finished for ${folder.name}`, {
+                label: "Test Explorer",
+            });
         } else if (hasTestTargets && folder.hasTestExplorer()) {
+            logger.trace(`Refreshing existing test explorer for ${folder.name}`, {
+                label: "Test Explorer",
+            });
             await folder.refreshTestExplorer();
+            logger.trace(`Refreshed test explorer for ${folder.name}`, { label: "Test Explorer" });
         } else if (!hasTestTargets && folder.hasTestExplorer()) {
+            logger.trace(`Removing test explorer for ${folder.name}, no test targets`, {
+                label: "Test Explorer",
+            });
             folder.removeTestExplorer();
         }
     }
@@ -283,7 +349,7 @@ export class TestExplorer {
         uri?: vscode.Uri
     ) {
         this.logger.debug("Updating tests in test explorer", { label: "Test Explorer" });
-        TestDiscovery.updateTests(controller, tests, uri);
+        TestDiscovery.updateTests(controller, tests, uri, this.logger);
         this.onTestItemsDidChangeEmitter.fire(controller);
     }
 
@@ -291,17 +357,27 @@ export class TestExplorer {
      * Discover tests
      */
     private async discoverTestsInWorkspace(token: vscode.CancellationToken) {
+        this.logger.trace(
+            `Discovering tests in workspace for ${this.folderContext.name} (cancelled=${token.isCancellationRequested})`,
+            { label: "Test Explorer" }
+        );
         try {
             // If the LSP cannot produce a list of tests it throws and
             // we fall back to discovering tests with SPM.
             await this.discoverTestsInWorkspaceLSP(token);
-        } catch {
+        } catch (error) {
             this.logger.debug(
                 "workspace/tests LSP request not supported, falling back to SPM to discover tests.",
                 { label: "Test Explorer" }
             );
             await this.discoverTestsInWorkspaceSPM(token);
         }
+        this.logger.trace(
+            `Finished discovering tests in workspace for ${this.folderContext.name}`,
+            {
+                label: "Test Explorer",
+            }
+        );
     }
 
     /**
@@ -313,9 +389,16 @@ export class TestExplorer {
             this.warnSourceKitLSPDisabled();
         }
 
+        this.logger.trace(`Discovering tests via SPM for ${this.folderContext.name}`, {
+            label: "Test Explorer",
+        });
         try {
             await this.runTestDiscovery(token);
         } catch (error) {
+            this.logger.debug(
+                `SPM test discovery failed for ${this.folderContext.name}, retrying after build: ${getErrorDescription(error)}`,
+                { label: "Test Explorer" }
+            );
             await this.retryTestDiscoveryAfterBuild(token);
         }
     }
@@ -325,13 +408,25 @@ export class TestExplorer {
         const testBuildOptions = buildOptions(toolchain);
 
         if (process.platform === "darwin" && configuration.sanitizer !== "off") {
+            this.logger.debug(
+                `Sanitizer ${configuration.sanitizer} enabled, building ${this.folderContext.name} before test discovery`,
+                { label: "Test Explorer" }
+            );
             const succeeded = await this.buildBeforeTestDiscovery();
             if (!succeeded) {
+                this.logger.debug(
+                    `Build before test discovery failed for ${this.folderContext.name}, aborting`,
+                    { label: "Test Explorer" }
+                );
                 return;
             }
         }
 
         if (token.isCancellationRequested) {
+            this.logger.debug(
+                `SPM test discovery cancelled before listing tests for ${this.folderContext.name}`,
+                { label: "Test Explorer" }
+            );
             return;
         }
 
@@ -342,6 +437,10 @@ export class TestExplorer {
             "Listing Tests",
             { showStatusItem: true, checkAlreadyRunning: false, log: "Listing tests" },
             stdout => {
+                this.logger.trace(
+                    `"swift test list" completed for ${this.folderContext.name} (${stdout.length} chars of output)`,
+                    { label: "Test Explorer" }
+                );
                 this.deleteErrorTestItem();
 
                 const tests = parseTestsFromSwiftTestListOutput(stdout);
@@ -352,13 +451,28 @@ export class TestExplorer {
                 this.updateTests(this.controller, tests);
             }
         );
+        this.logger.trace(
+            `Queueing "swift ${listTestArguments.join(" ")}" for ${this.folderContext.name}`,
+            { label: "Test Explorer" }
+        );
         await this.folderContext.taskQueue.queueOperation(listTestsOperation, token);
+        this.logger.trace(`Listing tests operation finished for ${this.folderContext.name}`, {
+            label: "Test Explorer",
+        });
     }
 
     private async buildBeforeTestDiscovery(): Promise<boolean> {
         const task = await getBuildAllTask(this.folderContext);
         task.definition.dontTriggerTestDiscovery = true;
+        this.logger.trace(
+            `Queueing build "${task.name}" before test discovery for ${this.folderContext.name}`,
+            { label: "Test Explorer" }
+        );
         const exitCode = await this.folderContext.taskQueue.queueOperation(new TaskOperation(task));
+        this.logger.trace(
+            `Build before test discovery finished for ${this.folderContext.name} with exit code ${exitCode}`,
+            { label: "Test Explorer" }
+        );
         if (exitCode === undefined || exitCode !== 0) {
             this.setErrorTestItem("Build the project to enable test discovery.");
             return false;
@@ -369,15 +483,30 @@ export class TestExplorer {
     private async retryTestDiscoveryAfterBuild(token: vscode.CancellationToken) {
         const backgroundTask = await getBuildAllTask(this.folderContext);
         if (!backgroundTask) {
+            this.logger.trace(
+                `No build task found for ${this.folderContext.name}, skipping test discovery retry`,
+                { label: "Test Explorer" }
+            );
             return;
         }
 
+        this.logger.trace(
+            `Queueing build "${backgroundTask.name}" before retrying test discovery for ${this.folderContext.name}`,
+            { label: "Test Explorer" }
+        );
         try {
             await this.folderContext.taskQueue.queueOperation(new TaskOperation(backgroundTask));
-        } catch {
+        } catch (error) {
             // can ignore if running task fails
+            this.logger.trace(
+                `Build before test discovery retry failed for ${this.folderContext.name}, ignoring: ${getErrorDescription(error)}`,
+                { label: "Test Explorer" }
+            );
         }
 
+        this.logger.trace(`Retrying SPM test discovery for ${this.folderContext.name}`, {
+            label: "Test Explorer",
+        });
         try {
             await this.runTestDiscovery(token);
         } catch (retryError) {
@@ -439,8 +568,15 @@ export class TestExplorer {
     private async discoverTestsInWorkspaceLSP(token: vscode.CancellationToken) {
         this.logger.debug("Discovering tests in workspace via LSP", { label: "Test Explorer" });
 
+        this.logger.trace(`Awaiting LSP workspace tests for ${this.folderContext.name}`, {
+            label: "Test Explorer",
+        });
         const tests = await this.lspTestDiscovery.getWorkspaceTests(
             this.folderContext.swiftPackage
+        );
+        this.logger.trace(
+            `LSP workspace tests returned ${tests.length} top level tests for ${this.folderContext.name}`,
+            { label: "Test Explorer" }
         );
 
         if (token.isCancellationRequested) {
@@ -455,7 +591,8 @@ export class TestExplorer {
         await TestDiscovery.updateTestsFromClasses(
             this.controller,
             this.folderContext.swiftPackage,
-            tests
+            tests,
+            this.logger
         );
 
         this.logger.debug("Emitting test item change after LSP workspace test discovery", {
@@ -467,6 +604,9 @@ export class TestExplorer {
 
     /** Delete TestItem with error id */
     private deleteErrorTestItem() {
+        this.logger.trace(`Deleting error test item for ${this.folderContext.name}`, {
+            label: "Test Explorer",
+        });
         this.controller.items.delete(TestExplorer.errorTestItemId);
         this.onTestItemsDidChangeEmitter.fire(this.controller);
     }
@@ -477,6 +617,10 @@ export class TestExplorer {
      */
     private setErrorTestItem(errorDescription: string | undefined, title = "Test Discovery Error") {
         this.logger.error(`Test Discovery Error: ${errorDescription}`);
+        this.logger.trace(
+            `Replacing ${this.controller.items.size} root test items with error item for ${this.folderContext.name}`,
+            { label: "Test Explorer" }
+        );
         this.controller.items.forEach(item => {
             this.controller.items.delete(item.id);
         });

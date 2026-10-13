@@ -49,6 +49,12 @@ export async function executeSwiftPackageCommand<T>(
 ): Promise<T> {
     const args = folderContext.toolchain.buildFlags.withAdditionalFlags(config.args);
     const inv = folderContext.toolchain.getToolchainInvocation("swift", args);
+    const logger = folderContext.workspaceContext.logger;
+    const startTime = Date.now();
+    logger.trace(
+        `Starting "swift ${config.commandName}" (cancelled=${token?.isCancellationRequested ?? false})`,
+        { label: folderContext.name }
+    );
 
     const swiftProcess = new ReadOnlySwiftProcess(inv.command, inv.args, {
         cwd: folderContext.folder.fsPath,
@@ -97,6 +103,10 @@ export async function executeSwiftPackageCommand<T>(
 
         const stdout = stdoutChunks.join("");
         const stderr = stderrChunks.join("");
+        logger.trace(
+            `Finished "swift ${config.commandName}" in ${Date.now() - startTime}ms (success=${success}, cancelled=${token?.isCancellationRequested ?? false}, stdout=${stdout.length} chars, stderr=${stderr.length} chars)`,
+            { label: folderContext.name }
+        );
 
         if (!success) {
             throw new Error(stderr || stdout);
@@ -114,6 +124,9 @@ export async function executeSwiftPackageCommand<T>(
 
         return parsedOutput as T;
     } catch (parseError) {
+        logger.trace(`"swift ${config.commandName}" failed: ${parseError}`, {
+            label: folderContext.name,
+        });
         throw new Error(`Failed to parse ${config.commandName} output`, { cause: parseError });
     } finally {
         stdoutDisposable.dispose();

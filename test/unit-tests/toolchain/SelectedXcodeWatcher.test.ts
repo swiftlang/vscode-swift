@@ -50,10 +50,7 @@ suite("Selected Xcode Watcher", () => {
     setup(function () {
         mockFS();
 
-        mockLogger = mockObject<SwiftLogger>({
-            debug: mockFn(),
-            info: mockFn(),
-        });
+        mockLogger = mockObject<SwiftLogger>({ trace: mockFn(), debug: mockFn(), info: mockFn() });
         mockToolchain = mockObject<SwiftToolchain>({ manager: "unknown" });
         const mockWorkspaceContext = mockObject<WorkspaceContext>({
             globalToolchain: instance(mockToolchain),

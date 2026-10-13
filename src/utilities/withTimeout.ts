@@ -13,6 +13,8 @@
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
 
+import { SwiftLogger } from "../logging/SwiftLogger";
+
 export type TimeoutTask<T> = (token: vscode.CancellationToken) => Promise<T>;
 
 /** An error that is thrown when an operation exceeds its timeout. */
@@ -30,19 +32,35 @@ export class TimeoutError extends Error {
  * @param label A description of the operation being performed.
  * @param task The task to execute.
  * @param timeoutMs The timeout in milliseconds.
+ * @param logger Optional logger used to trace the start, completion and timeout of the task.
  */
-export function withTimeout<T>(label: string, task: TimeoutTask<T>, timeoutMs: number): Promise<T> {
+export function withTimeout<T>(
+    label: string,
+    task: TimeoutTask<T>,
+    timeoutMs: number,
+    logger?: SwiftLogger
+): Promise<T> {
     // Create the TimeoutError early so that it has a more useful stack trace.
     const timeoutError = new TimeoutError(`${label} timed out after ${timeoutMs}ms.`);
     const cancellation = new vscode.CancellationTokenSource();
     let timeout: NodeJS.Timeout | undefined;
+    const startTime = Date.now();
+    logger?.trace(`${label}: started with ${timeoutMs}ms timeout`, { label: "withTimeout" });
     return Promise.race([
         task(cancellation.token),
         new Promise<never>((_resolve, reject) => {
             timeout = setTimeout(() => {
+                logger?.debug(`${label}: timed out after ${timeoutMs}ms, cancelling task`, {
+                    label: "withTimeout",
+                });
                 reject(timeoutError);
                 setImmediate(() => cancellation.cancel());
             }, timeoutMs);
         }),
-    ]).finally(() => clearTimeout(timeout));
+    ]).finally(() => {
+        logger?.trace(`${label}: settled after ${Date.now() - startTime}ms`, {
+            label: "withTimeout",
+        });
+        clearTimeout(timeout);
+    });
 }

@@ -68,9 +68,7 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 }))
             ),
         });
-        mockLogger = mockObject<SwiftLogger>({
-            info: mockFn(),
-        });
+        mockLogger = mockObject<SwiftLogger>({ trace: mockFn(), info: mockFn() });
         mockWorkspaceContext = mockObject<WorkspaceContext>({
             globalToolchain: instance(mockToolchain),
             globalToolchainSwiftVersion: new Version(6, 0, 0),

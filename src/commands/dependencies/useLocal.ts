@@ -46,6 +46,9 @@ export async function useLocalDependency(
             title: "Select folder",
         });
         if (!folders) {
+            ctx.logger.debug("No local folder selected, not using local dependency", {
+                label: currentFolder.name,
+            });
             return false;
         }
         folder = folders[0];

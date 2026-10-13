@@ -48,7 +48,14 @@ async function updateFolderDependencies(folderContext: FolderContext) {
         folderContext.toolchain
     );
 
+    const logger = folderContext.workspaceContext.logger;
+    const startTime = Date.now();
+    logger.debug(`Starting "swift package update"`, { label: folderContext.name });
     const result = await executeTaskWithUI(task, "Updating Dependencies", folderContext);
+    logger.debug(
+        `Finished "swift package update" in ${Date.now() - startTime}ms (success=${result})`,
+        { label: folderContext.name }
+    );
     updateAfterError(result, folderContext);
     return result;
 }

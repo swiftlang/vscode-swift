@@ -24,6 +24,7 @@ import {
 import { LanguageClient } from "vscode-languageclient/node";
 
 import { FolderContext } from "../../../FolderContext";
+import { SwiftLogger } from "../../../logging/SwiftLogger";
 import { Disposable } from "../../../utilities/Disposable";
 
 export class FolderContextFeature implements StaticFeature {
@@ -34,7 +35,10 @@ export class FolderContextFeature implements StaticFeature {
         return this.folders.slice();
     }
 
-    constructor(private readonly client: LanguageClient) {}
+    constructor(
+        private readonly client: LanguageClient,
+        private readonly logger?: SwiftLogger
+    ) {}
 
     fillInitializeParams(params: InitializeParams): void {
         params.workspaceFolders = this.folders.map(convertToWorkspaceFolder);
@@ -59,12 +63,22 @@ export class FolderContextFeature implements StaticFeature {
 
     async addFolder(folder: FolderContext): Promise<void> {
         if (this.folders.some(f => f === folder)) {
+            this.logger?.trace(`Folder ${folder.name} already added to language client`, {
+                label: "SourceKit-LSP",
+            });
             return;
         }
         this.folders.push(folder);
         if (this.client.state !== State.Running) {
+            this.logger?.trace(
+                `Added folder ${folder.name} to language client (not running, state=${State[this.client.state]})`,
+                { label: "SourceKit-LSP" }
+            );
             return;
         }
+        this.logger?.trace(`Sending didChangeWorkspaceFolders: added ${folder.name}`, {
+            label: "SourceKit-LSP",
+        });
         await this.client.sendNotification(DidChangeWorkspaceFoldersNotification.type, {
             event: { added: [convertToWorkspaceFolder(folder)], removed: [] },
         });
@@ -73,12 +87,22 @@ export class FolderContextFeature implements StaticFeature {
     async removeFolder(folder: FolderContext): Promise<void> {
         const index = this.folders.findIndex(f => f === folder);
         if (index < 0) {
+            this.logger?.trace(`Folder ${folder.name} not in language client, not removing`, {
+                label: "SourceKit-LSP",
+            });
             return;
         }
         this.folders.splice(index, 1);
         if (this.client.state !== State.Running) {
+            this.logger?.trace(
+                `Removed folder ${folder.name} from language client (not running, state=${State[this.client.state]})`,
+                { label: "SourceKit-LSP" }
+            );
             return;
         }
+        this.logger?.trace(`Sending didChangeWorkspaceFolders: removed ${folder.name}`, {
+            label: "SourceKit-LSP",
+        });
         await this.client.sendNotification(DidChangeWorkspaceFoldersNotification.type, {
             event: { added: [], removed: [convertToWorkspaceFolder(folder)] },
         });

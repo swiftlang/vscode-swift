@@ -87,6 +87,9 @@ export class TaskOperation implements SwiftOperation {
         token?: vscode.CancellationToken
     ): Promise<number | undefined> {
         if (token?.isCancellationRequested) {
+            workspaceContext.logger.trace(`Task cancelled before it ran: ${this.task.name}`, {
+                label: "TaskQueue",
+            });
             return Promise.resolve(undefined);
         }
         workspaceContext.logger.info(`Exec Task: ${this.task.detail ?? this.task.name}`);
@@ -117,13 +120,26 @@ export class SwiftExecOperation implements SwiftOperation {
     }
 
     async run(): Promise<number | undefined> {
+        const logger = this.folderContext.workspaceContext.logger;
+        logger.trace(
+            `Exec swift operation: ${this.name}, folder=${this.folderContext.name}, args="${this.args.join(" ")}"`,
+            { label: "TaskQueue" }
+        );
         const { stdout, stderr } = await execSwift(
             this.args,
             this.folderContext.toolchain,
             { cwd: this.folderContext.folder.fsPath },
             this.folderContext
         );
+        logger.trace(
+            `Swift operation exited, processing output: ${this.name}, folder=${this.folderContext.name}`,
+            { label: "TaskQueue" }
+        );
         await this.process(stdout, stderr);
+        logger.trace(
+            `Swift operation finished processing output: ${this.name}, folder=${this.folderContext.name}`,
+            { label: "TaskQueue" }
+        );
         return 0;
     }
 }
@@ -180,6 +196,10 @@ export class TaskQueue implements Disposable {
     }
 
     dispose() {
+        this.workspaceContext.logger.trace(
+            `Disposing task queue: folder=${this.folderContext.name}, dropping ${this.queue.length} queued operation(s), activeOperation=${this.activeOperation?.operation.name ?? "none"}`,
+            { label: "TaskQueue" }
+        );
         this.isDisposed = true;
         // Settle any operations that will now never run. Leaving them unsettled hangs
         // whoever is awaiting them, e.g. `SwiftPackage.foundPackage`.
@@ -200,6 +220,10 @@ export class TaskQueue implements Disposable {
         token?: vscode.CancellationToken
     ): Promise<number | undefined> {
         if (this.isDisposed) {
+            this.workspaceContext.logger.trace(
+                `Cannot queue operation, task queue disposed: ${operation.name}, folder=${this.folderContext.name}`,
+                { label: "TaskQueue" }
+            );
             throw Error("TaskQueue has been disposed");
         }
         // do we already have a version of this operation in the queue. If so
@@ -207,6 +231,10 @@ export class TaskQueue implements Disposable {
         // a new operation
         let queuedOperation = this.findQueuedOperation(operation);
         if (queuedOperation && queuedOperation.promise !== undefined) {
+            this.workspaceContext.logger.trace(
+                `Operation already queued, reusing it: ${operation.name}, folder=${this.folderContext.name}`,
+                { label: "TaskQueue" }
+            );
             return queuedOperation.promise;
         }
         // if checkAlreadyRunning is set then check the active operation is not the same
@@ -216,6 +244,10 @@ export class TaskQueue implements Disposable {
             this.activeOperation.promise &&
             this.activeOperation.id === operation.id
         ) {
+            this.workspaceContext.logger.trace(
+                `Operation already running, reusing it: ${operation.name}, folder=${this.folderContext.name}`,
+                { label: "TaskQueue" }
+            );
             return this.activeOperation.promise;
         }
 
@@ -234,6 +266,10 @@ export class TaskQueue implements Disposable {
                 token
             );
             this.queue.push(queuedOperation);
+            this.workspaceContext.logger.trace(
+                `Operation queued: ${operation.name}, folder=${this.folderContext.name}, queueLength=${this.queue.length}, activeOperation=${this.activeOperation?.operation.name ?? "none"}, disabled=${this.disabled}`,
+                { label: "TaskQueue" }
+            );
             void this.processQueue();
         });
         // if the last item does not have a promise then it is the queue
@@ -252,10 +288,18 @@ export class TaskQueue implements Disposable {
 
             if (operation) {
                 this.activeOperation = operation;
+                this.workspaceContext.logger.trace(
+                    `Operation dequeued: ${operation.operation.name}, folder=${this.folderContext.name}, queueLength=${this.queue.length}`,
+                    { label: "TaskQueue" }
+                );
                 // wait while queue is disabled before running task
                 await this.waitWhileDisabled();
                 // the queue may have been disposed of while we were waiting
                 if (this.isDisposed) {
+                    this.workspaceContext.logger.trace(
+                        `Task queue disposed before operation ran: ${operation.operation.name}, folder=${this.folderContext.name}`,
+                        { label: "TaskQueue" }
+                    );
                     this.finishTask(operation, { fail: Error("TaskQueue has been disposed.") });
                     return;
                 }
@@ -265,6 +309,10 @@ export class TaskQueue implements Disposable {
                         label: this.folderContext.name,
                     });
                 }
+                this.workspaceContext.logger.trace(
+                    `Running operation: ${operation.operation.name}, folder=${this.folderContext.name}, showStatusItem=${operation.showStatusItem}`,
+                    { label: "TaskQueue" }
+                );
                 const run = operation.showStatusItem
                     ? this.workspaceContext.statusItem.showStatusWhileRunning(
                           operation.operation.statusItemId,
@@ -272,6 +320,10 @@ export class TaskQueue implements Disposable {
                       )
                     : operation.run(this.workspaceContext);
                 run.then(result => {
+                    this.workspaceContext.logger.trace(
+                        `Operation completed: ${operation.operation.name}, folder=${this.folderContext.name}, result=${result}, cancelled=${operation.token?.isCancellationRequested ?? false}`,
+                        { label: "TaskQueue" }
+                    );
                     // log result
                     if (operation.log && !operation.token?.isCancellationRequested) {
                         if (result === 0) {
@@ -286,6 +338,10 @@ export class TaskQueue implements Disposable {
                     }
                     this.finishTask(operation, { success: result as number | undefined });
                 }).catch(error => {
+                    this.workspaceContext.logger.trace(
+                        `Operation failed: ${operation.operation.name}, folder=${this.folderContext.name}, error=${error}`,
+                        { label: "TaskQueue" }
+                    );
                     // log error
                     if (operation.log) {
                         this.workspaceContext.logger.error(`${operation.log}: ${error}`, {
@@ -294,11 +350,25 @@ export class TaskQueue implements Disposable {
                     }
                     this.finishTask(operation, { fail: error });
                 });
+            } else {
+                this.workspaceContext.logger.trace(
+                    `Task queue empty: folder=${this.folderContext.name}`,
+                    { label: "TaskQueue" }
+                );
             }
+        } else {
+            this.workspaceContext.logger.trace(
+                `Operation already active, not dequeuing: active=${this.activeOperation.operation.name}, folder=${this.folderContext.name}, queueLength=${this.queue.length}`,
+                { label: "TaskQueue" }
+            );
         }
     }
 
     private finishTask(operation: QueuedOperation, result: TaskQueueResult) {
+        this.workspaceContext.logger.trace(
+            `Finishing operation: ${operation.operation.name}, folder=${this.folderContext.name}, queueLength=${this.queue.length}`,
+            { label: "TaskQueue" }
+        );
         operation.cb(result);
         this.activeOperation = undefined;
         void this.processQueue();
@@ -314,6 +384,16 @@ export class TaskQueue implements Disposable {
     }
 
     private async waitWhileDisabled() {
+        if (this.disabled) {
+            this.workspaceContext.logger.trace(
+                `Task queue disabled, waiting before running ${this.activeOperation?.operation.name}: folder=${this.folderContext.name}`,
+                { label: "TaskQueue" }
+            );
+        }
         await poll(() => this.isDisposed || !this.disabled, 1000);
+        this.workspaceContext.logger.trace(
+            `Finished waiting for task queue: folder=${this.folderContext.name}, disposed=${this.isDisposed}`,
+            { label: "TaskQueue" }
+        );
     }
 }
