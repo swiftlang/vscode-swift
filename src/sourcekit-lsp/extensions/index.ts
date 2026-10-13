@@ -15,6 +15,7 @@
 // Definitions for non-standard requests used by sourcekit-lsp
 
 export * from "./DocCDocumentationRequest";
+export * from "./DocCSymbolLinkDefinitionRequest";
 export * from "./GetReferenceDocumentRequest";
 export * from "./GetTestsRequest";
 export * from "./LegacyInlayHintRequest";
