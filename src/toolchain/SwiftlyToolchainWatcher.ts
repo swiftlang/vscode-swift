@@ -40,6 +40,12 @@ interface WatchedFolder {
     version: string | undefined;
 }
 
+/** The timer functions used to poll. Replaceable so that tests can use their own clock. */
+interface IntervalTimers {
+    setInterval(handler: () => void, milliseconds: number): unknown;
+    clearInterval(handle: unknown): void;
+}
+
 export class SwiftlyToolchainWatcher implements Disposable {
     public static readonly CHECK_INTERVAL = 2000;
 
@@ -53,13 +59,21 @@ export class SwiftlyToolchainWatcher implements Disposable {
     private watchedFolders: Map<string, WatchedFolder> = new Map();
 
     private globalSwiftVersion: string | undefined;
-    private interval: NodeJS.Timeout | undefined;
+    private interval: unknown;
 
     private get logger(): SwiftLogger {
         return this.api.logger;
     }
 
-    constructor(private api: InternalSwiftExtensionApi) {
+    /**
+     * @param api The Swift extension API.
+     * @param timers Schedules the polling of the global swiftly version. Replaceable so that
+     * tests can drive the polling without faking the global timers of the extension host.
+     */
+    constructor(
+        private api: InternalSwiftExtensionApi,
+        private timers: IntervalTimers = globalThis
+    ) {
         // Deliberately not awaiting this, as we don't want to block the extension activation.
         this.setup().catch(error => {
             this.logger.error(Error("Failed to setup SwiftlyToolchainWatcher", { cause: error }));
@@ -133,7 +147,12 @@ export class SwiftlyToolchainWatcher implements Disposable {
             `Initial global swiftly version: ${this.globalSwiftVersion ?? "<none>"}`,
             { label: "SwiftlyToolchainWatcher" }
         );
-        this.interval = setInterval(() => {
+        // dispose() may have been called while waiting on swiftly, in which case there is no one
+        // left to clear the interval.
+        if (this.isDisposed) {
+            return;
+        }
+        this.interval = this.timers.setInterval(() => {
             void this.checkGlobalSwiftlyVersion();
         }, SwiftlyToolchainWatcher.CHECK_INTERVAL);
         this.logger.trace(
@@ -439,7 +458,7 @@ export class SwiftlyToolchainWatcher implements Disposable {
         this.workspaceSubscriptions = [];
         this.disposeDirectoryWatchers();
         this.watchedFolders = new Map();
-        clearInterval(this.interval);
+        this.timers.clearInterval(this.interval);
         this.interval = undefined;
     }
 }

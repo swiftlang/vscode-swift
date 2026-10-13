@@ -20,20 +20,33 @@ import { SwiftLogger } from "../logging/SwiftLogger";
 import { removeToolchainPath, selectToolchain } from "../ui/ToolchainSelection";
 import { Disposable } from "../utilities/Disposable";
 
+/** The timer functions used to poll. Replaceable so that tests can use their own clock. */
+interface IntervalTimers {
+    setInterval(handler: () => void, milliseconds: number): unknown;
+    clearInterval(handle: unknown): void;
+}
+
 export class SelectedXcodeWatcher implements Disposable {
     public static readonly CHECK_INTERVAL = 2000;
     public static readonly XCODE_SYMLINK_PATH = "/var/select/developer_dir";
 
     private xcodePath: string | undefined;
-    private interval: NodeJS.Timeout | undefined;
+    private interval: unknown;
 
     private get logger(): SwiftLogger {
         return this.api.logger;
     }
 
+    /**
+     * @param api The Swift extension API.
+     * @param platform The platform that the extension is running on.
+     * @param timers Schedules the polling of the Xcode symlink. Replaceable so that tests can
+     * drive the polling without faking the global timers of the extension host.
+     */
     constructor(
         private api: InternalSwiftExtensionApi,
-        platform: NodeJS.Platform
+        platform: NodeJS.Platform,
+        private timers: IntervalTimers = globalThis
     ) {
         // Xcode is only available on macOS
         if (platform !== "darwin") {
@@ -50,7 +63,7 @@ export class SelectedXcodeWatcher implements Disposable {
         this.logger.trace("Disposing, stopping Xcode symlink polling", {
             label: "SelectedXcodeWatcher",
         });
-        clearInterval(this.interval);
+        this.timers.clearInterval(this.interval);
     }
 
     /**
@@ -59,7 +72,7 @@ export class SelectedXcodeWatcher implements Disposable {
     private async setup(): Promise<void> {
         this.xcodePath = await this.resolveXcodeSymlink();
         this.logger.debug(`Initial Xcode symlink path ${this.xcodePath}`);
-        this.interval = setInterval(() => {
+        this.interval = this.timers.setInterval(() => {
             void this.checkSelectedXcode();
         }, SelectedXcodeWatcher.CHECK_INTERVAL);
         this.logger.trace(
