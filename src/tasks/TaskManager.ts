@@ -208,7 +208,7 @@ export class TaskManager implements AsyncDisposable {
                                 `Cancellation requested, terminating task: ${task.name}, id=${task.definition.id}`,
                                 { label: "TaskManager" }
                             );
-                            execution.terminate();
+                            void this.terminate(execution);
                             disposables.forEach(d => d.dispose());
                             resolve(undefined);
                         })
@@ -263,40 +263,36 @@ export class TaskManager implements AsyncDisposable {
      * Terminate a single task execution, resolving once VS Code reports that it has ended.
      */
     private async terminate(execution: vscode.TaskExecution): Promise<void> {
+        const logger = this.workspaceContext.logger;
+        const name = execution.task.name;
         const subscriptions: Disposable[] = [];
-        await withTimeout(
-            `Terminating running task "${execution.task.name}"`,
-            () =>
-                new Promise<void>(resolve => {
-                    subscriptions.push(
-                        vscode.tasks.onDidEndTask(event => {
-                            if (event.execution === execution) {
-                                this.workspaceContext.logger.trace(
-                                    `Terminated task ended: ${execution.task.name}`,
-                                    { label: "TaskManager" }
-                                );
-                                resolve();
-                            }
-                        })
-                    );
-                    this.workspaceContext.logger.trace(`Terminating task: ${execution.task.name}`, {
-                        label: "TaskManager",
-                    });
-                    execution.terminate();
-                    // VS Code ignores a `terminate()` that is called before the task has finished starting.
-                    const retry = setInterval(() => {
-                        this.workspaceContext.logger.trace(
-                            `Retrying terminate: ${execution.task.name}`,
-                            { label: "TaskManager" }
-                        );
-                        execution.terminate();
-                    }, 500);
-                    subscriptions.push(new Disposable(() => clearInterval(retry)));
+        const ended = new Promise<void>(resolve => {
+            subscriptions.push(
+                vscode.tasks.onDidEndTask(event => {
+                    if (event.execution === execution) {
+                        logger.trace(`Terminated task ended: ${name}`, { label: "TaskManager" });
+                        subscriptions.forEach(s => s.dispose());
+                        resolve();
+                    }
                 }),
-            5000
-        )
-            .catch(error => this.workspaceContext.logger.warn(error))
-            .finally(() => subscriptions.forEach(s => s.dispose()));
+                // `vscode.tasks.executeTask()` resolves before VS Code starts the task, and VS Code
+                // ignores a `terminate()` until it has, so terminate it again once it starts.
+                vscode.tasks.onDidStartTask(event => {
+                    if (event.execution === execution) {
+                        logger.trace(`Terminating task that started late: ${name}`, {
+                            label: "TaskManager",
+                        });
+                        execution.terminate();
+                    }
+                })
+            );
+        });
+        logger.trace(`Terminating task: ${name}`, { label: "TaskManager" });
+        execution.terminate();
+        // Wait for the task to end, but not forever on one VS Code is slow to start
+        await withTimeout(`Terminating running task "${name}"`, () => ended, 5000).catch(error =>
+            logger.warn(error)
+        );
     }
 
     /** Find folderContext based on task an then disable/enable its task queue */
