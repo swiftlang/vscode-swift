@@ -620,58 +620,6 @@ const configuration = {
             "swift.actionAfterBuildError"
         );
     },
-    /**
-     *  Test coverage settings
-     */
-    /** Should test coverage report be displayed after running test coverage */
-    get displayCoverageReportAfterRun(): boolean {
-        return validateBooleanSetting(
-            vscode.workspace
-                .getConfiguration("swift")
-                .get<boolean>("coverage.displayReportAfterRun", true),
-            "swift.coverage.displayReportAfterRun"
-        );
-    },
-    get alwaysShowCoverageStatusItem(): boolean {
-        return validateBooleanSetting(
-            vscode.workspace
-                .getConfiguration("swift")
-                .get<boolean>("coverage.alwaysShowStatusItem", true),
-            "swift.coverage.alwaysShowStatusItem"
-        );
-    },
-    get coverageHitColorLightMode(): string {
-        return validateStringSetting(
-            vscode.workspace
-                .getConfiguration("swift")
-                .get<string>("coverage.colors.lightMode.hit", "#c0ffc0"),
-            "swift.coverage.colors.lightMode.hit"
-        );
-    },
-    get coverageMissColorLightMode(): string {
-        return validateStringSetting(
-            vscode.workspace
-                .getConfiguration("swift")
-                .get<string>("coverage.colors.lightMode.miss", "#ffc0c0"),
-            "swift.coverage.colors.lightMode.miss"
-        );
-    },
-    get coverageHitColorDarkMode(): string {
-        return validateStringSetting(
-            vscode.workspace
-                .getConfiguration("swift")
-                .get<string>("coverage.colors.darkMode.hit", "#003000"),
-            "swift.coverage.colors.darkMode.hit"
-        );
-    },
-    get coverageMissColorDarkMode(): string {
-        return validateStringSetting(
-            vscode.workspace
-                .getConfiguration("swift")
-                .get<string>("coverage.colors.darkMode.miss", "#400000"),
-            "swift.coverage.colors.darkMode.miss"
-        );
-    },
     get openAfterCreateNewProject(): OpenAfterCreateNewProjectOptions {
         return validateStringSetting(
             vscode.workspace
