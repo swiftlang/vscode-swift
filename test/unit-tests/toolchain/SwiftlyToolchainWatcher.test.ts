@@ -11,10 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import { Clock, createClock } from "@sinonjs/fake-timers";
 import { expect } from "chai";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { SinonFakeTimers, useFakeTimers } from "sinon";
 import * as vscode from "vscode";
 
 import { FolderContext } from "@src/FolderContext";
@@ -64,7 +64,7 @@ suite("Swiftly Toolchain Watcher", () => {
     let mockSwiftExtensionApi: MockedObject<InternalSwiftExtensionApi>;
     let mockSwiftConfig: MockedObject<vscode.WorkspaceConfiguration>;
     let addedFolders: Map<string, MockedObject<FolderContext>>;
-    let timers: SinonFakeTimers;
+    let timers: Clock;
 
     /**
      * Sets the contents of the `.swift-version` file within the given directory, or removes
@@ -138,11 +138,7 @@ suite("Swiftly Toolchain Watcher", () => {
             reloadWorkspaceContext: mockFn(),
         });
         addedFolders = new Map();
-        timers = useFakeTimers();
-    });
-
-    teardown(() => {
-        timers.restore();
+        timers = createClock();
     });
 
     /** A folder that is present in the workspace. */
@@ -178,7 +174,7 @@ suite("Swiftly Toolchain Watcher", () => {
         let mockWorkspaceContext: MockedObject<WorkspaceContext> | undefined;
         let workspaceFolders: FolderContext[] = [];
         const onDidChangeFoldersEmitter = new vscode.EventEmitter<FolderEvent>();
-        const watcher = new SwiftlyToolchainWatcher(instance(mockSwiftExtensionApi));
+        const watcher = new SwiftlyToolchainWatcher(instance(mockSwiftExtensionApi), timers);
         async function runUntilNextCheck(): Promise<void> {
             // Allow some time for any Promises to complete.
             await timers.tickAsync(1);
@@ -337,12 +333,9 @@ suite("Swiftly Toolchain Watcher", () => {
             }
         } finally {
             watcher.dispose();
-            expect(timers.countTimers()).to.equal(0, "Some timers were not disposed");
-            expect(fileSystemWatchers.size).to.equal(
-                0,
-                "Some FileSystem watchers were not disposed"
-            );
         }
+        expect(timers.countTimers()).to.equal(0, "Some timers were not disposed");
+        expect(fileSystemWatchers.size).to.equal(0, "Some FileSystem watchers were not disposed");
     }
 
     test("disposes of all FileSystem watchers when many workspace change events occur", async () => {

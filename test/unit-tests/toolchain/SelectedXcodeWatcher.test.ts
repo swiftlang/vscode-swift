@@ -11,9 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
+import { Clock, createClock } from "@sinonjs/fake-timers";
 import { expect } from "chai";
 import type * as FileSystem from "mock-fs/lib/filesystem";
-import { SinonFakeTimers, match, useFakeTimers } from "sinon";
+import { match } from "sinon";
 import * as vscode from "vscode";
 
 import { InternalSwiftExtensionApi } from "@src/InternalSwiftExtensionApi";
@@ -45,7 +46,7 @@ suite("Selected Xcode Watcher", () => {
     const envConfig = mockGlobalValue(configuration, "swiftEnvironmentVariables");
     const mockWorkspace = mockGlobalObject(vscode, "workspace");
     let mockSwiftConfig: MockedObject<vscode.WorkspaceConfiguration>;
-    let timers: SinonFakeTimers;
+    let timers: Clock;
 
     setup(function () {
         mockFS();
@@ -70,16 +71,15 @@ suite("Selected Xcode Watcher", () => {
         });
         mockWorkspace.getConfiguration.returns(instance(mockSwiftConfig));
 
-        timers = useFakeTimers();
+        timers = createClock();
     });
 
     teardown(() => {
         mockFS.restore();
-        timers.restore();
     });
 
     async function run(platform: NodeJS.Platform, symLinksOnCallback: (string | undefined)[]) {
-        const watcher = new SelectedXcodeWatcher(instance(mockSwiftExtensionApi), platform);
+        const watcher = new SelectedXcodeWatcher(instance(mockSwiftExtensionApi), platform, timers);
         async function runUntilNextCheck(): Promise<void> {
             // Allow some time for any Promises to complete.
             await timers.tickAsync(1);
@@ -106,8 +106,9 @@ suite("Selected Xcode Watcher", () => {
             }
         } finally {
             watcher.dispose();
-            expect(timers.countTimers()).to.equal(0, "No timers should be present after dispose()");
         }
+        // This runs after the try/finally so that it can't replace an error thrown by the loop.
+        expect(timers.countTimers()).to.equal(0, "No timers should be present after dispose()");
     }
 
     test("ignores all events on Windows", async () => {
