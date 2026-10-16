@@ -75,9 +75,9 @@ suite("ToolchainSelection Unit Test Suite", () => {
             inspect: mockFn(s => s.returns({})),
             get: mockFn(s => {
                 // Return appropriate defaults for configuration properties
-                s.withArgs("path", match.any).returns("");
-                s.withArgs("runtimePath", match.any).returns("");
-                s.withArgs("swiftEnvironmentVariables", match.any).returns({});
+                s.withArgs("path").returns("");
+                s.withArgs("runtimePath").returns("");
+                s.withArgs("swiftEnvironmentVariables").returns({});
                 // Default fallback
                 s.returns(undefined);
             }),
