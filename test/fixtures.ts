@@ -172,14 +172,15 @@ export function testSwiftTask(
     command: string,
     args: string[],
     workspaceFolder: vscode.WorkspaceFolder,
-    toolchain: SwiftToolchain
+    toolchain: SwiftToolchain,
+    cwd: vscode.Uri = workspaceFolder.uri
 ): SwiftTaskFixture {
     const process = new TestSwiftProcess(command, args);
     const task = createSwiftTask(
         args,
         "my test task",
         {
-            cwd: workspaceFolder.uri,
+            cwd,
             scope: workspaceFolder,
         },
         toolchain,
