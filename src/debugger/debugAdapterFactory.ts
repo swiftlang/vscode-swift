@@ -253,12 +253,12 @@ export class LLDBDebugConfigurationProvider implements vscode.DebugConfiguration
     }
 
     private mergeRuntimeEnvironment(launchConfig: vscode.DebugConfiguration): void {
-        const runtimeEnv = swiftRuntimeEnv(true);
+        const runtimeEnv = swiftRuntimeEnv();
         if (!runtimeEnv) {
             return;
         }
         const existingEnv = launchConfig.env ?? {};
-        launchConfig.env = { ...runtimeEnv, existingEnv };
+        launchConfig.env = { ...runtimeEnv, ...existingEnv };
     }
 
     private async configureDebugAdapter(
