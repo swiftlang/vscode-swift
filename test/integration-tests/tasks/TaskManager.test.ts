@@ -17,6 +17,7 @@ import * as vscode from "vscode";
 
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { TaskManager } from "@src/tasks/TaskManager";
+import { unwrapPromise } from "@src/utilities/utilities";
 import { withTimeout } from "@src/utilities/withTimeout";
 
 import { tag } from "../../tags";
@@ -66,6 +67,40 @@ tag("medium").suite("TaskManager Test Suite", () => {
         const exitCode = await withTimeout("Waiting for the terminated task", () => result, 10_000);
         expect(exitCode).to.be.undefined;
         expect(await waitForNoRunningTasks({ timeout: 10_000 })).to.be.empty;
+    });
+
+    test("Terminates a task that starts after dispose", async () => {
+        const manager = new TaskManager(workspaceContext);
+        const { promise: startReleased, resolve: releaseStart } = unwrapPromise<void>();
+        const closeEmitter = new vscode.EventEmitter<number | void>();
+        let closed = false;
+        const pty: vscode.Pseudoterminal = {
+            onDidWrite: new vscode.EventEmitter<string>().event,
+            onDidClose: closeEmitter.event,
+            open: () => {},
+            close: () => {
+                closed = true;
+                closeEmitter.fire();
+            },
+        };
+        const lateTask = new vscode.Task(
+            { type: "testTask" },
+            vscode.TaskScope.Workspace,
+            "late start",
+            "testTask",
+            // VS Code doesn't report the task as started until this resolves
+            new vscode.CustomExecution(async () => {
+                await startReleased;
+                return pty;
+            })
+        );
+        void manager.executeTaskAndWait(lateTask);
+
+        await manager.dispose();
+        releaseStart();
+
+        expect(await waitForNoRunningTasks({ timeout: 10_000 })).to.be.empty;
+        expect(closed).to.be.true;
     });
 
     // check running two tasks at same time will return expected values
