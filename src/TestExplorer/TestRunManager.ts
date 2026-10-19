@@ -45,13 +45,17 @@ export class TestRunManager {
         );
         this.activeTestRuns.set(key, { testRun, tokenSource });
 
-        // When the test run completes, remove it from active test runs
+        // A replaced run completes after its replacement registers, so only remove ourselves
         testRun.onTestRunComplete(() => {
             const active = this.activeTestRuns.get(key);
-            this.trace(
-                folder,
-                `Test run ${testRun.runId} completed, removing active run ${active?.testRun.runId ?? "none"}`
-            );
+            if (active?.testRun !== testRun) {
+                this.trace(
+                    folder,
+                    `Test run ${testRun.runId} completed, keeping active run ${active?.testRun.runId ?? "none"}`
+                );
+                return;
+            }
+            this.trace(folder, `Test run ${testRun.runId} completed, removing it from active runs`);
             this.activeTestRuns.delete(key);
         });
     }
