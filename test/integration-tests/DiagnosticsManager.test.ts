@@ -451,6 +451,88 @@ tag("medium").suite("DiagnosticsManager Test Suite", function () {
                 expect(vscode.languages.getDiagnostics(mainUri)).to.have.length(0);
             });
 
+            test("Package commands do not clear swiftc diagnostics", async () => {
+                const build = testSwiftTask("swift", ["build"], workspaceFolder, toolchain);
+                const buildStarted = waitForStartTaskProcess(build.task);
+                await vscode.tasks.executeTask(build.task);
+                await buildStarted;
+                build.process.write(`${mainUri.fsPath}:13:5: error: Cannot find 'foo' in scope`);
+                build.process.close(1);
+                await waitForNoRunningTasks();
+                await waitForDiagnostics({ [mainUri.fsPath]: [outputDiagnostic] });
+
+                const describe = testSwiftTask(
+                    "swift",
+                    ["package", "describe", "--type", "json"],
+                    workspaceFolder,
+                    toolchain
+                );
+                const describeStarted = waitForStartTaskProcess(describe.task);
+                await vscode.tasks.executeTask(describe.task);
+                await describeStarted;
+                describe.process.close(0);
+                await waitForNoRunningTasks();
+
+                expect(vscode.languages.getDiagnostics(mainUri)).to.have.length(1);
+            });
+
+            test("Building another package does not clear swiftc diagnostics", async () => {
+                const build = testSwiftTask("swift", ["build"], workspaceFolder, toolchain);
+                const buildStarted = waitForStartTaskProcess(build.task);
+                await vscode.tasks.executeTask(build.task);
+                await buildStarted;
+                build.process.write(`${mainUri.fsPath}:13:5: error: Cannot find 'foo' in scope`);
+                build.process.close(1);
+                await waitForNoRunningTasks();
+                await waitForDiagnostics({ [mainUri.fsPath]: [outputDiagnostic] });
+
+                const otherBuild = testSwiftTask(
+                    "swift",
+                    ["build"],
+                    workspaceFolder,
+                    toolchain,
+                    cFolderContext.folder
+                );
+                const otherBuildStarted = waitForStartTaskProcess(otherBuild.task);
+                await vscode.tasks.executeTask(otherBuild.task);
+                await otherBuildStarted;
+                otherBuild.process.close(0);
+                await waitForNoRunningTasks();
+
+                expect(vscode.languages.getDiagnostics(mainUri)).to.have.length(1);
+            });
+
+            test("tasks.json build with a variable cwd clears swiftc diagnostics", async () => {
+                const build = testSwiftTask("swift", ["build"], workspaceFolder, toolchain);
+                const buildStarted = waitForStartTaskProcess(build.task);
+                await vscode.tasks.executeTask(build.task);
+                await buildStarted;
+                build.process.write(`${mainUri.fsPath}:13:5: error: Cannot find 'foo' in scope`);
+                build.process.close(1);
+                await waitForNoRunningTasks();
+                await waitForDiagnostics({ [mainUri.fsPath]: [outputDiagnostic] });
+
+                // Tasks resolved from tasks.json keep their unresolved definition
+                const rebuild = testSwiftTask("swift", ["build"], workspaceFolder, toolchain);
+                const tasksJsonTask = new vscode.Task(
+                    { ...rebuild.task.definition, cwd: "${workspaceFolder}" },
+                    workspaceFolder,
+                    rebuild.task.name,
+                    "swift",
+                    rebuild.task.execution
+                );
+                tasksJsonTask.detail = rebuild.task.detail;
+                const rebuildStarted = waitForStartTaskProcess(tasksJsonTask);
+                const cleared = waitForDiagnosticsCleared(mainUri);
+                await vscode.tasks.executeTask(tasksJsonTask);
+                await rebuildStarted;
+                rebuild.process.close(0);
+                await waitForNoRunningTasks();
+                await cleared;
+
+                expect(vscode.languages.getDiagnostics(mainUri)).to.have.length(0);
+            });
+
             // https://github.com/apple/swift/issues/73973
             test("Ignore XCTest failures", async () => {
                 const testUri = testAssetUri("diagnostics/Tests/MyCLITests/MyCLIXCTests.swift");

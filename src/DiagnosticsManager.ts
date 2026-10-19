@@ -20,7 +20,7 @@ import { SwiftLogger } from "./logging/SwiftLogger";
 import { SwiftExecution } from "./tasks/SwiftExecution";
 import { TerminalEmulator } from "./terminal/TerminalEmulator";
 import { Disposable } from "./utilities/Disposable";
-import { validFileTypes } from "./utilities/filesystem";
+import { isPathInDirectory, validFileTypes } from "./utilities/filesystem";
 import { checkIfBuildComplete } from "./utilities/tasks";
 
 interface ParsedDiagnostic {
@@ -86,11 +86,15 @@ export class DiagnosticsManager implements Disposable {
             const swiftExecution = task.execution as SwiftExecution;
             const provideDiagnostics: Promise<DiagnosticsMap> =
                 this.parseDiagnostics(swiftExecution);
+            // `swift package` commands don't compile sources, so they can't clear compiler errors
+            const clearsSwiftcDiagnostics = task.definition.args?.[0] !== "package";
+            const cwd = swiftExecution.options.cwd;
 
             provideDiagnostics
                 .then(map => {
-                    // Clean up old "swiftc" diagnostics
-                    this.removeSwiftcDiagnostics();
+                    if (clearsSwiftcDiagnostics) {
+                        this.removeSwiftcDiagnostics(cwd);
+                    }
                     map.forEach((diagnostics, uri) => {
                         this.handleDiagnostics(
                             vscode.Uri.file(uri),
@@ -248,8 +252,11 @@ export class DiagnosticsManager implements Disposable {
         }
     }
 
-    private removeSwiftcDiagnostics() {
+    private removeSwiftcDiagnostics(cwd: string | undefined) {
         this.allDiagnostics.forEach((diagnostics, path) => {
+            if (cwd && !isPathInDirectory(path, cwd)) {
+                return;
+            }
             const newDiagnostics = diagnostics.slice();
             this.removeDiagnostics(newDiagnostics, isSwiftc);
             if (diagnostics.length !== newDiagnostics.length) {
