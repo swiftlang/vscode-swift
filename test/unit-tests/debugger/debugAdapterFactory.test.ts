@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
+import * as path from "path";
 import * as vscode from "vscode";
 
 import { FolderContext } from "@src/FolderContext";
@@ -27,6 +28,7 @@ import { BuildFlags } from "@src/toolchain/BuildFlags";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
 import { Result } from "@src/utilities/result";
 import * as shell from "@src/utilities/shell";
+import { swiftLibraryPathKey } from "@src/utilities/utilities";
 import { Version } from "@src/utilities/version";
 
 import {
@@ -402,6 +404,8 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
 
     suite("lldb-dap selected in settings", () => {
         const mockDebuggerConfig = mockGlobalValue(configuration, "debugger");
+        const mockRuntimePath = mockGlobalValue(configuration, "runtimePath");
+        const mockProcessEnv = mockGlobalValue(process, "env");
 
         setup(() => {
             mockDebugAdapter.getLaunchConfigType.returns(LaunchConfigType.LLDB_DAP);
@@ -569,6 +573,31 @@ suite("LLDBDebugConfigurationProvider Tests", () => {
                 });
 
             expect(launchConfig).to.have.property("env").that.deep.equals([]);
+        });
+
+        test("should keep launch environment variables when swift.runtimePath is set", async () => {
+            const libraryPathKey = swiftLibraryPathKey();
+            mockRuntimePath.setValue("/path/to/runtime");
+            mockProcessEnv.setValue({ [libraryPathKey]: "/existing/lib" });
+            const configProvider = new LLDBDebugConfigurationProvider(
+                "darwin",
+                instance(mockExtensionApi)
+            );
+            const launchConfig =
+                await configProvider.resolveDebugConfigurationWithSubstitutedVariables(undefined, {
+                    type: SWIFT_LAUNCH_CONFIG_TYPE,
+                    request: "launch",
+                    name: "Test Launch",
+                    program: "/path/to/some/program",
+                    env: { VAR1: "value1" },
+                });
+
+            expect(launchConfig)
+                .to.have.property("env")
+                .that.deep.equals([
+                    `${libraryPathKey}=/path/to/runtime${path.delimiter}/existing/lib`,
+                    "VAR1=value1",
+                ]);
         });
 
         test("should handle a large number of environment variables when using lldb-dap", async () => {

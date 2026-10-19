@@ -44,21 +44,11 @@ export function isEmptyObject(obj: { [key: string]: unknown }): boolean {
  * @returns minimal required environment for Swift product
  */
 export function swiftRuntimeEnv(
-    base: NodeJS.ProcessEnv | boolean = process.env,
+    base: NodeJS.ProcessEnv = process.env,
     runtimePath: string = configuration.runtimePath
 ): { [key: string]: string } | undefined {
     const key = swiftLibraryPathKey();
     const separator = process.platform === "win32" ? ";" : ":";
-    switch (base) {
-        case false:
-            base = {};
-            break;
-        case true:
-            base = { [key]: `\${env:${key}}` };
-            break;
-        default:
-            break;
-    }
     return runtimeEnv(base, key, runtimePath, separator);
 }
 
