@@ -495,7 +495,11 @@ export class TestExplorer {
             { label: "Test Explorer" }
         );
         try {
-            await this.folderContext.taskQueue.queueOperation(new TaskOperation(backgroundTask));
+            // Without the token, a build queued as the folder is removed outlives the folder
+            await this.folderContext.taskQueue.queueOperation(
+                new TaskOperation(backgroundTask),
+                token
+            );
         } catch (error) {
             // can ignore if running task fails
             this.logger.trace(
