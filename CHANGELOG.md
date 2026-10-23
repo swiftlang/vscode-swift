@@ -26,6 +26,7 @@
 - Capturing a diagnostics bundle will no longer fail if the extension fails to activate ([#2273](https://github.com/swiftlang/vscode-swift/pull/2273))
 - Make sure the start of swift-testing runs is not missed ([#2365](https://github.com/swiftlang/vscode-swift/pull/2365))
 - Starting a new test run while another is still finishing no longer drops the new run ([#2398](https://github.com/swiftlang/vscode-swift/pull/2398))
+- Saving Package.swift repeatedly no longer queues duplicate `swift package resolve` runs ([#2407](https://github.com/swiftlang/vscode-swift/pull/2407))
 
 ## 2.16.7 - 2026-08-10
 
