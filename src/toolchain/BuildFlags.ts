@@ -47,8 +47,8 @@ export class BuildFlags {
                 // `package` command, before any subcommand. Otherwise SwiftPM's
                 // argument parser rejects them when the subcommand has further
                 // subcommands or positional args (e.g. `swift package plugin --list`).
-                const command = args.splice(0, 1).concat(this.buildPathFlags());
-                const subcommand: string | undefined = args[0];
+                const command = args.slice(0, 1).concat(this.buildPathFlags());
+                const subcommand: string | undefined = args[1];
                 switch (subcommand) {
                     case "dump-symbol-graph":
                     case "diagnose-api-breaking-changes":
@@ -56,18 +56,18 @@ export class BuildFlags {
                         // These two tools require building the package, so SDK
                         // flags are needed. Destination control flags are
                         // required to be placed before subcommand options.
-                        return [...command, ...this.swiftpmSDKFlags(), ...args];
+                        return [...command, ...this.swiftpmSDKFlags(), ...args.slice(1)];
                     default:
                         // Other swift-package subcommands operate on the host,
                         // so they don't need to know about the destination.
-                        return command.concat(args);
+                        return command.concat(args.slice(1));
                 }
             }
             case "build":
             case "run":
             case "test": {
-                const subcommand = args.splice(0, 1).concat(this.buildPathFlags());
-                return [...subcommand, ...this.swiftpmSDKFlags(), ...args];
+                const subcommand = args.slice(0, 1).concat(this.buildPathFlags());
+                return [...subcommand, ...this.swiftpmSDKFlags(), ...args.slice(1)];
             }
             default:
                 // We're not going to call the Swift compiler directly for cross-compiling
