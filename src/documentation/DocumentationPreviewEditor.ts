@@ -19,6 +19,7 @@ import { LSPErrorCodes, ResponseError } from "vscode-languageclient";
 import { WorkspaceContext } from "../WorkspaceContext";
 import { DocCDocumentationRequest } from "../sourcekit-lsp/extensions";
 import { Disposable } from "../utilities/Disposable";
+import { isPathInsidePath } from "../utilities/filesystem";
 import { RenderNode, WebviewContent, WebviewMessage } from "./webview/WebviewMessage";
 
 import throttle = require("lodash.throttle");
@@ -210,7 +211,7 @@ export class DocumentationPreviewEditor implements Disposable {
             }
 
             const folderContext = this.context.folders.find(folderContext =>
-                document.uri.fsPath.startsWith(folderContext.folder.fsPath)
+                isPathInsidePath(document.uri.fsPath, folderContext.folder.fsPath)
             );
 
             if (!folderContext) {

@@ -17,6 +17,7 @@ import * as vscode from "vscode";
 import { FolderContext } from "./FolderContext";
 import { SourceKitLanguageClient } from "./sourcekit-lsp/client/SourceKitLanguageClient";
 import { DocCDocumentationRequest, ReIndexProjectRequest } from "./sourcekit-lsp/extensions";
+import { isPathInsidePath } from "./utilities/filesystem";
 import { Version } from "./utilities/version";
 
 /**
@@ -352,7 +353,7 @@ export class ContextKeyManager implements ContextKeys {
 
         const filename = currentDocument.fsPath;
         const snippetsFolder = path.join(currentFolder.folder.fsPath, "Snippets");
-        this.fileIsSnippet = filename.startsWith(snippetsFolder);
+        this.fileIsSnippet = isPathInsidePath(filename, snippetsFolder);
     }
 
     /**
