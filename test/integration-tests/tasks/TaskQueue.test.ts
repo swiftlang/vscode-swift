@@ -16,8 +16,8 @@ import * as vscode from "vscode";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { SwiftExecOperation, TaskOperation, TaskQueue } from "@src/tasks/TaskQueue";
 
-import { testAssetPath } from "../../fixtures";
 import { tag } from "../../tags";
+import { sleepExecution } from "../../utilities/tasks";
 import { activateExtensionForSuite, findWorkspaceFolder } from "../utilities/testutilities";
 
 import assert = require("assert");
@@ -134,21 +134,20 @@ tag("medium").suite("TaskQueue Test Suite", () => {
     // Queue two tasks. The first one taking longer than the second. If they
     // are queued correctly the first will still finish before the second
     test("Test execution order", async () => {
-        const sleepScript = testAssetPath("sleep.sh");
         const results: (number | undefined)[] = [];
         const task1 = new vscode.Task(
             { type: "testTask", args: ["1"] },
             vscode.TaskScope.Workspace,
             "exit",
             "testTask",
-            new vscode.ShellExecution(sleepScript, ["1", "1"])
+            sleepExecution(1, 1)
         );
         const task2 = new vscode.Task(
             { type: "testTask", args: ["2"] },
             vscode.TaskScope.Workspace,
             "exit",
             "testTask",
-            new vscode.ShellExecution(sleepScript, ["0.01", "2"])
+            sleepExecution(0, 2)
         );
         await Promise.all([
             taskQueue.queueOperation(new TaskOperation(task1)).then(rt => results.push(rt)),
