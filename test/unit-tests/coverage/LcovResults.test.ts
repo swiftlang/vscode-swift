@@ -13,7 +13,7 @@
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
 
-import { llvmCovObjectArguments } from "@src/coverage/LcovResults";
+import { llvmCovIgnoreFilenameRegex, llvmCovObjectArguments } from "@src/coverage/LcovResults";
 
 suite("LcovResults Unit Tests", () => {
     suite("llvmCovObjectArguments", () => {
@@ -42,6 +42,26 @@ suite("LcovResults Unit Tests", () => {
                 "-object",
                 "/bin/AppTests",
             ]);
+        });
+    });
+
+    suite("llvmCovIgnoreFilenameRegex", () => {
+        test("joins multiple paths into an alternation", () => {
+            const regex = llvmCovIgnoreFilenameRegex(["/pkg/.build", "/pkg/Tests/AppTests"]);
+            expect(regex).to.equal("\\/pkg\\/\\.build|\\/pkg\\/Tests\\/AppTests");
+            expect(new RegExp(regex).test("/pkg/.build/debug/main.swift")).to.be.true;
+            expect(new RegExp(regex).test("/pkg/Tests/AppTests/AppTests.swift")).to.be.true;
+            expect(new RegExp(regex).test("/pkg/Sources/App/App.swift")).to.be.false;
+        });
+
+        test("matches paths containing regular expression metacharacters literally", () => {
+            const regex = new RegExp(
+                llvmCovIgnoreFilenameRegex(["/Users/me/Dropbox (Personal)/C++ [v2]/pkg/.build"])
+            );
+            expect(regex.test("/Users/me/Dropbox (Personal)/C++ [v2]/pkg/.build/debug/main.swift"))
+                .to.be.true;
+            expect(regex.test("/Users/me/Dropbox Personal/C++ [v2]/pkg/.build/debug/main.swift")).to
+                .be.false;
         });
     });
 });

@@ -26,7 +26,7 @@ import configuration from "../configuration";
 import { TestingConfigurationFactory, effectiveBuildSystem } from "../debugger/buildConfig";
 import { BuildFlags } from "../toolchain/BuildFlags";
 import { DisposableFileCollection, TemporaryFolder } from "../utilities/tempFolder";
-import { execFileStreamOutput } from "../utilities/utilities";
+import { execFileStreamOutput, regexEscapedString } from "../utilities/utilities";
 
 interface CodeCovFile {
     testLibrary: TestLibrary;
@@ -47,6 +47,18 @@ export function llvmCovObjectArguments(binaries: string[]): string[] {
         return [];
     }
     return [first, ...rest.flatMap(binary => ["-object", binary])];
+}
+
+/**
+ * Builds the value for `llvm-cov --ignore-filename-regex` that matches any of
+ * the provided paths.
+ *
+ * Each path is escaped so that regular expression metacharacters that are valid
+ * in file system paths, such as the parentheses in `Dropbox (Personal)`, are
+ * matched literally.
+ */
+export function llvmCovIgnoreFilenameRegex(paths: string[]): string {
+    return paths.map(p => regexEscapedString(p)).join("|");
 }
 
 export class TestCoverage {
@@ -304,7 +316,13 @@ export class TestCoverage {
             path.isAbsolute(target) ? target : path.join(basePath, target)
         );
 
-        return [buildFolder, snippetsFolder, pluginsFolder, ...testTargets, ...excluded].join("|");
+        return llvmCovIgnoreFilenameRegex([
+            buildFolder,
+            snippetsFolder,
+            pluginsFolder,
+            ...testTargets,
+            ...excluded,
+        ]);
     }
 
     private async loadLcov(lcovContents: string): Promise<lcov.LcovFile[]> {
