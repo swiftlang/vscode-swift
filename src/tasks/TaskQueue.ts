@@ -229,13 +229,13 @@ export class TaskQueue implements Disposable {
         // do we already have a version of this operation in the queue. If so
         // return the promise for when that operation is complete instead of adding
         // a new operation
-        let queuedOperation = this.findQueuedOperation(operation);
-        if (queuedOperation && queuedOperation.promise !== undefined) {
+        const queuedPromise = this.findQueuedOperation(operation, token)?.promise;
+        if (queuedPromise) {
             this.workspaceContext.logger.trace(
                 `Operation already queued, reusing it: ${operation.name}, folder=${this.folderContext.name}`,
                 { label: "TaskQueue" }
             );
-            return queuedOperation.promise;
+            return queuedPromise;
         }
         // if checkAlreadyRunning is set then check the active operation is not the same
         if (
@@ -252,7 +252,7 @@ export class TaskQueue implements Disposable {
         }
 
         const promise = new Promise<number | undefined>((resolve, fail) => {
-            queuedOperation = new QueuedOperation(
+            const queuedOperation = new QueuedOperation(
                 operation,
                 result => {
                     if (result.success !== undefined) {
@@ -270,13 +270,10 @@ export class TaskQueue implements Disposable {
                 `Operation queued: ${operation.name}, folder=${this.folderContext.name}, queueLength=${this.queue.length}, activeOperation=${this.activeOperation?.operation.name ?? "none"}, disabled=${this.disabled}`,
                 { label: "TaskQueue" }
             );
-            void this.processQueue();
         });
-        // if the last item does not have a promise then it is the queue
-        // entry we just added above and we should set its promise
-        if (this.queue.length > 0 && !this.queue[this.queue.length - 1].promise) {
-            this.queue[this.queue.length - 1].promise = promise;
-        }
+        // Set the promise before processing, which may dequeue the operation straight away
+        this.queue[this.queue.length - 1].promise = promise;
+        void this.processQueue();
         return promise;
     }
 
@@ -374,13 +371,19 @@ export class TaskQueue implements Disposable {
         void this.processQueue();
     }
 
-    /** Return if we already have an operation in the queue */
-    findQueuedOperation(operation: SwiftOperation): QueuedOperation | undefined {
-        for (const queuedOperation of this.queue) {
-            if (queuedOperation.id === operation.id) {
-                return queuedOperation;
-            }
-        }
+    /**
+     * Return a queued operation the caller can share. One queued with another caller's
+     * token isn't shared, as that token could cancel it.
+     */
+    findQueuedOperation(
+        operation: SwiftOperation,
+        token?: vscode.CancellationToken
+    ): QueuedOperation | undefined {
+        return this.queue.find(
+            queuedOperation =>
+                queuedOperation.id === operation.id &&
+                (queuedOperation.token === undefined || queuedOperation.token === token)
+        );
     }
 
     private async waitWhileDisabled() {

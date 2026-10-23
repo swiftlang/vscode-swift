@@ -70,7 +70,7 @@ tag("medium").suite("TaskQueue Test Suite", () => {
             taskQueue.queueOperation(new TaskOperation(task1)).then(rt => results.push(rt)),
             taskQueue.queueOperation(new TaskOperation(task2)).then(rt => results.push(rt)),
         ]);
-        assert.notStrictEqual(results, [1, 2]);
+        assert.deepStrictEqual(results, [1, 2]);
     });
 
     // Check that queuing a task that is already running will still run it a second
@@ -95,7 +95,7 @@ tag("medium").suite("TaskQueue Test Suite", () => {
             taskQueue.queueOperation(new TaskOperation(task1)).then(rt => results.push(rt)),
             taskQueue.queueOperation(new TaskOperation(task2)).then(rt => results.push(rt)),
         ]);
-        assert.notStrictEqual(results, [1, 2]);
+        assert.deepStrictEqual(results, [1, 2]);
     });
 
     // Check that queuing a task that is already in the queue will just return
@@ -128,7 +128,7 @@ tag("medium").suite("TaskQueue Test Suite", () => {
             taskQueue.queueOperation(new TaskOperation(task2)).then(rt => results.push(rt)),
             taskQueue.queueOperation(new TaskOperation(task3)).then(rt => results.push(rt)),
         ]);
-        assert.notStrictEqual(results, [1, 2, 2]);
+        assert.deepStrictEqual(results, [1, 2, 2]);
     });
 
     // Queue two tasks. The first one taking longer than the second. If they
@@ -154,7 +154,7 @@ tag("medium").suite("TaskQueue Test Suite", () => {
             taskQueue.queueOperation(new TaskOperation(task1)).then(rt => results.push(rt)),
             taskQueue.queueOperation(new TaskOperation(task2)).then(rt => results.push(rt)),
         ]);
-        assert.notStrictEqual(results, [1, 2]);
+        assert.deepStrictEqual(results, [1, 2]);
     });
 
     // check queuing task will return expected value
