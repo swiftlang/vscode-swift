@@ -360,6 +360,19 @@ suite("BuildFlags Test Suite", () => {
             sandboxConfig.setValue(false);
         });
 
+        test("leaves the caller's arguments unchanged", () => {
+            for (const command of [
+                ["package", "describe", "--type", "json"],
+                ["build", "--product", "MyExecutable"],
+                ["run", "MyExecutable"],
+                ["test", "--filter", "MyTests"],
+            ]) {
+                const args = [...command];
+                buildFlags.withAdditionalFlags(args);
+                expect(args).to.deep.equal(command);
+            }
+        });
+
         test("package", () => {
             for (const sub of ["dump-symbol-graph", "diagnose-api-breaking-changes", "resolve"]) {
                 sdkConfig.setValue("");
