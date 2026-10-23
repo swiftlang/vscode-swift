@@ -16,7 +16,6 @@ import { Range } from "vscode";
 
 import {
     getErrorDescription,
-    getRepositoryName,
     hashString,
     regexEscapedString,
     runtimeEnv,
@@ -26,37 +25,6 @@ import {
 } from "@src/utilities/utilities";
 
 suite("Utilities Unit Test Suite", () => {
-    suite("getRepositoryName", () => {
-        test("regular url", () => {
-            expect(getRepositoryName("https://github.com/swiftlang/vscode-swift.git")).to.equal(
-                "vscode-swift"
-            );
-        });
-
-        test("url does not end in .git", () => {
-            expect(getRepositoryName("https://github.com/swiftlang/vscode-swift")).to.equal(
-                "vscode-swift"
-            );
-        });
-
-        test("URL contains a trailing slash", () => {
-            expect(getRepositoryName("https://github.com/swiftlang/vscode-swift.git/")).to.equal(
-                "vscode-swift"
-            );
-        });
-        test("Name contains a dot", () => {
-            expect(getRepositoryName("https://github.com/swiftlang/vscode.swift.git")).to.equal(
-                "vscode.swift"
-            );
-        });
-
-        test("Name contains .git", () => {
-            expect(getRepositoryName("https://github.com/swiftlang/vscode.git.git")).to.equal(
-                "vscode.git"
-            );
-        });
-    });
-
     suite("getErrorDescription", () => {
         test('should return "No error provided" when the error is null or undefined', () => {
             expect(getErrorDescription(null)).to.equal("No error provided");

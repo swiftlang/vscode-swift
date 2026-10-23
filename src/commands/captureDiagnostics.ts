@@ -27,7 +27,7 @@ import { DebugAdapter, LaunchConfigType } from "../debugger/debugAdapter";
 import { SwiftLogger } from "../logging/SwiftLogger";
 import { SwiftToolchain } from "../toolchain/toolchain";
 import { Extension } from "../utilities/extensions";
-import { destructuredPromise, execFileStreamOutput, randomString } from "../utilities/utilities";
+import { execFileStreamOutput, randomString, unwrapPromise } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 
 export interface CaptureDiagnosticsOptions {
@@ -184,7 +184,7 @@ function configureZipArchiver(zipFilePath: string): {
     const archive = archiver.create("zip", {
         zlib: { level: 9 },
     });
-    const { promise, resolve, reject } = destructuredPromise<void>();
+    const { promise, resolve, reject } = unwrapPromise<void>();
     output.once("close", () => {
         archive.removeListener("error", reject);
         resolve();

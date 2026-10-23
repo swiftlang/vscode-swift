@@ -358,12 +358,6 @@ export class FolderContext implements ExternalFolderContext, Disposable {
         await this.playgroundProvider?.fetch();
     }
 
-    /** Remove playground provider from this folder */
-    removePlaygroundProvider() {
-        this.playgroundProvider?.dispose();
-        this.playgroundProvider = undefined;
-    }
-
     /** Return `true` if package folder has a playground provider */
     hasPlaygroundProvider() {
         return this.playgroundProvider !== undefined;
