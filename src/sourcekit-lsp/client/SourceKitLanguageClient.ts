@@ -73,6 +73,25 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
         { argument: "-index-store-path", include: 1 },
     ];
 
+    /** The command and arguments that start SourceKit-LSP for the given toolchain. */
+    static serverInvocation(toolchain: SwiftToolchain): { command: string; args: string[] } {
+        const lspConfig = configuration.lsp;
+        const buildFlags = toolchain.buildFlags;
+        const args = [
+            ...lspConfig.serverArguments,
+            ...buildFlags.swiftDriverSDKFlags(true),
+            ...buildFlags.swiftDriverTargetFlags(true),
+            ...BuildFlags.filterArguments(
+                configuration.buildArguments.concat(buildFlags.buildPathFlags()),
+                SourceKitLanguageClient.buildArgumentFilter
+            ),
+        ];
+        const serverPath = lspConfig.serverPath;
+        return serverPath
+            ? { command: serverPath, args }
+            : toolchain.getToolchainInvocation("sourcekit-lsp", args);
+    }
+
     private folderContextFeature: FolderContextFeature;
     private cancellationTokenSource = new vscode.CancellationTokenSource();
     private readonly swiftLogger: SwiftLogger;
@@ -95,25 +114,8 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
         options: SourceKitLanguageClientOptions = {}
     ) {
         const serverOptions: ServerOptions = async (): Promise<ChildProcess> => {
-            const lspConfig = configuration.lsp;
-            const serverPathConfig = lspConfig.serverPath;
-            const buildFlags = toolchain.buildFlags;
-            const sdkArguments = [
-                ...buildFlags.swiftDriverSDKFlags(true),
-                ...buildFlags.swiftDriverTargetFlags(true),
-                ...BuildFlags.filterArguments(
-                    configuration.buildArguments.concat(buildFlags.buildPathFlags()),
-                    SourceKitLanguageClient.buildArgumentFilter
-                ),
-            ];
-
-            const inv = serverPathConfig
-                ? { command: serverPathConfig, args: [] }
-                : toolchain.getToolchainInvocation("sourcekit-lsp", [
-                      ...lspConfig.serverArguments,
-                      ...sdkArguments,
-                  ]);
-
+            const serverPathConfig = configuration.lsp.serverPath;
+            const inv = SourceKitLanguageClient.serverInvocation(toolchain);
             const isCustomPath = Boolean(
                 serverPathConfig && !isPathInDirectory(serverPathConfig, toolchain.toolchainPath)
             );
