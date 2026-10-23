@@ -314,7 +314,6 @@ suite("Configuration/Settings Test Suite", () => {
                 "sourcekit-lsp.support-c-cpp": () => configuration.lsp.supportCFamily,
                 "swift.sourcekit-lsp.includeDeclarationInFindAllReferences": () =>
                     configuration.lsp.includeDeclarationInFindAllReferences,
-                "swift.sourcekit-lsp.trace.server": () => configuration.lsp.traceServer,
                 "swift.sourcekit-lsp.backgroundIndexing": () => configuration.backgroundIndexing,
                 "swift.debugger.debugAdapter": () => configuration.debugger.debugAdapter,
                 "swift.debugger.setupCodeLLDB": () => configuration.debugger.setupCodeLLDB,
@@ -333,6 +332,7 @@ suite("Configuration/Settings Test Suite", () => {
                 "swift.scriptSwiftLanguageVersion",
                 // Read directly by the language client rather than through configuration.ts.
                 "sourcekit-lsp.trace.server",
+                "swift.sourcekit-lsp.trace.server",
             ];
 
             const packageJSON = JSON.parse(fs.readFileSync(distPath("../package.json"), "utf-8"));

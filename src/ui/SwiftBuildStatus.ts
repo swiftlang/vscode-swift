@@ -42,12 +42,9 @@ export class SwiftBuildStatus implements Disposable {
     private debt = 0;
 
     constructor(private statusItem: StatusItem) {
-        this.onDidStartTaskDisposible = vscode.tasks.onDidStartTask(event => {
-            if (!configuration.showBuildStatus) {
-                return;
-            }
-            this.handleTaskStatus(event.execution.task);
-        });
+        this.onDidStartTaskDisposible = vscode.tasks.onDidStartTask(event =>
+            this.handleTaskStatus(event.execution.task)
+        );
     }
 
     dispose() {

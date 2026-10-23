@@ -400,27 +400,6 @@ export function getSwiftExecutable(exe = "swift"): string {
 }
 
 /**
- * Extracts the base name of a repository from its URL.
- *
- * The base name is the last path component of the URL, without the extension `.git`,
- * and without an optional trailing slash.
- */
-export function getRepositoryName(url: string): string {
-    // This regular expression consists of:
-    // - any number of characters that aren't a slash: ([^/]*)
-    // - optionally followed by a trailing slash: \/?
-    // - at the end of the URL: $
-    const pattern = /([^/]*)\/?$/;
-    // The capture group in this pattern will match the last path component of the URL.
-    let lastPathComponent = pattern.exec(url)![1];
-    // Trim the optional .git extension.
-    if (lastPathComponent.endsWith(".git")) {
-        lastPathComponent = lastPathComponent.replace(/\.git$/, "");
-    }
-    return lastPathComponent;
-}
-
-/**
  * Return random string
  * @param length Length of string to return (max 16)
  * @returns Random string
@@ -526,29 +505,4 @@ export function regexEscapedString(string: string, omitting?: Set<string>): stri
         }
     }
     return result;
-}
-
-/**
- * Creates a promise that can be resolved or rejected outside the promise executor.
- * @returns An object containing a promise, a resolve function, and a reject function.
- */
-export function destructuredPromise<T>(): {
-    promise: Promise<T>;
-    resolve: (value: T) => void;
-    reject: (reason?: unknown) => void;
-} {
-    let resolve: (value: T) => void;
-    let reject: (reason?: unknown) => void;
-    const p = new Promise<T>((res, rej) => {
-        resolve = res;
-        reject = rej;
-    });
-    return { promise: p, resolve: resolve!, reject: reject! };
-}
-
-export function capitalizeFirstLetter(str: string): string {
-    if (str.length === 0) {
-        return str;
-    }
-    return str.charAt(0).toLocaleUpperCase() + str.slice(1);
 }

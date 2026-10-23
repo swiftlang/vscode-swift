@@ -30,7 +30,10 @@ import { touch } from "../utilities/filesystem";
 import { findBinaryInPath } from "../utilities/shell";
 import { ExecFileError, execFile, execFileStreamOutput } from "../utilities/utilities";
 import { Version } from "../utilities/version";
-import { SwiftlyConfig } from "./ToolchainVersion";
+
+type SwiftlyConfig = {
+    installedToolchains: string[];
+};
 
 const SystemVersion = z.object({
     type: z.literal("system"),

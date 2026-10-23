@@ -639,25 +639,6 @@ export class MessageRenderer {
      */
     static render(message: EventMessage): string {
         return message.text;
-
-        // Currently VS Code doesn't support colorizing the output of issues
-        // shown inline in the editor. Until this is supported we just return
-        // the message text. Once it is supported we can use the following code:
-        // return `${SymbolRenderer.eventMessageSymbol(message.symbol)} ${MessageRenderer.colorize(message.symbol, message.text)}`;
-    }
-
-    private static colorize(symbolType: TestSymbol, message: string): string {
-        const ansiEscapeCodePrefix = "\u{001B}[";
-        const resetANSIEscapeCode = `${ansiEscapeCodePrefix}0m`;
-        switch (symbolType) {
-            case TestSymbol.details:
-            case TestSymbol.skip:
-            case TestSymbol.difference:
-            case TestSymbol.passWithKnownIssue:
-                return `${ansiEscapeCodePrefix}90m${message}${resetANSIEscapeCode}`;
-            default:
-                return message;
-        }
     }
 }
 
