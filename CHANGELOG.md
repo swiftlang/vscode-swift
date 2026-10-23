@@ -26,6 +26,7 @@
 - Capturing a diagnostics bundle will no longer fail if the extension fails to activate ([#2273](https://github.com/swiftlang/vscode-swift/pull/2273))
 - Make sure the start of swift-testing runs is not missed ([#2365](https://github.com/swiftlang/vscode-swift/pull/2365))
 - Starting a new test run while another is still finishing no longer drops the new run ([#2398](https://github.com/swiftlang/vscode-swift/pull/2398))
+- Files in packages with similar names, or on another Windows drive, are no longer matched to the wrong package ([#2408](https://github.com/swiftlang/vscode-swift/pull/2408))
 
 ## 2.16.7 - 2026-08-10
 
