@@ -725,9 +725,13 @@ const configuration = {
     },
     /** Workspace folder glob patterns to exclude */
     get excludePathsFromActivation(): Record<string, boolean> {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<Record<string, boolean>>("excludePathsFromActivation", {});
+        return validateSetting(
+            vscode.workspace.getConfiguration("swift").get("excludePathsFromActivation"),
+            "swift.excludePathsFromActivation",
+            {},
+            (v): v is Record<string, boolean> => isRecord(v) && Object.values(v).every(isBoolean),
+            "an object whose values are booleans"
+        );
     },
     get lspConfigurationBranch(): string {
         const branch = getExplicitSetting<string>(

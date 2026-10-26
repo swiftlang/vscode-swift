@@ -135,8 +135,8 @@ export async function folderExists(...pathComponents: string[]): Promise<boolean
  * @returns if child file/folder is inside the parent folder
  */
 export function isPathInsidePath(subpath: string, parent: string): boolean {
-    // return true if path doesn't start with '..'
-    return !path.relative(parent, subpath).startsWith("..");
+    const relative = path.relative(parent, subpath);
+    return !relative.startsWith("..") && !path.isAbsolute(relative);
 }
 
 /**
@@ -153,8 +153,9 @@ export function expandFilePathTilde(
     if (platform === "win32") {
         return filepath;
     }
-    // Guard tilde is present
-    if (filepath[0] !== "~") {
+    // Guard tilde is present and refers to the current user's home directory
+    // ("~user" refers to another user's home directory, which we can't expand)
+    if (filepath !== "~" && !filepath.startsWith("~/")) {
         return filepath;
     }
     // Guard we know home directory

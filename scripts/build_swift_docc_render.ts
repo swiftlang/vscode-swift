@@ -19,6 +19,9 @@ import { ResetMode, simpleGit } from "simple-git";
 
 import { exec, getRootDirectory, main, withTemporaryDirectory } from "./lib/utilities";
 
+// Must match the "engines" requirement in swift-docc-render's package.json.
+const supportedNodeVersions = ">=22.17.0 <23";
+
 function checkNodeVersion() {
     const nodeVersion = semver.parse(process.versions.node);
     if (nodeVersion === null) {
@@ -26,9 +29,9 @@ function checkNodeVersion() {
             "Unable to determine the version of NodeJS that this script is running under."
         );
     }
-    if (!semver.satisfies(nodeVersion, "^22.17")) {
+    if (!semver.satisfies(nodeVersion, supportedNodeVersions)) {
         throw new Error(
-            `Cannot build swift-docc-render with NodeJS v${nodeVersion.raw}. Please install and use at least NodeJS v22.17.x.`
+            `Cannot build swift-docc-render with NodeJS v${nodeVersion.raw}. It requires NodeJS ${supportedNodeVersions}. Run "nvm install" to use the version in the .nvmrc file.`
         );
     }
 }

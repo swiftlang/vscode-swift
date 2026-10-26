@@ -128,20 +128,20 @@ function pollForNoRunningTasks(cancellationToken?: vscode.CancellationToken): Pr
 }
 
 /**
- * Creates an execution that sleeps for the given number of seconds.
+ * Creates an execution that sleeps for the given number of seconds, then exits with `exitCode`.
  *
- * Use this rather than `sleep.sh` for a task that needs to keep running. On Windows the shell
- * hands `sleep.sh` off to its associated app and returns right away, so the task ends immediately.
+ * Use this rather than a shell script for a task that needs to keep running. On Windows the shell
+ * hands a `.sh` file off to its associated app and returns right away, so the task ends immediately.
  */
-export function sleepExecution(seconds: number): vscode.ProcessExecution {
+export function sleepExecution(seconds: number, exitCode = 0): vscode.ProcessExecution {
     if (process.platform === "win32") {
         return new vscode.ProcessExecution("powershell.exe", [
             "-NoProfile",
             "-Command",
-            `Start-Sleep -Seconds ${seconds}`,
+            `Start-Sleep -Seconds ${seconds}; exit ${exitCode}`,
         ]);
     }
-    return new vscode.ProcessExecution("sleep", [`${seconds}`]);
+    return new vscode.ProcessExecution("sh", ["-c", `sleep ${seconds}; exit ${exitCode}`]);
 }
 
 /**
