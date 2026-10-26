@@ -550,14 +550,9 @@ export class TestRunProxy implements vscode.CancellationToken {
             // Omit adding the root test item as a skipped test to keep just the suites/tests
             // in the test run output, just like a regular pass/fail test run.
             if (test.parent) {
-                for (const output of this.queuedOutput) {
-                    this.appendOutputToTest(output, test);
-                }
                 this.skipped(test);
             }
         });
-
-        this.queuedOutput = [];
     }
 
     private clearPendingTest(test: vscode.TestItem) {

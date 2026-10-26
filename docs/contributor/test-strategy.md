@@ -12,18 +12,18 @@ In addition to gaps in testing, the current approach tests at the integration le
 
 Tests are grouped into 3 levels. The biggest distinguishing factors between the various levels will be the runtime of the test, and the number of "real" vs. mocked dependencies.
 
-### 1. Unit (`/test/unit`)
+### 1. Unit (`/test/unit-tests`)
 
 - Employ stubbing or mocking techniques to allow for user interaction, AND to mock slow APIs like `executeTask`
 - Mocked SwiftPM commands return hardcoded output, such as compile errors
 - Any sourcekit-lsp interaction is mocked, with hardcoded responses
-- Runs with a fast timeout of 100ms
+- Runs with a fast timeout of 2s
 - No usages of assets/test projects
   - Use [mock-fs](https://www.npmjs.com/package/mock-fs) for testing fs usage
 - Run in CI build for new PRs
 - Ideally the vast majority of tests are at this level
 
-### 2. Integration (`/test/integration`)
+### 2. Integration (`/test/integration-tests`)
 
 - Tests interaction between components, with some mocking for slow or fragile dependencies
 - Stimulate actions using the VS Code APIs

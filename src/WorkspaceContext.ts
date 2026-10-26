@@ -24,7 +24,6 @@ import {
     SwiftFileEvent,
 } from "./SwiftExtensionApi";
 import { TestKind } from "./TestExplorer/TestKind";
-import { TestRunManager } from "./TestExplorer/TestRunManager";
 import configuration from "./configuration";
 import { makeDebugConfigurations } from "./debugger/launch";
 import { DocumentationManager } from "./documentation/DocumentationManager";
@@ -73,7 +72,6 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
     public subscriptions: Disposable[];
     public commentCompletionProvider: CommentCompletionProviders;
     public documentation: DocumentationManager;
-    public testRunManager: TestRunManager;
     public projectPanel: ProjectPanelProvider;
     private lastFocusUri: vscode.Uri | undefined;
     private initialisationFinished = false;
@@ -103,7 +101,6 @@ export class WorkspaceContext implements ExternalWorkspaceContext, AsyncDisposab
         public logger: SwiftLogger,
         public globalToolchain: SwiftToolchain
     ) {
-        this.testRunManager = new TestRunManager();
         this.statusItem = new StatusItem();
         this.buildStatus = new SwiftBuildStatus(this.statusItem);
         this.languageClientManager = new LanguageClientToolchainCoordinator(this, {

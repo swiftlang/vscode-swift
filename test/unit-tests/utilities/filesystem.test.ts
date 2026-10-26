@@ -12,6 +12,7 @@
 //
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
+import * as path from "path";
 import { Uri } from "vscode";
 
 import {
@@ -20,6 +21,8 @@ import {
     isIncluded,
     isPathInsidePath,
 } from "@src/utilities/filesystem";
+
+import { mockGlobalValue } from "../../MockUtils";
 
 suite("File System Utilities Unit Test Suite", () => {
     test("isPathInsidePath", () => {
@@ -31,6 +34,24 @@ suite("File System Utilities Unit Test Suite", () => {
         expect(isPathInsidePath("/home/user/package/.build", "/home/user/package2/.build")).to.be
             .false;
         expect(isPathInsidePath("/home/user/package/", "/home/user/package/.build")).to.be.false;
+    });
+
+    suite("isPathInsidePath on Windows", () => {
+        const relative = mockGlobalValue(path, "relative");
+        const isAbsolute = mockGlobalValue(path, "isAbsolute");
+
+        setup(() => {
+            relative.setValue(path.win32.relative);
+            isAbsolute.setValue(path.win32.isAbsolute);
+        });
+
+        test("a path on another drive is not inside", () => {
+            expect(isPathInsidePath("D:\\pkg\\Sources\\a.swift", "C:\\proj")).to.be.false;
+        });
+
+        test("a path on the same drive is inside", () => {
+            expect(isPathInsidePath("C:\\proj\\Sources\\a.swift", "C:\\proj")).to.be.true;
+        });
     });
 
     suite("expandFilePathTilde", () => {
@@ -49,6 +70,16 @@ suite("File System Utilities Unit Test Suite", () => {
         test("tilde not first character", () => {
             expect(expandFilePathTilde("/Users/~/Test", "/Users/John", "darwin")).to.equal(
                 "/Users/~/Test"
+            );
+        });
+
+        test("expands a lone tilde", () => {
+            expect(expandFilePathTilde("~", "/Users/John", "darwin")).to.equalPath("/Users/John");
+        });
+
+        test("don't expand tilde followed by a user name", () => {
+            expect(expandFilePathTilde("~Jane/Test", "/Users/John", "darwin")).to.equal(
+                "~Jane/Test"
             );
         });
 

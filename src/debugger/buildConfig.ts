@@ -637,31 +637,14 @@ export class TestingConfigurationFactory {
         return this.ctx.swiftVersion.isGreaterThanOrEqual(new Version(major, minor, patch));
     }
 
-    private get artifactFolderForTestKind(): string {
-        const mode = isRelease(this.testKind) ? "release" : "debug";
-        const triple = this.ctx.toolchain.unversionedTriple;
-        return triple ? path.join(triple, mode) : mode;
-    }
-
-    private async getBuildBinaryPath(): Promise<string> {
-        const buildConfiguration: "debug" | "release" = isRelease(this.testKind)
-            ? "release"
-            : "debug";
-
-        try {
-            return await this.ctx.toolchain.buildFlags.getBuildBinaryPath(
-                this.ctx.folder.fsPath,
-                buildConfiguration,
-                this.ctx.workspaceContext.logger,
-                "tests",
-                configuration.folder(this.ctx.workspaceFolder).additionalTestArguments
-            );
-        } catch (error) {
-            this.ctx.workspaceContext.logger.warn(
-                `Failed to get build binary path for tests, falling back to legacy path construction: ${error}`
-            );
-            return path.join(this.artifactFolderForTestKind);
-        }
+    private getBuildBinaryPath(): Promise<string> {
+        return this.ctx.toolchain.buildFlags.getBuildBinaryPath(
+            this.ctx.folder.fsPath,
+            isRelease(this.testKind) ? "release" : "debug",
+            this.ctx.workspaceContext.logger,
+            "tests",
+            configuration.folder(this.ctx.workspaceFolder).additionalTestArguments
+        );
     }
 
     private get buildSystem(): "native" | "swiftbuild" {

@@ -33,7 +33,7 @@ import { SwiftLogger } from "../../logging/SwiftLogger";
 import { ArgumentFilter, BuildFlags } from "../../toolchain/BuildFlags";
 import { SwiftToolchain } from "../../toolchain/toolchain";
 import { AsyncDisposable, Disposable } from "../../utilities/Disposable";
-import { isPathInDirectory } from "../../utilities/filesystem";
+import { isPathInDirectory, isPathInsidePath } from "../../utilities/filesystem";
 import { swiftRuntimeEnv } from "../../utilities/utilities";
 import { Version } from "../../utilities/version";
 import { LanguageClientDocumentSelectors } from "../LanguageClientDocumentSelectors";
@@ -73,6 +73,25 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
         { argument: "-index-store-path", include: 1 },
     ];
 
+    /** The command and arguments that start SourceKit-LSP for the given toolchain. */
+    static serverInvocation(toolchain: SwiftToolchain): { command: string; args: string[] } {
+        const lspConfig = configuration.lsp;
+        const buildFlags = toolchain.buildFlags;
+        const args = [
+            ...lspConfig.serverArguments,
+            ...buildFlags.swiftDriverSDKFlags(true),
+            ...buildFlags.swiftDriverTargetFlags(true),
+            ...BuildFlags.filterArguments(
+                configuration.buildArguments.concat(buildFlags.buildPathFlags()),
+                SourceKitLanguageClient.buildArgumentFilter
+            ),
+        ];
+        const serverPath = lspConfig.serverPath;
+        return serverPath
+            ? { command: serverPath, args }
+            : toolchain.getToolchainInvocation("sourcekit-lsp", args);
+    }
+
     private folderContextFeature: FolderContextFeature;
     private cancellationTokenSource = new vscode.CancellationTokenSource();
     private readonly swiftLogger: SwiftLogger;
@@ -95,25 +114,8 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
         options: SourceKitLanguageClientOptions = {}
     ) {
         const serverOptions: ServerOptions = async (): Promise<ChildProcess> => {
-            const lspConfig = configuration.lsp;
-            const serverPathConfig = lspConfig.serverPath;
-            const buildFlags = toolchain.buildFlags;
-            const sdkArguments = [
-                ...buildFlags.swiftDriverSDKFlags(true),
-                ...buildFlags.swiftDriverTargetFlags(true),
-                ...BuildFlags.filterArguments(
-                    configuration.buildArguments.concat(buildFlags.buildPathFlags()),
-                    SourceKitLanguageClient.buildArgumentFilter
-                ),
-            ];
-
-            const inv = serverPathConfig
-                ? { command: serverPathConfig, args: [] }
-                : toolchain.getToolchainInvocation("sourcekit-lsp", [
-                      ...lspConfig.serverArguments,
-                      ...sdkArguments,
-                  ]);
-
+            const serverPathConfig = configuration.lsp.serverPath;
+            const inv = SourceKitLanguageClient.serverInvocation(toolchain);
             const isCustomPath = Boolean(
                 serverPathConfig && !isPathInDirectory(serverPathConfig, toolchain.toolchainPath)
             );
@@ -168,7 +170,7 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
                     const result = await next(document, token);
                     if (options.onDocumentCodeLens) {
                         const folderContext = this.addedFolders.find(f =>
-                            document.uri.fsPath.startsWith(f.folder.fsPath)
+                            isPathInsidePath(document.uri.fsPath, f.folder.fsPath)
                         );
                         if (folderContext) {
                             options.onDocumentCodeLens(folderContext, document, result);
@@ -194,7 +196,7 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
                     const documentSymbols = result as vscode.DocumentSymbol[];
                     if (options.onDocumentSymbols) {
                         const folderContext = this.addedFolders.find(f =>
-                            document.uri.fsPath.startsWith(f.folder.fsPath)
+                            isPathInsidePath(document.uri.fsPath, f.folder.fsPath)
                         );
                         if (folderContext) {
                             options.onDocumentSymbols(folderContext, document, documentSymbols);
