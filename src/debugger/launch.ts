@@ -149,20 +149,14 @@ export async function getTargetBinaryPath(
     folderCtx: FolderContext,
     extraArgs: string[] = []
 ): Promise<string> {
-    try {
-        // Use dynamic path resolution with --show-bin-path
-        const binPath = await folderCtx.toolchain.buildFlags.getBuildBinaryPath(
-            folderCtx.folder.fsPath,
-            buildConfiguration,
-            folderCtx.workspaceContext.logger,
-            "",
-            extraArgs
-        );
-        return path.join(binPath, targetName);
-    } catch (error) {
-        // Fallback to traditional path construction if dynamic resolution fails
-        return getLegacyTargetBinaryPath(targetName, buildConfiguration, folderCtx);
-    }
+    const binPath = await folderCtx.toolchain.buildFlags.getBuildBinaryPath(
+        folderCtx.folder.fsPath,
+        buildConfiguration,
+        folderCtx.workspaceContext.logger,
+        "",
+        extraArgs
+    );
+    return path.join(binPath, targetName);
 }
 
 function getLegacyTargetBinaryPath(
@@ -294,38 +288,22 @@ export async function createSnippetConfiguration(
 ): Promise<vscode.DebugConfiguration> {
     const { folder } = getFolderAndNameSuffix(ctx);
 
-    try {
-        // Use dynamic path resolution with --show-bin-path
-        const binPath = await ctx.toolchain.buildFlags.getBuildBinaryPath(
-            ctx.folder.fsPath,
-            "debug",
-            ctx.workspaceContext.logger,
-            "snippet"
-        );
+    const binPath = await ctx.toolchain.buildFlags.getBuildBinaryPath(
+        ctx.folder.fsPath,
+        "debug",
+        ctx.workspaceContext.logger,
+        "snippet"
+    );
 
-        return {
-            type: SWIFT_LAUNCH_CONFIG_TYPE,
-            request: "launch",
-            name: `Run ${snippetName}`,
-            program: path.posix.join(binPath, snippetName),
-            args: [],
-            cwd: folder,
-            runType: "snippet",
-        };
-    } catch (error) {
-        // Fallback to traditional path construction if dynamic resolution fails
-        const buildDirectory = BuildFlags.buildDirectoryFromWorkspacePath(folder, true);
-
-        return {
-            type: SWIFT_LAUNCH_CONFIG_TYPE,
-            request: "launch",
-            name: `Run ${snippetName}`,
-            program: path.posix.join(buildDirectory, "debug", snippetName),
-            args: [],
-            cwd: folder,
-            runType: "snippet",
-        };
-    }
+    return {
+        type: SWIFT_LAUNCH_CONFIG_TYPE,
+        request: "launch",
+        name: `Run ${snippetName}`,
+        program: path.posix.join(binPath, snippetName),
+        args: [],
+        cwd: folder,
+        runType: "snippet",
+    };
 }
 
 /**

@@ -162,6 +162,39 @@ suite("Configuration/Settings Test Suite", () => {
             expect(mockWindow.showWarningMessage).to.have.been.calledWith(match("`BAZ`, `QUX`"));
         });
 
+        suite("excludePathsFromActivation", () => {
+            test("returns an object configuration value", () => {
+                const obj = { "**/.build": true, "**/Keep": false };
+                mockSetting("swift.excludePathsFromActivation", obj);
+                expect(configuration.excludePathsFromActivation).to.deep.equal(obj);
+                expect(mockWindow.showWarningMessage).to.not.have.been.called;
+            });
+
+            test("uses the default when the setting is not configured", () => {
+                mockSetting("swift.excludePathsFromActivation", undefined);
+                expect(configuration.excludePathsFromActivation).to.deep.equal({});
+                expect(mockWindow.showWarningMessage).to.not.have.been.called;
+            });
+
+            test("uses the default when the setting is a string", () => {
+                mockSetting("swift.excludePathsFromActivation", "**/.build");
+                expect(configuration.excludePathsFromActivation).to.deep.equal({});
+                assertSettingWarningShown("swift.excludePathsFromActivation");
+            });
+
+            test("uses the default when the setting is an array", () => {
+                mockSetting("swift.excludePathsFromActivation", ["**/.build"]);
+                expect(configuration.excludePathsFromActivation).to.deep.equal({});
+                assertSettingWarningShown("swift.excludePathsFromActivation");
+            });
+
+            test("uses the default when an object value is not a boolean", () => {
+                mockSetting("swift.excludePathsFromActivation", { "**/.build": "true" });
+                expect(configuration.excludePathsFromActivation).to.deep.equal({});
+                assertSettingWarningShown("swift.excludePathsFromActivation");
+            });
+        });
+
         suite("backgroundCompilation", () => {
             test("returns a boolean configuration value", () => {
                 mockSetting("swift.backgroundCompilation", true);
@@ -314,7 +347,6 @@ suite("Configuration/Settings Test Suite", () => {
                 "sourcekit-lsp.support-c-cpp": () => configuration.lsp.supportCFamily,
                 "swift.sourcekit-lsp.includeDeclarationInFindAllReferences": () =>
                     configuration.lsp.includeDeclarationInFindAllReferences,
-                "swift.sourcekit-lsp.trace.server": () => configuration.lsp.traceServer,
                 "swift.sourcekit-lsp.backgroundIndexing": () => configuration.backgroundIndexing,
                 "swift.debugger.debugAdapter": () => configuration.debugger.debugAdapter,
                 "swift.debugger.setupCodeLLDB": () => configuration.debugger.setupCodeLLDB,
@@ -333,6 +365,7 @@ suite("Configuration/Settings Test Suite", () => {
                 "swift.scriptSwiftLanguageVersion",
                 // Read directly by the language client rather than through configuration.ts.
                 "sourcekit-lsp.trace.server",
+                "swift.sourcekit-lsp.trace.server",
             ];
 
             const packageJSON = JSON.parse(fs.readFileSync(distPath("../package.json"), "utf-8"));

@@ -12,27 +12,46 @@
 //
 //===----------------------------------------------------------------------===//
 
+/**
+ * Keeps the last `maxLogs` lines. When `maxHeadLogs` is set the first lines are kept as well,
+ * with a line saying how many were dropped between them.
+ */
 export class RollingLog {
+    private _head: string[] = [];
     private _logs: string[] = [];
+    private _dropped = 0;
 
-    constructor(private maxLogs: number) {}
+    constructor(
+        private maxLogs: number,
+        private maxHeadLogs: number = 0
+    ) {}
 
     public get length(): number {
-        return this._logs.length;
+        return this._head.length + this._logs.length;
     }
 
     public get logs(): string[] {
-        return this._logs.slice();
+        if (this.maxHeadLogs === 0 || this._dropped === 0) {
+            return [...this._head, ...this._logs];
+        }
+        return [...this._head, `... ${this._dropped} lines omitted ...`, ...this._logs];
     }
 
     clear() {
+        this._head = [];
         this._logs = [];
+        this._dropped = 0;
     }
 
     appendLine(log: string): void {
+        if (this._head.length < this.maxHeadLogs) {
+            this._head.push(log);
+            return;
+        }
         this._logs.push(log);
         if (this._logs.length > this.maxLogs) {
             this._logs.shift();
+            this._dropped++;
         }
     }
 }

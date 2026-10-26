@@ -32,8 +32,6 @@ const cFamilySupportOptions = ["enable", "disable", "cpptools-inactive"] as cons
 export type CFamilySupportOptions = (typeof cFamilySupportOptions)[number];
 const includeDeclarationOptions = ["default", "always", "never"] as const;
 export type IncludeDeclarationOptions = (typeof includeDeclarationOptions)[number];
-const traceServerOptions = ["off", "messages", "verbose"] as const;
-export type TraceServerOptions = (typeof traceServerOptions)[number];
 const backgroundIndexingOptions = ["on", "off", "auto"] as const;
 export type BackgroundIndexingOptions = (typeof backgroundIndexingOptions)[number];
 const sanitizerOptions = ["off", "thread", "address"] as const;
@@ -77,8 +75,6 @@ interface LSPConfiguration {
     readonly disable: boolean;
     /** Include declaration in Find All References results */
     readonly includeDeclarationInFindAllReferences: IncludeDeclarationOptions;
-    /** Is the trace server enabled */
-    readonly traceServer: TraceServerOptions;
 }
 
 /** debugger configuration */
@@ -200,14 +196,6 @@ const configuration = {
                     "swift.sourcekit-lsp.includeDeclarationInFindAllReferences",
                     "default",
                     includeDeclarationOptions
-                );
-            },
-            get traceServer(): TraceServerOptions {
-                return validateEnumSetting(
-                    vscode.workspace.getConfiguration("swift.sourcekit-lsp.trace").get("server"),
-                    "swift.sourcekit-lsp.trace.server",
-                    "off",
-                    traceServerOptions
                 );
             },
         };
@@ -725,9 +713,13 @@ const configuration = {
     },
     /** Workspace folder glob patterns to exclude */
     get excludePathsFromActivation(): Record<string, boolean> {
-        return vscode.workspace
-            .getConfiguration("swift")
-            .get<Record<string, boolean>>("excludePathsFromActivation", {});
+        return validateSetting(
+            vscode.workspace.getConfiguration("swift").get("excludePathsFromActivation"),
+            "swift.excludePathsFromActivation",
+            {},
+            (v): v is Record<string, boolean> => isRecord(v) && Object.values(v).every(isBoolean),
+            "an object whose values are booleans"
+        );
     },
     get lspConfigurationBranch(): string {
         const branch = getExplicitSetting<string>(

@@ -72,4 +72,38 @@ suite("RollingLog Unit Test Suite", () => {
         log.logs.push("b", "c", "d", "e");
         expect(log.logs).to.deep.equal(["a"]);
     });
+
+    suite("Keeping the first lines", () => {
+        function appendLines(log: RollingLog, lines: string[]) {
+            lines.forEach(line => log.appendLine(line));
+        }
+
+        test("Keeps the first lines along with the last lines", () => {
+            const log = new RollingLog(2, 2);
+            appendLines(log, ["a", "b", "c", "d", "e", "f"]);
+            expect(log.logs.slice(0, 2)).to.deep.equal(["a", "b"]);
+            expect(log.logs.slice(-2)).to.deep.equal(["e", "f"]);
+        });
+
+        test("Says how many lines were dropped between them", () => {
+            const log = new RollingLog(2, 2);
+            appendLines(log, ["a", "b", "c", "d", "e", "f", "g"]);
+            expect(log.logs).to.have.lengthOf(5);
+            expect(log.logs[2]).to.match(/\b3\b/);
+        });
+
+        test("Adds nothing until a line is dropped", () => {
+            const log = new RollingLog(2, 2);
+            appendLines(log, ["a", "b", "c", "d"]);
+            expect(log.logs).to.deep.equal(["a", "b", "c", "d"]);
+        });
+
+        test("Clear forgets the first lines", () => {
+            const log = new RollingLog(2, 2);
+            appendLines(log, ["a", "b", "c", "d", "e"]);
+            log.clear();
+            log.appendLine("x");
+            expect(log.logs).to.deep.equal(["x"]);
+        });
+    });
 });

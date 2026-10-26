@@ -33,10 +33,7 @@ import { LoggingDebugAdapterTracker } from "../debugger/logTracker";
 import { createSwiftTask } from "../tasks/SwiftTaskProvider";
 import { TaskOperation } from "../tasks/TaskQueue";
 import { Disposable } from "../utilities/Disposable";
-import {
-    CompositeCancellationToken,
-    CompositeCancellationTokenSource,
-} from "../utilities/cancellation";
+import { CompositeCancellationTokenSource } from "../utilities/cancellation";
 import { packageName, resolveScope } from "../utilities/tasks";
 import { TemporaryFolder } from "../utilities/tempFolder";
 import { IS_RUNNING_UNDER_TEST, execFile, getErrorDescription } from "../utilities/utilities";
@@ -369,8 +366,6 @@ export class TestRunner {
             }
         }
 
-        const compositeToken = new CompositeCancellationToken(token);
-
         // Create a cancellation token source for this test run
         const compositeTokenSource = new CompositeCancellationTokenSource(token);
 
@@ -393,7 +388,7 @@ export class TestRunner {
         // If the user cancels the test run via the VS Code UI, skip the pending tests
         // so they don't appear as failed. Any pending tests left over at the end of a run
         // are assumed to have crashed.
-        const cancellationListener = compositeToken.onCancellationRequested(() => {
+        const cancellationListener = token.onCancellationRequested(() => {
             runner.debug("Test run request cancelled, skipping pending tests");
             runner.testRun.skipPendingTests();
         });
@@ -749,7 +744,7 @@ export class TestRunner {
             const args = [...(testBuildConfig.args ?? []), "--xunit-output", filename];
 
             try {
-                testBuildConfig.args = await this.runStandardSession(
+                await this.runStandardSession(
                     outputStream,
                     {
                         ...testBuildConfig,
@@ -1093,11 +1088,13 @@ export class TestRunner {
                     }
                 );
 
-                const cancellation = this.testRun.onCancellationRequested(() => {
-                    void vscode.debug.stopDebugging(session).then(
-                        () => finish("stopped after cancellation"),
-                        () => finish("failed to stop after cancellation")
-                    );
+                const cancellation = this.testRun.onCancellationRequested(async () => {
+                    try {
+                        await vscode.debug.stopDebugging(session);
+                        finish("stopped after cancellation");
+                    } catch {
+                        finish("failed to stop after cancellation");
+                    }
                 });
                 subscriptions.push(cancellation);
             });

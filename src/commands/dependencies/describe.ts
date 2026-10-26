@@ -62,6 +62,7 @@ export async function executeSwiftPackageCommand<T>(
             ...swiftRuntimeEnv(),
             ...configuration.swiftEnvironmentVariables,
         },
+        logger,
     });
 
     const stdoutChunks: string[] = [];
@@ -83,6 +84,7 @@ export async function executeSwiftPackageCommand<T>(
             presentationOptions: { reveal: vscode.TaskRevealKind.Silent },
             dontTriggerTestDiscovery: true,
             group: vscode.TaskGroup.Build,
+            logger,
         },
         folderContext.toolchain,
         undefined,
