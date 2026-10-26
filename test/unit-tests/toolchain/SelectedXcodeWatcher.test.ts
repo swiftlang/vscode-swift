@@ -24,7 +24,6 @@ import configuration from "@src/configuration";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { SelectedXcodeWatcher } from "@src/toolchain/SelectedXcodeWatcher";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
-import { capitalizeFirstLetter } from "@src/utilities/utilities";
 
 import {
     MockedObject,
@@ -288,7 +287,7 @@ suite("Selected Xcode Watcher", () => {
 
     // Toolchain managers like swiftly and swiftenv only use Xcode for its SDK via the DEVELOPER_DIR setting
     function createSuiteForNonXcrunToolchain(manager: ToolchainManager): void {
-        suite(`${capitalizeFirstLetter(manager)} Managed Toolchain`, () => {
+        suite(`${manager} managed toolchain`, () => {
             setup(() => {
                 mockToolchain.manager = manager;
             });
