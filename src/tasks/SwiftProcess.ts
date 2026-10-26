@@ -375,7 +375,6 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
             { label: "SwiftProcess" }
         );
         this.spawnedProcess.kill(signal);
-        this.dispose();
     }
 
     setDimensions(_dimensions: vscode.TerminalDimensions): void {
