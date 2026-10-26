@@ -26,6 +26,7 @@
 - Capturing a diagnostics bundle will no longer fail if the extension fails to activate ([#2273](https://github.com/swiftlang/vscode-swift/pull/2273))
 - Make sure the start of swift-testing runs is not missed ([#2365](https://github.com/swiftlang/vscode-swift/pull/2365))
 - Starting a new test run while another is still finishing no longer drops the new run ([#2398](https://github.com/swiftlang/vscode-swift/pull/2398))
+- Code coverage reports no longer include build, test and excluded files when the package path contains regular expression characters such as parentheses ([#2410](https://github.com/swiftlang/vscode-swift/pull/2410))
 - Saving Package.swift no longer clears the package's compiler errors from the Problems view ([#2405](https://github.com/swiftlang/vscode-swift/pull/2405))
 - Unediting a dependency with uncommitted changes now asks whether to force it, and dismissing the prompt keeps the changes ([#2404](https://github.com/swiftlang/vscode-swift/pull/2404))
 - Removing a folder while its tests are being discovered no longer starts a build that keeps running after the folder is gone ([#2419](https://github.com/swiftlang/vscode-swift/pull/2419))
