@@ -28,6 +28,7 @@
 - Starting a new test run while another is still finishing no longer drops the new run ([#2398](https://github.com/swiftlang/vscode-swift/pull/2398))
 - Saving Package.swift no longer clears the package's compiler errors from the Problems view ([#2405](https://github.com/swiftlang/vscode-swift/pull/2405))
 - Unediting a dependency with uncommitted changes now asks whether to force it, and dismissing the prompt keeps the changes ([#2404](https://github.com/swiftlang/vscode-swift/pull/2404))
+- Removing a folder while its tests are being discovered no longer starts a build that keeps running after the folder is gone
 - Saving Package.swift repeatedly no longer queues duplicate `swift package resolve` runs ([#2407](https://github.com/swiftlang/vscode-swift/pull/2407))
 - Test Explorer and playground code lenses now update while editing files in packages whose names share a prefix with another package ([#2408](https://github.com/swiftlang/vscode-swift/pull/2408))
 

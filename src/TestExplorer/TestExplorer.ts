@@ -264,8 +264,7 @@ export class TestExplorer {
      * @returns Observer disposable
      */
     public static observeFolders(workspaceContext: WorkspaceContext): Disposable {
-        const tokenSource = new vscode.CancellationTokenSource();
-        const disposable = workspaceContext.onDidChangeFolders(({ folder, operation }) => {
+        return workspaceContext.onDidChangeFolders(({ folder, operation }) => {
             switch (operation) {
                 case FolderOperation.add:
                 case FolderOperation.packageUpdated:
@@ -274,12 +273,11 @@ export class TestExplorer {
                             `Folder ${folder.name} changed (${operation}), setting up test explorer`,
                             { label: "Test Explorer" }
                         );
-                        void this.setupTestExplorerForFolder(folder, tokenSource.token);
+                        void this.setupTestExplorerForFolder(folder);
                     }
                     break;
             }
         });
-        return Disposable.from(tokenSource, disposable);
     }
 
     /**
@@ -289,10 +287,7 @@ export class TestExplorer {
      * If the folder has no test targets, it will remove any existing test explorer.
      * If the folder has test targets and an existing test explorer, it will refresh the tests.
      */
-    private static async setupTestExplorerForFolder(
-        folder: FolderContext,
-        token: vscode.CancellationToken
-    ) {
+    private static async setupTestExplorerForFolder(folder: FolderContext) {
         const logger = folder.workspaceContext.logger;
         const targets = await folder.swiftPackage.getTargets(TargetType.test);
         const hasTestTargets = targets.length > 0;
@@ -314,7 +309,8 @@ export class TestExplorer {
                 });
                 return;
             }
-            await testExplorer.discoverTestsInWorkspace(token);
+            // Disposing the test explorer cancels its token, stopping discovery when the folder is removed
+            await testExplorer.discoverTestsInWorkspace(testExplorer.tokenSource.token);
             logger.trace(`Initial test discovery finished for ${folder.name}`, {
                 label: "Test Explorer",
             });
