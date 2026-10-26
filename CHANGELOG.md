@@ -23,6 +23,7 @@
 
 - Loading large projects will no longer show the extension as unresponsive ([#1932](https://github.com/swiftlang/vscode-swift/pull/1932))
 - Parameterized tests with very large numbers of test cases no longer slow the Test Explorer to a crawl ([#2364](https://github.com/swiftlang/vscode-swift/pull/2364))
+- Pressing Ctrl+C in a test run's task terminal no longer hangs the test run and the task queue ([#2420](https://github.com/swiftlang/vscode-swift/pull/2420))
 - Capturing a diagnostics bundle will no longer fail if the extension fails to activate ([#2273](https://github.com/swiftlang/vscode-swift/pull/2273))
 - Make sure the start of swift-testing runs is not missed ([#2365](https://github.com/swiftlang/vscode-swift/pull/2365))
 - Starting a new test run while another is still finishing no longer drops the new run ([#2398](https://github.com/swiftlang/vscode-swift/pull/2398))
