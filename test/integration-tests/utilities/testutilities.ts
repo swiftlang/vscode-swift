@@ -107,6 +107,11 @@ const extensionBootstrapper = (() => {
     const MOCHA_BACKSTOP_MS = 10_000;
     const LEFTOVER_TASKS_TIMEOUT_MS = 30_000;
 
+    // Without the first lines, the log of an activation that stalls is only the polling that fills
+    // the last ones. A failing test only gets the last lines.
+    const LOG_HEAD_LINES = 200;
+    const LOG_TAIL_LINES = 100;
+
     function testRunnerSetup(
         before: Mocha.HookFunction,
         after: Mocha.HookFunction,
@@ -122,7 +127,7 @@ const extensionBootstrapper = (() => {
             teardownTimeout = USER_TEARDOWN_TIMEOUT_MS,
         } = config;
         let autoTeardown: void | (() => Promise<void>);
-        activationLogger = new TestLogger();
+        activationLogger = new TestLogger(LOG_TAIL_LINES, LOG_HEAD_LINES);
         logOnError = withLogging(activationLogger);
 
         // Extension activation happens asynchronously which means that we need to store the
@@ -241,7 +246,7 @@ const extensionBootstrapper = (() => {
         mocha.afterEach(async function () {
             if (this.currentTest) {
                 activationLogger.info(`Test finished: ${testTitle(this.currentTest)}`);
-                attachCapturedLogs(this.currentTest, activationLogger.logs);
+                attachCapturedLogs(this.currentTest, activationLogger.logs.slice(-LOG_TAIL_LINES));
             }
             if (vscode.debug.activeDebugSession) {
                 await vscode.debug.stopDebugging(vscode.debug.activeDebugSession);
@@ -411,7 +416,12 @@ const extensionBootstrapper = (() => {
             // Swift packages are loaded asynchronously. Make sure that all of them are fully loaded
             // before continuing.
             await Promise.all(
-                workspaceContext.folders.map(async folder => folder.swiftPackage.foundPackage)
+                workspaceContext.folders.map(folder =>
+                    logOnError(
+                        `Waiting for Swift package ${folder.name} to load`,
+                        () => folder.swiftPackage.foundPackage
+                    )
+                )
             );
 
             return activatedAPI;

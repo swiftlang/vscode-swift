@@ -26,10 +26,10 @@ export class TestLogger extends SwiftLogger {
         return this.rollingLog.logs.slice();
     }
 
-    constructor(maxLogs: number = 100) {
+    constructor(maxLogs: number = 100, maxHeadLogs: number = 0) {
         super();
         this.captureLevel = process.env.CI === "1" ? "trace" : "debug";
-        this.rollingLog = new RollingLog(maxLogs);
+        this.rollingLog = new RollingLog(maxLogs, maxHeadLogs);
         this.addTransport(new RollingLogTransport(this.rollingLog, this.captureLevel));
     }
 
