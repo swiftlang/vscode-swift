@@ -135,8 +135,8 @@ export async function folderExists(...pathComponents: string[]): Promise<boolean
  * @returns if child file/folder is inside the parent folder
  */
 export function isPathInsidePath(subpath: string, parent: string): boolean {
-    // return true if path doesn't start with '..'
-    return !path.relative(parent, subpath).startsWith("..");
+    const relative = path.relative(parent, subpath);
+    return !relative.startsWith("..") && !path.isAbsolute(relative);
 }
 
 /**

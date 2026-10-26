@@ -417,6 +417,39 @@ suite("ContextKeyManager Suite", () => {
 
             expect(manager.fileIsSnippet).to.be.false;
         });
+
+        test("clears fileIsSnippet when file is in a sibling folder that starts with Snippets", async () => {
+            manager.fileIsSnippet = true;
+
+            const mockUri = vscode.Uri.file("/test/SnippetsOld/MyFile.swift");
+            const mockFolderUri = vscode.Uri.file("/test");
+            const mockFolder = mockObject<FolderContext>({
+                swiftPackage: instance(
+                    mockObject<SwiftPackage>({
+                        getTarget: async () => undefined,
+                    })
+                ),
+                swiftVersion: new Version(5, 7, 0),
+                folder: mockFolderUri,
+            });
+            const mockLanguageClient = mockObject<SourceKitLanguageClient>({
+                checkExperimentalCapability: mockFn(s => s.returns(false)),
+                useLanguageClient: mockFn(s => s.callsFake(fn => fn(instance(mockLanguageClient)))),
+            });
+            const mockLanguageClientManager = mockObject<{
+                getClient(folder: FolderContext): SourceKitLanguageClient;
+            }>({
+                getClient: mockFn(s => s.returns(instance(mockLanguageClient))),
+            });
+
+            await manager.updateForFile(
+                mockUri,
+                instance(mockFolder),
+                instance(mockLanguageClientManager)
+            );
+
+            expect(manager.fileIsSnippet).to.be.false;
+        });
     });
 
     suite("updateForPlugins", () => {
