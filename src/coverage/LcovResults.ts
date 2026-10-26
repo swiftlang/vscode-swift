@@ -26,7 +26,11 @@ import configuration from "../configuration";
 import { TestingConfigurationFactory, effectiveBuildSystem } from "../debugger/buildConfig";
 import { BuildFlags } from "../toolchain/BuildFlags";
 import { DisposableFileCollection, TemporaryFolder } from "../utilities/tempFolder";
-import { execFileStreamOutput, regexEscapedString } from "../utilities/utilities";
+import {
+    execFileStreamOutput,
+    getErrorDescription,
+    regexEscapedString,
+} from "../utilities/utilities";
 
 interface CodeCovFile {
     testLibrary: TestLibrary;
@@ -166,6 +170,10 @@ export class TestCoverage {
 
             return await this.loadLcov(lcovData.toString("utf8"));
         } catch (error) {
+            this.folderContext.logger.error(
+                `Failed to compute code coverage: ${getErrorDescription(error)}`,
+                { label: this.folderContext.name }
+            );
             return [];
         }
     }
