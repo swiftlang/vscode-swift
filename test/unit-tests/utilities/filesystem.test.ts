@@ -73,6 +73,16 @@ suite("File System Utilities Unit Test Suite", () => {
             );
         });
 
+        test("expands a lone tilde", () => {
+            expect(expandFilePathTilde("~", "/Users/John", "darwin")).to.equalPath("/Users/John");
+        });
+
+        test("don't expand tilde followed by a user name", () => {
+            expect(expandFilePathTilde("~Jane/Test", "/Users/John", "darwin")).to.equal(
+                "~Jane/Test"
+            );
+        });
+
         test("don't know the home directory", () => {
             expect(expandFilePathTilde("~/Test", null, "darwin")).to.equal("~/Test");
         });
