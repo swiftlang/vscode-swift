@@ -90,7 +90,8 @@ async function uneditFolderDependency(
         ctx.logger.debug(`"swift package unedit ${identifier}" failed: ${error}`, {
             label: folder.name,
         });
-        if (/has uncommitted changes/.exec(execError.stderr)) {
+        // SwiftPM misspelled this as "uncommited" before 6.0
+        if (/has uncomm?itted changes/.exec(execError.stderr)) {
             const result = await vscode.window.showWarningMessage(
                 `${identifier} has uncommitted changes. Are you sure you want to continue?`,
                 "Yes",

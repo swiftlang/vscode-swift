@@ -98,6 +98,21 @@ suite("uneditDependency Test Suite", () => {
         expect(result).to.be.true;
     });
 
+    test("recognises the misspelled error printed before Swift 6.0", async () => {
+        taskQueue.queueOperation.onFirstCall().rejects({
+            stderr: "error: repository '/pkg/Packages/Dep' has uncommited changes",
+        });
+        windowMock.showWarningMessage.resolves("Yes" as any);
+
+        const result = await uneditDependency("Dep", ctx, folder);
+
+        expect(queuedArgs()).to.deep.equal([
+            ["package", "unedit", "Dep"],
+            ["package", "unedit", "--force", "Dep"],
+        ]);
+        expect(result).to.be.true;
+    });
+
     test("keeps the uncommitted changes when the user answers No", async () => {
         windowMock.showWarningMessage.resolves("No" as any);
 
