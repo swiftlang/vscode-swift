@@ -26,6 +26,7 @@
 - Capturing a diagnostics bundle will no longer fail if the extension fails to activate ([#2273](https://github.com/swiftlang/vscode-swift/pull/2273))
 - Make sure the start of swift-testing runs is not missed ([#2365](https://github.com/swiftlang/vscode-swift/pull/2365))
 - Starting a new test run while another is still finishing no longer drops the new run ([#2398](https://github.com/swiftlang/vscode-swift/pull/2398))
+- Unediting a dependency with uncommitted changes now asks whether to force it, and dismissing the prompt keeps the changes ([#2404](https://github.com/swiftlang/vscode-swift/pull/2404))
 - Saving Package.swift repeatedly no longer queues duplicate `swift package resolve` runs ([#2407](https://github.com/swiftlang/vscode-swift/pull/2407))
 - Test Explorer and playground code lenses now update while editing files in packages whose names share a prefix with another package ([#2408](https://github.com/swiftlang/vscode-swift/pull/2408))
 

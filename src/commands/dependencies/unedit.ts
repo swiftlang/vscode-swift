@@ -90,23 +90,22 @@ async function uneditFolderDependency(
         ctx.logger.debug(`"swift package unedit ${identifier}" failed: ${error}`, {
             label: folder.name,
         });
-        // if error contains "has uncommited changes" then ask if user wants to force the unedit
-        if (/has uncommited changes/.exec(execError.stderr)) {
+        // SwiftPM misspelled this as "uncommited" before 6.0
+        if (/has uncommitt?ed changes/.exec(execError.stderr)) {
             const result = await vscode.window.showWarningMessage(
                 `${identifier} has uncommitted changes. Are you sure you want to continue?`,
                 "Yes",
                 "No"
             );
 
-            if (result === "No") {
+            if (result !== "Yes") {
                 ctx.logger.error(execError.stderr, { label: folder.name });
                 return false;
             }
-            await uneditFolderDependency(folder, identifier, ctx, ["--force"]);
-        } else {
-            ctx.logger.error(execError.stderr, { label: folder.name });
-            void vscode.window.showErrorMessage(`${execError.stderr}`);
+            return await uneditFolderDependency(folder, identifier, ctx, ["--force"]);
         }
+        ctx.logger.error(execError.stderr, { label: folder.name });
+        void vscode.window.showErrorMessage(`${execError.stderr}`);
         return false;
     }
 }
