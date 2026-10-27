@@ -14,6 +14,7 @@
 import { expect } from "chai";
 import * as child_process from "child_process";
 import { EventEmitter } from "events";
+import * as sinon from "sinon";
 
 import { ReadOnlySwiftProcess } from "@src/tasks/SwiftProcess";
 
@@ -26,6 +27,7 @@ suite("ReadOnlySwiftProcess", () => {
         const proc = new EventEmitter() as unknown as child_process.ChildProcessWithoutNullStreams;
         (proc as unknown as { stdout: EventEmitter }).stdout = new EventEmitter();
         (proc as unknown as { stderr: EventEmitter }).stderr = new EventEmitter();
+        proc.kill = sinon.stub().returns(true);
         return proc;
     }
 
@@ -58,5 +60,26 @@ suite("ReadOnlySwiftProcess", () => {
 
         const spawnedEnv = childProcessMock.spawn.firstCall.args[2]?.env;
         expect(spawnedEnv).to.include({ GIT_CONFIG_VALUE_0: "false" });
+    });
+
+    test("fires onDidClose when the process exits after terminate", async () => {
+        const clock = sinon.useFakeTimers();
+        try {
+            const proc = fakeChildProcess();
+            childProcessMock.spawn.returns(proc);
+            const swiftProcess = new ReadOnlySwiftProcess("swift", ["test"]);
+            const onClose = sinon.spy();
+            swiftProcess.onDidClose(onClose);
+            swiftProcess.spawn();
+
+            swiftProcess.terminate();
+            proc.emit("exit", null, "SIGTERM");
+            await clock.tickAsync(500);
+
+            expect(proc.kill).to.have.been.calledOnce;
+            expect(onClose).to.have.been.calledOnce;
+        } finally {
+            clock.restore();
+        }
     });
 });
