@@ -20,7 +20,6 @@ import {
     RevealOutputChannelOn,
     State,
     StaticFeature,
-    vsdiag,
 } from "vscode-languageclient";
 import { WorkspaceFoldersFeature } from "vscode-languageclient/lib/common/workspaceFolder";
 import { LanguageClient, ServerOptions } from "vscode-languageclient/node";
@@ -45,7 +44,7 @@ import { FolderContextFeature } from "./features/FolderContextFeature";
 import { GetReferenceDocumentFeature } from "./features/GetReferenceDocumentFeature";
 import { LoggingFeature } from "./features/LoggingFeature";
 import { PeekDocumentsFeature } from "./features/PeekDocumentsFeature";
-import { checkExperimentalCapability } from "./utilities";
+import { checkExperimentalCapability, keepPullingDiagnostics } from "./utilities";
 
 export interface SourceKitLanguageClientOptions {
     onDocumentSymbols?: (
@@ -241,24 +240,7 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
                     }
                     return result;
                 },
-                // vscode-languageclient 9 stops pulling a document's diagnostics after one failed pull
-                // (fixed in 11 by microsoft/vscode-languageserver-node#1899). The failure is already
-                // logged, so report no change and let the next edit, save or refresh pull again.
-                provideDiagnostics: async (document, previousResultId, token, next) => {
-                    try {
-                        return await next(document, previousResultId, token);
-                    } catch (error) {
-                        if (error instanceof vscode.CancellationError) {
-                            throw error;
-                        }
-                        return previousResultId
-                            ? {
-                                  kind: vsdiag.DocumentDiagnosticReportKind.unChanged,
-                                  resultId: previousResultId,
-                              }
-                            : { kind: vsdiag.DocumentDiagnosticReportKind.full, items: [] };
-                    }
-                },
+                provideDiagnostics: keepPullingDiagnostics,
                 handleDiagnostics: (uri, diagnostics) => {
                     workspaceContext.diagnostics.handleDiagnostics(
                         uri,

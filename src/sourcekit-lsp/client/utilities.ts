@@ -11,7 +11,13 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import { ClientCapabilities, ServerCapabilities } from "vscode-languageclient";
+import * as vscode from "vscode";
+import {
+    ClientCapabilities,
+    ProvideDiagnosticSignature,
+    ServerCapabilities,
+    vsdiag,
+} from "vscode-languageclient";
 
 import { Version } from "../../utilities/version";
 import { SourceKitLanguageClient } from "./SourceKitLanguageClient";
@@ -58,6 +64,37 @@ export function fillExperimentalCapability(
         experimentalCaps[feature] = true;
     }
     capabilities.experimental = experimentalCaps;
+}
+
+/**
+ * Middleware for pulled diagnostics. vscode-languageclient 9 stops pulling a document's
+ * diagnostics after one failed pull (fixed in 11 by microsoft/vscode-languageserver-node#1899),
+ * so a failure that isn't a cancellation becomes a report: no diagnostics for a first pull, no
+ * change for a later one. The client has already logged the failure.
+ */
+export async function keepPullingDiagnostics(
+    document: vscode.TextDocument | vscode.Uri,
+    previousResultId: string | undefined,
+    token: vscode.CancellationToken,
+    next: ProvideDiagnosticSignature
+): Promise<vsdiag.DocumentDiagnosticReport | null | undefined> {
+    try {
+        return await next(document, previousResultId, token);
+    } catch (error) {
+        if (error instanceof vscode.CancellationError) {
+            throw error;
+        }
+        if (previousResultId) {
+            return {
+                kind: vsdiag.DocumentDiagnosticReportKind.unChanged,
+                resultId: previousResultId,
+            };
+        }
+        return {
+            kind: vsdiag.DocumentDiagnosticReportKind.full,
+            items: [],
+        };
+    }
 }
 
 function access(obj: unknown, ...properties: string[]): unknown {

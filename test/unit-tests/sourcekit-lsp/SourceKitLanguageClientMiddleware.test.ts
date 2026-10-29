@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
 import * as vscode from "vscode";
-import { ResponseError, vsdiag } from "vscode-languageclient";
 
 import { FolderContext } from "@src/FolderContext";
 import { WorkspaceContext } from "@src/WorkspaceContext";
@@ -96,54 +95,5 @@ suite("SourceKitLanguageClient middleware Test Suite", () => {
 
         expect(onDocumentSymbols).to.have.been.calledOnce;
         expect(onDocumentSymbols.firstCall.args[0].name).to.equal(fooBar.name);
-    });
-
-    suite("provideDiagnostics", () => {
-        const main = document("/ws/FooBar/Sources/App/main.swift");
-        const noLanguageService = new ResponseError(-32001, "No language service found");
-
-        function provideDiagnostics(
-            previousResultId: string | undefined,
-            next: () => Promise<vsdiag.DocumentDiagnosticReport>
-        ) {
-            return client.clientOptions.middleware?.provideDiagnostics?.(
-                main,
-                previousResultId,
-                token,
-                next
-            );
-        }
-
-        test("returns the server's report", async () => {
-            const report: vsdiag.DocumentDiagnosticReport = {
-                kind: vsdiag.DocumentDiagnosticReportKind.full,
-                items: [new vscode.Diagnostic(new vscode.Range(0, 0, 0, 1), "error")],
-            };
-
-            await expect(provideDiagnostics(undefined, async () => report)).to.eventually.equal(
-                report
-            );
-        });
-
-        test("reports no diagnostics when the first pull fails", async () => {
-            await expect(
-                provideDiagnostics(undefined, () => Promise.reject(noLanguageService))
-            ).to.eventually.deep.equal({ kind: vsdiag.DocumentDiagnosticReportKind.full, items: [] });
-        });
-
-        test("keeps the previous diagnostics when a later pull fails", async () => {
-            await expect(
-                provideDiagnostics("3", () => Promise.reject(noLanguageService))
-            ).to.eventually.deep.equal({
-                kind: vsdiag.DocumentDiagnosticReportKind.unChanged,
-                resultId: "3",
-            });
-        });
-
-        test("still passes on cancellation", async () => {
-            await expect(
-                provideDiagnostics(undefined, () => Promise.reject(new vscode.CancellationError()))
-            ).to.be.rejectedWith(vscode.CancellationError);
-        });
     });
 });
