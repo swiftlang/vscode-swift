@@ -11,7 +11,7 @@
     "url": "https://github.com/swiftlang/vscode-swift"
   },
   "engines": {
-    "vscode": "^1.88.0"
+    "vscode": "^1.91.0"
   },
   "categories": [
     "Programming Languages",
@@ -2220,7 +2220,7 @@
     "@types/svg2ttf": "^5.0.3",
     "@types/svgicons2svgfont": "^10.0.5",
     "@types/ttf2woff": "^2.0.4",
-    "@types/vscode": "^1.88.0",
+    "@types/vscode": "^1.91.0",
     "@types/xml2js": "^0.4.14",
     "@types/yauzl": "^3.4.0",
     "@typescript-eslint/eslint-plugin": "^8.71.2",
@@ -2275,7 +2275,7 @@
     "source-map-support": "^0.5.21",
     "strip-ansi": "^6.0.1",
     "tar": "^7.5.22",
-    "vscode-languageclient": "^9.0.1",
+    "vscode-languageclient": "^11.0.0",
     "winston": "^3.19.0",
     "winston-transport": "^4.9.0",
     "xml2js": "^0.6.2",

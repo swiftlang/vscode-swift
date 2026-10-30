@@ -14,7 +14,7 @@
 import * as assert from "assert";
 import { beforeEach } from "mocha";
 import * as vscode from "vscode";
-import * as p2c from "vscode-languageclient/lib/common/protocolConverter";
+import * as p2c from "vscode-languageclient/$test/common/protocolConverter";
 import {
     Location,
     MessageSignature,
@@ -43,7 +43,7 @@ class TestLanguageClient {
     private responseVersions = new Map<string, number>();
     private client = mockObject<SourceKitLanguageClient>({
         checkExperimentalCapability: mockFn(s => s.returns(true)),
-        protocol2CodeConverter: p2c.createConverter(undefined, true, true),
+        protocol2CodeConverter: p2c.createConverter(undefined, true, true, false),
         sendRequest: mockFn(s =>
             s.callsFake((type: MessageSignature): Promise<unknown> => {
                 const response = this.responses.get(type.method);
