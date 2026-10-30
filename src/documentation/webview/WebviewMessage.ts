@@ -15,7 +15,8 @@
 /**
  * Represents a message that can be sent between the webview and vscode-swift
  */
-export type WebviewMessage = LoadedMessage | RenderedMessage | UpdateContentMessage;
+export type WebviewMessage =
+    LoadedMessage | RenderedMessage | UpdateContentMessage | LinkClickedMessage;
 
 /**
  * Sent from the webview to the extension to indicate that the webview has loaded
@@ -31,6 +32,15 @@ export interface LoadedMessage {
  */
 export interface RenderedMessage {
     type: "rendered";
+}
+
+/**
+ * Sent from the webview to the extension when the user clicks a link, so that the extension can
+ * navigate to it.
+ */
+export interface LinkClickedMessage {
+    type: "linkClicked";
+    href: string;
 }
 
 /**

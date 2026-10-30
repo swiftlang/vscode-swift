@@ -17,7 +17,10 @@ import * as vscode from "vscode";
 import { LSPErrorCodes, ResponseError } from "vscode-languageclient";
 
 import { WorkspaceContext } from "../WorkspaceContext";
-import { DocCDocumentationRequest } from "../sourcekit-lsp/extensions";
+import {
+    DocCDocumentationRequest,
+    DocCSymbolLinkDefinitionRequest,
+} from "../sourcekit-lsp/extensions";
 import { Disposable } from "../utilities/Disposable";
 import { isPathInsidePath } from "../utilities/filesystem";
 import { RenderNode, WebviewContent, WebviewMessage } from "./webview/WebviewMessage";
@@ -28,6 +31,29 @@ export enum PreviewEditorConstant {
     VIEW_TYPE = "swift.previewDocumentationEditor",
     TITLE = "Preview Swift Documentation",
     UNSUPPORTED_EDITOR_ERROR_MESSAGE = "The active text editor does not support Swift Documentation Live Preview",
+}
+
+/** How a link that was clicked in the documentation preview should be handled. */
+type PreviewLink =
+    | { kind: "external"; uri: string }
+    | { kind: "symbolLink"; symbolLink: string }
+    | { kind: "ignored" };
+
+function classifyPreviewLink(href: string): PreviewLink {
+    if (/^(https?|mailto):/i.test(href)) {
+        return { kind: "external", uri: href };
+    }
+    // Links with non-documentation schemes, links within the current page, and
+    // links that have already been resolved cannot be opened from the preview.
+    if (
+        /^[a-z][a-z0-9+.-]*:/i.test(href) ||
+        href.startsWith("#") ||
+        /^\/(documentation|tutorials)(\/|$)/.test(href)
+    ) {
+        return { kind: "ignored" };
+    }
+
+    return { kind: "symbolLink", symbolLink: href.startsWith("/") ? href.slice(1) : href };
 }
 
 export class DocumentationPreviewEditor implements Disposable {
@@ -164,6 +190,77 @@ export class DocumentationPreviewEditor implements Disposable {
             case "rendered":
                 this.renderEmitter.fire();
                 break;
+            case "linkClicked":
+                void this.openLink(message.href);
+                break;
+        }
+    }
+
+    private async openLink(href: string): Promise<void> {
+        const link = classifyPreviewLink(href);
+        switch (link.kind) {
+            case "external":
+                await vscode.env.openExternal(vscode.Uri.parse(link.uri));
+                break;
+            case "symbolLink":
+                await this.openSymbolLinkDefinition(link.symbolLink);
+                break;
+            case "ignored":
+                break;
+        }
+    }
+
+    private async openSymbolLinkDefinition(symbolLink: string): Promise<void> {
+        const textEditor = this.activeTextEditor;
+        if (!textEditor) {
+            return;
+        }
+        const document = textEditor.document;
+        const folderContext = this.context.folders.find(folderContext =>
+            isPathInsidePath(document.uri.fsPath, folderContext.folder.fsPath)
+        );
+        if (!folderContext) {
+            return;
+        }
+
+        try {
+            const client = this.context.languageClientManager.getClient(folderContext);
+            const definition = await client.useLanguageClient(async client => {
+                if (
+                    !client.checkExperimentalCapability(DocCSymbolLinkDefinitionRequest.method, 1)
+                ) {
+                    this.context.logger.debug(
+                        `SourceKit-LSP does not support ${DocCSymbolLinkDefinitionRequest.method}`
+                    );
+                    return undefined;
+                }
+                const result = await client.sendRequest(DocCSymbolLinkDefinitionRequest.type, {
+                    symbolLink,
+                    textDocument: { uri: document.uri.toString() },
+                });
+                return result ? client.protocol2CodeConverter.asDefinitionResult(result) : null;
+            });
+            if (definition === undefined) {
+                return;
+            }
+            const target = Array.isArray(definition) ? definition[0] : definition;
+            if (!target) {
+                void vscode.window.showErrorMessage(`Symbol not found: ${symbolLink}`);
+                return;
+            }
+            const [uri, range] =
+                "targetUri" in target
+                    ? [target.targetUri, target.targetSelectionRange ?? target.targetRange]
+                    : [target.uri, target.range];
+            await vscode.window.showTextDocument(uri, {
+                selection: range,
+                viewColumn: textEditor.viewColumn,
+            });
+        } catch (error) {
+            this.context.logger.error(
+                Error(`Failed to resolve symbol link "${symbolLink}"`, { cause: error })
+            );
+            void vscode.window.showErrorMessage(`Failed to resolve symbol link: ${symbolLink}`);
         }
     }
 
