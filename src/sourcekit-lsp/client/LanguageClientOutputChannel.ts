@@ -13,6 +13,8 @@
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
 
+import { Disposable } from "../../utilities/Disposable";
+
 /**
  * The {@link vscode.LogOutputChannel} that vscode-languageclient 10 and later require, on top of
  * an output channel that also writes the log file. Messages keep the `[Info  - <time>]` format
@@ -23,7 +25,7 @@ import * as vscode from "vscode";
  */
 export class LanguageClientOutputChannel implements vscode.LogOutputChannel {
     private readonly onDidChangeLogLevelEmitter = new vscode.EventEmitter<vscode.LogLevel>();
-    private readonly configurationListener: vscode.Disposable;
+    private readonly configurationListener: Disposable;
     private level: vscode.LogLevel;
 
     readonly onDidChangeLogLevel = this.onDidChangeLogLevelEmitter.event;
@@ -93,7 +95,7 @@ export class LanguageClientOutputChannel implements vscode.LogOutputChannel {
     show(column?: vscode.ViewColumn, preserveFocus?: boolean): void;
     show(arg1?: vscode.ViewColumn | boolean, arg2?: boolean): void {
         if (typeof arg1 === "number") {
-            this.channel.show(arg1, arg2);
+            this.channel.show(arg2);
         } else {
             this.channel.show(arg1);
         }

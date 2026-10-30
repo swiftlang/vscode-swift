@@ -16,6 +16,7 @@ import { match } from "sinon";
 import * as vscode from "vscode";
 
 import { LanguageClientOutputChannel } from "@src/sourcekit-lsp/client/LanguageClientOutputChannel";
+import { Disposable } from "@src/utilities/Disposable";
 
 import { MockedObject, instance, mockFn, mockGlobalObject, mockObject } from "../../MockUtils";
 
@@ -36,7 +37,7 @@ suite("LanguageClientOutputChannel Suite", () => {
         });
         mockedWorkspace.getConfiguration.returns(instance(configuration));
         mockedWorkspace.onDidChangeConfiguration.returns(
-            instance(mockObject<vscode.Disposable>({ dispose: mockFn() }))
+            instance(mockObject<Disposable>({ dispose: mockFn() }))
         );
     });
 
