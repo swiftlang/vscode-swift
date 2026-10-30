@@ -15,13 +15,13 @@ import { ChildProcess, spawn } from "child_process";
 import * as path from "path";
 import * as vscode from "vscode";
 import {
+    DidChangeWorkspaceFoldersNotification,
     DynamicFeature,
     LanguageClientOptions,
     RevealOutputChannelOn,
     State,
     StaticFeature,
 } from "vscode-languageclient";
-import { WorkspaceFoldersFeature } from "vscode-languageclient/lib/common/workspaceFolder";
 import { LanguageClient, ServerOptions } from "vscode-languageclient/node";
 
 import { DiagnosticsManager } from "../../DiagnosticsManager";
@@ -39,12 +39,13 @@ import { Version } from "../../utilities/version";
 import { LanguageClientDocumentSelectors } from "../LanguageClientDocumentSelectors";
 import { uriConverters } from "../uriConverters";
 import { SourceKitLSPErrorHandler } from "./ErrorHandler";
+import { LanguageClientOutputChannel } from "./LanguageClientOutputChannel";
 import { ActiveDocumentFeature } from "./features/ActiveDocumentFeature";
 import { FolderContextFeature } from "./features/FolderContextFeature";
 import { GetReferenceDocumentFeature } from "./features/GetReferenceDocumentFeature";
 import { LoggingFeature } from "./features/LoggingFeature";
 import { PeekDocumentsFeature } from "./features/PeekDocumentsFeature";
-import { checkExperimentalCapability, keepPullingDiagnostics } from "./utilities";
+import { checkExperimentalCapability } from "./utilities";
 
 export interface SourceKitLanguageClientOptions {
     onDocumentSymbols?: (
@@ -145,9 +146,12 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
         const clientOptions: LanguageClientOptions = {
             documentSelector: LanguageClientDocumentSelectors.sourcekitLSPDocumentTypes(),
             revealOutputChannelOn: RevealOutputChannelOn.Never,
-            outputChannel: workspaceContext.loggerFactory.createOutputChannel(
-                `SourceKit Language Server (${toolchain.swiftVersion.toString()})`,
-                `sourcekit-lsp-${toolchain.swiftVersion.toString()}.log`
+            outputChannel: new LanguageClientOutputChannel(
+                workspaceContext.loggerFactory.createOutputChannel(
+                    `SourceKit Language Server (${toolchain.swiftVersion.toString()})`,
+                    `sourcekit-lsp-${toolchain.swiftVersion.toString()}.log`
+                ),
+                "swift.sourcekit-lsp"
             ),
             middleware: {
                 provideCompletionItem: async (document, position, context, token, next) => {
@@ -240,7 +244,6 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
                     }
                     return result;
                 },
-                provideDiagnostics: keepPullingDiagnostics,
                 handleDiagnostics: (uri, diagnostics) => {
                     workspaceContext.diagnostics.handleDiagnostics(
                         uri,
@@ -343,7 +346,10 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
 
     override registerFeature(feature: StaticFeature | DynamicFeature<unknown>): void {
         // The built-in workspace feature conflicts with our FolderContext feature
-        if (feature instanceof WorkspaceFoldersFeature) {
+        if (
+            "registrationType" in feature &&
+            feature.registrationType.method === DidChangeWorkspaceFoldersNotification.method
+        ) {
             return;
         }
         super.registerFeature(feature);

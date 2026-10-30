@@ -14,6 +14,7 @@
 ### Changed
 
 - `swift.sourcekit-lsp.serverPath` and `swift.sourcekit-lsp.serverArguments` are now `machine` scoped, so they can only be set in user settings ([#2369](https://github.com/swiftlang/vscode-swift/pull/2369))
+- The extension now requires VS Code 1.91 or later ([#2426](https://github.com/swiftlang/vscode-swift/pull/2426))
 
 ### Removed
 

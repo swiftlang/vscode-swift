@@ -68,7 +68,7 @@ export class LoggingFeature implements StaticFeature {
     }
 
     private handleLogMessageNotification(params: SourceKitLogMessageParams): void {
-        let channel = this.client.outputChannel;
+        let channel: vscode.OutputChannel = this.client.outputChannel;
         if (params.logName) {
             channel = this.getOutputChannel(params.logName);
         }
