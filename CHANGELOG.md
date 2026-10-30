@@ -10,6 +10,7 @@
 - Add syntax highlighing for DocC Tutorial files ([#2320](https://github.com/swiftlang/vscode-swift/pull/2320))
 - Add `swift.logFileLogLevel` setting to control the verbosity of the extension's log file ([#2379](https://github.com/swiftlang/vscode-swift/pull/2379))
 - Add `trace` option to the `swift.outputChannelLogLevel` setting ([#2379](https://github.com/swiftlang/vscode-swift/pull/2379))
+- Symbol links in the documentation preview can now be clicked on to jump to the symbol definition ([#2427](https://github.com/swiftlang/vscode-swift/pull/2427))
 
 ### Changed
 
