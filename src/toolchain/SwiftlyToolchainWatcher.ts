@@ -40,15 +40,7 @@ interface WatchedFolder {
     version: string | undefined;
 }
 
-/** The timer functions used to poll. Replaceable so that tests can use their own clock. */
-interface IntervalTimers {
-    setInterval(handler: () => void, milliseconds: number): unknown;
-    clearInterval(handle: unknown): void;
-}
-
 export class SwiftlyToolchainWatcher implements Disposable {
-    public static readonly CHECK_INTERVAL = 2000;
-
     private queuedUpdates: Array<() => void | Promise<void>> = [];
     private isProcessingUpdate: boolean = false;
     private isDisposed: boolean = false;
@@ -59,25 +51,13 @@ export class SwiftlyToolchainWatcher implements Disposable {
     private watchedFolders: Map<string, WatchedFolder> = new Map();
 
     private globalSwiftVersion: string | undefined;
-    private interval: unknown;
 
     private get logger(): SwiftLogger {
         return this.api.logger;
     }
 
-    /**
-     * @param api The Swift extension API.
-     * @param timers Schedules the polling of the global swiftly version. Replaceable so that
-     * tests can drive the polling without faking the global timers of the extension host.
-     */
-    constructor(
-        private api: InternalSwiftExtensionApi,
-        private timers: IntervalTimers = globalThis
-    ) {
-        // Deliberately not awaiting this, as we don't want to block the extension activation.
-        this.setup().catch(error => {
-            this.logger.error(Error("Failed to setup SwiftlyToolchainWatcher", { cause: error }));
-        });
+    constructor(private api: InternalSwiftExtensionApi) {
+        this.setup();
     }
 
     /**
@@ -131,34 +111,27 @@ export class SwiftlyToolchainWatcher implements Disposable {
     }
 
     /**
-     * Polls Swiftly to check if the global toolchain has been changed.
+     * Subscribes to workspace, settings and swiftly config.json changes.
      */
-    private async setup(): Promise<void> {
+    private setup(): void {
         this.subscriptions.push(
             this.api.onDidChangeWorkspaceContext(this.handleWorkspaceContextChanged, this),
             vscode.workspace.onDidChangeConfiguration(this.handleConfigurationChanged, this)
         );
 
-        this.logger.trace("Querying initial global swiftly version", {
-            label: "SwiftlyToolchainWatcher",
-        });
-        this.globalSwiftVersion = await Swiftly.inUseVersion();
-        this.logger.debug(
-            `Initial global swiftly version: ${this.globalSwiftVersion ?? "<none>"}`,
-            { label: "SwiftlyToolchainWatcher" }
+        const pattern = new vscode.RelativePattern(
+            vscode.Uri.file(Swiftly.homeDir()),
+            "config.json"
         );
-        // dispose() may have been called while waiting on swiftly, in which case there is no one
-        // left to clear the interval.
-        if (this.isDisposed) {
-            return;
-        }
-        this.interval = this.timers.setInterval(() => {
-            void this.checkGlobalSwiftlyVersion();
-        }, SwiftlyToolchainWatcher.CHECK_INTERVAL);
-        this.logger.trace(
-            `Started polling global swiftly version every ${SwiftlyToolchainWatcher.CHECK_INTERVAL}ms`,
-            { label: "SwiftlyToolchainWatcher" }
+        const configWatcher = vscode.workspace.createFileSystemWatcher(pattern);
+        // swiftly replaces config.json atomically, which can be reported as a create.
+        const handleConfigChange = () => this.enqueueUpdate(() => this.checkGlobalSwiftlyVersion());
+        this.subscriptions.push(
+            configWatcher,
+            configWatcher.onDidCreate(handleConfigChange),
+            configWatcher.onDidChange(handleConfigChange)
         );
+        handleConfigChange();
     }
 
     private handleConfigurationChanged(event: vscode.ConfigurationChangeEvent): void {
@@ -419,7 +392,7 @@ export class SwiftlyToolchainWatcher implements Disposable {
 
     private async checkGlobalSwiftlyVersion(): Promise<void> {
         const oldSwiftVersion = this.globalSwiftVersion;
-        const newSwiftVersion = await Swiftly.inUseVersion();
+        const newSwiftVersion = await Swiftly.globalInUseVersion(this.logger);
         if (!newSwiftVersion) {
             return;
         }
@@ -458,8 +431,6 @@ export class SwiftlyToolchainWatcher implements Disposable {
         this.workspaceSubscriptions = [];
         this.disposeDirectoryWatchers();
         this.watchedFolders = new Map();
-        this.timers.clearInterval(this.interval);
-        this.interval = undefined;
     }
 }
 

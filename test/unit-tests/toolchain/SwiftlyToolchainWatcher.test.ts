@@ -11,10 +11,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 //===----------------------------------------------------------------------===//
-import { Clock, createClock } from "@sinonjs/fake-timers";
 import { expect } from "chai";
 import * as fs from "fs/promises";
 import * as path from "path";
+import { match } from "sinon";
 import * as vscode from "vscode";
 
 import { FolderContext } from "@src/FolderContext";
@@ -45,26 +45,49 @@ function parentOf(folder: vscode.Uri): vscode.Uri {
     return vscode.Uri.file(path.dirname(folder.fsPath));
 }
 
+type MockFileSystemWatcher = {
+    watcher: MockedObject<vscode.FileSystemWatcher>;
+    onDidCreate: vscode.EventEmitter<void>;
+    onDidChange: vscode.EventEmitter<void>;
+    onDidDelete: vscode.EventEmitter<void>;
+};
+
+function createMockFileSystemWatcher(onDispose: () => void): MockFileSystemWatcher {
+    const emitters = {
+        onDidCreate: new vscode.EventEmitter<void>(),
+        onDidChange: new vscode.EventEmitter<void>(),
+        onDidDelete: new vscode.EventEmitter<void>(),
+    };
+    const watcher = mockObject<vscode.FileSystemWatcher>({
+        onDidCreate: mockFn(s =>
+            s.callsFake(emitters.onDidCreate.event.bind(emitters.onDidCreate))
+        ),
+        onDidChange: mockFn(s =>
+            s.callsFake(emitters.onDidChange.event.bind(emitters.onDidChange))
+        ),
+        onDidDelete: mockFn(s =>
+            s.callsFake(emitters.onDidDelete.event.bind(emitters.onDidDelete))
+        ),
+        dispose: mockFn(s => s.callsFake(onDispose)),
+    });
+    return { watcher, ...emitters };
+}
+
 suite("Swiftly Toolchain Watcher", () => {
     const mockFS = mockGlobalModule(fs);
     const mockSwiftly = mockGlobalModule(Swiftly);
     const mockWorkspace = mockGlobalObject(vscode, "workspace");
-    let fileSystemWatchers: Map<
-        string,
-        {
-            watcher: MockedObject<vscode.FileSystemWatcher>;
-            onDidCreate: vscode.EventEmitter<void>;
-            onDidChange: vscode.EventEmitter<void>;
-            onDidDelete: vscode.EventEmitter<void>;
-        }
-    >;
+    const swiftlyHomeDir = uri("swiftly-home");
+    /** The watchers for `.swift-version` files, keyed by the directory that they watch. */
+    let fileSystemWatchers: Map<string, MockFileSystemWatcher>;
+    /** The watcher for swiftly's `config.json`, if one is active. */
+    let swiftlyConfigWatcher: MockFileSystemWatcher | undefined;
     let swiftVersionFiles: Map<string, string>;
     let onDidChangeWorkspaceEmitter: vscode.EventEmitter<WorkspaceContext>;
     let onDidChangeConfigurationEmitter: vscode.EventEmitter<vscode.ConfigurationChangeEvent>;
     let mockSwiftExtensionApi: MockedObject<InternalSwiftExtensionApi>;
     let mockSwiftConfig: MockedObject<vscode.WorkspaceConfiguration>;
     let addedFolders: Map<string, MockedObject<FolderContext>>;
-    let timers: Clock;
 
     /**
      * Sets the contents of the `.swift-version` file within the given directory, or removes
@@ -91,28 +114,24 @@ suite("Swiftly Toolchain Watcher", () => {
         mockFS.readFile.rejects(enoent);
         swiftVersionFiles = new Map();
         fileSystemWatchers = new Map();
+        swiftlyConfigWatcher = undefined;
+        mockSwiftly.homeDir.returns(swiftlyHomeDir.fsPath);
         mockWorkspace.createFileSystemWatcher.callsFake(pattern => {
             const directory = (pattern as vscode.RelativePattern).baseUri.fsPath;
-            const emitters = {
-                onDidCreate: new vscode.EventEmitter<void>(),
-                onDidChange: new vscode.EventEmitter<void>(),
-                onDidDelete: new vscode.EventEmitter<void>(),
-            };
-            const mockFSWatcher = mockObject<vscode.FileSystemWatcher>({
-                onDidCreate: mockFn(s =>
-                    s.callsFake(emitters.onDidCreate.event.bind(emitters.onDidCreate))
-                ),
-                onDidChange: mockFn(s =>
-                    s.callsFake(emitters.onDidChange.event.bind(emitters.onDidChange))
-                ),
-                onDidDelete: mockFn(s =>
-                    s.callsFake(emitters.onDidDelete.event.bind(emitters.onDidDelete))
-                ),
-                dispose: mockFn(s => s.callsFake(() => fileSystemWatchers.delete(directory))),
-            });
-            fileSystemWatchers.set(directory, { watcher: mockFSWatcher, ...emitters });
-            return instance(mockFSWatcher);
+            const fsWatcher = createMockFileSystemWatcher(() =>
+                fileSystemWatchers.delete(directory)
+            );
+            fileSystemWatchers.set(directory, fsWatcher);
+            return instance(fsWatcher.watcher);
         });
+        mockWorkspace.createFileSystemWatcher
+            .withArgs(match.has("pattern", "config.json"))
+            .callsFake(() => {
+                swiftlyConfigWatcher = createMockFileSystemWatcher(() => {
+                    swiftlyConfigWatcher = undefined;
+                });
+                return instance(swiftlyConfigWatcher.watcher);
+            });
         mockSwiftConfig = mockObject<vscode.WorkspaceConfiguration>({
             get: mockFn(s => s.callsFake((_section, defaultValue) => defaultValue)),
         });
@@ -138,7 +157,6 @@ suite("Swiftly Toolchain Watcher", () => {
             reloadWorkspaceContext: mockFn(),
         });
         addedFolders = new Map();
-        timers = createClock();
     });
 
     /** A folder that is present in the workspace. */
@@ -149,7 +167,12 @@ suite("Swiftly Toolchain Watcher", () => {
     };
 
     type WatcherEvent =
-        | { type: "globalToolchainChanged"; version: string | undefined }
+        | {
+              type: "globalToolchainChanged";
+              version: string | undefined;
+              /** The file system event that swiftly's write of config.json is reported as. */
+              fileEvent?: "create" | "change";
+          }
         | {
               type: "swiftVersionFileChanged";
               directory: vscode.Uri;
@@ -157,7 +180,6 @@ suite("Swiftly Toolchain Watcher", () => {
           }
         | {
               type: "workspaceContextChanged";
-              version: string | undefined;
               manager: ToolchainManager;
               /**
                * Folders that have already been added to the new workspace context before the
@@ -174,18 +196,9 @@ suite("Swiftly Toolchain Watcher", () => {
         let mockWorkspaceContext: MockedObject<WorkspaceContext> | undefined;
         let workspaceFolders: FolderContext[] = [];
         const onDidChangeFoldersEmitter = new vscode.EventEmitter<FolderEvent>();
-        const watcher = new SwiftlyToolchainWatcher(instance(mockSwiftExtensionApi), timers);
-        async function runUntilNextCheck(): Promise<void> {
-            // Allow some time for any Promises to complete.
-            await timers.tickAsync(1);
-            await timers.tickAsync(1);
-            await timers.tickAsync(1);
-            // Advance time to the next check
-            await timers.nextAsync();
-            // Allow some time for any Promises to complete.
-            await timers.tickAsync(1);
-            await timers.tickAsync(1);
-            await timers.tickAsync(1);
+        const watcher = new SwiftlyToolchainWatcher(instance(mockSwiftExtensionApi));
+        async function waitForQueuedUpdates(): Promise<void> {
+            await new Promise(resolve => setImmediate(resolve));
         }
 
         function requireWorkspaceContext(): MockedObject<WorkspaceContext> {
@@ -198,7 +211,6 @@ suite("Swiftly Toolchain Watcher", () => {
         function changeWorkspaceContext(
             event: Extract<WatcherEvent, { type: "workspaceContextChanged" }>
         ): void {
-            mockSwiftly.inUseVersion.resolves(event.version);
             addedFolders.clear();
             workspaceFolders = [];
             const existingFolders = (event.existingFolders ?? []).map(createFolderContext);
@@ -304,7 +316,19 @@ suite("Swiftly Toolchain Watcher", () => {
             }
         }
 
+        function changeGlobalToolchain(
+            event: Extract<WatcherEvent, { type: "globalToolchainChanged" }>
+        ): void {
+            mockSwiftly.globalInUseVersion.resolves(event.version);
+            const emitter =
+                event.fileEvent === "create"
+                    ? swiftlyConfigWatcher?.onDidCreate
+                    : swiftlyConfigWatcher?.onDidChange;
+            emitter?.fire();
+        }
+
         try {
+            await waitForQueuedUpdates();
             for (const event of events) {
                 switch (event.type) {
                     case "workspaceContextChanged":
@@ -317,7 +341,7 @@ suite("Swiftly Toolchain Watcher", () => {
                         removeFolder(event);
                         break;
                     case "globalToolchainChanged":
-                        mockSwiftly.inUseVersion.resolves(event.version);
+                        changeGlobalToolchain(event);
                         break;
                     case "swiftVersionFileChanged":
                         changeSwiftVersionFile(event);
@@ -329,29 +353,31 @@ suite("Swiftly Toolchain Watcher", () => {
                         event.check();
                         break;
                 }
-                await runUntilNextCheck();
+                await waitForQueuedUpdates();
             }
         } finally {
             watcher.dispose();
         }
-        expect(timers.countTimers()).to.equal(0, "Some timers were not disposed");
+        expect(swiftlyConfigWatcher).to.equal(
+            undefined,
+            "The config.json watcher was not disposed"
+        );
         expect(fileSystemWatchers.size).to.equal(0, "Some FileSystem watchers were not disposed");
     }
 
     test("disposes of all FileSystem watchers when many workspace change events occur", async () => {
         // The expectation for disposal happens inside of run()
         await run([
-            { type: "workspaceContextChanged", version: "6.3", manager: "swiftly" },
+            { type: "workspaceContextChanged", manager: "swiftly" },
             { type: "addFolder", folder: uri("1"), version: "6.3", manager: "swiftly" },
             { type: "addFolder", folder: uri("2"), version: "6.3", manager: "swiftly" },
             { type: "removeFolder", folder: uri("1") },
-            { type: "workspaceContextChanged", version: "6.2", manager: "swiftly" },
+            { type: "workspaceContextChanged", manager: "swiftly" },
             { type: "addFolder", folder: uri("1"), version: "6.3", manager: "swiftly" },
             { type: "addFolder", folder: uri("2"), version: "6.3", manager: "swiftly" },
             { type: "removeFolder", folder: uri("1") },
             {
                 type: "workspaceContextChanged",
-                version: "6.1",
                 manager: "swiftly",
                 existingFolders: [{ folder: uri("3"), version: "6.1", manager: "swiftly" }],
             },
@@ -367,13 +393,61 @@ suite("Swiftly Toolchain Watcher", () => {
         expect(mockSwiftExtensionApi.reloadWorkspaceContext).to.have.been.calledOnce;
     });
 
-    test("ignores changes to the global swiftly toolchain if the global toolchain is not managed by swiftly", async () => {
+    test("watches config.json in the swiftly home directory", async () => {
         await run([
-            { type: "workspaceContextChanged", version: "6.2", manager: "swiftenv" },
+            {
+                type: "checkpoint",
+                check() {
+                    expect(mockWorkspace.createFileSystemWatcher).to.have.been.calledWith(
+                        match({
+                            baseUri: match.has("fsPath", swiftlyHomeDir.fsPath),
+                            pattern: "config.json",
+                        })
+                    );
+                },
+            },
+        ]);
+    });
+
+    test("detects the global swiftly toolchain when config.json is replaced", async () => {
+        mockSwiftly.globalInUseVersion.resolves("6.2");
+
+        await run([{ type: "globalToolchainChanged", version: "6.3", fileEvent: "create" }]);
+
+        expect(mockSwiftExtensionApi.reloadWorkspaceContext).to.have.been.calledOnce;
+    });
+
+    test("does not run swiftly to detect changes to the global swiftly toolchain", async () => {
+        mockSwiftly.globalInUseVersion.resolves("6.2");
+
+        await run([{ type: "globalToolchainChanged", version: "6.3" }]);
+
+        expect(mockSwiftly.inUseVersion).to.not.have.been.called;
+        expect(mockSwiftly.inUseLocation).to.not.have.been.called;
+    });
+
+    test("ignores changes to config.json that keep the same global swiftly toolchain", async () => {
+        mockSwiftly.globalInUseVersion.resolves("6.2");
+
+        await run([
+            { type: "globalToolchainChanged", version: "6.2" },
+            // An unreadable config.json keeps the last known toolchain
+            { type: "globalToolchainChanged", version: undefined },
+            { type: "globalToolchainChanged", version: "6.2" },
+        ]);
+
+        expect(mockSwiftExtensionApi.reloadWorkspaceContext).to.not.have.been.called;
+    });
+
+    test("ignores changes to the global swiftly toolchain if the global toolchain is not managed by swiftly", async () => {
+        mockSwiftly.globalInUseVersion.resolves("6.2");
+
+        await run([
+            { type: "workspaceContextChanged", manager: "swiftenv" },
             { type: "globalToolchainChanged", version: "6.3" },
-            { type: "workspaceContextChanged", version: "6.2", manager: "unknown" },
+            { type: "workspaceContextChanged", manager: "unknown" },
             { type: "globalToolchainChanged", version: "6.1" },
-            { type: "workspaceContextChanged", version: "6.2", manager: "xcrun" },
+            { type: "workspaceContextChanged", manager: "xcrun" },
             { type: "globalToolchainChanged", version: "6.4" },
         ]);
 
@@ -383,7 +457,7 @@ suite("Swiftly Toolchain Watcher", () => {
     test("detects changes to a local swiftly toolchain", async () => {
         const folder = uri("1");
         await run([
-            { type: "workspaceContextChanged", version: "6.2", manager: "swiftly" },
+            { type: "workspaceContextChanged", manager: "swiftly" },
             { type: "addFolder", folder, version: "6.2", manager: "swiftly" },
             { type: "swiftVersionFileChanged", directory: folder, version: "6.3" },
         ]);
@@ -396,7 +470,6 @@ suite("Swiftly Toolchain Watcher", () => {
         await run([
             {
                 type: "workspaceContextChanged",
-                version: "6.2",
                 manager: "swiftly",
                 existingFolders: [{ folder, version: "6.2", manager: "swiftly" }],
             },
@@ -409,7 +482,7 @@ suite("Swiftly Toolchain Watcher", () => {
     test("ignores changes to a local swiftly toolchain if the folder is not managed by swiftly", async () => {
         const folder = uri("1");
         await run([
-            { type: "workspaceContextChanged", version: "6.2", manager: "swiftly" },
+            { type: "workspaceContextChanged", manager: "swiftly" },
             { type: "addFolder", folder, version: "6.2", manager: "xcrun" },
             { type: "swiftVersionFileChanged", directory: folder, version: "6.3" },
         ]);
@@ -424,7 +497,7 @@ suite("Swiftly Toolchain Watcher", () => {
         writeSwiftVersionFile(root, "6.2");
 
         await run([
-            { type: "workspaceContextChanged", version: "6.2", manager: "swiftly" },
+            { type: "workspaceContextChanged", manager: "swiftly" },
             { type: "addFolder", folder: folder1, manager: "swiftly" },
             { type: "addFolder", folder: folder2, manager: "swiftly" },
             { type: "swiftVersionFileChanged", directory: root, version: "6.3" },
@@ -440,7 +513,7 @@ suite("Swiftly Toolchain Watcher", () => {
         writeSwiftVersionFile(parentOf(folder1), "6.2");
 
         await run([
-            { type: "workspaceContextChanged", version: "6.2", manager: "swiftly" },
+            { type: "workspaceContextChanged", manager: "swiftly" },
             { type: "addFolder", folder: folder1, manager: "swiftly" },
             { type: "addFolder", folder: folder2, manager: "swiftly" },
             { type: "swiftVersionFileChanged", directory: folder1, version: "6.3" },
@@ -456,7 +529,7 @@ suite("Swiftly Toolchain Watcher", () => {
         writeSwiftVersionFile(root, "6.2");
 
         await run([
-            { type: "workspaceContextChanged", version: "6.2", manager: "swiftly" },
+            { type: "workspaceContextChanged", manager: "swiftly" },
             { type: "addFolder", folder, manager: "swiftly" },
             // Shadow the parent's .swift-version file
             { type: "swiftVersionFileChanged", directory: folder, version: "6.3" },
@@ -472,7 +545,7 @@ suite("Swiftly Toolchain Watcher", () => {
     test("detects a .swift-version file being created and deleted", async () => {
         const folder = uri("1");
         await run([
-            { type: "workspaceContextChanged", version: "6.2", manager: "swiftly" },
+            { type: "workspaceContextChanged", manager: "swiftly" },
             { type: "addFolder", folder, manager: "swiftly" },
             { type: "swiftVersionFileChanged", directory: folder, version: "6.3" },
             { type: "swiftVersionFileChanged", directory: folder, version: undefined },
@@ -484,7 +557,7 @@ suite("Swiftly Toolchain Watcher", () => {
     test("ignores a .swift-version file being written with the same version", async () => {
         const folder = uri("1");
         await run([
-            { type: "workspaceContextChanged", version: "6.2", manager: "swiftly" },
+            { type: "workspaceContextChanged", manager: "swiftly" },
             { type: "addFolder", folder, version: "6.2", manager: "swiftly" },
             { type: "swiftVersionFileChanged", directory: folder, version: "6.2" },
         ]);
@@ -495,7 +568,7 @@ suite("Swiftly Toolchain Watcher", () => {
     test("does not reload while a .swift-version file is still being written", async () => {
         const folder = uri("1");
         await run([
-            { type: "workspaceContextChanged", version: "6.2", manager: "swiftly" },
+            { type: "workspaceContextChanged", manager: "swiftly" },
             { type: "addFolder", folder, manager: "swiftly" },
             // Swiftly.use() creates the file before asking swiftly to populate it, so an empty
             // file is a write that is still in progress and must not trigger a reload.
@@ -517,7 +590,7 @@ suite("Swiftly Toolchain Watcher", () => {
         const folder = uri("root", "MyFolder1");
 
         await run([
-            { type: "workspaceContextChanged", version: "6.2", manager: "swiftly" },
+            { type: "workspaceContextChanged", manager: "swiftly" },
             { type: "addFolder", folder, manager: "swiftly" },
             { type: "addFolder", folder, manager: "swiftly" },
             // A duplicate add must not acquire a second reference to the search path, otherwise
@@ -538,7 +611,7 @@ suite("Swiftly Toolchain Watcher", () => {
         const root = parentOf(folder1);
 
         await run([
-            { type: "workspaceContextChanged", version: "6.2", manager: "swiftly" },
+            { type: "workspaceContextChanged", manager: "swiftly" },
             { type: "addFolder", folder: folder1, manager: "swiftly" },
             { type: "addFolder", folder: folder2, manager: "swiftly" },
             {
@@ -576,7 +649,7 @@ suite("Swiftly Toolchain Watcher", () => {
         const root = uri();
 
         await run([
-            { type: "workspaceContextChanged", version: "6.2", manager: "swiftly" },
+            { type: "workspaceContextChanged", manager: "swiftly" },
             { type: "addFolder", folder, manager: "swiftly" },
             {
                 type: "checkpoint",
@@ -608,7 +681,7 @@ suite("Swiftly Toolchain Watcher", () => {
         mockSwiftConfig.get.withArgs("maxSwiftVersionFileWatchDepth").returns(5);
 
         await run([
-            { type: "workspaceContextChanged", version: "6.2", manager: "swiftly" },
+            { type: "workspaceContextChanged", manager: "swiftly" },
             { type: "addFolder", folder, manager: "swiftly" },
             {
                 type: "checkpoint",
@@ -643,7 +716,7 @@ suite("Swiftly Toolchain Watcher", () => {
         mockSwiftConfig.get.withArgs("maxSwiftVersionFileWatchDepth").returns(1);
 
         await run([
-            { type: "workspaceContextChanged", version: "6.2", manager: "swiftly" },
+            { type: "workspaceContextChanged", manager: "swiftly" },
             { type: "addFolder", folder, manager: "swiftly" },
             {
                 type: "checkpoint",
@@ -671,7 +744,7 @@ suite("Swiftly Toolchain Watcher", () => {
         mockSwiftConfig.get.withArgs("ignoreSwiftVersionFile").returns(true);
 
         await run([
-            { type: "workspaceContextChanged", version: "6.2", manager: "swiftly" },
+            { type: "workspaceContextChanged", manager: "swiftly" },
             { type: "addFolder", folder, version: "6.2", manager: "swiftly" },
             { type: "swiftVersionFileChanged", directory: folder, version: "6.3" },
         ]);
@@ -684,7 +757,7 @@ suite("Swiftly Toolchain Watcher", () => {
         const folder = uri("a", "b", "c");
 
         await run([
-            { type: "workspaceContextChanged", version: "6.2", manager: "swiftly" },
+            { type: "workspaceContextChanged", manager: "swiftly" },
             { type: "addFolder", folder, manager: "swiftly" },
             {
                 type: "checkpoint",
@@ -726,7 +799,7 @@ suite("Swiftly Toolchain Watcher", () => {
         mockSwiftConfig.get.withArgs("ignoreSwiftVersionFile").returns(true);
 
         await run([
-            { type: "workspaceContextChanged", version: "6.2", manager: "swiftly" },
+            { type: "workspaceContextChanged", manager: "swiftly" },
             { type: "addFolder", folder, version: "6.2", manager: "swiftly" },
             {
                 type: "checkpoint",
