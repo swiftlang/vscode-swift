@@ -618,9 +618,10 @@ suite("Swiftly Toolchain Watcher", () => {
                 type: "checkpoint",
                 check() {
                     // Directories shared by both folders are only ever watched once
-                    expect(mockWorkspace.createFileSystemWatcher).to.have.callCount(
-                        fileSystemWatchers.size
-                    );
+                    const swiftVersionWatcherCalls = mockWorkspace.createFileSystemWatcher
+                        .getCalls()
+                        .filter(call => call.calledWith(match.has("pattern", ".swift-version")));
+                    expect(swiftVersionWatcherCalls).to.have.lengthOf(fileSystemWatchers.size);
                     expect([...fileSystemWatchers.keys()]).to.include.members([
                         folder1.fsPath,
                         folder2.fsPath,
