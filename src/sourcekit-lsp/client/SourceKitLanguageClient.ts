@@ -449,7 +449,7 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
     }
 }
 
-function initializationOptions(swiftVersion: Version): Record<string, unknown> {
+export function initializationOptions(swiftVersion: Version): Record<string, unknown> {
     let options: Record<string, unknown> = {
         "textDocument/codeLens": {
             supportedCommands: {
@@ -463,17 +463,15 @@ function initializationOptions(swiftVersion: Version): Record<string, unknown> {
     // Swift 6.0.0 and later supports background indexing.
     // In 6.0.0 it is experimental so only "true" enables it.
     // In 6.1.0 it is no longer experimental, and so "auto" or "true" enables it.
-    if (
-        swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0)) &&
-        (configuration.backgroundIndexing === "on" ||
+    if (swiftVersion.isGreaterThanOrEqual(new Version(6, 0, 0))) {
+        const backgroundIndexing =
+            configuration.backgroundIndexing === "on" ||
             (configuration.backgroundIndexing === "auto" &&
-                swiftVersion.isGreaterThanOrEqual(new Version(6, 1, 0))))
-    ) {
-        options = {
-            ...options,
-            backgroundIndexing: true,
-            backgroundPreparationMode: "enabled",
-        };
+                swiftVersion.isGreaterThanOrEqual(new Version(6, 1, 0)));
+        // Without `false`, SourceKit-LSP 6.1+ indexes in the background even with the setting "off"
+        options = backgroundIndexing
+            ? { ...options, backgroundIndexing: true, backgroundPreparationMode: "enabled" }
+            : { ...options, backgroundIndexing: false };
     }
 
     if (configuration.swiftSDK !== "") {

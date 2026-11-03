@@ -109,7 +109,7 @@ const extensionBootstrapper = (() => {
 
     // Without the first lines, the log of an activation that stalls is only the polling that fills
     // the last ones. A failing test only gets the last lines.
-    const LOG_HEAD_LINES = 200;
+    const LOG_HEAD_LINES = 400;
     const LOG_TAIL_LINES = 100;
 
     function testRunnerSetup(

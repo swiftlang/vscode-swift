@@ -16,6 +16,9 @@ import * as child_process from "child_process";
 import { EventEmitter } from "events";
 import * as sinon from "sinon";
 
+import { RollingLog } from "@src/logging/RollingLog";
+import { RollingLogTransport } from "@src/logging/RollingLogTransport";
+import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { ReadOnlySwiftProcess } from "@src/tasks/SwiftProcess";
 
 import { mockGlobalModule } from "../../MockUtils";
@@ -81,5 +84,22 @@ suite("ReadOnlySwiftProcess", () => {
         } finally {
             clock.restore();
         }
+    });
+
+    test("Traces stderr while running", () => {
+        const proc = fakeChildProcess();
+        childProcessMock.spawn.returns(proc);
+        const rollingLog = new RollingLog(10);
+        const logger = new SwiftLogger([new RollingLogTransport(rollingLog, "trace")]);
+
+        new ReadOnlySwiftProcess("swift", ["package", "show-dependencies"], { logger }).spawn();
+        proc.stderr.emit("data", Buffer.from("Fetching https://github.com/apple/swift-log.git\n"));
+
+        expect(
+            rollingLog.logs.some(line =>
+                line.includes("Fetching https://github.com/apple/swift-log.git")
+            )
+        ).to.be.true;
+        logger.dispose();
     });
 });
