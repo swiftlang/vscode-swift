@@ -14,9 +14,13 @@
 import { expect } from "chai";
 
 import configuration from "@src/configuration";
-import { SourceKitLanguageClient } from "@src/sourcekit-lsp/client/SourceKitLanguageClient";
+import {
+    SourceKitLanguageClient,
+    initializationOptions,
+} from "@src/sourcekit-lsp/client/SourceKitLanguageClient";
 import { BuildFlags } from "@src/toolchain/BuildFlags";
 import { SwiftToolchain } from "@src/toolchain/toolchain";
+import { Version } from "@src/utilities/version";
 
 import { instance, mockFn, mockGlobalValue, mockObject } from "../../MockUtils";
 
@@ -82,6 +86,26 @@ suite("SourceKitLanguageClient Test Suite", () => {
             expect(SourceKitLanguageClient.serverInvocation(toolchain)).to.deep.equal({
                 command: "/custom/sourcekit-lsp",
                 args: expectedArgs,
+            });
+        });
+    });
+
+    suite("initializationOptions", () => {
+        const backgroundIndexing = mockGlobalValue(configuration, "backgroundIndexing");
+
+        test("Turns background indexing off", () => {
+            backgroundIndexing.setValue("off");
+
+            expect(initializationOptions(new Version(6, 1, 0))).to.include({
+                backgroundIndexing: false,
+            });
+        });
+
+        test("Turns background indexing on with auto", () => {
+            backgroundIndexing.setValue("auto");
+
+            expect(initializationOptions(new Version(6, 1, 0))).to.include({
+                backgroundIndexing: true,
             });
         });
     });

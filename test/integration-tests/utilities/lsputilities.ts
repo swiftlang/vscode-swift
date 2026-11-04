@@ -26,7 +26,7 @@ import { Version } from "@src/utilities/version";
 /**
  * Wait for the LSP to indicate it is done indexing
  */
-export async function waitForIndex(client: SourceKitLanguageClient): Promise<void> {
+async function waitForIndex(client: SourceKitLanguageClient): Promise<void> {
     const requestType = client.swiftVersion.isGreaterThanOrEqual(new Version(6, 2, 0))
         ? WorkspaceSynchronizeRequest.type
         : PollIndexRequest.type;
@@ -38,6 +38,16 @@ export async function waitForIndex(client: SourceKitLanguageClient): Promise<voi
             token
         )
     );
+}
+
+/**
+ * Restart the LSP and wait for it to load the index from the last build. Without background
+ * indexing, the LSP doesn't see an index that a build wrote while it was running.
+ */
+export async function restartAndWaitForIndex(client: SourceKitLanguageClient): Promise<void> {
+    await waitForClientState(client, langclient.State.Running);
+    await client.restart();
+    await waitForIndex(client);
 }
 
 export async function waitForClientState(

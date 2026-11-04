@@ -13,7 +13,6 @@
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
 import * as vscode from "vscode";
-import * as langclient from "vscode-languageclient/node";
 
 import { FolderContext } from "@src/FolderContext";
 import { WorkspaceContext } from "@src/WorkspaceContext";
@@ -23,7 +22,7 @@ import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
 import { testAssetUri } from "../../fixtures";
 import { tag } from "../../tags";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
-import { waitForClientState, waitForIndex } from "../utilities/lsputilities";
+import { restartAndWaitForIndex } from "../utilities/lsputilities";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 
 async function buildProject(ctx: WorkspaceContext, name: string) {
@@ -48,8 +47,7 @@ tag("large").suite("Language Client Integration Suite", function () {
             }
             folderContext = await buildProject(ctx, "defaultPackage");
             languageClient = ctx.languageClientManager.getClient(folderContext);
-            await waitForClientState(languageClient, langclient.State.Running);
-            await waitForIndex(languageClient);
+            await restartAndWaitForIndex(languageClient);
         },
     });
 

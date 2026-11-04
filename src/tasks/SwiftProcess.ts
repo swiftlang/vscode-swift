@@ -320,6 +320,10 @@ export class ReadOnlySwiftProcess implements SwiftProcess {
 
             this.spawnedProcess.stderr.on("data", data => {
                 const text = data.toString();
+                // SwiftPM reports progress on stderr, so this shows where a stalled command stopped
+                logger?.trace(`Child process stderr: ${this.describe()}, ${text.trimEnd()}`, {
+                    label: "SwiftProcess",
+                });
                 this.stderrEmitter.fire(text);
                 this.writeEmitter.fire(text);
                 this.closeHandler.reset();

@@ -37,7 +37,7 @@ import { Version } from "@src/utilities/version";
 import { mockGlobalFunction } from "../../MockUtils";
 import { tag } from "../../tags";
 import { executeTaskAndWaitForResult } from "../../utilities/tasks";
-import { waitForIndex } from "../utilities/lsputilities";
+import { restartAndWaitForIndex } from "../utilities/lsputilities";
 import {
     activateExtensionForSuite,
     folderInRootWorkspace,
@@ -94,8 +94,8 @@ tag("large").suite("Test Explorer Suite", function () {
                 executeTaskAndWaitForResult(await createBuildAllTask(folderContext))
             );
 
-            await logger("Waiting for SourceKit-LSP to finish indexing", async () =>
-                waitForIndex(folderContext.languageClient)
+            await logger("Restarting SourceKit-LSP to load the index", async () =>
+                restartAndWaitForIndex(folderContext.languageClient)
             );
 
             await logger("Waiting for test explorer to be ready", () => {
