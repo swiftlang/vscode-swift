@@ -34,6 +34,7 @@
 - Removing a folder while its tests are being discovered no longer starts a build that keeps running after the folder is gone ([#2419](https://github.com/swiftlang/vscode-swift/pull/2419))
 - Saving Package.swift repeatedly no longer queues duplicate `swift package resolve` runs ([#2407](https://github.com/swiftlang/vscode-swift/pull/2407))
 - Test Explorer and playground code lenses now update while editing files in packages whose names share a prefix with another package ([#2408](https://github.com/swiftlang/vscode-swift/pull/2408))
+- The extension no longer runs swiftly every 2 seconds to detect global toolchain changes, which made a network request each time ([#2428](https://github.com/swiftlang/vscode-swift/pull/2428))
 
 ## 2.16.7 - 2026-08-10
 
