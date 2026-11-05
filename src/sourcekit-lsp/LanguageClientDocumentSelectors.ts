@@ -12,7 +12,6 @@
 //
 //===----------------------------------------------------------------------===//
 import * as vscode from "vscode";
-import { DocumentSelector } from "vscode-languageclient";
 
 import configuration from "../configuration";
 
@@ -51,7 +50,7 @@ export class LanguageClientDocumentSelectors {
         { scheme: "file", language: "plaintext", pattern: "**/.swift-version" },
     ];
 
-    static sourcekitLSPDocumentTypes(): DocumentSelector {
+    static sourcekitLSPDocumentTypes(): SourceKitDocumentSelector {
         let documentSelector: SourceKitDocumentSelector;
         switch (configuration.lsp.supportCFamily) {
             case "enable":
@@ -84,7 +83,7 @@ export class LanguageClientDocumentSelectors {
         return documentSelector;
     }
 
-    static allHandledDocumentTypes(): DocumentSelector {
+    static allHandledDocumentTypes(): SourceKitDocumentSelector {
         return [
             ...this.sourcekitLSPDocumentTypes(),
             ...LanguageClientDocumentSelectors.miscellaneousDocumentSelector,
