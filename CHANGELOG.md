@@ -4,18 +4,30 @@
 
 ### Added
 
+- Symbol links in the documentation preview can now be clicked on to jump to the symbol definition ([#2427](https://github.com/swiftlang/vscode-swift/pull/2427))
+
+### Changed
+
+- The extension now requires VS Code 1.91 or later ([#2426](https://github.com/swiftlang/vscode-swift/pull/2426))
+
+### Fixed
+
+- Diagnostics no longer stop updating for a file after one request for them fails ([#2426](https://github.com/swiftlang/vscode-swift/pull/2426))
+
+## 2.18.0 - 2026-10-28
+
+### Added
+
 - Diagnostics with `remark` severity are now shown in the Problems pane ([#2338](https://github.com/swiftlang/vscode-swift/pull/2338))
 - Toolchain changes will now automatically reload the workspace ([#2196](https://github.com/swiftlang/vscode-swift/pull/2196))
 - Add a button that installs Swiftly and the latest Swift toolchain to the extension's welcome walkthrough ([#2078](https://github.com/swiftlang/vscode-swift/pull/2078))
 - Add syntax highlighing for DocC Tutorial files ([#2320](https://github.com/swiftlang/vscode-swift/pull/2320))
 - Add `swift.logFileLogLevel` setting to control the verbosity of the extension's log file ([#2379](https://github.com/swiftlang/vscode-swift/pull/2379))
 - Add `trace` option to the `swift.outputChannelLogLevel` setting ([#2379](https://github.com/swiftlang/vscode-swift/pull/2379))
-- Symbol links in the documentation preview can now be clicked on to jump to the symbol definition ([#2427](https://github.com/swiftlang/vscode-swift/pull/2427))
 
 ### Changed
 
 - `swift.sourcekit-lsp.serverPath` and `swift.sourcekit-lsp.serverArguments` are now `machine` scoped, so they can only be set in user settings ([#2369](https://github.com/swiftlang/vscode-swift/pull/2369))
-- The extension now requires VS Code 1.91 or later ([#2426](https://github.com/swiftlang/vscode-swift/pull/2426))
 
 ### Removed
 
@@ -35,7 +47,6 @@
 - Removing a folder while its tests are being discovered no longer starts a build that keeps running after the folder is gone ([#2419](https://github.com/swiftlang/vscode-swift/pull/2419))
 - Saving Package.swift repeatedly no longer queues duplicate `swift package resolve` runs ([#2407](https://github.com/swiftlang/vscode-swift/pull/2407))
 - Test Explorer and playground code lenses now update while editing files in packages whose names share a prefix with another package ([#2408](https://github.com/swiftlang/vscode-swift/pull/2408))
-- Diagnostics no longer stop updating for a file after one request for them fails ([#2426](https://github.com/swiftlang/vscode-swift/pull/2426))
 
 ## 2.16.7 - 2026-08-10
 
