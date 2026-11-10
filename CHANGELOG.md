@@ -13,6 +13,7 @@
 ### Fixed
 
 - Diagnostics no longer stop updating for a file after one request for them fails ([#2426](https://github.com/swiftlang/vscode-swift/pull/2426))
+- The extension no longer runs swiftly every 2 seconds to detect global toolchain changes, which made a network request each time ([#2428](https://github.com/swiftlang/vscode-swift/pull/2428))
 
 ## 2.18.0 - 2026-10-28
 

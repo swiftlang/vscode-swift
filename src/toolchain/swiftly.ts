@@ -31,9 +31,11 @@ import { findBinaryInPath } from "../utilities/shell";
 import { ExecFileError, execFile, execFileStreamOutput } from "../utilities/utilities";
 import { Version } from "../utilities/version";
 
-type SwiftlyConfig = {
-    installedToolchains: string[];
-};
+const SwiftlyConfig = z.object({
+    inUse: z.catch(z.optional(z.string()), undefined),
+    installedToolchains: z.catch(z.array(z.string()), []),
+});
+type SwiftlyConfig = z.infer<typeof SwiftlyConfig>;
 
 const SystemVersion = z.object({
     type: z.literal("system"),
@@ -211,6 +213,10 @@ export class Swiftly {
             return path.join(os.homedir(), ".local/share/swiftly");
         }
         return path.join(os.homedir(), ".swiftly");
+    }
+
+    public static homeDir(): string {
+        return process.env["SWIFTLY_HOME_DIR"] ?? Swiftly.defaultHomeDir();
     }
 
     /**
@@ -557,24 +563,12 @@ export class Swiftly {
                 });
                 return [];
             }
-            const swiftlyConfig = await Swiftly.getConfig();
-            if (!swiftlyConfig || !("installedToolchains" in swiftlyConfig)) {
-                logger?.trace("Swiftly config has no installedToolchains", { label: "Swiftly" });
-                return [];
-            }
-            const installedToolchains = swiftlyConfig.installedToolchains;
-            if (!Array.isArray(installedToolchains)) {
-                return [];
-            }
-            return (
-                installedToolchains
-                    .filter((toolchain): toolchain is string => typeof toolchain === "string")
-                    // Sort alphabetically in descending order.
-                    //
-                    // This isn't perfect (e.g. "5.10" will come before "5.9"), but this is
-                    // good enough for legacy support.
-                    .sort((lhs, rhs) => rhs.localeCompare(lhs))
-            );
+            const { installedToolchains } = await Swiftly.getConfig();
+            // Sort alphabetically in descending order.
+            //
+            // This isn't perfect (e.g. "5.10" will come before "5.9"), but this is
+            // good enough for legacy support.
+            return installedToolchains.sort((lhs, rhs) => rhs.localeCompare(lhs));
         } catch (error) {
             logger?.error(`Failed to retrieve Swiftly installations: ${error}`);
             throw new Error("Failed to retrieve Swiftly installations from disk.", {
@@ -1267,20 +1261,32 @@ export class Swiftly {
     }
 
     /**
-     * Reads the Swiftly configuration file, if it exists.
+     * Reads the Swiftly configuration file.
      *
      * @returns A parsed Swiftly configuration.
      */
-    private static async getConfig(): Promise<SwiftlyConfig | undefined> {
-        const swiftlyHomeDir: string | undefined = process.env["SWIFTLY_HOME_DIR"];
-        if (!swiftlyHomeDir) {
-            return;
-        }
+    private static async getConfig(): Promise<SwiftlyConfig> {
         const swiftlyConfigRaw = await fs.readFile(
-            path.join(swiftlyHomeDir, "config.json"),
+            path.join(Swiftly.homeDir(), "config.json"),
             "utf-8"
         );
-        return JSON.parse(swiftlyConfigRaw);
+        return SwiftlyConfig.parse(JSON.parse(swiftlyConfigRaw));
+    }
+
+    /**
+     * Reads the global default toolchain from swiftly's config.json.
+     *
+     * Prefer this over `swiftly use`, which checks for swiftly updates over the network.
+     */
+    public static async globalInUseVersion(logger?: SwiftLogger): Promise<string | undefined> {
+        try {
+            return (await Swiftly.getConfig()).inUse;
+        } catch (error) {
+            if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) {
+                logger?.error(Error("Failed to read the swiftly config", { cause: error }));
+            }
+            return undefined;
+        }
     }
 
     /**

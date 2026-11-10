@@ -163,6 +163,64 @@ suite("Swiftly Unit Tests", () => {
         });
     });
 
+    suite("globalInUseVersion()", () => {
+        let mockLogger: SwiftLogger;
+
+        setup(() => {
+            mockLogger = instance(mockObject<SwiftLogger>({ error: mockFn() }));
+            mockedEnv.setValue({ SWIFTLY_HOME_DIR: "/test/swiftly" });
+        });
+
+        test("reads the global toolchain from the swiftly config without running swiftly", async () => {
+            mockFS({
+                "/test/swiftly/config.json": JSON.stringify({
+                    inUse: "6.2.3",
+                    installedToolchains: ["6.2.3"],
+                }),
+            });
+
+            expect(await Swiftly.globalInUseVersion(mockLogger)).to.equal("6.2.3");
+            expect(mockUtilities.execFile).to.not.have.been.called;
+        });
+
+        test("falls back to the default swiftly home directory", async () => {
+            mockedEnv.setValue({});
+            mockedPlatform.setValue("darwin");
+            mockOS.homedir.returns("/Users/test");
+            mockFS({
+                "/Users/test/.swiftly/config.json": JSON.stringify({ inUse: "6.3" }),
+            });
+
+            expect(await Swiftly.globalInUseVersion(mockLogger)).to.equal("6.3");
+        });
+
+        test("returns undefined if no global toolchain is in use", async () => {
+            mockFS({ "/test/swiftly/config.json": JSON.stringify({ installedToolchains: [] }) });
+
+            expect(await Swiftly.globalInUseVersion(mockLogger)).to.be.undefined;
+            expect(mockLogger.error).to.not.have.been.called;
+        });
+
+        test("returns undefined if the global toolchain is malformed", async () => {
+            mockFS({ "/test/swiftly/config.json": JSON.stringify({ inUse: 6 }) });
+
+            expect(await Swiftly.globalInUseVersion(mockLogger)).to.be.undefined;
+            expect(mockLogger.error).to.not.have.been.called;
+        });
+
+        test("returns undefined if swiftly is not installed", async () => {
+            expect(await Swiftly.globalInUseVersion(mockLogger)).to.be.undefined;
+            expect(mockLogger.error).to.not.have.been.called;
+        });
+
+        test("returns undefined and logs an error if the config is malformed", async () => {
+            mockFS({ "/test/swiftly/config.json": "{" });
+
+            expect(await Swiftly.globalInUseVersion(mockLogger)).to.be.undefined;
+            expect(mockLogger.error).to.have.been.calledOnce;
+        });
+    });
+
     suite("list()", () => {
         test("should return toolchain names and locations from list command for version 1.1.0", async () => {
             // Mock version check to return 1.1.0
@@ -425,6 +483,19 @@ suite("Swiftly Unit Tests", () => {
 
             // Toolchains should be sorted by name in descending order
             expect(result).to.deep.equal([{ name: "swift-6.0.0" }, { name: "swift-5.9.0" }]);
+        });
+
+        test("should return empty array when the configuration file has malformed toolchains", async () => {
+            mockUtilities.execFile.withArgs("swiftly", ["--version"]).resolves({
+                stdout: "1.0.1\n",
+                stderr: "",
+            });
+            mockedEnv.setValue({ SWIFTLY_HOME_DIR: "/home/.swiftly" });
+            mockFS({
+                "/home/.swiftly/config.json": JSON.stringify({ installedToolchains: "6.0.0" }),
+            });
+
+            expect(await Swiftly.list()).to.deep.equal([]);
         });
 
         test("should return empty array when platform is not supported", async () => {
