@@ -17,6 +17,7 @@ import * as vscode from "vscode";
 import { FolderContext } from "@src/FolderContext";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { SourceKitLanguageClient } from "@src/sourcekit-lsp/client/SourceKitLanguageClient";
+import { WorkspaceTestsRequest } from "@src/sourcekit-lsp/extensions";
 import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
 
 import { testAssetUri } from "../../fixtures";
@@ -208,6 +209,17 @@ tag("large").suite("Language Client Integration Suite", function () {
                     vscode.ConfigurationTarget.Workspace
                 );
             }
+        });
+    });
+
+    suite("Restart", () => {
+        test("Reruns requests a restart rejects", async () => {
+            const tests = languageClient.useLanguageClient((client, token) =>
+                client.sendRequest(WorkspaceTestsRequest.type, token)
+            );
+            await languageClient.restart();
+
+            expect(await tests).to.not.be.empty;
         });
     });
 });
