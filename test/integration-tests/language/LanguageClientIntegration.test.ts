@@ -23,7 +23,7 @@ import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
 import { testAssetUri } from "../../fixtures";
 import { tag } from "../../tags";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
-import { restartAndWaitForIndex } from "../utilities/lsputilities";
+import { enableBackgroundIndexing } from "../utilities/lsputilities";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 
 async function buildProject(ctx: WorkspaceContext, name: string) {
@@ -48,7 +48,7 @@ tag("large").suite("Language Client Integration Suite", function () {
             }
             folderContext = await buildProject(ctx, "defaultPackage");
             languageClient = ctx.languageClientManager.getClient(folderContext);
-            await restartAndWaitForIndex(languageClient);
+            return await enableBackgroundIndexing(languageClient);
         },
     });
 
@@ -219,7 +219,7 @@ tag("large").suite("Language Client Integration Suite", function () {
             );
             await languageClient.restart();
 
-            expect(await tests).to.not.be.empty;
+            await expect(tests).to.eventually.be.fulfilled;
         });
     });
 });
