@@ -279,7 +279,8 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
             // Avoid attempting to reinitialize multiple times. If we fail to initialize
             // we aren't doing anything different the second time and so will fail again.
             initializationFailedHandler: () => false,
-            initializationOptions: initializationOptions(toolchain.swiftVersion),
+            // A function, so a restart for a settings change picks up the new settings
+            initializationOptions: () => initializationOptions(toolchain.swiftVersion),
         };
 
         super(
