@@ -23,6 +23,8 @@ import { Disposable } from "@src/utilities/Disposable";
 import { poll } from "@src/utilities/utilities";
 import { Version } from "@src/utilities/version";
 
+import { updateSettings } from "./testutilities";
+
 /**
  * Wait for the LSP to indicate it is done indexing
  */
@@ -48,6 +50,30 @@ export async function restartAndWaitForIndex(client: SourceKitLanguageClient): P
     await waitForClientState(client, langclient.State.Running);
     await client.restart();
     await waitForIndex(client);
+}
+
+/**
+ * Turn on background indexing, which restarts the LSP, and wait for it to index the workspace.
+ * Returns a function that turns it back off.
+ */
+export async function enableBackgroundIndexing(
+    client: SourceKitLanguageClient
+): Promise<() => Promise<void>> {
+    await waitForClientState(client, langclient.State.Running);
+    const restarted = new Promise<void>(resolve => {
+        const subscription = client.onDidChangeState(event => {
+            if (event.newState === langclient.State.Running) {
+                subscription.dispose();
+                resolve();
+            }
+        });
+    });
+    const resetSettings = await updateSettings({
+        "swift.sourcekit-lsp.backgroundIndexing": "on",
+    });
+    await restarted;
+    await waitForIndex(client);
+    return resetSettings;
 }
 
 export async function waitForClientState(

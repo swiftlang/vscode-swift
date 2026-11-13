@@ -17,12 +17,13 @@ import * as vscode from "vscode";
 import { FolderContext } from "@src/FolderContext";
 import { WorkspaceContext } from "@src/WorkspaceContext";
 import { SourceKitLanguageClient } from "@src/sourcekit-lsp/client/SourceKitLanguageClient";
+import { WorkspaceTestsRequest } from "@src/sourcekit-lsp/extensions";
 import { createBuildAllTask } from "@src/tasks/SwiftTaskProvider";
 
 import { testAssetUri } from "../../fixtures";
 import { tag } from "../../tags";
 import { executeTaskAndWaitForResult, waitForNoRunningTasks } from "../../utilities/tasks";
-import { restartAndWaitForIndex } from "../utilities/lsputilities";
+import { enableBackgroundIndexing } from "../utilities/lsputilities";
 import { activateExtensionForSuite, folderInRootWorkspace } from "../utilities/testutilities";
 
 async function buildProject(ctx: WorkspaceContext, name: string) {
@@ -47,7 +48,7 @@ tag("large").suite("Language Client Integration Suite", function () {
             }
             folderContext = await buildProject(ctx, "defaultPackage");
             languageClient = ctx.languageClientManager.getClient(folderContext);
-            await restartAndWaitForIndex(languageClient);
+            return await enableBackgroundIndexing(languageClient);
         },
     });
 
@@ -208,6 +209,17 @@ tag("large").suite("Language Client Integration Suite", function () {
                     vscode.ConfigurationTarget.Workspace
                 );
             }
+        });
+    });
+
+    suite("Restart", () => {
+        test("Reruns requests a restart rejects", async () => {
+            const tests = languageClient.useLanguageClient((client, token) =>
+                client.sendRequest(WorkspaceTestsRequest.type, token)
+            );
+            await languageClient.restart();
+
+            await expect(tests).to.eventually.be.fulfilled;
         });
     });
 });

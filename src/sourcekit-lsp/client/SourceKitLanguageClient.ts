@@ -95,6 +95,7 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
 
     private folderContextFeature: FolderContextFeature;
     private cancellationTokenSource = new vscode.CancellationTokenSource();
+    private restarting = false;
     private readonly swiftLogger: SwiftLogger;
 
     private get logLabel(): { label: string } {
@@ -278,7 +279,8 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
             // Avoid attempting to reinitialize multiple times. If we fail to initialize
             // we aren't doing anything different the second time and so will fail again.
             initializationFailedHandler: () => false,
-            initializationOptions: initializationOptions(toolchain.swiftVersion),
+            // A function, so a restart for a settings change picks up the new settings
+            initializationOptions: () => initializationOptions(toolchain.swiftVersion),
         };
 
         super(
@@ -340,7 +342,12 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
 
     override async restart(): Promise<void> {
         this.swiftLogger.debug(`Restarting (state=${State[this.state]})`, this.logLabel);
-        await super.restart();
+        this.restarting = true;
+        try {
+            await super.restart();
+        } finally {
+            this.restarting = false;
+        }
         this.swiftLogger.trace("Restarted", this.logLabel);
     }
 
@@ -419,21 +426,24 @@ export class SourceKitLanguageClient extends LanguageClient implements AsyncDisp
         }
         const startTime = Date.now();
         this.swiftLogger.trace("useLanguageClient: running request", this.logLabel);
-        const result = process(this, this.cancellationTokenSource.token);
-        // Observe the outcome for tracing only, the original promise is returned unchanged.
-        void result.then(
-            () =>
-                this.swiftLogger.trace(
-                    `useLanguageClient: request finished in ${Date.now() - startTime}ms`,
-                    this.logLabel
-                ),
-            error =>
-                this.swiftLogger.trace(
-                    `useLanguageClient: request failed after ${Date.now() - startTime}ms: ${error}`,
-                    this.logLabel
-                )
-        );
-        return result;
+        try {
+            const result = await process(this, this.cancellationTokenSource.token);
+            this.swiftLogger.trace(
+                `useLanguageClient: request finished in ${Date.now() - startTime}ms`,
+                this.logLabel
+            );
+            return result;
+        } catch (error) {
+            this.swiftLogger.trace(
+                `useLanguageClient: request failed after ${Date.now() - startTime}ms: ${error}`,
+                this.logLabel
+            );
+            // A restart rejects the requests in flight, run them again on the restarted server
+            if (this.restarting) {
+                return this.useLanguageClient(process);
+            }
+            throw error;
+        }
     }
 
     override async dispose(timeout?: number): Promise<void> {
