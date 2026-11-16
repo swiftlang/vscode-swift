@@ -679,6 +679,8 @@ function findSwiftVersionFilesInWorkspace(): Promise<string[]> {
             return globDirectory(folder.uri, "**/.swift-version", {
                 absolute: true,
                 onlyFiles: true,
+                // Symlinked packages (e.g. in node_modules) can form cycles that never terminate
+                followSymbolicLinks: false,
             });
         })
     ).then(results => results.reduceRight((prev, curr) => prev.concat(curr), []));

@@ -13,6 +13,7 @@
 //===----------------------------------------------------------------------===//
 import { expect } from "chai";
 import * as fs from "fs/promises";
+import * as path from "path";
 import * as vscode from "vscode";
 
 import { checkForSwiftlyInstallation } from "@src/InternalSwiftExtensionApi";
@@ -20,6 +21,7 @@ import configuration from "@src/configuration";
 import { SwiftLogger } from "@src/logging/SwiftLogger";
 import { Swiftly } from "@src/toolchain/swiftly";
 import * as filesystem from "@src/utilities/filesystem";
+import { TemporaryFolder } from "@src/utilities/tempFolder";
 import * as utilities from "@src/utilities/utilities";
 
 import {
@@ -175,6 +177,53 @@ suite("Swiftly Configuration Tests", () => {
 
             // Verify that showWarningMessage was NOT called since no .swift-version files were found
             expect(mockWindow.showWarningMessage).to.not.have.been.called;
+        });
+    });
+
+    // Windows can't create symlinks without admin rights
+    (process.platform === "win32" ? suite.skip : suite)("searching the workspace", () => {
+        const mockWorkspaceFolders = mockGlobalValue(vscode.workspace, "workspaceFolders");
+        let workspacePath: string;
+
+        setup(async () => {
+            const tempFolder = await TemporaryFolder.create();
+            workspacePath = tempFolder.filename("workspace");
+            for (const [pkg, dependency] of [
+                ["a", "b"],
+                ["b", "a"],
+            ]) {
+                await fs.mkdir(path.join(workspacePath, pkg, "node_modules"), { recursive: true });
+                await fs.symlink(
+                    path.join("..", "..", dependency),
+                    path.join(workspacePath, pkg, "node_modules", dependency)
+                );
+            }
+            await fs.writeFile(path.join(workspacePath, ".swift-version"), "6.0.0");
+            await fs.writeFile(path.join(workspacePath, "b", ".swift-version"), "6.1.0");
+            mockWorkspaceFolders.setValue([
+                { uri: vscode.Uri.file(workspacePath), name: "workspace", index: 0 },
+            ]);
+            mockGlobDirectory.callThrough();
+        });
+
+        teardown(async () => {
+            await fs.rm(workspacePath, { recursive: true, force: true });
+        });
+
+        test("does not follow symlinks into dependency cycles", async () => {
+            mockConfigurationFolder.returns({
+                disableSwiftlyInstallPrompt: false,
+                ignoreSwiftVersionFile: false,
+            } as any);
+
+            const mockLogger = mockObject<SwiftLogger>({ trace: mockFn(), debug: mockFn() });
+
+            await checkForSwiftlyInstallation("extensionPath", {} as any, instance(mockLogger));
+
+            expect(mockFsReadFile.args.map(([file]) => file)).to.have.members([
+                path.join(workspacePath, ".swift-version"),
+                path.join(workspacePath, "b", ".swift-version"),
+            ]);
         });
     });
 });
