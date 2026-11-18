@@ -1,0 +1,43 @@
+name: Nightly - Swift Snapshots
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  package:
+    name: Package Extension
+    uses: ./.github/workflows/package.yml
+    with:
+      mode: dev
+
+  tests_snapshots:
+    name: Test Swift Snapshots
+    needs: package
+    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.18
+    with:
+      needs_token: true
+      # Linux
+      # Bump nightly-6.4.x when a new release branch is cut.
+      linux_swift_versions: '["nightly-main", "nightly-6.4.x"]'
+      linux_env_vars: |
+        NVM_DIR=/usr/local/nvm
+        CI=1
+        VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
+        GITHUB_REPOSITORY=${{github.repository}}
+      linux_pre_build_command: . .github/workflows/scripts/setup-linux.sh
+      linux_build_command: ./scripts/test.sh
+      # Windows
+      # Bump nightly-6.4.x when a new release branch is cut.
+      windows_swift_versions: '["nightly-main", "nightly-6.4.x"]'
+      windows_env_vars: |
+        CI=1
+        VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
+        GITHUB_REPOSITORY=${{github.repository}}
+      windows_pre_build_command: . .github\workflows\scripts\windows\setup.ps1
+      windows_build_command: Invoke-Program scripts\test_windows.ps1
+      enable_windows_docker: false

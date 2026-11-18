@@ -11,38 +11,9 @@ on:
 jobs:
   package:
     name: Package Extension
-    runs-on: ubuntu-latest
-    container:
-      image: swift:6.0-jammy
-    outputs:
-      artifact-id: ${{ steps.archive.outputs.artifact-id }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-      - name: Build Extension
-        run: |
-          . .github/workflows/scripts/setup-linux.sh
-          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-          npm ci
-          npm run package
-          npm run preview-package
-          for file in *.vsix; do
-            name="$(basename "$file" .vsix)-${{github.run_number}}.vsix"
-            echo "Created bundle $name"
-            mv "$file" "$name"
-          done
-          git config --global --add safe.directory $PWD
-          git rev-parse HEAD > vscode-swift-sha.txt
-      - name: Archive production artifacts
-        id: archive
-        uses: actions/upload-artifact@v7
-        if: ${{ env.ACT != 'true' }}
-        with:
-          if-no-files-found: error
-          name: vscode-swift-extension
-          path: |
-            *.vsix
-            vscode-swift-sha.txt
+    uses: ./.github/workflows/package.yml
+    with:
+      mode: dev
 
   tests_insiders:
     name: Test VS Code Insiders
@@ -51,25 +22,23 @@ jobs:
     with:
       needs_token: true
       # Linux
-      linux_swift_versions: '["nightly-6.3", "nightly-main"]'
+      # Latest Swift snapshots only. Bump nightly-6.4.x when a new release branch is cut.
+      linux_swift_versions: '["nightly-6.4.x", "nightly-main"]'
       linux_env_vars: |
-        NODE_VERSION=${{ needs.package.outputs.node-version }}
-        NODE_PATH=${{ needs.package.outputs.node-path }}
         NVM_DIR=/usr/local/nvm
         CI=1
         VSCODE_VERSION=insiders
         VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
-        VSCODE_SWIFT_VSIX_PRERELEASE=1
         GITHUB_REPOSITORY=${{github.repository}}
       linux_pre_build_command: . .github/workflows/scripts/setup-linux.sh
       linux_build_command: ./scripts/test.sh
       # Windows
-      windows_swift_versions: '["nightly-6.3", "nightly-main"]'
+      # Latest Swift snapshots only. Bump nightly-6.4.x when a new release branch is cut.
+      windows_swift_versions: '["nightly-6.4.x", "nightly-main"]'
       windows_env_vars: |
         CI=1
         VSCODE_VERSION=insiders
         VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
-        VSCODE_SWIFT_VSIX_PRERELEASE=1
         GITHUB_REPOSITORY=${{github.repository}}
       windows_pre_build_command: . .github\workflows\scripts\windows\setup.ps1
       windows_build_command: Invoke-Program scripts\test_windows.ps1

@@ -15,6 +15,7 @@
 import decompress from "decompress";
 import { createWriteStream } from "node:fs";
 import { appendFile, unlink } from "node:fs/promises";
+import { basename } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { Octokit } from "octokit";
 
@@ -62,29 +63,16 @@ main(async function () {
     await pipeline(data, createWriteStream("artifacts.zip", data));
     const files = await decompress("artifacts.zip", process.cwd());
     console.log(`Downloaded artifact(s): ${files.map(f => f.path).join(", ")}`);
-    const testPrerelease = process.env["VSCODE_SWIFT_VSIX_PRERELEASE"] === "1";
-    if (testPrerelease) {
-        const prereleaseVSIX = files.find(f =>
-            /swift-vscode-\d+.\d+.\d{8}(-dev)?-\d+.vsix/m.test(f.path)
-        );
-        if (prereleaseVSIX) {
-            await appendFile(envFile, `VSCODE_SWIFT_VSIX=${prereleaseVSIX.path}\n`);
-            console.log(`Running tests against: ${prereleaseVSIX.path}`);
-        } else {
-            console.error("Cound not find vscode-swift pre-release VSIX in artifact bundle");
-            process.exit(1);
-        }
-    } else {
-        const releaseVSIX = files.find(f =>
-            /swift-vscode-\d+.\d+.\d+(-dev)?-\d+.vsix/m.test(f.path)
-        );
-        if (releaseVSIX) {
-            await appendFile(envFile, `VSCODE_SWIFT_VSIX=${releaseVSIX.path}\n`);
-            console.log(`Running tests against: ${releaseVSIX.path}`);
-        } else {
-            console.error("Cound not find vscode-swift release VSIX in artifact bundle");
-            process.exit(1);
-        }
+    // Use the release VSIX which will always have an even minor version.
+    const releaseVSIX = files.find(f => {
+        const match = /^swift-vscode-\d+\.(\d+)\.\d+(-dev)?-\d+\.vsix$/.exec(basename(f.path));
+        return match !== null && parseInt(match[1], 10) % 2 === 0;
+    });
+    if (!releaseVSIX) {
+        console.error("Could not find vscode-swift release VSIX in artifact bundle");
+        process.exit(1);
     }
+    await appendFile(envFile, `VSCODE_SWIFT_VSIX=${releaseVSIX.path}\n`);
+    console.log(`Running tests against: ${releaseVSIX.path}`);
     await unlink("artifacts.zip");
 });
