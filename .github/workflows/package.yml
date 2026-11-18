@@ -1,0 +1,65 @@
+name: Package Extension
+
+permissions:
+  contents: read
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        description: "Which VSIX to build: release | patch | dev"
+        type: string
+        default: release
+      buildPreRelease:
+        description: "Also build the pre-release VSIX"
+        type: boolean
+        default: false
+    outputs:
+      artifact-id:
+        description: "ID of the uploaded vscode-swift-extension artifact"
+        value: ${{ jobs.package.outputs.artifact-id }}
+
+jobs:
+  package:
+    name: Package Extension
+    runs-on: ubuntu-latest
+    container:
+      image: swift:6.0-jammy
+    outputs:
+      artifact-id: ${{ steps.archive.outputs.artifact-id }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+      - name: Build Extension
+        env:
+          MODE: ${{ inputs.mode }}
+          BUILD_PRE_RELEASE: ${{ inputs.buildPreRelease }}
+        run: |
+          . .github/workflows/scripts/setup-linux.sh
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          case "$MODE" in
+            release) npm run package ;;
+            patch) npm run patch-package ;;
+            dev) npm run dev-package ;;
+            *) echo "Unknown package mode: $MODE"; exit 1 ;;
+          esac
+          if [ "$BUILD_PRE_RELEASE" = "true" ]; then
+            npm run preview-package
+          fi
+          for file in *.vsix; do
+            name="$(basename "$file" .vsix)-${{github.run_number}}.vsix"
+            echo "Created bundle $name"
+            mv "$file" "$name"
+          done
+          git config --global --add safe.directory $PWD
+          git rev-parse HEAD > vscode-swift-sha.txt
+      - name: Archive production artifacts
+        id: archive
+        uses: actions/upload-artifact@v7
+        if: ${{ env.ACT != 'true' }}
+        with:
+          if-no-files-found: error
+          name: vscode-swift-extension
+          path: |
+            *.vsix
+            vscode-swift-sha.txt
