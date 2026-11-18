@@ -13,7 +13,7 @@ jobs:
     name: Package Extension
     uses: ./.github/workflows/package.yml
     with:
-      buildPreRelease: true
+      mode: dev
 
   tests_insiders:
     name: Test VS Code Insiders
@@ -29,7 +29,6 @@ jobs:
         CI=1
         VSCODE_VERSION=insiders
         VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
-        VSCODE_SWIFT_VSIX_PRERELEASE=1
         GITHUB_REPOSITORY=${{github.repository}}
       linux_pre_build_command: . .github/workflows/scripts/setup-linux.sh
       linux_build_command: ./scripts/test.sh
@@ -40,7 +39,6 @@ jobs:
         CI=1
         VSCODE_VERSION=insiders
         VSCODE_SWIFT_VSIX_ID=${{needs.package.outputs.artifact-id}}
-        VSCODE_SWIFT_VSIX_PRERELEASE=1
         GITHUB_REPOSITORY=${{github.repository}}
       windows_pre_build_command: . .github\workflows\scripts\windows\setup.ps1
       windows_build_command: Invoke-Program scripts\test_windows.ps1
