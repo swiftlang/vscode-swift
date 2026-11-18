@@ -176,6 +176,15 @@ class ParallelXCTestRunStateProxy implements ITestRunState {
 
 export class XCTestOutputParser implements IXCTestOutputParser {
     private regex: TestRegex;
+    // True when using the Darwin test output format, where the target name is embedded in every
+    // test case line (e.g. `'-[TargetName ClassName.methodName]'`). False on Linux/Windows where
+    // the target name is absent and must be inferred from the surrounding `.xctest` suite line.
+    private isDarwin: boolean;
+    // On non-Darwin platforms the XCTest output does not include the target name in individual test
+    // case lines. The surrounding `Test Suite '*.xctest'` block identifies which target is running.
+    // We track that name so we can qualify class names during item lookup and correctly attribute
+    // results when multiple targets share a class name. See https://github.com/swiftlang/vscode-swift/issues/1036
+    private currentXCTestBundleName: string | undefined;
 
     /**
      * Create an XCTestOutputParser.
@@ -183,6 +192,7 @@ export class XCTestOutputParser implements IXCTestOutputParser {
      */
     constructor(regex?: TestRegex) {
         this.regex = regex ?? this.platformTestRegex;
+        this.isDarwin = this.regex === darwinTestRegex;
     }
 
     /**
@@ -234,9 +244,19 @@ export class XCTestOutputParser implements IXCTestOutputParser {
             return false;
         }
 
-        const testName = `${match[1]}/${match[2]}`;
-        runState.activeSuite = match[1];
-        this.processPendingSuiteOutput(runState, match[1]);
+        // On Darwin the test case format is '-[TargetName ClassName.methodName]', so match[1]
+        // already contains the qualified 'TargetName.ClassName' string. On non-Darwin the format
+        // is 'ClassName.methodName', so match[1] is only the class name. When we know the
+        // enclosing xctest bundle we prefix the class name with the bundle (target) name so that
+        // duplicate class names across different targets resolve to the correct test item.
+        const qualifiedClass =
+            !this.isDarwin && this.currentXCTestBundleName
+                ? `${this.currentXCTestBundleName}.${match[1]}`
+                : match[1];
+
+        const testName = `${qualifiedClass}/${match[2]}`;
+        runState.activeSuite = qualifiedClass;
+        this.processPendingSuiteOutput(runState, qualifiedClass);
 
         const testIndex = runState.getTestItemIndex(testName, undefined);
         this.startTest(testIndex, runState);
@@ -250,7 +270,14 @@ export class XCTestOutputParser implements IXCTestOutputParser {
             return false;
         }
 
-        const testName = `${match[1]}/${match[2]}`;
+        // Apply the same target qualification as handleTestStarted so that the finished event
+        // resolves to the same test item as the started event.
+        const qualifiedClass =
+            !this.isDarwin && this.currentXCTestBundleName
+                ? `${this.currentXCTestBundleName}.${match[1]}`
+                : match[1];
+
+        const testName = `${qualifiedClass}/${match[2]}`;
         const testIndex = runState.getTestItemIndex(testName, undefined);
         const state = match[3] as TestCompletionState;
         const duration = +match[4];
@@ -389,6 +416,13 @@ export class XCTestOutputParser implements IXCTestOutputParser {
 
     /** Flag a test suite has started */
     private startTestSuite(name: string, line: string, runState: ITestRunState) {
+        // On non-Darwin, capture the xctest bundle name (e.g. "PackageTests" from
+        // "PackageTests.xctest") so we can qualify bare class names in subsequent test case lines
+        // and correctly distinguish identical class names from different test targets.
+        if (!this.isDarwin && name.endsWith(".xctest")) {
+            this.currentXCTestBundleName = name.slice(0, -".xctest".length);
+        }
+
         // Buffer the output to this point until the first test
         // starts, at which point we can determine the target.
         runState.pendingSuiteOutput = runState.pendingSuiteOutput
