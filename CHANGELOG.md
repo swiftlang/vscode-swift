@@ -2,6 +2,8 @@
 
 ## {{releaseVersion}} - {{releaseDate}}
 
+## 2.18.1 - 2026-11-18
+
 ### Added
 
 - Symbol links in the documentation preview can now be clicked on to jump to the symbol definition ([#2427](https://github.com/swiftlang/vscode-swift/pull/2427))
