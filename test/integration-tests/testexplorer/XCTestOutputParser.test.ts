@@ -652,6 +652,89 @@ Test Case 'MyTests.testSkip' skipped (0.002 seconds).
                         },
                     ]);
                 });
+
+                test("Suite with xctest bundle scope", () => {
+                    const input = `Test Suite 'PackageTests.xctest' started at 2024-08-26 13:19:25.000.
+Test Suite 'MyTests' started at 2024-08-26 13:19:25.001.
+Test Case 'MyTests.testPass' started.
+Test Case 'MyTests.testPass' passed (0.001 seconds).
+Test Suite 'MyTests' passed at 2024-08-26 13:19:25.002.
+            Executed 1 test, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'PackageTests.xctest' passed at 2024-08-26 13:19:25.002.
+            Executed 1 test, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+`;
+                    outputParser.parseResult(input, testRunState);
+
+                    const testOutput = inputToTestOutput(input);
+                    assertTestRunState(testRunState, [
+                        {
+                            name: "PackageTests.MyTests",
+                            status: TestStatus.passed,
+                            output: [testOutput[1], testOutput[4]],
+                        },
+                        {
+                            name: "PackageTests.MyTests/testPass",
+                            status: TestStatus.passed,
+                            timing: { duration: 0.001 },
+                            output: [testOutput[2], testOutput[3]],
+                        },
+                    ]);
+                });
+
+                // Regression test for https://github.com/swiftlang/vscode-swift/issues/1036
+                // On Linux the XCTest output does not include the target name in test case lines,
+                // so two targets with the same class name would previously both be attributed to
+                // the first matching target. The fix tracks the enclosing `*.xctest` bundle name
+                // and uses it to qualify class names during test item lookup.
+                test("Identical class names in different test targets", () => {
+                    const input = `Test Suite 'All tests' started at 2024-08-26 13:19:25.000.
+Test Suite 'Target1Tests.xctest' started at 2024-08-26 13:19:25.001.
+Test Suite 'SharedSuite' started at 2024-08-26 13:19:25.002.
+Test Case 'SharedSuite.testPass' started.
+Test Case 'SharedSuite.testPass' passed (0.001 seconds).
+Test Suite 'SharedSuite' passed at 2024-08-26 13:19:25.003.
+            Executed 1 test, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'Target1Tests.xctest' passed at 2024-08-26 13:19:25.003.
+            Executed 1 test, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'Target2Tests.xctest' started at 2024-08-26 13:19:25.004.
+Test Suite 'SharedSuite' started at 2024-08-26 13:19:25.005.
+Test Case 'SharedSuite.testPass' started.
+Test Case 'SharedSuite.testPass' passed (0.001 seconds).
+Test Suite 'SharedSuite' passed at 2024-08-26 13:19:25.006.
+            Executed 1 test, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'Target2Tests.xctest' passed at 2024-08-26 13:19:25.006.
+            Executed 1 test, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'All tests' passed at 2024-08-26 13:19:25.006.
+            Executed 2 tests, with 0 failures (0 unexpected) in 0.002 (0.002) seconds
+`;
+                    outputParser.parseResult(input, testRunState);
+
+                    const testOutput = inputToTestOutput(input);
+                    assertTestRunState(testRunState, [
+                        {
+                            name: "Target1Tests.SharedSuite",
+                            status: TestStatus.passed,
+                            output: [testOutput[2], testOutput[5]],
+                        },
+                        {
+                            name: "Target1Tests.SharedSuite/testPass",
+                            status: TestStatus.passed,
+                            timing: { duration: 0.001 },
+                            output: [testOutput[3], testOutput[4]],
+                        },
+                        {
+                            name: "Target2Tests.SharedSuite",
+                            status: TestStatus.passed,
+                            output: [testOutput[10], testOutput[13]],
+                        },
+                        {
+                            name: "Target2Tests.SharedSuite/testPass",
+                            status: TestStatus.passed,
+                            timing: { duration: 0.001 },
+                            output: [testOutput[11], testOutput[12]],
+                        },
+                    ]);
+                });
             });
         });
     });
