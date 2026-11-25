@@ -18,7 +18,7 @@ jobs:
   tests_snapshots:
     name: Test Swift Snapshots
     needs: package
-    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.18
+    uses: swiftlang/github-workflows/.github/workflows/swift_package_test.yml@0.0.19
     with:
       needs_token: true
       # Linux
